@@ -249,7 +249,7 @@ details.set > * + * { margin-top: 10px; }
       <p class="foot">Een webpagina mag flitsers.nl meestal niet rechtstreeks uitlezen. Met een eigen gratis tussenstation (Cloudflare Worker, uitleg bij de app) werkt het wel. Plak hier het adres ervan. Laat leeg om rechtstreeks te proberen.</p>
       <div class="mobrow"><input type="text" id="proxyUrl" inputmode="url" autocomplete="off" placeholder="https://jouw-naam.workers.dev"><button class="btn" id="proxySave" type="button">Bewaar adres</button></div>
     </details>
-    <details class="set"><summary>Zelf een lijst plakken (bijvoorbeeld van de ANWB-pagina)</summary>
+    <details class="set"><summary>Zelf een lijst plakken</summary>
       <p class="foot">Open zelf de flitserspagina in je browser, kies alles selecteren, kopieer en plak het hier. Doe dit alleen als je stilstaat of als passagier. Ik haal alleen wegnummers en hectometerpalen eruit en zet ze 3 uur op de kaart. Er wordt niets automatisch bij die site opgehaald.</p>
       <textarea id="pasteBox" rows="4" placeholder="Plak hier de tekst van de pagina" style="width:100%;font:13px sans-serif;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
       <div class="mobrow"><button class="btn primary" id="pasteClip" type="button">Plakken van klembord</button><button class="btn" id="pasteGo" type="button">Lees lijst in</button><button class="btn" id="pasteClear" type="button">Wis geplakte flitsers</button></div>
@@ -487,10 +487,10 @@ details.set > * + * { margin-top: 10px; }
     var kk = 1 - Math.exp(-dt * 6);
     S.accel += ((S.speed - prev) / dt - S.accel) * kk;
 
-    if (S.accel > 9 && S.speed > 4 && T - S.lastExc > 5 && !S.asleep) { setEv('excited', 2.2); S.lastExc = T; S.style = Math.max(0, S.style - 3); mem.hard++; beep('excited'); }
+    if (S.accel > 9 && S.speed > 4 && T - S.lastExc > 5 && !S.asleep) { setEv('excited', 2.2, 'Whoeeh, optrekken!'); S.lastExc = T; S.style = Math.max(0, S.style - 3); mem.hard++; beep('excited'); }
     learnStep(dt);
     leanStep(dt);
-    if (S.accel < -startleAt() && T - S.lastStart > 5 && !S.asleep) { if (S.accel < -35) setEv('startled', 3, 'Pfff\u2026 dat was op het randje. Alles goed?'); else setEv('startled', 1.8); S.lastStart = T; S.style = Math.max(0, S.style - 8); beep('startled'); }
+    if (S.accel < -startleAt() && T - S.lastStart > 5 && !S.asleep) { if (S.accel < -35) setEv('startled', 3, 'Pfff\u2026 dat was op het randje. Alles goed?'); else setEv('startled', 1.8, 'Oef, stevig remmen!'); S.lastStart = T; S.style = Math.max(0, S.style - 8); beep('startled'); }
 
     if (S.speed < 1) { S.stoppedT += dt; S.idle += dt; }
     else {
@@ -643,7 +643,7 @@ details.set > * + * { margin-top: 10px; }
     if (!S.live) S.turn = T < S.simTurnEnd ? S.simTurn : 0;
     S.turnS += (S.turn - S.turnS) * (1 - Math.exp(-dt * 3));
     S.latG = S.speed / 3.6 * S.turnS * Math.PI / 180 / 9.81;
-    S.hop = Math.max(0, S.hop - dt * 3);
+    S.hop = Math.max(0, S.hop - dt * 3); S.squash = Math.max(0, (S.squash || 0) - dt * 1.6);
     if (!S.live) S.tunnel = T < S.simTunEnd;
     if (S.tunnelPrev && !S.tunnel && !S.asleep) { setEv('happy', 2.5, 'Daar is het licht weer!'); beep('wake'); }
     S.tunnelPrev = S.tunnel;
@@ -660,10 +660,18 @@ details.set > * + * { margin-top: 10px; }
       S.lastCorner = T; S.style = Math.max(0, S.style - 6); setEv('worried', 2.4, 'Rustig in de bocht!'); beep('startled');
     }
   }
-  function bump() {
-    if (S.live && !S.asleep && T - S.lastBump >= 2) lg('drempel/schok');
-    if (S.asleep || T - S.lastBump < 2) return;
-    S.lastBump = T; S.hop = 1; setEv('startled', .9, 'Boing!'); beep('startled');
+  function bump(str) {
+    str = str || 5;
+    var gap = T - S.lastBump, twin = gap >= .25 && gap < 1.2 && !S.bumpTwin;
+    if (S.asleep || gap < .25 || (gap < 1.2 && !twin)) return;
+    if (S.live) lg('drempel/schok sterkte ' + str.toFixed(1) + (S.speed ? ' bij ' + Math.round(S.speed) + ' km/h' : '') + (twin ? ' (tweede klap)' : ''));
+    S.bumpTwin = twin; S.lastBump = T;
+    S.hop = Math.min(1, .55 + str / 14); S.squash = 1;
+    if (twin) { setEv('excited', 1.8, 'Dubbele boing! Dat was een drempel.'); burst(120, 120, 10); }
+    else if (str >= 9) { S.dizzyUntil = T + 1.6; setEv('worried', 1.8, 'Au! Wat een gat.'); burst(120, 110, 14); }
+    else if (str >= 5) { setEv('startled', 1.2, 'Drempel! Boing!'); burst(120, 120, 8); }
+    else setEv('startled', .9, 'Boing!');
+    beep('startled');
   }
   function simBend(dir, kind) {
     if (S.asleep) wake();
@@ -875,7 +883,8 @@ details.set > * + * { margin-top: 10px; }
     var wk = wxFlags();
     if (!S.asleep) { if (wk.cold) fdx += Math.sin(T * 40) * 1.3; if (wk.wind) { frot += Math.sin(T * 3.1) * .02; fdx += Math.sin(T * 1.7) * 2; } }
     if (S.dizzyUntil > T) { fxSpiral = true; }
-    if (S.hop > 0) fdy -= Math.sin(S.hop * Math.PI) * 14;
+    if (S.hop > 0) fdy -= Math.sin(S.hop * Math.PI) * 14 * S.hop;
+    if (S.squash > 0) { fsc *= 1 + Math.sin(S.squash * Math.PI * 3) * .09 * S.squash; frot += Math.sin(S.squash * Math.PI * 4) * .05 * S.squash; }
     if (S.music && !S.asleep && !S.gag) { fdx += Math.sin(T * 4) * 4; frot += Math.sin(T * 4) * .05; fdy -= S.beat * 5; if (S.beat > .95) note(rand(60, 180), 70); }
     /* breathing and a slow sway, so even doing nothing looks alive */
     if (!reduce && !S.asleep) { fsc *= 1 + Math.sin(T * 1.9) * .012; frot += Math.sin(T * .6) * .015; }
@@ -1192,6 +1201,7 @@ details.set > * + * { margin-top: 10px; }
 
     ctx.setTransform(SC, 0, 0, SC, 0, 0);
     ctx.fillStyle = SCREEN; ctx.fillRect(0, 0, 240, 240);
+    ctx.save(); ctx.beginPath(); ctx.arc(120, 120, 102, 0, TAU); ctx.clip();
     tunnelFx();
     wxBack(dt);
     var ox = gx * 9, oy = gy * 7;
@@ -1229,6 +1239,7 @@ details.set > * + * { margin-top: 10px; }
     moodFx(dt);
     wxFront(dt);
     flagDraw();
+    ctx.restore();
     overlay(dt);
   }
 
@@ -1567,13 +1578,21 @@ details.set > * + * { margin-top: 10px; }
     return { cams: cams, trajs: trajs };
   }
 
+  /* Vaste flitsers die de gebruiker zelf heeft doorgegeven (staan niet altijd in OpenStreetMap). */
+  var BUILTIN = [
+    { id: 'b:n210-ijsselstein', lat: 52.009093, lon: 5.061531, limit: 80, name: 'N210 Lage Dijk, IJsselstein (beide richtingen)' }
+  ];
   function newMonitor() { return { items: [], cur: null, traj: null, handled: {} }; }
   function setMonitorData(M, cams, trajs) {
     var items = [], i;
     for (i = 0; i < cams.length; i++) items.push({ id: cams[i].id, kind: 'cam', lat: cams[i].lat, lon: cams[i].lon, limit: cams[i].limit });
     for (i = 0; i < trajs.length; i++) items.push({ id: trajs[i].id, kind: 'traj', lat: trajs[i].from.lat, lon: trajs[i].from.lon, limit: trajs[i].limit, tr: trajs[i] });
+    var bi = BUILTIN.filter(function (b) {
+      for (var j = 0; j < cams.length; j++) if (gdist(b.lat, b.lon, cams[j].lat, cams[j].lon) < 70) return false;
+      return true;
+    }).map(function (b) { return { id: b.id, kind: 'cam', lat: b.lat, lon: b.lon, limit: b.limit, user: true }; });
     var uc = typeof ucams === 'undefined' ? [] : ucams.map(function (u) { return { id: u.id, kind: 'cam', lat: u.lat, lon: u.lon, limit: u.limit, user: true }; });
-    M.items = items.concat(typeof mobItems === 'undefined' || !mobItems ? [] : mobItems, uc);
+    M.items = items.concat(typeof mobItems === 'undefined' || !mobItems ? [] : mobItems, uc, bi);
   }
   function aheadInfo(lat, lon, hdg, it) {
     if (hdg == null) return null;
@@ -1849,22 +1868,11 @@ details.set > * + * { margin-top: 10px; }
     }
     return next();
   }
-  var anwbT = -1e9;
-  function anwbPull() {
-    if (!proxy || T - anwbT < 900) return Promise.resolve();
-    anwbT = T;
-    return fetch(pbase() + '/anwb', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.text(); }).then(function (t) {
-      var it = window.__paste.parse(t);
-      if (!it.length) { lg('ANWB-koppeling: geen hectometerpalen gevonden (pagina anders opgebouwd?)'); return; }
-      pasted = it; try { localStorage.setItem(PASTEKEY, JSON.stringify(pasted)); } catch (e) {}
-      lg('ANWB-koppeling: ' + it.length + ' flitsers'); pasteShow();
-    }).catch(function (e) { lg('ANWB-koppeling mislukt: ' + e.message); });
-  }
   function loadMobile(force) {
     if (!$('mobOn').checked) { if (mobItems.length) { mobItems = []; applyCamData(); } return; }
     if (mobBusy || (!force && T - mobT < 300)) return;
     mobBusy = true; mobT = T;
-    anwbPull().then(function () { return getRss(); }).then(function (xml) { return parseFeed(xml); }, function (e) { if (pastedFresh().length) return []; throw e; }).then(function (all0) {
+    getRss().then(function (xml) { return parseFeed(xml); }, function (e) { if (pastedFresh().length) return []; throw e; }).then(function (all0) {
       var all = all0.concat(pastedFresh()), recent = all.filter(function (x) { return !x.pub || Date.now() - x.pub < 4 * 36e5; }).slice(0, 60);
       var withKm = recent.filter(function (x) { return x.km !== null; }), items = [], fails = 0, k = 0;
       function step() {
@@ -2037,11 +2045,17 @@ details.set > * + * { margin-top: 10px; }
   });
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) { navigator.serviceWorker.register('sw.js').catch(function () {}); }
 
+  var gEst = { x: null, y: null, z: null }, noiseEst = .4;
   window.addEventListener('devicemotion', function (e) {
     if (!S.live || S.speed < 5) return;
     var a = e.accelerationIncludingGravity;
     if (!a || a.x == null) return;
-    if (Math.abs(Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z) - 9.81) > 4.5) bump();
+    var al = .03;
+    if (gEst.x === null) { gEst.x = a.x; gEst.y = a.y; gEst.z = a.z; return; }
+    gEst.x += (a.x - gEst.x) * al; gEst.y += (a.y - gEst.y) * al; gEst.z += (a.z - gEst.z) * al;
+    var dx = a.x - gEst.x, dy = a.y - gEst.y, dz = a.z - gEst.z, dev = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    var thr = Math.max(2.2, noiseEst * 3.2 + .8);
+    if (dev > thr) bump(dev); else noiseEst += (dev - noiseEst) * .004;
   });
   $('bLive').addEventListener('click', function () { if (S.live) stopLive(); else startLive(); });
   function liveTick() {
@@ -2058,6 +2072,96 @@ details.set > * + * { margin-top: 10px; }
     }
   }
 
+
+  /* ---------- Meer leven: remmen, groen licht, dag, vaste routes, aanraking, batterij ---------- */
+  var CELLKEY = 'dashboardmaatje-cells-v1', ENDKEY = 'dashboardmaatje-ends-v1', DAYKEY = 'dashboardmaatje-day-v1';
+  var lv = { vPrev: 0, a: 0, stopT: 0, lastBrake: -99, lastAcc: -99, lastGreen: -99, wasLive: false, km0: 0, cells: {}, seen: {}, ends: [], lastCell: 0, oftenN: 0, oftenT: -999, homeDone: false, endDone: false, bat: null, batT: -999, batCh: null, tripMsg: 0, ptr: [] };
+  try { lv.cells = JSON.parse(localStorage.getItem(CELLKEY)) || {}; lv.ends = JSON.parse(localStorage.getItem(ENDKEY)) || []; } catch (e) {}
+  if (navigator.getBattery) navigator.getBattery().then(function (b) { lv.bat = b; }, function () {});
+  function cellKey(la, lo) { return la.toFixed(3) + ',' + lo.toFixed(3); }
+  function lifeSave() {
+    try {
+      var ks = Object.keys(lv.cells); if (ks.length > 4000) { ks.slice(0, 1000).forEach(function (k) { delete lv.cells[k]; }); }
+      localStorage.setItem(CELLKEY, JSON.stringify(lv.cells)); localStorage.setItem(ENDKEY, JSON.stringify(lv.ends.slice(-30)));
+    } catch (e) {}
+  }
+  function homeCell() {
+    var cnt = {}, best = null, n = 0;
+    lv.ends.forEach(function (e) { var k = cellKey(e[0], e[1]); cnt[k] = (cnt[k] || 0) + 1; if (cnt[k] > n) { n = cnt[k]; best = e; } });
+    return n >= 3 ? best : null;
+  }
+  function freeEv() { return !(S.ev && T < S.evUntil) && !S.asleep && S.flagUntil < T; }
+  function lifeTick(dt) {
+    if (!(dt > 0)) return;
+    var v = S.speed / 3.6, aNow = (v - lv.vPrev) / dt; lv.vPrev = v;
+    lv.a += (clamp(aNow, -9, 6) - lv.a) * Math.min(1, dt * 3);
+    /* A. voorover bij remmen, achterover bij optrekken */
+    if (!S.asleep && S.speed > 3) fdy += clamp(-lv.a * 1.8, -6, 8);
+    /* B. groen licht */
+    if (S.speed < 1) lv.stopT += dt;
+    else {
+      if (S.speed > 4 && lv.stopT >= 8 && lv.stopT < 180 && T - lv.lastGreen > 60 && freeEv()) { lv.lastGreen = T; setEv('excited', 2, 'Groen! Daar gaan we.'); }
+      if (S.speed > 4) lv.stopT = 0;
+    }
+    /* C. dag, rit en routes: alleen met echte GPS */
+    if (S.live && !lv.wasLive) {
+      lv.km0 = mem.km; lv.seen = {}; lv.oftenN = 0; lv.homeDone = false; lv.endDone = false;
+      var d = new Date(), key = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(), h = d.getHours(), wd = d.getDay(), msg = null, mood = 'happy', last = '';
+      try { last = localStorage.getItem(DAYKEY) || ''; } catch (e) {}
+      if (last !== key) {
+        if (wd === 1 && h < 11) { msg = 'Maandagochtend… dapper blijven.'; mood = 'bored'; }
+        else if (wd === 5 && h >= 15) { msg = 'Vrijdagmiddag! Bijna weekend.'; mood = 'excited'; }
+        else if ((wd === 0 || wd === 6) && h < 12) { msg = 'Weekend! Lekker rustig aan.'; mood = 'relaxed'; }
+        else if (h >= 23 || h < 5) { msg = 'Laat op pad. Blijf scherp.'; mood = 'alert'; }
+        if (msg) { try { localStorage.setItem(DAYKEY, key); } catch (e) {} setEv(mood, 4, msg); }
+      }
+      if (!msg && [10, 25, 50, 100, 250].indexOf(mem.trips) >= 0 && lv.tripMsg !== mem.trips) { lv.tripMsg = mem.trips; cheer('Al ' + mem.trips + ' ritten samen!'); }
+    }
+    lv.wasLive = S.live;
+    if (S.live && typeof lastPos !== 'undefined' && lastPos && S.speed > 10 && T - lv.lastCell > 4) {
+      lv.lastCell = T;
+      var k = cellKey(lastPos.lat, lastPos.lon);
+      if (!lv.seen[k]) {
+        lv.seen[k] = 1;
+        var c0 = lv.cells[k] || 0; lv.cells[k] = c0 + 1;
+        if (c0 >= 4 && lv.oftenN < 2 && T - lv.oftenT > 150 && freeEv() && S.live) { lv.oftenN++; lv.oftenT = T; setEv('content', 2.6, 'Hier rijden we vaak. Ik ken dit stukje.'); }
+      }
+      var hc = homeCell();
+      if (hc && !lv.homeDone && S.speed > 15 && mem.km - lv.km0 > 2) {
+        var dd = gdist(lastPos.lat, lastPos.lon, hc[0], hc[1]);
+        if (dd < 1500 && dd > 350 && freeEv()) { lv.homeDone = true; setEv('happy', 3, 'Bijna daar! Hier stoppen we vaak.'); }
+      }
+    }
+    if (S.live && S.speed < 1 && lv.stopT > 90 && !lv.endDone && mem.km - lv.km0 > 2 && typeof lastPos !== 'undefined' && lastPos) {
+      lv.endDone = true; lv.ends.push([lastPos.lat, lastPos.lon]); lifeSave();
+    }
+    if (S.live && Math.floor(T) % 30 === 0 && T - lv.lastSave > 20) { lv.lastSave = T; lifeSave(); }
+    /* F. batterij */
+    if (lv.bat && S.live && T - lv.batT > 30) {
+      lv.batT = T;
+      if (lv.batCh === false && lv.bat.charging && freeEv()) setEv('happy', 3, 'Lekker, stroom!');
+      lv.batCh = lv.bat.charging;
+      if (!lv.bat.charging && lv.bat.level <= .2 && T - lv.batWarn > 900 && freeEv()) { lv.batWarn = T; setEv('sleepy', 4, 'Ik ben moe… mijn telefoon heeft stroom nodig.'); }
+    }
+  }
+  lv.lastSave = 0; lv.batWarn = -999;
+  /* E. aanraken: ogen volgen je vinger, strelen maakt hem zacht */
+  (function () {
+    var face = $('face'); if (!face) return;
+    var down = false, path = 0, px = 0, py = 0, t0 = 0, lastPet = -99;
+    face.addEventListener('pointerdown', function (e) { down = true; px = e.clientX; py = e.clientY; path = 0; t0 = T; });
+    window.addEventListener('pointerup', function () { down = false; });
+    face.addEventListener('pointermove', function (e) {
+      if (!down || S.speed >= 1 || S.asleep) return;
+      var r = face.getBoundingClientRect();
+      dir(clamp((e.clientX - (r.left + r.width / 2)) / (r.width / 2), -1, 1), clamp((e.clientY - (r.top + r.height / 2)) / (r.height / 2), -1, 1));
+      path += Math.abs(e.clientX - px) + Math.abs(e.clientY - py); px = e.clientX; py = e.clientY;
+      if (T - t0 > 4) { t0 = T; path = 0; }
+      if (path > 500 && T - lastPet > 6) { lastPet = T; path = 0; S.love = Math.min(100, S.love + 12); setEv('love', 3, 'Mmm, zacht…'); beep('pet'); }
+    });
+  })();
+  window.__life = { lv: lv, setStop: function (n) { lv.stopT = n; }, homeCell: homeCell };
+
   /* ---------- Loop ---------- */
   var last = null;
   function frame(ts) {
@@ -2068,6 +2172,7 @@ details.set > * + * { margin-top: 10px; }
     liveTick();
     gagTick();
     try { extraTick(); } catch (e) { lg('FOUT extra ' + e.message); }
+    try { lifeTick(dt); } catch (e) { lg('FOUT leven ' + e.message); }
     curKey = mood();
     updateMood();
     render(dt > 0 ? dt : 0.016);
@@ -2113,7 +2218,7 @@ details.set > * + * { margin-top: 10px; }
   $('pasteClip').addEventListener('click', function () {
     if (!navigator.clipboard || !navigator.clipboard.readText) { toast('Je browser mag het klembord niet lezen. Plak de tekst in het vak.'); return; }
     navigator.clipboard.readText().then(function (t) {
-      if (!t) { toast('Het klembord is leeg. Kopieer eerst de ANWB-pagina.'); return; }
+      if (!t) { toast('Het klembord is leeg. Kopieer eerst de lijst.'); return; }
       $('pasteBox').value = t; $('pasteGo').click();
     }, function () { toast('Geen toestemming voor het klembord. Plak de tekst in het vak.'); });
   });
@@ -2539,19 +2644,19 @@ details.set > * + * { margin-top: 10px; }
     if (reduce) return;
     var f = wxFlags(), i;
     if (f.night && !S.asleep) {
-      ctx.fillStyle = EYE; ctx.globalAlpha = .75; ctx.beginPath(); ctx.arc(192, 50, 9, 0, TAU); ctx.fill();
-      ctx.fillStyle = SCREEN; ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(197, 47, 8, 0, TAU); ctx.fill();
+      ctx.fillStyle = EYE; ctx.globalAlpha = .75; ctx.beginPath(); ctx.arc(178, 66, 9, 0, TAU); ctx.fill();
+      ctx.fillStyle = SCREEN; ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(183, 63, 8, 0, TAU); ctx.fill();
       ctx.fillStyle = EYE; var ST = [[40, 60, 3], [66, 34, 2.5], [150, 22, 3], [214, 90, 2.5], [30, 110, 2]];
       for (i = 0; i < ST.length; i++) { ctx.globalAlpha = .25 + .5 * Math.abs(Math.sin(T * 1.3 + i * 2)); spark(ST[i][0], ST[i][1], ST[i][2]); }
       ctx.globalAlpha = 1;
     }
     if (f.sun && !S.asleep) {
-      ctx.fillStyle = '#FFD76A'; ctx.strokeStyle = '#FFD76A'; ctx.globalAlpha = .9; ctx.beginPath(); ctx.arc(46, 54, 8, 0, TAU); ctx.fill(); ctx.lineWidth = 2; ctx.lineCap = 'round';
-      for (i = 0; i < 8; i++) { var a = T * .6 + i * TAU / 8; ctx.beginPath(); ctx.moveTo(46 + Math.cos(a) * 12, 54 + Math.sin(a) * 12); ctx.lineTo(46 + Math.cos(a) * 17, 54 + Math.sin(a) * 17); ctx.stroke(); }
+      ctx.fillStyle = '#FFD76A'; ctx.strokeStyle = '#FFD76A'; ctx.globalAlpha = .9; ctx.beginPath(); ctx.arc(60, 64, 7, 0, TAU); ctx.fill(); ctx.lineWidth = 2; ctx.lineCap = 'round';
+      for (i = 0; i < 8; i++) { var a = T * .6 + i * TAU / 8; ctx.beginPath(); ctx.moveTo(60 + Math.cos(a) * 11, 64 + Math.sin(a) * 11); ctx.lineTo(60 + Math.cos(a) * 15, 64 + Math.sin(a) * 15); ctx.stroke(); }
       ctx.globalAlpha = 1;
     }
     if ((f.cloudy || f.rain || f.snow) && !S.asleep) {
-      var cx = 184 + Math.sin(T * .3) * 3, cy = 54; ctx.fillStyle = EYE; ctx.globalAlpha = .4; ctx.beginPath(); ctx.moveTo(cx + 8, cy); ctx.arc(cx, cy, 8, 0, TAU); ctx.moveTo(cx + 20, cy - 4); ctx.arc(cx + 10, cy - 4, 10, 0, TAU); ctx.moveTo(cx + 28, cy); ctx.arc(cx + 21, cy, 7, 0, TAU); ctx.rect(cx, cy - 1, 21, 8); ctx.fill(); ctx.globalAlpha = 1;
+      var cx = 152 + Math.sin(T * .3) * 3, cy = 58; ctx.fillStyle = EYE; ctx.globalAlpha = .4; ctx.beginPath(); ctx.moveTo(cx + 8, cy); ctx.arc(cx, cy, 8, 0, TAU); ctx.moveTo(cx + 20, cy - 4); ctx.arc(cx + 10, cy - 4, 10, 0, TAU); ctx.moveTo(cx + 28, cy); ctx.arc(cx + 21, cy, 7, 0, TAU); ctx.rect(cx, cy - 1, 21, 8); ctx.fill(); ctx.globalAlpha = 1;
     }
   }
   function wxFront(dt) {
