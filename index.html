@@ -229,6 +229,11 @@ details.set > * + * { margin-top: 10px; }
   <section aria-label="Onderweg">
     <h2>Onderweg</h2>
     <div class="limitrow"><label for="spdMode">Snelheid op zijn scherm</label><select id="spdMode"><option value="1">Cijfer</option><option value="2">Ring</option><option value="3">Cijfer en ring</option><option value="0">Uit</option></select></div>
+    <div class="switchrow"><input type="checkbox" id="wxOn" checked><label for="wxOn">Weer-animaties (weer op je locatie)</label></div>
+    <p class="chip" id="wxStat">Weer: nog niet opgehaald. Dit gebeurt als de GPS aan staat.</p>
+    <div class="limitrow"><label for="moodTest">Uitdrukking testen</label><select id="moodTest"><option value="">Kies een gezicht</option><option value="sad">Verdrietig met tranen</option><option value="angry">Boos met stoom</option><option value="laugh">Lachen</option><option value="think">Nadenken</option><option value="clock">Klok</option><option value="love">Hartjesogen</option><option value="stars">Sterogen</option><option value="nerv">Zweetdruppel</option><option value="snot">Slapen met bel</option></select></div>
+    <div class="limitrow"><label for="wxTest">Weer testen</label><select id="wxTest"><option value="">Echt weer</option><option value="sun">Zon</option><option value="cloud">Bewolkt</option><option value="rain">Regen</option><option value="heavy">Zware regen</option><option value="thunder">Onweer</option><option value="snow">Sneeuw</option><option value="fog">Mist</option><option value="wind">Storm</option><option value="cold">Vrieskou</option><option value="hot">Hitte</option><option value="night">Nacht</option></select></div>
+    <div class="limitrow"><label for="leanDir">Leunen in bochten</label><select id="leanDir"><option value="1">Naar de bocht toe</option><option value="-1">Van de bocht af</option></select></div>
     <div class="switchrow"><input type="checkbox" id="spkOn"><label for="spkOn">Flitsmeldingen hardop zeggen (Nederlands)</label></div>
     <div class="switchrow"><input type="checkbox" id="camOn" checked><label for="camOn">Flitsmeldingen aan</label></div>
     <p class="chip" id="camStat">Flitsdata: nog niet geladen. Wordt opgehaald als de GPS aan staat.</p>
@@ -244,10 +249,17 @@ details.set > * + * { margin-top: 10px; }
       <p class="foot">Een webpagina mag flitsers.nl meestal niet rechtstreeks uitlezen. Met een eigen gratis tussenstation (Cloudflare Worker, uitleg bij de app) werkt het wel. Plak hier het adres ervan. Laat leeg om rechtstreeks te proberen.</p>
       <div class="mobrow"><input type="text" id="proxyUrl" inputmode="url" autocomplete="off" placeholder="https://jouw-naam.workers.dev"><button class="btn" id="proxySave" type="button">Bewaar adres</button></div>
     </details>
+    <details class="set"><summary>Zelf een lijst plakken (bijvoorbeeld van de ANWB-pagina)</summary>
+      <p class="foot">Open zelf de flitserspagina in je browser, kies alles selecteren, kopieer en plak het hier. Doe dit alleen als je stilstaat of als passagier. Ik haal alleen wegnummers en hectometerpalen eruit en zet ze 3 uur op de kaart. Er wordt niets automatisch bij die site opgehaald.</p>
+      <textarea id="pasteBox" rows="4" placeholder="Plak hier de tekst van de pagina" style="width:100%;font:13px sans-serif;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
+      <div class="mobrow"><button class="btn primary" id="pasteClip" type="button">Plakken van klembord</button><button class="btn" id="pasteGo" type="button">Lees lijst in</button><button class="btn" id="pasteClear" type="button">Wis geplakte flitsers</button></div>
+      <p class="chip" id="pasteStat"></p>
+    </details>
     <div class="limitrow"><label for="limit">Limiet</label><select id="limit"><option>50</option><option>70</option><option>80</option><option selected>100</option><option>120</option></select><span class="unit">KM/H</span></div>
     <div class="btns">
       <button class="btn" id="bCam" type="button">Flitser vooruit</button>
       <button class="btn" id="bTraj" type="button">Trajectcontrole</button>
+      <button class="btn" id="bUcam" type="button" style="grid-column:1/-1">Flitser ontbreekt hier: onthoud deze plek</button>
       <button class="btn" id="bDrive" type="button" style="grid-column:1/-1">+1 uur rijtijd (pauzeherinnering testen)</button>
     </div>
     <p class="foot">Gesimuleerd. Afstanden lopen ×10, zodat je het snel ziet: een flitser ligt 900 m verder, een traject is 3 km. Met telefoon-GPS aan gebruikt hij de echte flitsers uit OpenStreetMap en gelden deze testknoppen niet. In sommige landen, zoals Duitsland en Zwitserland, is een flitsmelding verboden: zet hem daar uit. Buiten Nederland kunnen andere regels gelden voor flitsmeldingen. Rijtijd loopt hier 60× sneller: 1 seconde is 1 minuut.</p>
@@ -255,12 +267,12 @@ details.set > * + * { margin-top: 10px; }
 
   <section aria-label="Praten">
     <h2>Praten</h2>
-    <p class="foot" id="chatInfo">Praten kan alleen als de auto stilstaat. Hij snapt een hoop zonder internet. Hij leert ook van jou: zeg bijvoorbeeld "als ik hoi zeg, zeg jij goedemorgen kapitein".</p>
+    <p class="foot" id="btNote" hidden>Tip: als de telefoon met de Tesla verbonden is, gaat de auto bij de microfoon denken dat je belt (belicoon en lopende tijd). Dat is normaal bij Bluetooth. Het stopt zodra de microfoon klaar is. Wil je dat nooit: zet in de Bluetooth-instellingen van je telefoon bij de Tesla “Telefoongesprekken” uit.</p><p class="foot" id="chatInfo">Praten kan alleen als de auto stilstaat. Hij snapt een hoop zonder internet. Hij leert ook van jou: zeg bijvoorbeeld "als ik hoi zeg, zeg jij goedemorgen kapitein".</p>
     <div class="chat">
       <div class="log" id="log" role="log" aria-live="polite"></div>
       <form class="chatform" id="chatForm" autocomplete="off">
         <input type="text" id="chatIn" aria-label="Typ een bericht" maxlength="200" placeholder="Zeg iets tegen hem">
-        <button class="btn primary" id="chatSend" type="submit" style="min-height:44px">Stuur</button>
+        <button class="btn" id="micBtn" type="button" style="min-height:44px" hidden aria-label="Praat met de microfoon">🎤</button><button class="btn primary" id="chatSend" type="submit" style="min-height:44px">Stuur</button>
       </form>
     </div>
     <div class="chips" id="chips"></div>
@@ -358,7 +370,7 @@ details.set > * + * { margin-top: 10px; }
     style: 100, tripT: 0, trip: false, evMsg: null,
     tunnel: false, tunnelPrev: false, simTunEnd: 0, music: false, beat: 0, cheerMsg: '', cheerAt: 0, helloDone: false,
     turn: 0, turnS: 0, latG: 0, simTurn: 0, simTurnEnd: 0, raSum: 0, raT: 0, hop: 0, dizzyUntil: 0, lastCorner: -9, lastBump: -9,
-    spdMode: 1, roadLim: null,
+    spdMode: 1, roadLim: null, roadEst: false, roadSeen: 0,
     gag: null, nextGag: 9, flagUntil: 0, flagMsg: '', flagRec: false, lr: 1, lt0: null, pk: 0, maxAcc: 0, lastGag: ''
   };
   (function () {
@@ -488,7 +500,7 @@ details.set > * + * { margin-top: 10px; }
     if (S.asleep && S.speed >= 1) wake();
     if (!S.asleep && S.idle > 70 * ix() && S.speed < 1) { S.asleep = true; beep('sleep'); }
 
-    if (S.speed >= 1) S.energy = Math.max(5, S.energy - 0.5 * dt);
+    if (S.speed >= 1) S.energy = Math.max(5, S.energy - 0.5 * dt / (S.live ? 40 : 1));
     else if (S.asleep) S.energy = Math.min(100, S.energy + 3 * dt);
     else S.energy = Math.min(100, S.energy + 0.3 * dt);
     S.love = Math.max(0, S.love - 0.25 * dt / (S.live ? 4 : 1));
@@ -519,6 +531,7 @@ details.set > * + * { margin-top: 10px; }
       return (S.cam.kind === 'traj' ? 'Trajectcontrole over ' : S.cam.mobile ? 'Gemelde controle over ' : 'Flitser over ') + Math.max(0, Math.round(S.cam.dist / 10) * 10) + ' m' + (S.cam.limit != null ? '. Limiet ' + S.cam.limit + '.' : '.');
     }
     if (S.traj) return ovr(trajAvg(), S.traj.limit) ? 'Gemiddeld te hoog. Even rustig aan.' : 'Trajectcontrole: ik bewaak het gemiddelde.';
+    if (S.wxMsgUntil > T) return S.wxMsg;
     return null;
   }
   function stepRoad(dt) {
@@ -569,6 +582,7 @@ details.set > * + * { margin-top: 10px; }
     if (S.asleep) return 'sleeping';
     if (S.ev && T < S.evUntil) return S.ev;
     S.ev = null; S.evMsg = null;
+    if (busy && S.speed < 1) return 'think';
     if (S.gag && S.gag.mood) return S.gag.mood;
     if (S.tunnel) return 'alert';
     if (S.music && S.speed < 95) return 'happy';
@@ -667,7 +681,7 @@ details.set > * + * { margin-top: 10px; }
     var cols = [HEART, BLUSH, EYE, '#FFC857'];
     for (var i = 0; i < 36; i++) parts.push({ k: 'c', x: rand(10, 230), y: rand(-30, 0), vx: rand(-8, 8), vy: rand(40, 80), l: 0, m: 2.6, s: rand(3, 6), col: cols[i % 4] });
   }
-  function cheer(msg) { setEv('happy', 4.5, msg); confetti(); beep('race'); S.love = Math.min(100, S.love + 8); }
+  function cheer(msg) { S.starUntil = T + 3.5; setEv('happy', 4.5, msg); confetti(); beep('race'); S.love = Math.min(100, S.love + 8); }
   function queueCheer(msg) { S.cheerMsg = msg; S.cheerAt = T + 4; }
   var MONTHS = { januari: 1, februari: 2, maart: 3, april: 4, mei: 5, juni: 6, juli: 7, augustus: 8, september: 9, oktober: 10, november: 11, december: 12 };
   var SPECIAL = [[1, 1, 'Gelukkig nieuwjaar!'], [14, 2, 'Fijne Valentijnsdag!'], [27, 4, 'Hoera, het is Koningsdag!'], [31, 10, 'Halloween! Boe!'], [5, 12, 'Fijne pakjesavond!'], [25, 12, 'Vrolijk kerstfeest!'], [31, 12, 'Oud en nieuw. Straks vuurwerk!']];
@@ -726,7 +740,7 @@ details.set > * + * { margin-top: 10px; }
     if (rec) mem.best = tt;
     mem.launches++; mem.hard++;
     var m = '0→100 in ' + fmt1(tt) + ' s' + (rec ? ' — nieuw record!' : '. Record: ' + fmt1(mem.best) + ' s.');
-    S.flagUntil = T + 5; S.flagMsg = fmt1(tt) + ' s'; S.flagRec = rec;
+    S.flagUntil = T + 5; S.starUntil = T + 5; S.flagMsg = fmt1(tt) + ' s'; S.flagRec = rec;
     setEv('excited', 5, m); S.lastExc = T; S.love = Math.min(100, S.love + 10);
     save(); beep('race');
   }
@@ -818,10 +832,11 @@ details.set > * + * { margin-top: 10px; }
   }
   function startGag(forceKey) {
     var driving = S.speed >= 15 && !S.cam && !S.traj && S.fastT < 1;
-    var idle = S.speed < 1 && S.idle > 6 * ix();
+    var idle = S.speed < 1 && S.idle > 6 * (S.live ? 1.5 : 1);
     var keys = Object.keys(GAGS).filter(function (k) {
       if (forceKey) return k === forceKey;
-      return (idle && GAGS[k].idle) || (driving && GAGS[k].drive);
+      var d0 = GAGS[k]; if (d0.need && !d0.need()) return false; if (d0.minV && !idle && S.speed < d0.minV) return false;
+      return (idle && d0.idle) || (driving && d0.drive);
     });
     keys = keys.filter(function (k) { return k !== S.lastGag || keys.length < 2; });
     if (!keys.length) { S.nextGag = T + 3; return; }
@@ -831,7 +846,7 @@ details.set > * + * { margin-top: 10px; }
     var d = GAGS[k];
     S.gag = { k: k, name: d.name, t0: T, end: T + d.dur, mood: d.mood, msg: d.msg, w: 0 };
     S.lastGag = k;
-    S.nextGag = T + d.dur + (idle ? rand(7, 15) * (S.live ? 2.5 : 1) : rand(45, 90));
+    S.nextGag = T + d.dur + (idle ? rand(6, 12) * (S.live ? 1.4 : 1) : (S.live ? rand(18, 40) : rand(35, 70)));
     beep('gag');
   }
   function endGag(noDecay) {
@@ -846,7 +861,7 @@ details.set > * + * { margin-top: 10px; }
     toast('Hij onthoudt dat jij "' + g.name.toLowerCase() + '" leuk vindt.'); save();
   }
   function gagTick() {
-    eyeL = eyeR = 1; fxNoBlink = false; fxSpiral = false; fxTongue = false; fdx = fdy = frot = 0; fsc = 1;
+    eyeL = eyeR = 1; fxNoBlink = false; fxSpiral = false; fxTongue = false; fxShades = false; fdx = fdy = frot = 0; fsc = 1;
     var g = S.gag;
     if (g) {
       var d = GAGS[g.k];
@@ -855,12 +870,15 @@ details.set > * + * { margin-top: 10px; }
     }
     /* leaning into bends: head tilts outward, eyes look where you are going */
     var Lc = clamp(S.latG / 0.35, -1, 1);
-    if (!S.asleep && Math.abs(Lc) > .08) { frot -= Lc * .3; fdx -= Lc * 10; fdy += Math.abs(Lc) * 3; if (!g) dir(Lc * .9, .05); }
+    if (!S.asleep && Math.abs(Lc) > .08) { frot += Lc * .3 * leanSign; fdx += Lc * 10 * leanSign; fdy += Math.abs(Lc) * 3; if (!g) dir(Lc * .9, .05); }
+    if (curKey === 'angry' && !S.asleep) fdx += Math.sin(T * 55) * 1.6;
+    var wk = wxFlags();
+    if (!S.asleep) { if (wk.cold) fdx += Math.sin(T * 40) * 1.3; if (wk.wind) { frot += Math.sin(T * 3.1) * .02; fdx += Math.sin(T * 1.7) * 2; } }
     if (S.dizzyUntil > T) { fxSpiral = true; }
     if (S.hop > 0) fdy -= Math.sin(S.hop * Math.PI) * 14;
     if (S.music && !S.asleep && !S.gag) { fdx += Math.sin(T * 4) * 4; frot += Math.sin(T * 4) * .05; fdy -= S.beat * 5; if (S.beat > .95) note(rand(60, 180), 70); }
     /* breathing and a slow sway, so even doing nothing looks alive */
-    if (!reduce && !S.asleep) { fsc = 1 + Math.sin(T * 1.9) * .012; frot += Math.sin(T * .6) * .015; }
+    if (!reduce && !S.asleep) { fsc *= 1 + Math.sin(T * 1.9) * .012; frot += Math.sin(T * .6) * .015; }
     if (S.asleep) fsc = 1 + Math.sin(T * 1.1) * .02;
     if (S.flagUntil > T) { var fa = Math.min(1, (S.flagUntil - T) * 3, (5 - (S.flagUntil - T)) * 3 + .01); fdx -= 14 * fa; fdy += 6 * fa; fsc *= 1 - .09 * fa; }
     if (reduce) { fdx *= .3; fdy *= .3; frot *= .3; }
@@ -1076,7 +1094,7 @@ details.set > * + * { margin-top: 10px; }
   function chatState() {
     var ok = S.speed < 1;
     if (ok === lastChatState) return; lastChatState = ok;
-    chatIn.disabled = !ok; if (!busy) chatSend.disabled = !ok;
+    chatIn.disabled = !ok; if (!busy) chatSend.disabled = !ok; if ($('micBtn')) $('micBtn').disabled = !ok;
     chatIn.placeholder = ok ? 'Zeg iets tegen hem' : 'Praten kan alleen als we stilstaan';
     Array.prototype.forEach.call($('chips').children, function (b) { b.disabled = !ok; });
   }
@@ -1112,7 +1130,7 @@ details.set > * + * { margin-top: 10px; }
     var x = cx - w / 2, y = cy - h / 2, r = Math.min(w, h) / 2 * 0.85;
     ctx.save();
     rr(x, y, w, h, r); ctx.clip();
-    ctx.fillStyle = EYE; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+    ctx.fillStyle = eyeCol; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
     ctx.fillStyle = SCREEN;
     if (p.lid > 0.01 || Math.abs(p.tilt) > 0.01) {
       var cov = p.lid * h, tl = p.tilt * h * 0.38;
@@ -1128,6 +1146,7 @@ details.set > * + * { margin-top: 10px; }
   function mouth(oy) {
     var p = cur, cx = 120, cy = 170 + oy * 0.5;
     ctx.lineCap = 'round'; ctx.strokeStyle = EYE; ctx.fillStyle = EYE; ctx.lineWidth = 5;
+    if ((curKey === 'content' || curKey === 'love') && p.mo < .2) { ctx.lineWidth = 4.5; ctx.beginPath(); ctx.arc(cx - 8, cy - 2, 8, 0, Math.PI); ctx.moveTo(cx + 16, cy - 2); ctx.arc(cx + 8, cy - 2, 8, 0, Math.PI); ctx.stroke(); return; }
     if (p.mo > 0.05) {
       ctx.beginPath(); ctx.ellipse(cx, cy + 2, 6 + 5 * p.mo, 3 + 10 * p.mo, 0, 0, TAU); ctx.fill();
     }
@@ -1166,7 +1185,7 @@ details.set > * + * { margin-top: 10px; }
 
     blink = 1;
     if (curKey !== 'sleeping' && !fxNoBlink) {
-      if (T > nextBlink) { blinkStart = T; nextBlink = T + rand(2.2, 5.5); }
+      if (T > nextBlink) { blinkStart = T; nextBlink = T + (Math.random() < .22 ? .3 : rand(2.2, 5.5)); }
       var bt = (T - blinkStart) / 0.16;
       if (bt >= 0 && bt < 1) blink = 1 - 0.92 * Math.sin(Math.PI * bt);
     }
@@ -1174,10 +1193,13 @@ details.set > * + * { margin-top: 10px; }
     ctx.setTransform(SC, 0, 0, SC, 0, 0);
     ctx.fillStyle = SCREEN; ctx.fillRect(0, 0, 240, 240);
     tunnelFx();
+    wxBack(dt);
     var ox = gx * 9, oy = gy * 7;
+    var isClock = curKey === 'clock' && !S.asleep;
     faceBegin();
+    if (isClock) clockDraw(); else {
     if (fxSpiral) { spiral(73 + ox, 106 + oy, -1); spiral(167 + ox, 106 + oy, 1); }
-    else { eye(73 + ox, 106 + oy, -1); eye(167 + ox, 106 + oy, 1); }
+    else eyesDraw(ox, oy);
     if (cur.blush > 0.02) {
       ctx.fillStyle = BLUSH; ctx.globalAlpha = cur.blush * 0.5;
       ctx.beginPath(); ctx.ellipse(52 + ox * .5, 150, 14, 8, 0, 0, TAU); ctx.fill();
@@ -1185,6 +1207,8 @@ details.set > * + * { margin-top: 10px; }
       ctx.globalAlpha = 1;
     }
     mouth(oy);
+    if (fxShades) shadesDraw(ox, oy);
+    }
     faceEnd();
     gagDraw();
 
@@ -1202,14 +1226,16 @@ details.set > * + * { margin-top: 10px; }
       else { ctx.fillStyle = EYE; ctx.font = '600 ' + (q.s * (1 + q.l / q.m * .6)) + 'px "Chakra Petch", sans-serif'; ctx.fillText('z', q.x, q.y); }
       ctx.globalAlpha = 1;
     }
+    moodFx(dt);
+    wxFront(dt);
     flagDraw();
     overlay(dt);
   }
 
-  function sign(v) {
+  function sign(v, est) {
     ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(120, 210, 17, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#D7352B'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(120, 210, 15, 0, TAU); ctx.stroke();
-    ctx.fillStyle = '#111111'; ctx.font = '700 14px "Chakra Petch", sans-serif'; ctx.fillText(v == null ? '–' : String(v), 120, 211);
+    ctx.strokeStyle = '#D7352B'; ctx.lineWidth = 4; if (est) ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(120, 210, 15, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#111111'; ctx.font = '700 14px "Chakra Petch", sans-serif'; ctx.fillText(v == null ? '?' : String(v), 120, 211);
   }
   function ring(p, color) {
     ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.strokeStyle = color;
@@ -1219,9 +1245,9 @@ details.set > * + * { margin-top: 10px; }
   /* ---------- Own speed on the round screen ---------- */
   function speedDraw() {
     var mode = S.spdMode | 0;
-    if (!mode || S.asleep || S.flagUntil > T) return;
+    if (!mode || S.asleep || S.flagUntil > T || curKey === 'clock') return;
     var v = Math.round(S.speed), camOn = S.cam && S.cam.dist <= 600, lim = camOn && S.cam.limit != null ? S.cam.limit : S.roadLim;
-    var bad = lim != null && v > lim, col = bad ? HEART : EYE;
+    var est = !(camOn && S.cam.limit != null) && !!S.roadEst, bad = lim != null && !est && v > lim, col = bad ? HEART : EYE;
     ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     if (mode & 2) {
       var a0 = Math.PI * .75, sweep = Math.PI * 1.5, f = clamp(S.speed / 140, 0, 1);
@@ -1235,8 +1261,9 @@ details.set > * + * { margin-top: 10px; }
       if (S.traj) { ctx.font = '700 15px "Chakra Petch", sans-serif'; ctx.fillText(v + ' km/h', 120, 50); }
       else if (camOn) { ctx.font = '700 24px "Chakra Petch", sans-serif'; ctx.fillText(String(v), 152, 210); }
       else {
-        ctx.font = '700 26px "Chakra Petch", sans-serif'; ctx.fillText(String(v), 120, 205);
-        ctx.font = '600 9px "Chakra Petch", sans-serif'; ctx.globalAlpha *= .6; ctx.fillText(S.roadLim != null ? 'MAX ' + S.roadLim : 'KM/H', 120, 222);
+        var stale = S.live && T - S.roadSeen > 25;
+        ctx.save(); ctx.translate(-36, 0); ctx.globalAlpha = S.roadLim == null ? .35 : (stale ? .55 : 1); sign(S.roadLim, est); ctx.restore();
+        ctx.font = '700 24px "Chakra Petch", sans-serif'; ctx.fillText(String(v), 152, 210);
       }
     }
     ctx.restore();
@@ -1360,7 +1387,9 @@ details.set > * + * { margin-top: 10px; }
     if (S.gag) likeGag();
     mem.taps++;
     S.idle = 0; S.love = Math.min(100, S.love + 15);
-    setEv('love', 2.4); beep('pet');
+    tapT.push(T); tapT = tapT.filter(function (t) { return T - t < 3; });
+    if (tapT.length >= 4) { tapT = []; setEv('laugh', 3.2, 'Haha, kriebels! Stop, stop!'); beep('laugh'); }
+    else { setEv('love', 2.4); beep('pet'); }
   });
   $('bSleep').addEventListener('click', function () {
     if (S.asleep) { wake(); return; }
@@ -1484,7 +1513,7 @@ details.set > * + * { margin-top: 10px; }
       return;
     }
     S.live = true; S.cam = null; S.traj = null; S.liveSpeed = 0; S.liveT = T; lastPos = null;
-    S.roadLim = null; roadQ = null; roadWays = []; clearGpsHelp(); lastHdg = null; hdgRef = null; mon.cur = null; mon.traj = null; mon.handled = {};
+    S.roadLim = null; S.roadEst = false; S.roadSeen = T; S.energy = Math.max(S.energy, 80); roadQ = null; roadWays = []; roadBuild = null; clearGpsHelp(); lastHdg = null; hdgRef = null; mon.cur = null; mon.traj = null; mon.handled = {};
     setLiveUI(true); setTag('GPS zoekt\u2026'); lockScreen();
     watchId = navigator.geolocation.watchPosition(onPos, onPosErr, { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 });
   }
@@ -1543,7 +1572,8 @@ details.set > * + * { margin-top: 10px; }
     var items = [], i;
     for (i = 0; i < cams.length; i++) items.push({ id: cams[i].id, kind: 'cam', lat: cams[i].lat, lon: cams[i].lon, limit: cams[i].limit });
     for (i = 0; i < trajs.length; i++) items.push({ id: trajs[i].id, kind: 'traj', lat: trajs[i].from.lat, lon: trajs[i].from.lon, limit: trajs[i].limit, tr: trajs[i] });
-    M.items = items.concat(typeof mobItems === 'undefined' || !mobItems ? [] : mobItems);
+    var uc = typeof ucams === 'undefined' ? [] : ucams.map(function (u) { return { id: u.id, kind: 'cam', lat: u.lat, lon: u.lon, limit: u.limit, user: true }; });
+    M.items = items.concat(typeof mobItems === 'undefined' || !mobItems ? [] : mobItems, uc);
   }
   function aheadInfo(lat, lon, hdg, it) {
     if (hdg == null) return null;
@@ -1551,7 +1581,7 @@ details.set > * + * { margin-top: 10px; }
     if (d > 600) return null;
     var a = adiff(gbearing(lat, lon, it.lat, it.lon), hdg);
     if (a > 40) return null;
-    if (d * Math.sin(a * RAD) > 30 + 0.06 * d) return null;
+    if (d * Math.sin(a * RAD) > 40 + 0.07 * d) return null;
     return { d: d };
   }
   function monitorStep(M, f) {
@@ -1625,28 +1655,62 @@ details.set > * + * { margin-top: 10px; }
     var bb = (lat - dLa).toFixed(5) + ',' + (lon - dLo).toFixed(5) + ',' + (lat + dLa).toFixed(5) + ',' + (lon + dLo).toFixed(5);
     return '[out:json][timeout:25];node["highway"="speed_camera"](' + bb + ')->.c;rel["type"="enforcement"]["enforcement"~"^(maxspeed|average_speed)$"](' + bb + ')->.r;node(r.r)->.m;(.c;.m;.r;);out body;';
   }
-  var OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
-  function fetchOverpass(q, i) {
-    i = i || 0;
+  var OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'], opGood = 0, opLast = '', camBack = 15, camTry = 0;
+  function hostOf(u) { return u.replace(/^https:\/\/([^\/]+).*/, '$1'); }
+  function fetchOverpass(q, ms, n) {
+    n = n || 0; ms = ms || 25000;
+    if (n >= OVERPASS.length) return Promise.reject(new Error(opLast || 'geen server'));
+    var i = (opGood + n) % OVERPASS.length, host = hostOf(OVERPASS[i]);
     var ctl = ('AbortController' in window) ? new AbortController() : null;
-    var timer = ctl ? setTimeout(function () { ctl.abort(); }, 30000) : 0;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, ms) : 0;
     return fetch(OVERPASS[i], { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q), signal: ctl ? ctl.signal : undefined })
       .then(function (r) { if (timer) clearTimeout(timer); if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
-      .catch(function (err) { if (timer) clearTimeout(timer); if (i + 1 < OVERPASS.length) return fetchOverpass(q, i + 1); throw err; });
+      .then(function (j) {
+        if (!j || !j.elements) throw new Error('leeg antwoord');
+        if (!j.elements.length && j.remark && /error|timed out|memory/i.test(j.remark)) throw new Error('server druk');
+        opGood = i; return j;
+      })
+      .catch(function (err) {
+        if (timer) clearTimeout(timer);
+        opLast = host + ': ' + (err && err.name === 'AbortError' ? 'te traag' : (err && err.message) || 'fout');
+        lg('overpass ' + opLast);
+        return fetchOverpass(q, ms, n + 1);
+      });
+  }
+  function camRegions() {
+    if (!camCache) return [];
+    if (!camCache.regions) camCache.regions = [{ lat: camCache.lat, lon: camCache.lon, t: camCache.t }];
+    return camCache.regions;
+  }
+  function camCovered(lat, lon) {
+    var r = camRegions(), i;
+    for (i = 0; i < r.length; i++) if (gdist(lat, lon, r[i].lat, r[i].lon) <= 6500 && Date.now() - r[i].t < 14 * 864e5) return true;
+    return false;
+  }
+  function mergeById(a, b) {
+    var seen = {}, out = [];
+    a.concat(b).forEach(function (x) { if (!seen[x.id]) { seen[x.id] = 1; out.push(x); } });
+    return out;
   }
   function loadCams(lat, lon) {
-    var stale = !camCache || gdist(lat, lon, camCache.lat, camCache.lon) > 8000 || Date.now() - camCache.t > 7 * 864e5;
-    if (!stale || camLoading || T - camFailT < 60) return;
+    if (camLoading || T - camFailT < camBack) return;
+    if (camCache && camCovered(lat, lon)) return;
     camLoading = true; $('camStat').textContent = 'Flitsdata laden…';
-    fetchOverpass(overpassQuery(lat, lon, 20000)).then(function (json) {
-      var p = parseCams(json);
-      camCache = { lat: lat, lon: lon, t: Date.now(), cams: p.cams, trajs: p.trajs };
-      camErr = '';
+    fetchOverpass(overpassQuery(lat, lon, 12000), 30000).then(function (json) {
+      var p = parseCams(json), prev = camCache || { cams: [], trajs: [] };
+      var cams = mergeById(p.cams, prev.cams).filter(function (c) { return gdist(lat, lon, c.lat, c.lon) < 90000; });
+      var trajs = mergeById(p.trajs, prev.trajs).filter(function (c) { return gdist(lat, lon, c.from.lat, c.from.lon) < 90000; });
+      var regs = camRegions().filter(function (r) { return gdist(lat, lon, r.lat, r.lon) < 90000; });
+      regs.push({ lat: lat, lon: lon, t: Date.now() });
+      camCache = { lat: lat, lon: lon, t: Date.now(), cams: cams, trajs: trajs, regions: regs };
+      camErr = ''; camTry = 0; camBack = 15;
+      lg('flitsdata geladen: ' + p.cams.length + ' flitsers, ' + p.trajs.length + ' trajecten (totaal ' + cams.length + '/' + trajs.length + ')');
       try { localStorage.setItem(CAMKEY, JSON.stringify(camCache)); } catch (e) {}
       applyCamData();
     }).catch(function () {
-      camFailT = T; lg('FOUT flitsdata laden mislukt');
-      camErr = camCache ? 'Verversen mislukt, de oude data blijft in gebruik.' : 'Laden mislukt: geen internet of de server reageert niet. Je krijgt nu geen flitsmeldingen.';
+      camTry++; camBack = Math.min(300, 15 * Math.pow(2, camTry - 1)); camFailT = T;
+      lg('FOUT flitsdata laden mislukt (' + opLast + ') volgende poging over ' + camBack + ' s');
+      camErr = (camCache ? 'Verversen mislukt, de oude data blijft in gebruik.' : 'Laden mislukt: je krijgt nu geen flitsmeldingen.') + ' Laatste fout: ' + opLast + '. Ik probeer het steeds opnieuw.';
       showCamStat();
     }).then(function () { camLoading = false; });
   }
@@ -1668,6 +1732,7 @@ details.set > * + * { margin-top: 10px; }
   }
   function camFix(lat, lon, acc, t) {
     loadCams(lat, lon);
+    loadWeather(lat, lon);
     loadMobile();
     roadStep(lat, lon, acc);
     sampleLog(acc);
@@ -1778,18 +1843,29 @@ details.set > * + * { margin-top: 10px; }
       if (i >= RSSVIA.length) return Promise.reject(new Error('geen route'));
       var pre = RSSVIA[i++], u = pre ? pre + encodeURIComponent(raw) : raw;
       return getText(u).then(function (x) {
-        if (!/<item[\s>]/i.test(x)) throw new Error('geen feed');
+        if (!/<(rss|channel|feed)[\s>]/i.test(x)) throw new Error('geen feed');
         rssHow = pre ? pre.replace(/^https:\/\/([^\/]+).*/, '$1') : 'rechtstreeks'; lg('Feed via ' + rssHow); return x;
-      }).catch(next);
+      }).catch(function (e) { lg('feed via ' + (pre ? hostOf(pre) : 'rechtstreeks') + ': ' + ((e && e.message) || 'fout')); return next(); });
     }
     return next();
+  }
+  var anwbT = -1e9;
+  function anwbPull() {
+    if (!proxy || T - anwbT < 900) return Promise.resolve();
+    anwbT = T;
+    return fetch(pbase() + '/anwb', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.text(); }).then(function (t) {
+      var it = window.__paste.parse(t);
+      if (!it.length) { lg('ANWB-koppeling: geen hectometerpalen gevonden (pagina anders opgebouwd?)'); return; }
+      pasted = it; try { localStorage.setItem(PASTEKEY, JSON.stringify(pasted)); } catch (e) {}
+      lg('ANWB-koppeling: ' + it.length + ' flitsers'); pasteShow();
+    }).catch(function (e) { lg('ANWB-koppeling mislukt: ' + e.message); });
   }
   function loadMobile(force) {
     if (!$('mobOn').checked) { if (mobItems.length) { mobItems = []; applyCamData(); } return; }
     if (mobBusy || (!force && T - mobT < 300)) return;
     mobBusy = true; mobT = T;
-    getRss().then(function (xml) {
-      var all = parseFeed(xml), recent = all.filter(function (x) { return !x.pub || Date.now() - x.pub < 4 * 36e5; }).slice(0, 60);
+    anwbPull().then(function () { return getRss(); }).then(function (xml) { return parseFeed(xml); }, function (e) { if (pastedFresh().length) return []; throw e; }).then(function (all0) {
+      var all = all0.concat(pastedFresh()), recent = all.filter(function (x) { return !x.pub || Date.now() - x.pub < 4 * 36e5; }).slice(0, 60);
       var withKm = recent.filter(function (x) { return x.km !== null; }), items = [], fails = 0, k = 0;
       function step() {
         if (k >= withKm.length) return Promise.resolve();
@@ -1802,7 +1878,7 @@ details.set > * + * { margin-top: 10px; }
       return step().then(function () {
         mobItems = items; applyCamData();
         var d = new Date();
-        mobMsg = 'Gemelde controles (flitsers.nl via ' + rssHow + '): ' + recent.length + ' gemeld, ' + withKm.length + ' met hectometerpaal, ' + Math.floor(items.length) + ' op de kaart gezet. Bijgewerkt ' + fmt(d.getHours() + d.getMinutes() / 60) + '. Meldingen kunnen al weg zijn. Let altijd zelf op.';
+        mobMsg = 'Gemelde controles (' + (all0.length ? 'flitsers.nl via ' + rssHow : 'geen feed') + (pastedFresh().length ? ', ' + pastedFresh().length + ' geplakt' : '') + '): ' + recent.length + ' gemeld, ' + withKm.length + ' met hectometerpaal, ' + Math.floor(items.length) + ' op de kaart gezet. Bijgewerkt ' + fmt(d.getHours() + d.getMinutes() / 60) + '. Meldingen kunnen al weg zijn. Let altijd zelf op.';
         mobErr = fails ? fails + ' melding' + (fails > 1 ? 'en' : '') + ' kon ik niet op de kaart zetten.' : '';
         showMob();
       });
@@ -1824,30 +1900,73 @@ details.set > * + * { margin-top: 10px; }
 
   /* ---------- Snelheidslimiet van de weg (OpenStreetMap) ---------- */
   var roadWays = [], roadQ = null, roadBusy = false, roadFail = -999, roadCand = null, roadCnt = 0, roadMiss = 0;
+  var ROADKEY = 'dashboardmaatje-roads-v1', roadTiles = [], roadBuild = null, roadDirty = false, roadBack = 10, roadTry = 0;
+  var ROADCLS = 'motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link';
+  var ESTLIM = { motorway: 100, motorway_link: 70, trunk: 100, trunk_link: 70, primary: 80, primary_link: 50, secondary: 80, secondary_link: 50, tertiary: 60, tertiary_link: 50, unclassified: 60, residential: 50, living_street: 15 };
   function parseMax(v) {
     if (!v) return null; v = String(v).trim();
     var m = v.match(/^(\d{2,3})(\s*km\/h)?$/); if (m) return +m[1];
     var map = { 'NL:urban': 50, 'NL:rural': 80, 'NL:motorway': 100, 'NL:trunk': 100, 'NL:zone30': 30, 'NL:zone60': 60, 'NL:living_street': 15 };
     return map[v] || null;
   }
+  function tileWays(t) {
+    return t.w.map(function (a) {
+      var g = [], k; for (k = 0; k < a[2].length; k += 2) g.push({ lat: a[2][k], lon: a[2][k + 1] });
+      return { lim: a[0], est: a[1], g: g, c: a[3] || null };
+    });
+  }
+  try { roadTiles = JSON.parse(localStorage.getItem(ROADKEY)) || []; roadTiles.forEach(function (t) { t.ws = tileWays(t); }); } catch (e) { roadTiles = []; }
+  function saveRoads() {
+    for (var n = 0; n < 5; n++) {
+      try { localStorage.setItem(ROADKEY, JSON.stringify(roadTiles.map(function (t) { return { lat: t.lat, lon: t.lon, t: t.t, w: t.w }; }))); return; }
+      catch (e) { if (!roadTiles.length) return; roadTiles.sort(function (a, b) { return b.t - a.t; }); roadTiles.pop(); }
+    }
+  }
+  function addTile(t) {
+    t.ws = tileWays(t);
+    roadTiles = roadTiles.filter(function (o) { return gdist(o.lat, o.lon, t.lat, t.lon) > 400 && Date.now() - o.t < 120 * 864e5; });
+    roadTiles.push(t); roadTiles.sort(function (a, b) { return b.t - a.t; }); if (roadTiles.length > 8) roadTiles.length = 8;
+    saveRoads(); roadDirty = true;
+  }
+  function roadNear(lat, lon) { var m = 1e9; roadTiles.forEach(function (t) { var d = gdist(lat, lon, t.lat, t.lon); if (d < m) m = d; }); return m; }
   function roadQuery(lat, lon) {
-    var dLa = 1500 / 111320, dLo = 1500 / (111320 * Math.cos(lat * RAD));
+    var dLa = 1800 / 111320, dLo = 1800 / (111320 * Math.cos(lat * RAD));
     var bb = (lat - dLa).toFixed(5) + ',' + (lon - dLo).toFixed(5) + ',' + (lat + dLa).toFixed(5) + ',' + (lon + dLo).toFixed(5);
-    return '[out:json][timeout:25];way["highway"]["maxspeed"](' + bb + ');out tags geom;';
+    return '[out:json][timeout:15];way["highway"~"^(' + ROADCLS + ')$"](' + bb + ');out tags geom;';
   }
   function loadRoads(lat, lon) {
-    if (roadBusy || T - roadFail < 60) return;
-    if (roadQ && gdist(lat, lon, roadQ.lat, roadQ.lon) <= 700) return;
+    if (roadBusy || T - roadFail < roadBack) return;
+    var qa = lat, qo = lon;
+    if (lastHdg != null && S.liveSpeed > 20) { qa = lat + Math.cos(lastHdg * RAD) * 700 / 111320; qo = lon + Math.sin(lastHdg * RAD) * 700 / (111320 * Math.cos(lat * RAD)); }
+    if (roadNear(qa, qo) <= 1200) return;
     roadBusy = true;
-    fetchOverpass(roadQuery(lat, lon)).then(function (j) {
-      var out = [];
+    fetchOverpass(roadQuery(qa, qo), 14000).then(function (j) {
+      var w = [];
       (j.elements || []).forEach(function (e) {
-        if (e.type !== 'way' || !e.geometry || e.geometry.length < 2) return;
-        var lim = parseMax(e.tags && e.tags.maxspeed); if (lim == null) return;
-        out.push({ lim: lim, g: e.geometry });
+        if (e.type !== 'way' || !e.geometry || e.geometry.length < 2 || !e.tags) return;
+        var tg = e.tags, lim = parseMax(tg.maxspeed), est = 0, c = null;
+        if (lim == null) { lim = ESTLIM[tg.highway]; est = 1; if (lim == null) return; }
+        var cm = String(tg['maxspeed:conditional'] || '').match(/^\s*(\d{2,3})\s*@\s*\(?\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*\)?\s*$/);
+        if (cm) c = { v: +cm[1], a: +cm[2] * 60 + +cm[3], b: +cm[4] * 60 + +cm[5] };
+        var flat = []; e.geometry.forEach(function (q) { flat.push(+q.lat.toFixed(5), +q.lon.toFixed(5)); });
+        w.push(c ? [lim, est, flat, c] : [lim, est, flat]);
       });
-      roadWays = out; roadQ = { lat: lat, lon: lon };
-    }).catch(function () { roadFail = T; lg('FOUT wegenlimiet laden mislukt'); }).then(function () { roadBusy = false; });
+      addTile({ lat: qa, lon: qo, t: Date.now(), w: w });
+      roadTry = 0; roadBack = 10;
+      lg('wegen geladen: ' + w.length + ' wegen');
+    }).catch(function () {
+      roadTry++; roadBack = Math.min(120, 8 * Math.pow(2, roadTry - 1)); roadFail = T;
+      lg('FOUT wegenlimiet laden mislukt (' + opLast + ') opnieuw over ' + roadBack + ' s');
+    }).then(function () { roadBusy = false; });
+  }
+  function buildRoads(lat, lon) {
+    roadWays = [];
+    roadTiles.forEach(function (t) { if (gdist(lat, lon, t.lat, t.lon) <= 3600) roadWays = roadWays.concat(t.ws); });
+    roadBuild = { lat: lat, lon: lon }; roadDirty = false;
+  }
+  function wayLim(w) {
+    if (w.c) { var d = new Date(), m = d.getHours() * 60 + d.getMinutes(), inn = w.c.a <= w.c.b ? (m >= w.c.a && m < w.c.b) : (m >= w.c.a || m < w.c.b); if (inn) return w.c.v; }
+    return w.lim;
   }
   function segInfo(lat, lon, a, b) {
     var k = Math.cos(lat * RAD) * 111320, ax = (a.lon - lon) * k, ay = (a.lat - lat) * 111320, bx = (b.lon - lon) * k, by = (b.lat - lat) * 111320;
@@ -1855,24 +1974,29 @@ details.set > * + * { margin-top: 10px; }
     var px = ax + t * dx, py = ay + t * dy;
     return { d: Math.sqrt(px * px + py * py), brg: (Math.atan2(dx, dy) / RAD + 360) % 360 };
   }
+  function roadHold() { if (S.roadLim != null && T - S.roadSeen > 150) { S.roadLim = null; S.roadEst = false; roadCand = null; } }
   function roadStep(lat, lon, acc) {
     if (!S.live) return;
     loadRoads(lat, lon);
-    var best = null, i, j;
+    if (acc > 45) { roadHold(); return; }
+    if (!roadBuild || roadDirty || gdist(lat, lon, roadBuild.lat, roadBuild.lon) > 500) buildRoads(lat, lon);
+    var best = null, i, j, tol = Math.max(22, Math.min(40, acc + 12));
     for (i = 0; i < roadWays.length; i++) {
       var w = roadWays[i];
       for (j = 1; j < w.g.length; j++) {
         var si = segInfo(lat, lon, w.g[j - 1], w.g[j]);
-        if (si.d > Math.max(22, Math.min(40, acc + 12))) continue;
+        if (si.d > tol) continue;
         if (lastHdg != null) { var df = adiff(si.brg, lastHdg); if (df > 35 && df < 145) continue; }
-        if (!best || si.d < best.d) best = { d: si.d, lim: w.lim };
+        var sc = si.d + (w.est ? 8 : 0);
+        if (!best || sc < best.sc) best = { sc: sc, d: si.d, lim: wayLim(w), est: !!w.est };
       }
     }
-    if (!best) { if (++roadMiss >= 4 && S.roadLim != null) { S.roadLim = null; roadCand = null; } return; }
-    roadMiss = 0;
-    if (best.lim === S.roadLim) { roadCand = null; return; }
-    if (roadCand === best.lim) { if (++roadCnt >= 2) { S.roadLim = best.lim; roadCand = null; } }
-    else { roadCand = best.lim; roadCnt = 1; }
+    if (!best) { roadMiss++; roadHold(); return; }
+    roadMiss = 0; S.roadSeen = T;
+    var key = best.lim + (best.est ? '~' : '');
+    if (best.lim === S.roadLim && best.est === !!S.roadEst) { roadCand = null; return; }
+    if (roadCand === key) { if (++roadCnt >= 2) { S.roadLim = best.lim; S.roadEst = best.est; roadCand = null; } }
+    else { roadCand = key; roadCnt = 1; }
   }
   window.__road = function () { return S.roadLim; };
 
@@ -1887,7 +2011,7 @@ details.set > * + * { margin-top: 10px; }
   }
   function sampleLog(acc) {
     if (T - logT < 10) return; logT = T;
-    lg('v=' + Math.round(S.liveSpeed) + ' nauwk=' + Math.round(acc) + 'm limiet=' + (S.roadLim == null ? '-' : S.roadLim) + ' draai=' + S.turnS.toFixed(0) + ' vaste=' + (camCache ? camCache.cams.length : 0) + '/' + (camCache ? camCache.trajs.length : 0) + ' gemeld=' + mobItems.length + ' stemming=' + curKey);
+    lg('v=' + Math.round(S.liveSpeed) + ' nauwk=' + Math.round(acc) + 'm limiet=' + (S.roadLim == null ? '-' : S.roadLim + (S.roadEst ? '~' : '')) + ' wegen=' + roadWays.length + ' draai=' + S.turnS.toFixed(0) + ' vaste=' + (camCache ? camCache.cams.length : 0) + '/' + (camCache ? camCache.trajs.length : 0) + ' gemeld=' + mobItems.length + ' stemming=' + curKey);
   }
   window.addEventListener('error', function (e) { lg('FOUT ' + (e.message || '') + ' @' + (e.lineno || '')); });
   function logText() {
@@ -1951,6 +2075,538 @@ details.set > * + * { margin-top: 10px; }
     requestAnimationFrame(frame);
   }
 
+
+  /* ---------- Geplakte lijst (jij kopieert zelf, niets automatisch) ---------- */
+  var PASTEKEY = 'dashboardmaatje-pasted-v1', pasted = [];
+  try { pasted = JSON.parse(localStorage.getItem(PASTEKEY)) || []; } catch (e) { pasted = []; }
+  function pastedFresh() { return pasted.filter(function (x) { return Date.now() - x.pub < 3 * 36e5; }); }
+  function parsePasted(txt) {
+    var L = String(txt).split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean), out = [], seen = {}, road = null, dirT = '', prev = '', i, m;
+    for (i = 0; i < L.length; i++) {
+      var l = L[i];
+      if ((m = l.match(/^([AN])\s?(\d{1,3})$/i))) { road = { c: m[1].toUpperCase(), n: +m[2] }; dirT = ''; prev = ''; continue; }
+      if (/→|->/.test(l) && l.length < 90) { dirT = l; continue; }
+      if (/hectometerpaal/i.test(l)) {
+        var km = null, mm = l.match(/(\d{1,3}(?:[.,]\d)?)\s*$/);
+        if (!mm || /hectometerpaal\s*$/i.test(l)) mm = (L[i + 1] || '').match(/^(\d{1,3}(?:[.,]\d)?)$/);
+        if (mm) km = parseFloat(mm[1].replace(',', '.'));
+        if (road && km !== null) {
+          var id = 'p:' + road.c + road.n + '@' + km + ':' + dirT;
+          if (!seen[id]) { seen[id] = 1; out.push({ id: id, text: road.c + road.n + ' ' + dirT + ' ' + prev + ' hmp ' + km, pub: Date.now(), road: road.c + road.n, num: road.n, km: km }); }
+        }
+        continue;
+      }
+      if (l.length < 60 && !/^(bekijk|feedback|\d+ flitser)/i.test(l)) prev = l;
+    }
+    return out;
+  }
+  function pasteShow() { var n = pastedFresh().length; $('pasteStat').textContent = n ? n + ' geplakte flitsers actief (3 uur geldig).' : 'Nog niets geplakt.'; }
+  $('pasteGo').addEventListener('click', function () {
+    var it = parsePasted($('pasteBox').value);
+    if (!it.length) { toast('Ik zie geen hectometerpalen in deze tekst. Kopieer de hele pagina.'); return; }
+    pasted = it; try { localStorage.setItem(PASTEKEY, JSON.stringify(pasted)); } catch (e) {}
+    $('pasteBox').value = ''; lg('geplakte lijst: ' + it.length + ' flitsers'); pasteShow();
+    if (!$('mobOn').checked) { $('mobOn').checked = true; }
+    mobBusy = false; loadMobile(true);
+    toast(it.length + ' flitsers gevonden. Ik zet ze op de kaart.');
+  });
+  $('pasteClip').addEventListener('click', function () {
+    if (!navigator.clipboard || !navigator.clipboard.readText) { toast('Je browser mag het klembord niet lezen. Plak de tekst in het vak.'); return; }
+    navigator.clipboard.readText().then(function (t) {
+      if (!t) { toast('Het klembord is leeg. Kopieer eerst de ANWB-pagina.'); return; }
+      $('pasteBox').value = t; $('pasteGo').click();
+    }, function () { toast('Geen toestemming voor het klembord. Plak de tekst in het vak.'); });
+  });
+  (function () {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition, mic = $('micBtn'), rec = null, on = false;
+    if (!SR || !mic) return;
+    mic.hidden = false; $('btNote').hidden = false;
+    function stop() { on = false; mic.textContent = '🎤'; mic.classList.remove('primary'); }
+    mic.addEventListener('click', function () {
+      if (S.speed >= 1 || busy) return;
+      if (on && rec) { try { rec.stop(); } catch (e) {} return; }
+      try {
+        rec = new SR(); rec.lang = 'nl-NL'; rec.interimResults = false; rec.maxAlternatives = 1; rec.continuous = false;
+        rec.onresult = function (ev) { var t = ev.results[0] && ev.results[0][0] ? ev.results[0][0].transcript : ''; if (t) { chatIn.value = t; submitChat(t); chatIn.value = ''; } };
+        rec.onerror = function (ev) { lg('microfoon: ' + ev.error); if (ev.error === 'not-allowed') toast('Zet de microfoon aan voor deze pagina in je browserinstellingen.'); else if (ev.error === 'no-speech') toast('Ik hoorde niks. Probeer nog eens.'); stop(); };
+        rec.onend = stop;
+        rec.start(); on = true; mic.textContent = '⏹'; mic.classList.add('primary'); setEv('anticipate', 6, 'Ik luister…');
+      } catch (e) { stop(); toast('Spraak lukt niet in deze browser.'); }
+    });
+  })();
+  $('pasteClear').addEventListener('click', function () { pasted = []; try { localStorage.removeItem(PASTEKEY); } catch (e) {} pasteShow(); loadMobile(true); toast('Geplakte flitsers gewist.'); });
+  pasteShow();
+  window.__paste = { parse: parsePasted };
+
+  /* ---------- Eigen flitsers ---------- */
+  var UCKEY = 'dashboardmaatje-ucams-v1', ucams = [];
+  try { ucams = JSON.parse(localStorage.getItem(UCKEY)) || []; } catch (e) { ucams = []; }
+  applyCamData();
+  $('bUcam').addEventListener('click', function () {
+    if (!S.live || !lastPos) { toast('Zet eerst de telefoon-GPS aan en rij erlangs.'); return; }
+    ucams.push({ id: 'u' + Date.now(), lat: lastPos.lat, lon: lastPos.lon, limit: S.roadEst ? null : S.roadLim, t: Date.now() });
+    try { localStorage.setItem(UCKEY, JSON.stringify(ucams)); } catch (e) {}
+    applyCamData(); lg('eigen flitser opgeslagen (' + ucams.length + ')');
+    toast('Onthouden. Hier waarschuw ik je voortaan. Je hebt er ' + ucams.length + '. (Niet tikken tijdens het rijden.)');
+  });
+
+
+
+  /* ---------- Gezichtsuitdrukkingen (zoals een Dasai Mochi) ---------- */
+  var eyeCol = EYE, tapT = [], sadDone = false, nextClock = 0, mxT = 0, angT = 0, nervT = 0, angCool = 0, nervCool = 0;
+  P.sad = { open: .8, lid: .3, tilt: -.9, squint: 0, scale: 1, mouth: -.9, mo: 0, blush: 0 };
+  P.angry = { open: .85, lid: .3, tilt: 1, squint: 0, scale: 1.02, mouth: -.8, mo: 0, blush: .25 };
+  P.laugh = { open: .3, lid: 0, tilt: 0, squint: .9, scale: 1, mouth: 1, mo: .8, blush: .7 };
+  P.think = { open: .9, lid: .12, tilt: .15, squint: 0, scale: 1, mouth: -.15, mo: 0, blush: 0 };
+  P.clock = { open: 1, lid: 0, tilt: 0, squint: 0, scale: 1, mouth: .15, mo: 0, blush: 0 };
+  NAMES.sad = 'Verdrietig'; NAMES.angry = 'Boos'; NAMES.laugh = 'Lacht'; NAMES.think = 'Denkt na'; NAMES.clock = 'Kijkt op de klok';
+  THOUGHTS.sad = ['Ik voel me een beetje alleen.', 'Gaan we nog rijden?'];
+  THOUGHTS.angry = ['Grrr!', 'Hé, rustig aan!'];
+  THOUGHTS.laugh = ['Hihihi!', 'Haha, dat kietelt!'];
+  THOUGHTS.think = ['Even nadenken…', 'Hmm…'];
+  THOUGHTS.clock = ['Hoe laat is het?'];
+  TUNES.sad = [392, 330, 262]; TUNES.angry = [196, 185, 196]; TUNES.laugh = [660, 784, 660, 784, 880];
+
+  function star4(cx, cy, s, rot) {
+    ctx.beginPath();
+    for (var i = 0; i < 8; i++) { var a = rot + i * Math.PI / 4, r = i % 2 ? s * .38 : s; ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+    ctx.closePath(); ctx.fill();
+  }
+  function eyesDraw(ox, oy) {
+    var cy = 106 + oy, xs = [73 + ox, 167 + ox], i;
+    if (curKey === 'love' && !S.asleep) {
+      ctx.fillStyle = HEART; var pz = 1 + Math.sin(T * 7) * .08;
+      for (i = 0; i < 2; i++) heart(xs[i], cy + 8, 30 * pz);
+      return;
+    }
+    if (T < (S.starUntil || 0) && (curKey === 'excited' || curKey === 'happy') && !S.asleep) {
+      ctx.fillStyle = EYE;
+      for (i = 0; i < 2; i++) star4(xs[i], cy, 26 + Math.sin(T * 9) * 2.5, T * 1.2 * (i ? 1 : -1));
+      return;
+    }
+    if (curKey === 'laugh' && !S.asleep) {
+      ctx.strokeStyle = EYE; ctx.lineWidth = 8; ctx.lineCap = 'round';
+      for (i = 0; i < 2; i++) { ctx.beginPath(); ctx.arc(xs[i], cy + 14 + Math.sin(T * 18) * 2, 20, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke(); }
+      return;
+    }
+    eyeCol = curKey === 'angry' ? '#FF9A9A' : EYE;
+    eye(xs[0], cy, -1); eye(xs[1], cy, 1);
+    eyeCol = EYE;
+  }
+  function clockDraw() {
+    var d = new Date(), hr = d.getHours() % 12 + d.getMinutes() / 60, mn = d.getMinutes() + d.getSeconds() / 60, sc = d.getSeconds() + d.getMilliseconds() / 1000, i, cx = 120, cy = 108;
+    ctx.strokeStyle = EYE; ctx.lineCap = 'round'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(cx, cy, 76, 0, TAU); ctx.stroke();
+    ctx.lineWidth = 3;
+    for (i = 0; i < 12; i++) { var a = i * TAU / 12, r1 = i % 3 ? 66 : 60; ctx.beginPath(); ctx.moveTo(cx + Math.sin(a) * r1, cy - Math.cos(a) * r1); ctx.lineTo(cx + Math.sin(a) * 71, cy - Math.cos(a) * 71); ctx.stroke(); }
+    function hand(v, len, w, col) { var a = v * TAU; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.sin(a) * len, cy - Math.cos(a) * len); ctx.stroke(); }
+    hand(hr / 12, 38, 6, EYE); hand(mn / 60, 56, 4, EYE); hand(sc / 60, 62, 2, HEART);
+    ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(cx, cy, 4, 0, TAU); ctx.fill();
+    ctx.font = '700 22px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2), 120, 204);
+  }
+  function moodFx(dt) {
+    var k = curKey, i, j, ph;
+    if (reduce || S.asleep && k !== 'sleeping') return;
+    if (k === 'sad') {
+      var ex = [73, 167];
+      for (i = 0; i < 2; i++) for (j = 0; j < 2; j++) {
+        ph = (T * .45 + j * .5 + i * .23) % 1; var x = ex[i] + (i ? 5 : -5), y = 128 + ph * 66;
+        ctx.strokeStyle = '#7FD4FF'; ctx.globalAlpha = .3 * (1 - ph); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, 128); ctx.lineTo(x, y); ctx.stroke();
+        ctx.fillStyle = '#7FD4FF'; ctx.globalAlpha = .9 * (1 - ph * .7); ctx.beginPath(); ctx.ellipse(x, y, 4, 6, 0, 0, TAU); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (k === 'angry') {
+      ctx.fillStyle = EYE;
+      for (i = 0; i < 2; i++) for (j = 0; j < 3; j++) { ph = (T * .9 + j / 3 + i * .4) % 1; ctx.globalAlpha = .5 * (1 - ph); ctx.beginPath(); ctx.arc((i ? 170 : 70) + Math.sin(ph * 6 + i) * 6, 52 - ph * 26, 4 + ph * 8, 0, TAU); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    }
+    if (k === 'think') {
+      ctx.fillStyle = EYE;
+      for (i = 0; i < 3; i++) { ctx.globalAlpha = .45 + .55 * Math.max(0, Math.sin(T * 5 - i * 1.1)); ctx.beginPath(); ctx.arc(152 + i * 15, 54, 4, 0, TAU); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    }
+    if (k === 'sleeping') {
+      var r = 3 + (1 + Math.sin(T * .9)) * 6.5;
+      ctx.strokeStyle = EYE; ctx.globalAlpha = .6; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(131 + r * .3, 150 + r * .2, r, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    if (T < (S.nervUntil || 0)) {
+      var sy = 66 + ((T * 28) % 56); ctx.fillStyle = '#7FD4FF'; ctx.globalAlpha = .85 * (1 - Math.max(0, (sy - 100) / 22));
+      ctx.beginPath(); ctx.arc(198, sy, 4.5, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(194.5, sy - 2); ctx.lineTo(198, sy - 11); ctx.lineTo(201.5, sy - 2); ctx.fill(); ctx.globalAlpha = 1;
+    }
+  }
+  function clockEvent() { var d = new Date(); setEv('clock', 4.5, 'Het is ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + '.'); }
+  function moodTick() {
+    var dtx = Math.min(.2, Math.max(0, T - mxT)); mxT = T;
+    if (curKey === 'think') dir(.6, -.7);
+    else if (curKey === 'sad') dir(0, .55);
+    if (S.speed >= 1) { sadDone = false; }
+    var calm = !S.asleep && !S.gag && !(S.ev && T < S.evUntil);
+    if (calm && S.speed < 1) {
+      if (!sadDone && S.idle > (S.live ? 150 : 30)) { sadDone = true; setEv('sad', 5, 'Ik voel me een beetje alleen… gaan we nog rijden?'); beep('sad'); }
+      else if (T > nextClock && !S.gag && S.idle > (S.live ? 40 : 12)) { nextClock = T + (S.live ? 180 : 40); clockEvent(); }
+    }
+    var cam = S.cam && S.cam.dist <= 600 && S.cam.limit != null, lim = cam ? S.cam.limit : (S.roadEst ? null : S.roadLim), over = lim != null ? S.speed - lim : 0;
+    if (over >= 15) { angT += dtx; nervT = 0; } else if (over >= 5) { nervT += dtx; angT = Math.max(0, angT - dtx); } else { angT = 0; nervT = 0; }
+    if (angT > 6 && T > angCool && !S.asleep) { angT = 0; angCool = T + 45; setEv('angry', 3.5, 'Hé! Dat is veel te hard. Gas eraf!'); beep('angry'); }
+    if (nervT > 5 && T > nervCool && !S.asleep) { nervT = 0; nervCool = T + 40; S.nervUntil = T + 4; setEv('worried', 3, 'Oei, we gaan net iets te hard.'); }
+  }
+  $('moodTest').addEventListener('change', function () {
+    var v = $('moodTest').value; $('moodTest').value = ''; if (!v) return;
+    if (S.asleep) wake();
+    if (v === 'sad') setEv('sad', 5, 'Ik voel me een beetje alleen…');
+    else if (v === 'angry') setEv('angry', 4, 'Hé! Dat is veel te hard. Gas eraf!');
+    else if (v === 'laugh') setEv('laugh', 4, 'Haha, kriebels!');
+    else if (v === 'think') setEv('think', 5, 'Even nadenken…');
+    else if (v === 'clock') clockEvent();
+    else if (v === 'love') setEv('love', 4, 'Jij bent de beste.');
+    else if (v === 'stars') { S.starUntil = T + 5; setEv('excited', 5, 'Nieuw record!'); }
+    else if (v === 'nerv') { S.nervUntil = T + 5; setEv('worried', 4, 'Oei, we gaan net iets te hard.'); }
+    else if (v === 'snot') { S.target = 0; speedEl.value = 0; S.idle = 71 * ix(); }
+  });
+
+  /* ---------- Meer grapjes ---------- */
+  var fxShades = false;
+  GAGS.whistle = { name: 'Fluit een deuntje', dur: 5.4, idle: 1, drive: 1, mood: 'blow', msg: 'Fiu fiu…',
+    upd: function (g, tt) { dir(Math.sin(tt * 1.3) * .3, -.15); fdy = Math.sin(tt * 4) * 1.5; if (tt > (g.nn || 0)) { g.nn = (g.nn || 0) + .5; note(150 + rand(-8, 18), 88); } if (tt > 4.4) { g.mood = 'happy'; g.msg = 'Niet slecht, hè?'; } } };
+  GAGS.watch = { name: 'Kijkt op zijn horloge', dur: 5.2, idle: 1, mood: 'bored', msg: 'Hoe laat is het eigenlijk?',
+    upd: function (g, tt) { if (tt < 3.6) dir(.8, .75); else { dir(0, 0); g.mood = 'worried'; g.msg = 'Zo laat al?!'; } },
+    draw: function (g, tt) {
+      if (tt > 3.6) return; var x = 186, y = 196;
+      ctx.strokeStyle = EYE; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 14, 0, TAU); ctx.stroke();
+      ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(tt * 5) * 9, y + Math.sin(tt * 5) * 9); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(tt * .8) * 6, y + Math.sin(tt * .8) * 6); ctx.stroke();
+    } };
+  GAGS.bird = { name: 'Ziet een vogel', dur: 4.8, idle: 1, drive: 1, mood: 'alert', msg: 'Kijk, een vogel!',
+    upd: function (g, tt) { g.bx = -14 + tt / 4.2 * 268; g.by = 52 + Math.sin(tt * 2.2) * 8; dir(clamp((g.bx - 120) / 110, -1, 1), -.55); if (tt > 4.2) { g.mood = 'happy'; g.msg = 'Weg is ie.'; } },
+    draw: function (g, tt) {
+      if (tt > 4.3) return; var f = Math.sin(tt * 14) * 5, x = g.bx, y = g.by;
+      ctx.strokeStyle = EYE; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x - 10, y + f * .6); ctx.quadraticCurveTo(x - 5, y - f, x, y); ctx.quadraticCurveTo(x + 5, y - f, x + 10, y + f * .6); ctx.stroke();
+    } };
+  GAGS.cloud = { name: 'Kijkt naar de wolken', dur: 7, idle: 1, mood: 'content', msg: 'Die wolk lijkt op een konijn.',
+    upd: function (g, tt) { g.cx = -30 + tt / 7 * 300; dir(clamp((g.cx - 120) / 120, -1, 1) * .7, -.6); if (tt > 5) g.msg = 'Nu lijkt hij op een auto.'; },
+    draw: function (g) { var x = g.cx, y = 54; ctx.fillStyle = EYE; ctx.globalAlpha = .45; ctx.beginPath(); ctx.moveTo(x + 11, y); ctx.arc(x, y, 11, 0, TAU); ctx.moveTo(x + 26, y - 5); ctx.arc(x + 13, y - 5, 13, 0, TAU); ctx.moveTo(x + 37, y); ctx.arc(x + 27, y, 10, 0, TAU); ctx.rect(x, y - 2, 27, 12); ctx.fill(); ctx.globalAlpha = 1; } };
+  GAGS.stretch = { name: 'Rekt zich uit', dur: 4.4, idle: 1, mood: 'yawn', msg: 'Even rekken en strekken…',
+    upd: function (g, tt) { var q = Math.sin(Math.PI * Math.min(1, tt / 3.2)); fsc = 1 + q * .07; fdy = -q * 7; if (tt > 3.2) { g.mood = 'happy'; g.msg = 'Ahh, dat voelt lekker.'; } } };
+  GAGS.peek = { name: 'Speelt verstoppertje', dur: 5.6, idle: 1, mood: 'neutral', msg: 'Kiekeboe… kun je me zien?',
+    upd: function (g, tt) { var h = tt < .8 ? tt / .8 : tt < 3 ? 1 : tt < 3.8 ? 1 - (tt - 3) / .8 : 0; fdy = h * 66; fsc = 1 - h * .25; if (tt > 3.8) { g.mood = 'excited'; g.msg = 'Kiekeboe!'; } else if (tt > 1.6 && tt < 3) dir(Math.sin(tt * 6) * .9, .3); } };
+  GAGS.bounce = { name: 'Speelt met een balletje', dur: 6.4, idle: 1, mood: 'happy', msg: 'Boing, boing, boing!',
+    upd: function (g, tt) { g.bx = 120 + Math.sin(tt * 1.4) * 62; g.by = 195 - Math.abs(Math.sin(tt * 3.3)) * 100; dir(clamp((g.bx - 120) / 70, -1, 1), clamp((g.by - 140) / 70, -.8, .7)); },
+    draw: function (g) { ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(g.bx, g.by, 8, 0, TAU); ctx.fill(); ctx.fillStyle = SCREEN; ctx.beginPath(); ctx.arc(g.bx - 2, g.by - 2, 2, 0, TAU); ctx.fill(); } };
+  GAGS.juggle = { name: 'Jongleert', dur: 6, idle: 1, mood: 'focused', msg: 'Kijk, ik kan jongleren!',
+    upd: function (g, tt) { dir(Math.sin(tt * 4.5) * .35, -.5 + Math.sin(tt * 9) * .2); if (tt > 4.8) { g.mood = 'worried'; g.msg = 'Oeps… eentje gevallen.'; } },
+    draw: function (g, tt) {
+      var i, n = tt > 4.8 ? 2 : 3; ctx.fillStyle = EYE;
+      for (i = 0; i < n; i++) { var ph = tt * 4 + i * TAU / 3; ctx.beginPath(); ctx.arc(120 + Math.cos(ph) * 46, 56 - Math.sin(ph) * 24, 6, 0, TAU); ctx.fill(); }
+      if (tt > 4.8) { var f = tt - 4.8; ctx.beginPath(); ctx.arc(150, 70 + f * f * 140, 6, 0, TAU); ctx.fill(); }
+    } };
+  GAGS.ghost = { name: 'Hoort iets', dur: 5.4, idle: 1, drive: 1, mood: 'alert', msg: 'Hoorde ik daar iets?',
+    upd: function (g, tt) { var seq = [[-1, 0], [1, 0], [-.9, .1], [0, 0]], i = Math.min(3, Math.floor(tt / 1.05)); dir(seq[i][0], seq[i][1]); if (tt > 4.3) { g.mood = 'happy'; g.msg = 'Ach, niks. Denk ik.'; } } };
+  GAGS.stars = { name: 'Kijkt naar de lucht', dur: 6.4, idle: 1, mood: 'content', msg: 'Wat een mooie lucht.',
+    upd: function (g, tt) { dir(Math.sin(tt * .8) * .3, -.8); if (S.hour >= 19 || S.hour < 6) g.msg = 'Kijk, sterren!'; },
+    draw: function (g, tt) {
+      var L = [[60, 40, 5], [100, 24, 4], [150, 30, 6], [190, 52, 4], [80, 62, 3], [170, 66, 3]], i; ctx.fillStyle = EYE;
+      for (i = 0; i < L.length; i++) { ctx.globalAlpha = .35 + .65 * Math.abs(Math.sin(tt * 2 + i * 1.7)); spark(L[i][0], L[i][1], L[i][2]); } ctx.globalAlpha = 1;
+    } };
+  GAGS.sparkle = { name: 'Straalt', dur: 4.4, idle: 1, drive: 1, mood: 'content', msg: 'Ik voel me vandaag extra schattig.',
+    upd: function (g, tt) { dir(0, 0); if (tt > (g.nn || 0)) { g.nn = (g.nn || 0) + .16; parts.push({ k: 's', x: 120 + rand(-85, 85), y: rand(50, 160), vx: 0, vy: -rand(2, 8), l: 0, m: .9, s: rand(4, 8) }); } } };
+  GAGS.wind = { name: 'Voelt de wind', dur: 5, drive: 1, minV: 60, mood: 'happy', msg: 'Wheee, de wind!',
+    upd: function (g, tt) { fdx = -3 + Math.sin(tt * 17) * 1.2; dir(.5, 0); },
+    draw: function (g, tt) {
+      var i; ctx.strokeStyle = EYE; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.globalAlpha = .4;
+      for (i = 0; i < 6; i++) { var y = 46 + i * 30 + (i % 2) * 8, x = 250 - ((tt * 420 + i * 83) % 330); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 44, y); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    } };
+  GAGS.trees = { name: 'Telt bomen', dur: 5.6, drive: 1, minV: 40, mood: 'alert', msg: 'Boom… boom… boom…',
+    upd: function (g, tt) { var n = Math.floor(tt / .55); dir(n % 2 ? .95 : -.95, 0); g.msg = n < 8 ? 'Boom ' + (n + 1) + '!' : 'Te veel bomen. Ik geef het op.'; if (n >= 8) g.mood = 'worried'; } };
+  GAGS.truck = { name: 'Ziet een vrachtwagen', dur: 5, drive: 1, minV: 50, mood: 'alert', msg: 'Wat een grote vrachtwagen!',
+    upd: function (g, tt) { g.tx = 270 - tt * 100; dir(clamp((g.tx - 120) / 100, -1, 1) * .9, .3); if (tt > 3.8) { g.mood = 'happy'; g.msg = 'Ingehaald. Dag vrachtwagen!'; } },
+    draw: function (g) {
+      var x = g.tx, y = 186; ctx.fillStyle = EYE; ctx.globalAlpha = .75; ctx.fillRect(x, y - 22, 40, 24); ctx.fillRect(x - 15, y - 12, 14, 14);
+      ctx.fillStyle = SCREEN; ctx.fillRect(x - 12, y - 10, 8, 6); ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(x - 8, y + 3, 4, 0, TAU); ctx.arc(x + 8, y + 3, 4, 0, TAU); ctx.arc(x + 30, y + 3, 4, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+    } };
+  function noteDraw(x, y, sc) {
+    ctx.beginPath(); ctx.ellipse(x, y, 5 * sc, 3.6 * sc, -.4, 0, TAU); ctx.fill();
+    ctx.lineWidth = 1.8 * sc; ctx.strokeStyle = EYE; ctx.beginPath(); ctx.moveTo(x + 4.4 * sc, y - 1 * sc); ctx.lineTo(x + 4.4 * sc, y - 15 * sc); ctx.lineTo(x + 10 * sc, y - 11 * sc); ctx.stroke();
+  }
+  GAGS.cruise = { name: 'Cruisen', dur: 7, drive: 1, minV: 30, mood: 'content', msg: 'Lekker cruisen…',
+    upd: function (g, tt) { dir(0, .1); fdy = Math.sin(tt * 2) * 1.5; frot = Math.sin(tt * 1.2) * .012; if (tt > 5.2) g.msg = 'Alles gaat vanzelf.'; },
+    draw: function (g, tt) {
+      /* weg met stippellijn die naar je toe komt */
+      ctx.save(); ctx.strokeStyle = EYE; ctx.globalAlpha = .7; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(40, 232); ctx.lineTo(95, 204); ctx.moveTo(200, 232); ctx.lineTo(145, 204); ctx.lineWidth = 2; ctx.stroke();
+      for (var i = 0; i < 4; i++) {
+        var k = ((tt * 1.1 + i / 4) % 1), y = 204 + k * 28, w = 1 + k * 3;
+        ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(120, y); ctx.lineTo(120, y + 3 + k * 6); ctx.stroke();
+      }
+      ctx.restore();
+    } };
+  GAGS.radio = { name: 'Zingt mee met de radio', dur: 7, drive: 1, idle: 1, mood: 'happy', msg: 'Dit is mijn liedje!',
+    upd: function (g, tt) { dir(0, 0); frot = Math.sin(tt * 5) * .05; fdy = Math.abs(Math.sin(tt * 5)) * -3; if (tt > 5.6) { g.msg = 'Ik kende de tekst niet eens.'; frot = 0; } },
+    draw: function (g, tt) {
+      ctx.fillStyle = EYE; ctx.globalAlpha = .8;
+      for (var i = 0; i < 3; i++) { var k = (tt * .5 + i / 3) % 1; noteDraw(28 + i * 8 + Math.sin(k * 6) * 8, 150 - k * 90, .8 + .3 * (i % 2)); }
+      for (var j = 0; j < 2; j++) { var q = (tt * .45 + j / 2 + .2) % 1; noteDraw(206 - j * 6 + Math.sin(q * 6) * 8, 160 - q * 100, .9); }
+      ctx.globalAlpha = 1;
+    } };
+  GAGS.turbo = { name: 'Turbo', dur: 4.4, drive: 1, minV: 100, mood: 'excited', msg: 'Zoef! Snelheidslijntjes!',
+    upd: function (g, tt) { dir(0, -.1); fdx = Math.sin(tt * 40) * 1.2; },
+    draw: function (g, tt) {
+      ctx.save(); ctx.strokeStyle = EYE; ctx.globalAlpha = .55; ctx.lineWidth = 2; ctx.lineCap = 'round';
+      for (var i = 0; i < 14; i++) {
+        var side = i % 2 ? 1 : -1, k = (tt * 3 + i * .37) % 1, a = (i * 47) % 360 * Math.PI / 180, r0 = 70 + k * 40, r1 = r0 + 14 + k * 18;
+        var vx = Math.cos(a), vy = Math.sin(a) * .8;
+        if (Math.abs(vx) < .35) continue;
+        ctx.beginPath(); ctx.moveTo(120 + vx * r0 * 1.2, 120 + vy * r0); ctx.lineTo(120 + vx * r1 * 1.2, 120 + vy * r1); ctx.stroke();
+      }
+      ctx.restore();
+    } };
+  GAGS.wheel = { name: 'Houdt het stuur vast', dur: 6, drive: 1, mood: 'focused', msg: 'Twee handen aan het stuur.',
+    upd: function (g, tt) { dir(0, -.2); g.rot = Math.sin(tt * 1.7) * .5; if (tt > 4.4) g.msg = 'Veiligheid voorop!'; },
+    draw: function (g) {
+      ctx.save(); ctx.translate(120, 250); ctx.rotate(g.rot || 0); ctx.strokeStyle = EYE; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.globalAlpha = .85;
+      ctx.beginPath(); ctx.arc(0, 0, 30, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+      ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-18, -22); ctx.lineTo(0, -4); ctx.lineTo(18, -22); ctx.stroke();
+      ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(-31, -14, 6, 0, TAU); ctx.arc(31, -14, 6, 0, TAU); ctx.fill();
+      ctx.restore();
+    } };
+  GAGS.coffee = { name: 'Drinkt koffie', dur: 6, idle: 1, mood: 'relaxed', msg: 'Koffie. Even bijtanken.',
+    upd: function (g, tt) { var sip = tt > 2 && tt < 3.4; dir(0, sip ? -.5 : .2); g.cy = sip ? 176 : 196; if (tt > 4) g.msg = 'Aaah. Dat helpt.'; if (tt > 3.4) g.mood = 'happy'; },
+    draw: function (g, tt) {
+      var x = 178, y = g.cy || 196;
+      ctx.fillStyle = EYE; ctx.beginPath(); ctx.moveTo(x - 14, y - 12); ctx.lineTo(x + 14, y - 12); ctx.lineTo(x + 10, y + 14); ctx.lineTo(x - 10, y + 14); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = EYE; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x + 15, y, 7, -1.2, 1.2); ctx.stroke();
+      ctx.fillStyle = SCREEN; ctx.fillRect(x - 12, y - 2, 24, 4);
+      ctx.strokeStyle = EYE; ctx.globalAlpha = .5; ctx.lineWidth = 2;
+      for (var i = 0; i < 2; i++) { ctx.beginPath(); for (var j = 0; j <= 8; j++) { var yy = y - 16 - j * 3.5, xx = x - 5 + i * 10 + Math.sin(tt * 4 + j * .7 + i) * 3; j ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); } ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    } };
+  GAGS.ufo = { name: 'Ziet een ufo', dur: 6, idle: 1, mood: 'startled', msg: 'Wat is DAT?!',
+    upd: function (g, tt) { g.ux = -30 + tt * 45; g.uy = 38 + Math.sin(tt * 3) * 6; dir(clamp((g.ux - 120) / 100, -1, 1) * .9, -.8); if (tt > 4.4) { g.mood = 'happy'; g.msg = 'Ik denk dat hij zwaaide.'; } },
+    draw: function (g, tt) {
+      var x = g.ux, y = g.uy; ctx.fillStyle = EYE; ctx.globalAlpha = .85;
+      ctx.beginPath(); ctx.ellipse(x, y, 20, 6, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.arc(x, y - 2, 9, Math.PI, 0); ctx.fill();
+      ctx.globalAlpha = .3; ctx.beginPath(); ctx.moveTo(x - 8, y + 5); ctx.lineTo(x - 18, y + 38); ctx.lineTo(x + 18, y + 38); ctx.lineTo(x + 8, y + 5); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+    } };
+  GAGS.laser = { name: 'Jaagt een lichtpuntje', dur: 6, idle: 1, mood: 'alert', msg: 'Rood puntje! Pak hem!',
+    upd: function (g, tt) { var x = Math.sin(tt * 3.1) * .95, y = Math.sin(tt * 4.3 + 1) * .6; g.px = 120 + x * 88; g.py = 120 + y * 70; dir(x, y); if (tt > 4.8) { g.mood = 'content'; g.msg = 'Weg. Nooit te pakken.'; } },
+    draw: function (g, tt) { if (tt > 4.8) return; ctx.fillStyle = HEART; ctx.beginPath(); ctx.arc(g.px, g.py, 4, 0, TAU); ctx.fill(); ctx.globalAlpha = .35; ctx.beginPath(); ctx.arc(g.px, g.py, 8, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; } };
+  GAGS.dance = { name: 'Danst', dur: 6.4, idle: 1, mood: 'excited', msg: 'Dansen kan ook zonder benen.',
+    upd: function (g, tt) { dir(Math.sin(tt * 4), 0); fdx = Math.sin(tt * 4) * 16; frot = Math.sin(tt * 4) * .1; fdy = -Math.abs(Math.sin(tt * 4)) * 5; if (tt > 5) { g.mood = 'happy'; g.msg = 'Applaus graag.'; frot = 0; fdx = 0; } },
+    draw: function (g, tt) { ctx.fillStyle = EYE; ctx.globalAlpha = .75; for (var i = 0; i < 3; i++) { var k = (tt * .6 + i / 3) % 1; noteDraw(40 + i * 80 + Math.sin(k * 8) * 10, 120 - k * 60, .9); } ctx.globalAlpha = 1; } };
+  GAGS.kmcount = { name: 'Telt de kilometers', dur: 4.2, drive: 1, mood: 'content', msg: '',
+    need: function () { return mem.km >= 5; },
+    upd: function (g) { dir(0, -.2); g.msg = 'Samen al ' + fmt1(mem.km) + ' km gereden.'; } };
+  GAGS.shades = { name: 'Zet een zonnebril op', dur: 8, idle: 1, drive: 1, mood: 'content', msg: 'Zonnebril op. Ik ben cool.',
+    need: function () { return wxFlags().sun; },
+    upd: function (g, tt) { fxShades = tt > .6 && tt < 7.2; fdy = Math.sin(tt * 3) * 1; dir(0, 0); if (tt > 7.2) g.msg = 'Zonnebril weer af.'; } };
+  GAGS.puddle = { name: 'Ziet een plas', dur: 5.4, idle: 1, mood: 'happy', msg: 'Een plas! Mag ik erin springen?',
+    need: function () { return wxFlags().rain > 0; },
+    upd: function (g, tt) { dir(0, .8); if (tt > 3.6) { g.msg = 'Plons!'; fdy = -Math.sin((tt - 3.6) * 4) * 6; } },
+    draw: function (g, tt) {
+      var i; ctx.strokeStyle = EYE; ctx.lineWidth = 2;
+      for (i = 0; i < 3; i++) { var r = ((tt * 16 + i * 14) % 42); ctx.globalAlpha = .6 * (1 - r / 42); ctx.beginPath(); ctx.ellipse(120, 214, r, r * .3, 0, 0, TAU); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    } };
+
+  /* ---------- Weer (Open-Meteo, geen sleutel nodig) ---------- */
+  var WXKEY = 'dashboardmaatje-wx-v1', WX = null, wxT = -9999, wxBusy = false, wxFail = -9999, wxTest = '', wxOn = true, wxMemoObj = undefined, wxMemo = null, wxPrev = '', wxQuipAt = 0;
+  var wxD = [], wxFl = [], wxBr = [], wxNextBolt = 0, wxBolt = 0, wxFlash = 0, wxBrAt = 0;
+  try { wxOn = localStorage.getItem(WXKEY) !== '0'; } catch (e) {}
+  $('wxOn').checked = wxOn;
+  var WXTESTS = {
+    sun: { code: 0, temp: 21, feels: 21, precip: 0, cloud: 5, wind: 10, gust: 20, day: 1 },
+    cloud: { code: 3, temp: 14, feels: 13, precip: 0, cloud: 100, wind: 14, gust: 24, day: 1 },
+    rain: { code: 63, temp: 11, feels: 9, precip: 1.2, cloud: 100, wind: 18, gust: 30, day: 1 },
+    heavy: { code: 82, temp: 12, feels: 9, precip: 6, cloud: 100, wind: 30, gust: 50, day: 1 },
+    thunder: { code: 95, temp: 19, feels: 20, precip: 4, cloud: 100, wind: 25, gust: 60, day: 1 },
+    snow: { code: 73, temp: -1, feels: -5, precip: 1, cloud: 100, wind: 12, gust: 22, day: 1 },
+    fog: { code: 45, temp: 4, feels: 3, precip: 0, cloud: 100, wind: 5, gust: 8, day: 1 },
+    wind: { code: 3, temp: 10, feels: 5, precip: 0, cloud: 90, wind: 48, gust: 80, day: 1 },
+    cold: { code: 0, temp: -3, feels: -7, precip: 0, cloud: 10, wind: 8, gust: 14, day: 1 },
+    hot: { code: 0, temp: 33, feels: 35, precip: 0, cloud: 0, wind: 6, gust: 12, day: 1 },
+    night: { code: 0, temp: 9, feels: 8, precip: 0, cloud: 0, wind: 6, gust: 10, day: 0 }
+  };
+  var WXNONE = { rain: 0, snow: 0, fog: false, thunder: false, sun: false, cloudy: false, cold: false, hot: false, wind: false, night: false, ice: false, soon: false, temp: null };
+  function wxCur() { if (!wxOn) return null; if (wxTest) return WXTESTS[wxTest]; if (WX && Date.now() - WX.t < 3 * 36e5) return WX; return null; }
+  function wxFlags() {
+    var w = wxCur(); if (w === wxMemoObj && wxMemo) return wxMemo;
+    wxMemoObj = w; if (!w) { wxMemo = WXNONE; return wxMemo; }
+    var c = w.code, p = w.precip || 0, f = { rain: 0, snow: 0, fog: false, thunder: false, sun: false, cloudy: false, cold: false, hot: false, wind: false, night: !w.day, ice: false, soon: !!w.soon, temp: w.temp };
+    if (c >= 51 && c <= 57) f.rain = 1;
+    else if (c === 61 || c === 80) f.rain = 1;
+    else if (c === 63 || c === 81 || c === 66 || c === 67) f.rain = 2;
+    else if (c === 65 || c === 82) f.rain = 3;
+    else if (c === 95) { f.rain = 2; f.thunder = true; }
+    else if (c === 96 || c === 99) { f.rain = 3; f.thunder = true; }
+    if (f.rain) { if (p >= 2.5) f.rain = 3; else if (p >= .6 && f.rain < 2) f.rain = 2; }
+    if (c === 71 || c === 73 || c === 77 || c === 85) f.snow = 1; else if (c === 75 || c === 86) f.snow = 2;
+    f.fog = c === 45 || c === 48;
+    f.sun = (c === 0 || c === 1) && !!w.day && (w.cloud || 0) < 40;
+    f.cloudy = (c === 2 || c === 3) && !f.rain && !f.snow && !f.fog;
+    f.cold = w.temp <= 3; f.hot = (w.feels != null ? w.feels : w.temp) >= 27;
+    f.wind = (w.gust || 0) >= 55 || (w.wind || 0) >= 38;
+    f.ice = (w.temp <= 1 && (f.rain || f.snow || f.fog)) || c === 56 || c === 57 || c === 66 || c === 67;
+    wxMemo = f; return f;
+  }
+  function wxDesc(f) {
+    if (f.thunder) return 'onweer';
+    if (f.snow) return 'sneeuw';
+    if (f.rain) return f.rain === 3 ? 'zware regen' : f.rain === 2 ? 'regen' : 'lichte regen';
+    if (f.fog) return 'mist';
+    if (f.sun) return 'zonnig';
+    if (f.night && !f.cloudy) return 'helder';
+    if (f.cloudy) return 'bewolkt';
+    return 'droog';
+  }
+  function wxText() {
+    var w = wxCur(), f = wxFlags(); if (!w) return '';
+    return 'Het is ' + Math.round(w.temp) + ' graden en ' + wxDesc(f) + '.';
+  }
+  function wxStatShow(err) {
+    var w = wxCur(), el = $('wxStat'), f = wxFlags();
+    if (!wxOn) { el.textContent = 'Weer-animaties staan uit.'; return; }
+    if (wxTest) { el.textContent = 'Test: ' + wxText(); return; }
+    if (!w) { el.textContent = 'Weer: nog niet opgehaald. Dit gebeurt als de GPS aan staat.' + (err ? ' Laatste fout: ' + err : ''); return; }
+    var d = new Date(w.t);
+    el.textContent = 'Weer (Open-Meteo): ' + Math.round(w.temp) + ' °C, ' + wxDesc(f) + ', wind ' + Math.round(w.wind || 0) + ' km/h' + (f.soon && !f.rain ? ', binnen een uur kans op regen' : '') + '. Bijgewerkt ' + fmt(d.getHours() + d.getMinutes() / 60) + '.';
+  }
+  function wxKey(f) { return [f.rain, f.snow, f.fog ? 1 : 0, f.thunder ? 1 : 0, f.sun ? 1 : 0, f.ice ? 1 : 0, f.hot ? 1 : 0, f.cold ? 1 : 0, f.wind ? 1 : 0].join(''); }
+  function wxAnnounce() {
+    var f = wxFlags(), k = wxKey(f), prev = wxPrev; wxPrev = k;
+    if (!wxCur() || S.asleep) { wxStatShow(); return; }
+    var msg = null, ev = null;
+    if (prev === '' || wxTest) { msg = wxText(); if (f.ice) msg += ' Kans op gladheid.'; }
+    else if (k !== prev) {
+      if (f.thunder) { msg = 'Onweer! Rij voorzichtig.'; ev = 'startled'; }
+      else if (f.rain && prev.charAt(0) === '0') { msg = 'Het begint te regenen.'; ev = 'alert'; }
+      else if (f.snow && prev.charAt(1) === '0') { msg = 'Het sneeuwt!'; ev = 'excited'; }
+      else if (!f.rain && prev.charAt(0) !== '0') { msg = 'Het klaart op!'; ev = 'happy'; }
+      else if (f.ice) { msg = 'Het vriest en het is nat. Kans op gladheid.'; ev = 'worried'; }
+      else msg = wxText();
+    }
+    if (ev) setEv(ev, 4, msg); else if (msg) { S.wxMsg = msg; S.wxMsgUntil = T + 9; }
+    wxStatShow();
+  }
+  function wxTick() {
+    if (!wxCur()) { wxStatShow(); }
+    if (T > wxQuipAt) {
+      wxQuipAt = T + (S.live ? 240 : 45);
+      var f = wxFlags(), w = wxCur(), L = [];
+      if (!w || S.asleep) return;
+      if (f.thunder) L.push('Onweer in de buurt. Rij rustig.');
+      else if (f.rain) L.push('Ruitenwissers aan!', 'Het is nat. Houd wat meer afstand.', 'Ik hou van het geluid van regen.');
+      if (f.snow) L.push('Sneeuw! Alles wordt glad.', 'Kijk, sneeuwvlokken!');
+      if (f.fog) L.push('Mist. Mistlicht aan als het nodig is.');
+      if (f.sun) L.push('Wat een zon! Zonnebril?');
+      if (f.hot) L.push('Pfff, ' + Math.round(w.temp) + ' graden. Airco aan?');
+      if (f.cold) L.push('Brr, ' + Math.round(w.temp) + ' graden.');
+      if (f.ice) L.push('Kans op gladheid. Rij voorzichtig.');
+      if (f.wind) L.push('Stevige wind. Houd het stuur goed vast.');
+      if (f.soon && !f.rain) L.push('Binnen een uur komt er regen.');
+      if (f.night && !L.length) L.push('Mooie avond voor een ritje.');
+      if (L.length) { S.wxMsg = L[Math.floor(Math.random() * L.length)]; S.wxMsgUntil = T + 7; }
+    }
+  }
+  function loadWeather(lat, lon) {
+    if (!wxOn || wxBusy || T - wxT < 900 || T - wxFail < 120) return;
+    wxBusy = true;
+    var base = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(3) + '&longitude=' + lon.toFixed(3) + '&current=temperature_2m,apparent_temperature,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_gusts_10m,is_day&wind_speed_unit=kmh&timezone=auto';
+    getText(base + '&minutely_15=precipitation&forecast_minutely_15=4').catch(function () { return getText(base); }).then(function (txt) {
+      var j = JSON.parse(txt), c = j.current; if (!c) throw new Error('geen weergegevens');
+      var soon = false; try { (j.minutely_15.precipitation || []).forEach(function (x) { if (x > .1) soon = true; }); } catch (e) {}
+      WX = { t: Date.now(), code: c.weather_code, temp: c.temperature_2m, feels: c.apparent_temperature, precip: c.precipitation, cloud: c.cloud_cover, wind: c.wind_speed_10m, gust: c.wind_gusts_10m, day: c.is_day ? 1 : 0, soon: soon };
+      wxT = T; wxMemoObj = undefined;
+      lg('weer: ' + WX.temp + ' graden, code ' + WX.code + ', neerslag ' + WX.precip + ', wind ' + Math.round(WX.wind));
+      wxAnnounce();
+    }).catch(function (e) { wxFail = T; lg('FOUT weer: ' + ((e && e.message) || 'onbekend')); wxStatShow((e && e.message) || 'onbekend'); }).then(function () { wxBusy = false; });
+  }
+  $('wxOn').addEventListener('change', function () { wxOn = $('wxOn').checked; try { localStorage.setItem(WXKEY, wxOn ? '1' : '0'); } catch (e) {} wxMemoObj = undefined; wxStatShow(); if (wxOn && S.live) wxT = -9999; });
+  $('wxTest').addEventListener('change', function () {
+    wxTest = $('wxTest').value; wxMemoObj = undefined; wxNextBolt = 0; wxD = []; wxFl = []; wxQuipAt = 0;
+    if (wxTest && !wxOn) { wxOn = true; $('wxOn').checked = true; }
+    wxPrev = ''; wxAnnounce();
+  });
+
+  function shadesDraw(ox, oy) {
+    var y = 106 + oy; ctx.fillStyle = '#05070a'; ctx.strokeStyle = EYE; ctx.lineWidth = 3;
+    rr(73 + ox - 31, y - 22, 62, 44, 14); ctx.fill(); ctx.stroke();
+    rr(167 + ox - 31, y - 22, 62, 44, 14); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(73 + ox + 31, y - 6); ctx.lineTo(167 + ox - 31, y - 6); ctx.stroke();
+    ctx.globalAlpha = .5; ctx.beginPath(); ctx.moveTo(73 + ox - 18, y - 10); ctx.lineTo(73 + ox - 6, y - 16); ctx.moveTo(167 + ox - 18, y - 10); ctx.lineTo(167 + ox - 6, y - 16); ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  function wxBack(dt) {
+    if (reduce) return;
+    var f = wxFlags(), i;
+    if (f.night && !S.asleep) {
+      ctx.fillStyle = EYE; ctx.globalAlpha = .75; ctx.beginPath(); ctx.arc(192, 50, 9, 0, TAU); ctx.fill();
+      ctx.fillStyle = SCREEN; ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(197, 47, 8, 0, TAU); ctx.fill();
+      ctx.fillStyle = EYE; var ST = [[40, 60, 3], [66, 34, 2.5], [150, 22, 3], [214, 90, 2.5], [30, 110, 2]];
+      for (i = 0; i < ST.length; i++) { ctx.globalAlpha = .25 + .5 * Math.abs(Math.sin(T * 1.3 + i * 2)); spark(ST[i][0], ST[i][1], ST[i][2]); }
+      ctx.globalAlpha = 1;
+    }
+    if (f.sun && !S.asleep) {
+      ctx.fillStyle = '#FFD76A'; ctx.strokeStyle = '#FFD76A'; ctx.globalAlpha = .9; ctx.beginPath(); ctx.arc(46, 54, 8, 0, TAU); ctx.fill(); ctx.lineWidth = 2; ctx.lineCap = 'round';
+      for (i = 0; i < 8; i++) { var a = T * .6 + i * TAU / 8; ctx.beginPath(); ctx.moveTo(46 + Math.cos(a) * 12, 54 + Math.sin(a) * 12); ctx.lineTo(46 + Math.cos(a) * 17, 54 + Math.sin(a) * 17); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
+    if ((f.cloudy || f.rain || f.snow) && !S.asleep) {
+      var cx = 184 + Math.sin(T * .3) * 3, cy = 54; ctx.fillStyle = EYE; ctx.globalAlpha = .4; ctx.beginPath(); ctx.moveTo(cx + 8, cy); ctx.arc(cx, cy, 8, 0, TAU); ctx.moveTo(cx + 20, cy - 4); ctx.arc(cx + 10, cy - 4, 10, 0, TAU); ctx.moveTo(cx + 28, cy); ctx.arc(cx + 21, cy, 7, 0, TAU); ctx.rect(cx, cy - 1, 21, 8); ctx.fill(); ctx.globalAlpha = 1;
+    }
+  }
+  function wxFront(dt) {
+    if (reduce) return;
+    var f = wxFlags(), i, d;
+    /* regen */
+    var nR = [0, 16, 34, 60][f.rain];
+    while (wxD.length < nR) wxD.push({ x: rand(0, 280), y: rand(-20, 240), v: rand(260, 380), l: rand(8, 16) });
+    if (wxD.length > nR) wxD.length = nR;
+    if (nR) {
+      ctx.strokeStyle = EYE; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.globalAlpha = .42; ctx.beginPath();
+      for (i = 0; i < wxD.length; i++) { d = wxD[i]; d.y += d.v * dt; d.x -= d.v * dt * .18; if (d.y > 250 || d.x < -20) { d.y = rand(-30, -5); d.x = rand(20, 290); } ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + d.l * .18, d.y - d.l); }
+      ctx.stroke(); ctx.globalAlpha = 1;
+      var per = f.rain === 3 ? 1.8 : f.rain === 2 ? 2.6 : 6, wp = (T % per) / per, ang = f.rain > 1 ? Math.sin(wp * TAU) * 1.3 : (wp < .5 ? Math.sin(wp * 2 * TAU) * 1.3 : null);
+      if (ang !== null && !S.asleep) { ctx.save(); ctx.translate(120, 240); ctx.rotate(ang); ctx.strokeStyle = EYE; ctx.globalAlpha = .5; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -165); ctx.stroke(); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-6, -165); ctx.lineTo(6, -165); ctx.stroke(); ctx.restore(); ctx.globalAlpha = 1; }
+    }
+    /* sneeuw */
+    var nS = [0, 26, 52][f.snow];
+    while (wxFl.length < nS) wxFl.push({ x: rand(0, 240), y: rand(-10, 240), v: rand(25, 55), ph: rand(0, TAU), r: rand(1.2, 3) });
+    if (wxFl.length > nS) wxFl.length = nS;
+    if (nS) {
+      ctx.fillStyle = EYE; ctx.globalAlpha = .75;
+      for (i = 0; i < wxFl.length; i++) { d = wxFl[i]; d.y += d.v * dt; d.x += Math.sin(T * 1.5 + d.ph) * 14 * dt; if (d.y > 248) { d.y = -6; d.x = rand(0, 240); } ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, TAU); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    }
+    /* mist */
+    if (f.fog) { ctx.fillStyle = EYE; for (i = 0; i < 5; i++) { ctx.globalAlpha = .07 + .03 * Math.sin(T * .5 + i); ctx.fillRect(-40 + Math.sin(T * .25 + i * 1.3) * 30, 40 + i * 40, 320, 22); } ctx.globalAlpha = 1; }
+    /* onweer */
+    if (f.thunder && !S.asleep) {
+      if (!wxNextBolt) wxNextBolt = T + rand(3, 6);
+      if (T > wxNextBolt) { wxNextBolt = T + rand(7, 16); wxFlash = 1; wxBolt = T + .3; setEv('startled', 1.8, 'Onweer! Dat was een knal.'); beep('startled'); }
+    } else wxNextBolt = 0;
+    if (wxFlash > 0) { ctx.fillStyle = '#FFFFFF'; ctx.globalAlpha = Math.min(.5, wxFlash * .5); ctx.fillRect(0, 0, 240, 240); ctx.globalAlpha = 1; wxFlash = Math.max(0, wxFlash - dt * 3); }
+    if (T < wxBolt) { ctx.fillStyle = '#FFE680'; ctx.beginPath(); ctx.moveTo(132, 0); ctx.lineTo(112, 52); ctx.lineTo(126, 52); ctx.lineTo(104, 104); ctx.lineTo(146, 44); ctx.lineTo(130, 44); ctx.lineTo(150, 0); ctx.closePath(); ctx.fill(); }
+    /* kou: adem */
+    if (f.cold && !S.asleep) {
+      if (T > wxBrAt) { wxBrAt = T + 1.7; wxBr.push({ x: 120 + rand(-5, 5), y: 178, l: 0 }); }
+      for (i = wxBr.length - 1; i >= 0; i--) { d = wxBr[i]; d.l += dt; d.y -= 16 * dt; d.x += Math.sin(d.l * 3) * 8 * dt; if (d.l > 1.6) { wxBr.splice(i, 1); continue; } ctx.fillStyle = EYE; ctx.globalAlpha = .28 * (1 - d.l / 1.6); ctx.beginPath(); ctx.arc(d.x, d.y, 4 + d.l * 7, 0, TAU); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    }
+    /* hitte: zweetdruppel */
+    if (f.hot && !S.asleep) {
+      var sy = 70 + ((T * 20) % 80); ctx.fillStyle = '#7FD4FF'; ctx.globalAlpha = .85 * (1 - Math.max(0, (sy - 120) / 30));
+      ctx.beginPath(); ctx.arc(205, sy, 4, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(201.5, sy - 2); ctx.lineTo(205, sy - 10); ctx.lineTo(208.5, sy - 2); ctx.fill(); ctx.globalAlpha = 1;
+    }
+    /* wind: strepen */
+    if (f.wind) { ctx.strokeStyle = EYE; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.globalAlpha = .25; for (i = 0; i < 4; i++) { var wy = 56 + i * 44, wx = 260 - ((T * 360 + i * 97) % 340); ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx + 40, wy); ctx.stroke(); } ctx.globalAlpha = 1; }
+  }
+
+  /* ---------- Leunrichting ---------- */
+  var leanSign = 1;
+  try { leanSign = localStorage.getItem('dashboardmaatje-lean-v1') === '-1' ? -1 : 1; } catch (e) {}
+  $('leanDir').value = String(leanSign);
+  $('leanDir').addEventListener('change', function () { leanSign = +$('leanDir').value === -1 ? -1 : 1; try { localStorage.setItem('dashboardmaatje-lean-v1', String(leanSign)); } catch (e) {} lg('leunrichting ' + (leanSign > 0 ? 'naar bocht' : 'van bocht af')); });
+
   /* ---------- Extra: spraak, autostand, ritopname ---------- */
   var SPKKEY = 'dashboardmaatje-spk-v1', RIDEKEY = 'dashboardmaatje-ride-v1', spkOn = false, lastSay = -99, spkSt = { prev: null, a: false, b: false, o: false, oT: -99 };
   try { spkOn = localStorage.getItem(SPKKEY) === '1'; } catch (e) {}
@@ -1993,7 +2649,9 @@ details.set > * + * { margin-top: 10px; }
   var wasLive = false, ride = [], rideT = 0, rideSave = 0, rp = null;
   try { ride = JSON.parse(localStorage.getItem(RIDEKEY)) || []; } catch (e) { ride = []; }
   function extraTick() {
+    moodTick();
     camSpeak();
+    wxTick();
     if (S.live && !wasLive) ride = [];
     wasLive = S.live;
     if (S.live && T - rideT >= 2) {
@@ -2019,7 +2677,7 @@ details.set > * + * { margin-top: 10px; }
     rp = { v: ride.slice(), i: 0, next: 0 }; $('bReplay').textContent = 'Stop afspelen (' + ride.length * 2 + ' s rit)';
     toast('Je laatste rit wordt afgespeeld.');
   });
-  window.__extra = { ride: function () { return ride; }, replaying: function () { return !!rp; }, pushRide: function (a) { ride = a; } };
+  window.__extra = { fx: function () { return { dx: fdx, rot: frot }; }, ride: function () { return ride; }, replaying: function () { return !!rp; }, pushRide: function (a) { ride = a; } };
 
   drawHist(); updateInsight(); updateUI();
   setTimeout(hello, 900);
