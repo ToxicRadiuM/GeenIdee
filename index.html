@@ -1,0 +1,1895 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E1114">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Dashboardmaatje</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one column. Round robot screen inside a red helmet ring on top, driving controls below, inner state, learned habits, hardware plan last. */
+:root {
+  --bg: #EBEEF0;
+  --panel: #FFFFFF;
+  --ink: #12171B;
+  --muted: #56616A;
+  --line: #D3D9DD;
+  --helmet: #D7352B;
+  --helmet-hi: #F2685D;
+  --on-helmet: #FFFFFF;
+  --good: #1E8E5A;
+  --screen: #06080C;
+  --eye: #CFF7FF;
+  --blush: #FF8FA3;
+  --heart: #FF5A6E;
+  --f-display: 'Chakra Petch', 'Segoe UI', system-ui, sans-serif;
+  --f-body: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1114; --panel: #171B20; --ink: #E9EDEF; --muted: #8F9AA3; --line: #272D34;
+    --helmet: #FF5A4D; --helmet-hi: #FF8F84; --on-helmet: #1A0806; --good: #4CC58A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1114; --panel: #171B20; --ink: #E9EDEF; --muted: #8F9AA3; --line: #272D34;
+  --helmet: #FF5A4D; --helmet-hi: #FF8F84; --on-helmet: #1A0806; --good: #4CC58A;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 15px/1.5 var(--f-body);
+  padding-block: 22px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 30px; }
+section { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+h1, h2, p { margin: 0; }
+
+.eyebrow { font: 600 11px/1 var(--f-display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 34px/1.1 var(--f-display); text-wrap: balance; margin-top: 8px; }
+.lede { color: var(--muted); max-width: 62ch; margin-top: 10px; }
+
+h2 {
+  font: 600 12px/1 var(--f-display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+  border-top: 1px solid var(--line); padding-top: 16px;
+}
+
+/* Robot */
+.stage { align-items: center; gap: 18px; }
+.helmet {
+  position: relative;
+  width: min(84vw, 340px); aspect-ratio: 1; max-width: 100%;
+  border-radius: 50%;
+  padding: 6.5%;
+  background: radial-gradient(circle at 32% 24%, var(--helmet-hi), var(--helmet) 58%);
+  box-shadow: 0 14px 30px -14px rgba(0,0,0,.45);
+}
+.helmet::after {
+  content: ""; position: absolute; left: 17%; top: 7%; width: 30%; height: 11%;
+  border-radius: 50%; background: rgba(255,255,255,.35); transform: rotate(-24deg); filter: blur(3px);
+}
+.bezel { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: var(--screen); box-shadow: inset 0 0 0 3px rgba(0,0,0,.55); }
+.bezel canvas { width: 100%; height: 100%; display: block; }
+
+.mood { text-align: center; min-height: 3.4em; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.mood-name { font: 600 12px/1 var(--f-display); letter-spacing: .12em; text-transform: uppercase; color: var(--helmet); }
+.thought { font-size: 16px; max-width: 34ch; text-wrap: balance; }
+
+/* Drive */
+.readout { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.num { font: 700 56px/1 var(--f-display); font-variant-numeric: tabular-nums; min-width: 2.2ch; }
+.unit { font: 600 14px var(--f-display); color: var(--muted); letter-spacing: .08em; }
+.tag { margin-left: auto; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; }
+input[type=range] { width: 100%; height: 34px; accent-color: var(--helmet); margin: 0; }
+
+.btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.btn {
+  font: 600 14px/1.2 var(--f-body); min-height: 46px; padding: 0 14px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); cursor: pointer;
+}
+.btn:hover { border-color: var(--muted); }
+.btn:active { transform: scale(.98); }
+.btn:focus-visible, input[type=range]:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.btn.primary { background: var(--helmet); color: var(--on-helmet); border-color: transparent; grid-column: 1 / -1; font-size: 15px; }
+.btn[aria-pressed="true"] { border-color: var(--helmet); }
+.note { min-height: 1.5em; font-size: 13px; color: var(--good); }
+.warn { font-size: 14px; color: var(--helmet); }
+[hidden] { display: none !important; }
+.limitrow, .switchrow { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.limitrow select { font: 600 15px var(--f-display); min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); }
+.limitrow select:focus-visible, .switchrow input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.switchrow input { width: 20px; height: 20px; accent-color: var(--helmet); margin: 0; }
+
+/* Inner state */
+.meters { display: flex; flex-direction: column; gap: 12px; }
+.meter { display: grid; grid-template-columns: 92px minmax(0, 1fr) 52px; align-items: center; gap: 12px; font-size: 14px; }
+.bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--c, var(--muted)); border-radius: 4px; }
+.meter b { font: 600 14px var(--f-display); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Learning */
+.clock { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; font-size: 14px; }
+.clock output { font: 700 20px var(--f-display); font-variant-numeric: tabular-nums; min-width: 3.4ch; }
+.hist { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; align-items: end; height: 76px; }
+.hist i { display: block; min-height: 3px; height: calc(var(--v, 0) * 100%); background: var(--muted); opacity: .4; border-radius: 2px 2px 0 0; }
+.hist i.hot { background: var(--helmet); opacity: 1; }
+.hist i.now { outline: 2px solid var(--ink); outline-offset: 1px; }
+.axis { display: flex; justify-content: space-between; font: 500 11px var(--f-display); color: var(--muted); letter-spacing: .04em; }
+.chip { font-size: 13px; color: var(--muted); }
+.insight { font-size: 15px; }
+.row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.plan { display: flex; flex-direction: column; gap: 8px; padding-left: 18px; margin: 0; color: var(--muted); }
+.plan strong { color: var(--ink); font-weight: 600; }
+.foot { font-size: 13px; color: var(--muted); }
+.stage .foot { text-align: center; }
+#face { cursor: pointer; }
+[hidden] { display: none !important; }
+.facts { display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; list-style: none; font-size: 14px; }
+.facts li { padding-left: 14px; position: relative; }
+.facts li::before { content: ""; position: absolute; left: 0; top: .6em; width: 6px; height: 6px; border-radius: 50%; background: var(--helmet); }
+.facts b { font-weight: 600; }
+.chat { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
+.log { display: flex; flex-direction: column; gap: 8px; padding: 12px; max-height: 260px; min-height: 96px; overflow-y: auto; }
+.msg { max-width: 86%; padding: 8px 12px; border-radius: 14px; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.msg.me { align-self: flex-end; background: var(--helmet); color: var(--on-helmet); border-bottom-right-radius: 4px; }
+.msg.bot { align-self: flex-start; background: var(--bg); border-bottom-left-radius: 4px; }
+.msg.sys { align-self: center; color: var(--muted); font-size: 12px; background: none; padding: 0; }
+.chatform { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--line); }
+.chatform input[type=text] { flex: 1; min-width: 0; font: 400 15px var(--f-body); min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
+.chatform input[type=text]:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.chatform .btn { grid-column: auto; }
+.chatform input:disabled, .chatform button:disabled { opacity: .55; cursor: not-allowed; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips .btn { min-height: 36px; font-size: 13px; padding: 0 12px; border-radius: 18px; }
+
+
+@media (prefers-reduced-motion: reduce) { .btn:active { transform: none; } }
+.mobrow { display: flex; flex-direction: column; gap: 8px; }
+.mobrow input[type=text] { font: 400 14px var(--f-body); min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); width: 100%; }
+details.set { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+details.set summary { cursor: pointer; font-weight: 600; }
+details.set > * + * { margin-top: 10px; }
+</style>
+
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">Simulator · brein van je robotje</p>
+    <h1>Dashboardmaatje</h1>
+    <p class="lede">Zo reageert je robotje straks op de weg. Zijn basis zijn vaste regels plus een geheugen dat bijhoudt hoe jij rijdt: vertrekuren, snelheden, remstijl, je 0→100. Dat past op de M5Dial zelf en werkt zonder internet. Praten kan ook: met een eigen minibrein zonder internet, of slimmer via Claude.</p>
+  </header>
+
+  <section class="stage" aria-label="Robotje">
+    <div class="helmet"><div class="bezel"><canvas id="face" width="480" height="480" role="img" aria-label="Gezicht van het robotje"></canvas></div></div>
+    <div class="mood" aria-live="polite">
+      <span class="mood-name" id="moodName">Wakker</span>
+      <span class="thought" id="thought">Waar gaan we heen?</span>
+    </div>
+    <p class="foot" id="tapHint">Tik op zijn gezicht als je stilstaat.</p>
+  </section>
+
+  <section aria-label="Rijden">
+    <div class="readout">
+      <output class="num" id="spd" for="speed">0</output><span class="unit">KM/H</span>
+      <span class="tag" id="gpsTag">GPS gesimuleerd</span>
+    </div>
+    <input type="range" id="speed" min="0" max="130" step="1" value="0" aria-label="Snelheid in kilometer per uur">
+    <div class="btns">
+      <button class="btn" id="bGo" type="button">Optrekken</button>
+      <button class="btn" id="bStop" type="button">Stoppen</button>
+      <button class="btn" id="bHard" type="button">Hard remmen</button>
+      <button class="btn" id="bRocket" type="button">Raketstart 0→100</button>
+      <button class="btn" id="bGag" type="button">Doe een grapje</button>
+      <button class="btn" id="bLeft" type="button">Bocht links</button>
+      <button class="btn" id="bRight" type="button">Bocht rechts</button>
+      <button class="btn" id="bRound" type="button">Rotonde</button>
+      <button class="btn" id="bBump" type="button">Drempel</button>
+      <button class="btn" id="bTunnel" type="button">Tunnel</button>
+      <button class="btn" id="bMic" type="button" aria-pressed="false">Muziek horen: uit</button>
+      <button class="btn" id="bSleep" type="button">Laat slapen</button>
+      <button class="btn" id="bLive" type="button" aria-pressed="false" style="grid-column:1/-1">Telefoon-GPS: uit</button>
+      <button class="btn" id="bSound" type="button" aria-pressed="false" style="grid-column:1/-1">Geluid: uit</button>
+    </div>
+    <p class="foot" id="micNote" hidden>Muziek horen meet alleen het volume om mee te bewegen. Er wordt niets opgenomen, opgeslagen of verstuurd.</p>
+    <p class="note" id="note" aria-live="polite"></p>
+    <p class="warn" id="gpsHelp" role="status" hidden></p>
+    <button class="btn" id="bInstall" type="button" hidden>Installeer als app</button>
+    <p class="foot">Telefoon-GPS werkt alleen als deze pagina via https is geopend en je locatie toestaat. Het scherm blijft dan aan. Bedien de pagina niet tijdens het rijden: zet je telefoon in een houder.</p>
+  </section>
+
+  <section aria-label="Onderweg">
+    <h2>Onderweg</h2>
+    <div class="limitrow"><label for="spdMode">Snelheid op zijn scherm</label><select id="spdMode"><option value="1">Cijfer</option><option value="2">Ring</option><option value="3">Cijfer en ring</option><option value="0">Uit</option></select></div>
+    <div class="switchrow"><input type="checkbox" id="camOn" checked><label for="camOn">Flitsmeldingen aan</label></div>
+    <p class="chip" id="camStat">Flitsdata: nog niet geladen. Wordt opgehaald als de GPS aan staat.</p>
+    <div class="switchrow"><input type="checkbox" id="mobOn" checked><label for="mobOn">Gemelde controles van flitsers.nl erbij (alleen persoonlijk gebruik)</label></div>
+    <p class="chip" id="mobStat">Gemelde controles: nog niet opgehaald. Dit gebeurt elke 5 minuten als de GPS aan staat.</p>
+    <details class="set"><summary>Eigen koppeling instellen</summary>
+      <p class="foot">Een webpagina mag flitsers.nl meestal niet rechtstreeks uitlezen. Met een eigen gratis tussenstation (Cloudflare Worker, uitleg bij de app) werkt het wel. Plak hier het adres ervan. Laat leeg om rechtstreeks te proberen.</p>
+      <div class="mobrow"><input type="text" id="proxyUrl" inputmode="url" autocomplete="off" placeholder="https://jouw-naam.workers.dev"><button class="btn" id="proxySave" type="button">Bewaar adres</button></div>
+    </details>
+    <div class="limitrow"><label for="limit">Limiet</label><select id="limit"><option>50</option><option>70</option><option>80</option><option selected>100</option><option>120</option></select><span class="unit">KM/H</span></div>
+    <div class="btns">
+      <button class="btn" id="bCam" type="button">Flitser vooruit</button>
+      <button class="btn" id="bTraj" type="button">Trajectcontrole</button>
+      <button class="btn" id="bDrive" type="button" style="grid-column:1/-1">+1 uur rijtijd (pauzeherinnering testen)</button>
+    </div>
+    <p class="foot">Gesimuleerd. Afstanden lopen ×10, zodat je het snel ziet: een flitser ligt 900 m verder, een traject is 3 km. Met telefoon-GPS aan gebruikt hij de echte flitsers uit OpenStreetMap en gelden deze testknoppen niet. In sommige landen, zoals Duitsland en Zwitserland, is een flitsmelding verboden: zet hem daar uit. Buiten Nederland kunnen andere regels gelden voor flitsmeldingen. Rijtijd loopt hier 60× sneller: 1 seconde is 1 minuut.</p>
+  </section>
+
+  <section aria-label="Praten">
+    <h2>Praten</h2>
+    <p class="foot" id="chatInfo">Praten kan alleen als de auto stilstaat. Hij snapt een hoop zonder internet. Hij leert ook van jou: zeg bijvoorbeeld "als ik hoi zeg, zeg jij goedemorgen kapitein".</p>
+    <div class="chat">
+      <div class="log" id="log" role="log" aria-live="polite"></div>
+      <form class="chatform" id="chatForm" autocomplete="off">
+        <input type="text" id="chatIn" aria-label="Typ een bericht" maxlength="200" placeholder="Zeg iets tegen hem">
+        <button class="btn primary" id="chatSend" type="submit" style="min-height:44px">Stuur</button>
+      </form>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="switchrow" id="claudeRow" hidden><input type="checkbox" id="claudeOn"><label for="claudeOn">Slimmer praten via Claude (kost een beetje van jouw Claude-gebruik)</label></div>
+    <p class="foot" id="claudeNote" hidden></p>
+  </section>
+
+  <section aria-label="Binnenkant">
+    <h2>Binnenkant</h2>
+    <div class="meters">
+      <div class="meter"><span>Energie</span><div class="bar"><i id="mEnergy" style="--c:var(--good)"></i></div><b id="vEnergy">0</b></div>
+      <div class="meter"><span>Verveling</span><div class="bar"><i id="mBored" style="--c:var(--muted)"></i></div><b id="vBored">0</b></div>
+      <div class="meter"><span>Genegenheid</span><div class="bar"><i id="mLove" style="--c:var(--helmet)"></i></div><b id="vLove">0</b></div>
+      <div class="meter"><span>Rijtijd</span><div class="bar"><i id="mDrive" style="--c:var(--muted)"></i></div><b id="vDrive">0u00</b></div>
+      <div class="meter"><span>Rijstijl</span><div class="bar"><i id="mStyle" style="--c:var(--good)"></i></div><b id="vStyle">100</b></div>
+    </div>
+  </section>
+
+  <section aria-label="Leren">
+    <h2>Wat hij onthoudt</h2>
+    <p class="insight" id="insight"></p>
+    <div class="hist" id="hist" role="img" aria-label="Vertrekken per uur van de dag"></div>
+    <div class="axis" aria-hidden="true"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+    <p class="chip" id="chip"></p>
+    <h2>Wat hij van jou geleerd heeft</h2>
+    <ul class="facts" id="facts"></ul>
+    <div class="clock">
+      <label for="clock">Tijd van de dag</label>
+      <input type="range" id="clock" min="0" max="23.75" step="0.25" value="8">
+      <output id="clockOut" for="clock">08:00</output>
+    </div>
+    <div class="row2">
+      <button class="btn" id="bDay" type="button">Voorbeeldwerkdag toevoegen</button>
+      <button class="btn" id="bWipe" type="button">Geheugen wissen</button>
+    </div>
+    <p class="foot">Laten leren: zet de schuif op een tijd, laat hem 8 seconden stilstaan en trek op. Dat vertrek wordt onthouden. Op een uur waarop je vaak vertrekt, kijkt hij verwachtingsvol.</p>
+  </section>
+
+  <section aria-label="Plan voor de M5Dial">
+    <h2>Naar de M5Dial</h2>
+    <ul class="plan">
+      <li><strong>Stemmingen</strong> worden animaties van 240 × 240 pixels, zoals de GIF's in BetterMochi.</li>
+      <li><strong>Grapjes en vlag</strong> zijn korte animaties; elk grapje is een paar tekenopdrachten, dus dat past op de M5Dial.</li>
+      <li><strong>Praten</strong> kan op de M5Dial alleen met vaste regels. Een echt taalmodel past er niet op; daarvoor blijft de telefoon het brein.</li>
+      <li><strong>Snelheid</strong> komt straks van de GPS in plaats van de schuif.</li>
+      <li><strong>Geheugen</strong> (vertrekuren en gemiddelde snelheid) is zo klein dat het in het flashgeheugen past.</li>
+      <li><strong>Flitsers en trajecten</strong> komen uit OpenStreetMap (voor Nederland ongeveer 875 camerapunten). Mobiele controles staan er niet in.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var TAU = Math.PI * 2;
+  var css = getComputedStyle(document.documentElement);
+  function tok(n, d) { return css.getPropertyValue(n).trim() || d; }
+  var SCREEN = tok('--screen', '#06080C'), EYE = tok('--eye', '#CFF7FF'), BLUSH = tok('--blush', '#FF8FA3'), HEART = tok('--heart', '#FF5A6E');
+  var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  /* ---------- Memory (counts and averages, like the M5Dial would keep) ---------- */
+  var KEY = 'dashboardmaatje-geheugen-v1';
+  function fill(m) {
+    var d = { trips: 0, km: 0, hard: 0, brake: 14, nBrake: 0, styleAvg: 85, stopAvg: 0, stops: 0, best: 0, launches: 0,
+      sh: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], taps: 0, name: 'Maatje', me: '', gagW: {}, notes: [], taught: [], unknown: [] };
+    for (var k in d) if (m[k] === undefined) m[k] = d[k];
+    if (m.kmMile === undefined) m.kmMile = Math.floor(m.km / 100);
+    if (m.bday === undefined) m.bday = null;
+    if (m.lastSpecial === undefined) m.lastSpecial = '';
+    return m;
+  }
+  function seed() { return fill({ hours: [0,0,0,0,0,0,1,6,5,1,0,0,1,0,0,1,3,6,2,0,0,0,0,0], avg: 62, cruise: 600, example: true }); }
+  function load() {
+    try {
+      var j = JSON.parse(localStorage.getItem(KEY));
+      if (j && j.hours && j.hours.length === 24 && typeof j.avg === 'number') return fill(j);
+    } catch (e) {}
+    return seed();
+  }
+  var mem = load();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {} }
+
+  /* ---------- State ---------- */
+  var T = 0;
+  var S = {
+    speed: 0, target: 0, maxDec: 12, accel: 0,
+    idle: 8, stoppedT: 0, energy: 80, love: 25,
+    asleep: false, ev: null, evUntil: 0, lastExc: -9, lastStart: -9, fastT: 0,
+    nextYawn: 20, hour: 8,
+    cam: null, traj: null, camOn: true, flash: 0, driveT: 0, driveWarn: 120,
+    style: 100, tripT: 0, trip: false, evMsg: null,
+    tunnel: false, tunnelPrev: false, simTunEnd: 0, music: false, beat: 0, cheerMsg: '', cheerAt: 0, helloDone: false,
+    turn: 0, turnS: 0, latG: 0, simTurn: 0, simTurnEnd: 0, raSum: 0, raT: 0, hop: 0, dizzyUntil: 0, lastCorner: -9, lastBump: -9,
+    spdMode: 1, roadLim: null,
+    gag: null, nextGag: 9, flagUntil: 0, flagMsg: '', flagRec: false, lr: 1, lt0: null, pk: 0, maxAcc: 0, lastGag: ''
+  };
+  (function () {
+    var d = new Date();
+    S.hour = Math.round((d.getHours() + d.getMinutes() / 60) * 4) / 4;
+    if (S.hour > 23.75) S.hour = 23.75;
+  })();
+
+  /* ---------- Expressions ---------- */
+  var P = {
+    neutral:   { open: 1,    lid: 0,    tilt: 0,   squint: 0,   scale: 1,    mouth: .15,  mo: 0,   blush: 0 },
+    content:   { open: .9,   lid: 0,    tilt: 0,   squint: .3,  scale: 1,    mouth: .6,   mo: 0,   blush: .35 },
+    relaxed:   { open: .8,   lid: .1,   tilt: 0,   squint: .2,  scale: 1,    mouth: .45,  mo: 0,   blush: .1 },
+    happy:     { open: .95,  lid: 0,    tilt: 0,   squint: .6,  scale: 1,    mouth: .9,   mo: 0,   blush: .6 },
+    love:      { open: 1,    lid: 0,    tilt: 0,   squint: .78, scale: 1.05, mouth: 1,    mo: 0,   blush: 1 },
+    excited:   { open: 1.1,  lid: 0,    tilt: 0,   squint: 0,   scale: 1.14, mouth: .8,   mo: .25, blush: .2 },
+    focused:   { open: .78,  lid: .28,  tilt: .6,  squint: 0,   scale: 1,    mouth: -.05, mo: 0,   blush: 0 },
+    startled:  { open: 1.25, lid: 0,    tilt: 0,   squint: 0,   scale: .9,   mouth: 0,    mo: 1,   blush: 0 },
+    worried:   { open: .95,  lid: .22,  tilt: -.8, squint: 0,   scale: 1,    mouth: -.6,  mo: 0,   blush: 0 },
+    bored:     { open: .6,   lid: .38,  tilt: 0,   squint: 0,   scale: 1,    mouth: -.1,  mo: 0,   blush: 0 },
+    sleepy:    { open: .38,  lid: .45,  tilt: 0,   squint: 0,   scale: 1,    mouth: 0,    mo: 0,   blush: 0 },
+    yawn:      { open: .3,   lid: .2,   tilt: 0,   squint: .5,  scale: 1,    mouth: 0,    mo: 1,   blush: 0 },
+    sleeping:  { open: .05,  lid: 0,    tilt: 0,   squint: 0,   scale: 1,    mouth: .1,   mo: 0,   blush: 0 },
+    alert:{ open: 1.12, lid: 0, tilt: .25, squint: 0, scale: 1.1, mouth: -.05, mo: 0, blush: 0 },
+    blow:      { open: .85,  lid: .1,   tilt: 0,   squint: .5,  scale: 1,    mouth: 0,    mo: .55, blush: .3 },
+    anticipate:{ open: 1.05, lid: 0,    tilt: 0,   squint: 0,   scale: 1.08, mouth: .5,   mo: 0,   blush: .15 }
+  };
+  var NAMES = {
+    neutral: 'Wakker', content: 'Tevreden', relaxed: 'Ontspannen', happy: 'Blij', love: 'Verliefd', excited: 'Opgewonden',
+    focused: 'Geconcentreerd', startled: 'Geschrokken', worried: 'Bezorgd', bored: 'Verveeld', sleepy: 'Slaperig',
+    yawn: 'Gaapt', sleeping: 'Slaapt', anticipate: 'Verwachtingsvol', alert: 'Alert', blow: 'Blaast'
+  };
+  var THOUGHTS = {
+    neutral: ['Alles rustig.', 'Waar gaan we heen?', 'Ik kijk even rond.'],
+    content: ['Dit voelt goed.', 'Fijn dat je er bent.'],
+    relaxed: ['Lekker rollen.', 'Mooi weer voor een ritje.'],
+    happy: ['Hé, je bent er!', 'Leuk!'],
+    love: ['Hihi, nog een keer?', 'Jij bent de beste.'],
+    excited: ['Zoef!', 'Hier gaan we!'],
+    focused: ['Ogen op de weg.', 'Vol aandacht.'],
+    startled: ['Whoa!', 'Oei, dat was stevig!'],
+    worried: ['Sneller dan normaal.'],
+    bored: ['Staan we nog lang?', 'Ik tel de strepen op de weg.'],
+    sleepy: ['Mijn ogen vallen dicht…', 'Even rusten…'],
+    yawn: ['Aaaah… *gaap*'],
+    sleeping: ['zzz…', 'zzz… flitser… zzz…', 'zzz… nog vijf minuutjes…', 'zzz… rood… groen… zzz…'],
+    anticipate: ['Rond dit uur gaan we meestal. Gaan we?', 'Is het al tijd voor een ritje?'],
+    alert: ['Ik hou de weg in de gaten.'],
+    blow: ['Blub blub…']
+  };
+  var cur = {};
+  for (var k0 in P.neutral) cur[k0] = P.neutral[k0];
+
+  /* ---------- Sound (buzzer stand-in) ---------- */
+  var ac = null, sound = false;
+  var TUNES = { race: [392, 523, 784, 1047, 1319], gag: [660, 880], pet: [784, 988], wake: [392, 523, 659], excited: [523, 659, 784, 1047], startled: [988, 330], sleep: [330, 262, 196] };
+  function beep(name) {
+    if (!sound || !ac) return;
+    var seq = TUNES[name]; if (!seq) return;
+    var t0 = ac.currentTime;
+    seq.forEach(function (f, i) {
+      var o = ac.createOscillator(), g = ac.createGain(), s = t0 + i * 0.09;
+      o.type = 'square'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, s);
+      g.gain.exponentialRampToValueAtTime(0.05, s + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, s + 0.08);
+      o.connect(g); g.connect(ac.destination); o.start(s); o.stop(s + 0.09);
+    });
+  }
+
+  /* ---------- Helpers ---------- */
+  function fmt(h) {
+    var hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+    return (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+  }
+  var noteTimer = 0;
+  function toast(msg) {
+    $('note').textContent = msg;
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(function () { $('note').textContent = ''; }, 4500);
+  }
+  function setEv(k, dur, msg) { S.ev = k; S.evUntil = T + dur; S.evMsg = msg || null; S.gag = null; }
+  function ix() { return S.live ? 4 : 1; }
+  function maxHours() { return Math.max.apply(null, mem.hours); }
+  function expected() {
+    var m = maxHours(); if (m < 3) return false;
+    return mem.hours[Math.floor(S.hour) % 24] >= 0.5 * m;
+  }
+  function wake() {
+    S.asleep = false; S.idle = 0; setEv('happy', 2.2); beep('wake');
+  }
+  function recordDeparture() {
+    mem.hours[Math.floor(S.hour) % 24]++;
+    mem.stops++; mem.stopAvg += (S.stoppedT - mem.stopAvg) / Math.min(mem.stops, 10);
+    save(); drawHist(); updateInsight();
+    toast('Vertrek om ' + fmt(S.hour) + ' onthouden.');
+  }
+
+  /* ---------- Brain step ---------- */
+  var lastSave = 0;
+  function step(dt) {
+    var prev = S.speed;
+    if (S.live) {
+      S.speed += (S.liveSpeed - S.speed) * (1 - Math.exp(-dt * 2));
+      if (S.liveSpeed === 0 && S.speed < 0.5) S.speed = 0;
+      S.target = S.speed;
+    } else {
+      var diff = S.target - S.speed;
+      var acc = clamp(diff * 1.5, -S.maxDec, S.maxAcc || 12);
+      S.speed = Math.max(0, S.speed + acc * dt);
+      if (Math.abs(S.target - S.speed) < 0.05) { S.speed = S.target; S.maxAcc = 0; }
+      if (S.speed === 0) S.maxDec = 12;
+    }
+    var kk = 1 - Math.exp(-dt * 6);
+    S.accel += ((S.speed - prev) / dt - S.accel) * kk;
+
+    if (S.accel > 9 && S.speed > 4 && T - S.lastExc > 5 && !S.asleep) { setEv('excited', 2.2); S.lastExc = T; S.style = Math.max(0, S.style - 3); mem.hard++; beep('excited'); }
+    learnStep(dt);
+    leanStep(dt);
+    if (S.accel < -startleAt() && T - S.lastStart > 5 && !S.asleep) { if (S.accel < -35) setEv('startled', 3, 'Pfff\u2026 dat was op het randje. Alles goed?'); else setEv('startled', 1.8); S.lastStart = T; S.style = Math.max(0, S.style - 8); beep('startled'); }
+
+    if (S.speed < 1) { S.stoppedT += dt; S.idle += dt; }
+    else {
+      S.idle = 0;
+      if (S.speed >= 5) { if (S.stoppedT >= (S.live ? 120 : 8)) recordDeparture(); S.stoppedT = 0; }
+    }
+    if (S.asleep && S.speed >= 1) wake();
+    if (!S.asleep && S.idle > 70 * ix() && S.speed < 1) { S.asleep = true; beep('sleep'); }
+
+    if (S.speed >= 1) S.energy = Math.max(5, S.energy - 0.5 * dt);
+    else if (S.asleep) S.energy = Math.min(100, S.energy + 3 * dt);
+    else S.energy = Math.min(100, S.energy + 0.3 * dt);
+    S.love = Math.max(0, S.love - 0.25 * dt / (S.live ? 4 : 1));
+
+    if (S.speed > 30) {
+      mem.avg += (S.speed - mem.avg) * (1 - Math.exp(-dt * 0.03));
+      mem.cruise += dt;
+      if (T - lastSave > 5) { save(); lastSave = T; }
+    }
+    if (S.speed > mem.avg + 25 && mem.cruise >= 20) S.fastT += dt; else S.fastT = Math.max(0, S.fastT - dt * 2);
+
+    if (!S.asleep && S.speed < 1 && S.idle > 18 * ix() && T > S.nextYawn && !(S.ev && T < S.evUntil) && !S.gag) {
+      setEv('yawn', 2.2); S.nextYawn = T + rand(14, 24);
+    }
+    if (!S.asleep && !S.gag && !(S.ev && T < S.evUntil) && T > S.nextGag) startGag();
+    stepRoad(dt);
+  }
+
+  var SIMX = 10;
+  function trajAvg() { return S.traj && S.traj.time > 0.5 ? S.traj.sumV / S.traj.time : S.speed; }
+  function contextMsg() {
+    if (S.ev && T < S.evUntil) return S.evMsg;
+    if (S.gag) return S.gag.msg;
+    if (S.tunnel) return 'Tunnel! Ik zie niks, maar ik blijf rustig.';
+    if (S.music && S.speed < 95) return 'Ik hoor muziek. Leuk nummer!';
+    if (S.cam && S.cam.dist <= 600) {
+      if (ovr(Math.round(S.speed), S.cam.limit)) return (S.cam.kind === 'traj' ? 'Trajectcontrole' : 'Flitser') + '! Je rijdt boven de ' + S.cam.limit + '.';
+      return (S.cam.kind === 'traj' ? 'Trajectcontrole over ' : S.cam.mobile ? 'Gemelde controle over ' : 'Flitser over ') + Math.max(0, Math.round(S.cam.dist / 10) * 10) + ' m' + (S.cam.limit != null ? '. Limiet ' + S.cam.limit + '.' : '.');
+    }
+    if (S.traj) return ovr(trajAvg(), S.traj.limit) ? 'Gemiddeld te hoog. Even rustig aan.' : 'Trajectcontrole: ik bewaak het gemiddelde.';
+    return null;
+  }
+  function stepRoad(dt) {
+    var d = S.speed / 3.6 * dt * (S.live ? 1 : SIMX);
+    /* driving time: one real second counts as one minute */
+    if (S.speed >= 1) S.driveT += S.live ? dt / 60 : dt;
+    else if (S.stoppedT >= (S.live ? 900 : 20)) { S.driveT = 0; S.driveWarn = 120; }
+    if (S.driveT >= S.driveWarn) {
+      S.driveWarn += 120;
+      if (!S.asleep) { setEv('yawn', 4, 'Je rijdt al ' + Math.floor(S.driveT / 60) + ' uur. Zin in een pauze?'); beep('sleep'); }
+    }
+    /* smooth-driving score per trip */
+    if (S.speed >= 5) { S.trip = true; S.tripT += dt; }
+    else if (S.trip && S.speed < 1 && S.stoppedT > 3) {
+      S.trip = false;
+      if (S.tripT > 15) {
+        var sc = Math.round(S.style);
+        mem.trips++; mem.styleAvg += (sc - mem.styleAvg) * 0.2; save();
+        if (mem.trips === 1) queueCheer('Onze eerste rit samen!');
+        else if ([10, 25, 50, 100, 250].indexOf(mem.trips) >= 0) queueCheer(mem.trips + ' ritten samen. Wat een team!');
+        setEv(sc >= 85 ? 'happy' : 'worried', 3.5, sc >= 85 ? 'Zachte rit, rijstijl ' + sc + '. Top!' : 'Pittige rit, rijstijl ' + sc + '. Rustiger mag ook.');
+        if (sc >= 85) { beep('wake'); S.love = Math.min(100, S.love + 25); }
+      }
+      S.tripT = 0; S.style = 100;
+    }
+    if (!S.camOn) { S.cam = null; S.traj = null; return; }
+    if (S.live) return;
+    if (S.cam) {
+      S.cam.dist -= d;
+      if (S.cam.dist <= 0) {
+        if (Math.round(S.speed) <= S.cam.limit) { setEv('happy', 3, 'Netjes! Flitser gepasseerd.'); beep('wake'); S.love = Math.min(100, S.love + 6); }
+        else { S.flash = 1; setEv('startled', 3, 'FLITS! Dat wordt post…'); beep('startled'); S.style = Math.max(0, S.style - 15); }
+        S.cam = null;
+      }
+    }
+    if (S.traj) {
+      S.traj.done += d; S.traj.time += dt; S.traj.sumV += S.speed * dt;
+      if (S.traj.done >= S.traj.len) {
+        var avg = Math.round(trajAvg()), ok = trajAvg() <= S.traj.limit;
+        setEv(ok ? 'happy' : 'startled', 3, ok ? 'Traject netjes gereden. Gemiddeld ' + avg + '.' : 'Gemiddeld ' + avg + ' op het traject. Te snel…');
+        if (ok) { beep('wake'); S.love = Math.min(100, S.love + 6); } else { S.flash = 1; beep('startled'); }
+        S.traj = null;
+      }
+    }
+  }
+
+  function mood() {
+    if (S.asleep) return 'sleeping';
+    if (S.ev && T < S.evUntil) return S.ev;
+    S.ev = null; S.evMsg = null;
+    if (S.gag && S.gag.mood) return S.gag.mood;
+    if (S.tunnel) return 'alert';
+    if (S.music && S.speed < 95) return 'happy';
+    if (S.cam && S.cam.dist <= 600) return ovr(Math.round(S.speed), S.cam.limit) ? 'worried' : 'alert';
+    if (S.traj) return ovr(trajAvg(), S.traj.limit) ? 'worried' : 'alert';
+    if (S.fastT > 2.5) return 'worried';
+    if (S.energy < 20 && S.speed >= 1) return 'sleepy';
+    if (S.speed >= 95) return 'focused';
+    if (S.speed >= 25) return 'relaxed';
+    if (S.speed >= 1) return 'neutral';
+    if (expected() && S.idle > 2 && S.idle < 70 * ix()) return 'anticipate';
+    if (S.energy < 25 || S.idle > 45 * ix()) return 'sleepy';
+    if (S.idle > 12 * ix()) return 'bored';
+    if (S.love > 55) return 'content';
+    return 'neutral';
+  }
+
+
+  /* ---------- Learning: things he picks up by himself ---------- */
+  function startleAt() { return Math.min(45, Math.max(20, mem.brake * 1.5)); }
+  function learnStep(dt) {
+    /* 0 to 100 timer */
+    if (S.speed < 3) { S.lr = 1; S.lt0 = null; }
+    else if (S.lr && S.lt0 === null) { S.lt0 = T; S.lr = 0; }
+    if (S.lt0 !== null) {
+      if (S.speed >= 100) { var tt = T - S.lt0; S.lt0 = null; launchDone(tt); }
+      else if (T - S.lt0 > 14) S.lt0 = null;
+    }
+    /* how hard do you brake? slow average of the peak of every braking */
+    if (S.accel < -6) S.pk = Math.max(S.pk, -S.accel);
+    else if (S.accel > -2 && S.pk) { if (S.pk > 8) { mem.brake += (S.pk - mem.brake) * 0.15; mem.nBrake++; } S.pk = 0; }
+    /* which speeds do you drive? */
+    if (S.speed >= 5) {
+      mem.sh[Math.min(14, Math.floor(S.speed / 10))] += dt;
+      mem.km += S.speed / 3.6 * dt / 1000;
+      if (Math.floor(mem.km / 100) > mem.kmMile) { mem.kmMile = Math.floor(mem.km / 100); cheer('Weer 100 km samen! In totaal ' + (mem.kmMile * 100) + ' km.'); }
+      if (T - lastSave > 5) { save(); lastSave = T; }
+    }
+  }
+  function character() {
+    var n = mem.trips + mem.hard;
+    var thrill = clamp(Math.round(mem.hard / Math.max(1, mem.trips) * 40), 0, 100);
+    if (n < 3) return { label: 'Nog aan het kennismaken', thrill: thrill };
+    if (thrill >= 60) return { label: 'Waaghals', thrill: thrill };
+    if (mem.styleAvg >= 88 && thrill < 30) return { label: 'Rustige zachte rijder', thrill: thrill };
+    return { label: 'Evenwichtig', thrill: thrill };
+  }
+  function fmt1(v) { return (Math.round(v * 10) / 10).toString().replace('.', ','); }
+  function fmtDur(sec) {
+    sec = Math.round(sec);
+    if (sec < 60) return sec + ' s';
+    return Math.floor(sec / 60) + ' min ' + (sec % 60) + ' s';
+  }
+
+
+  /* ---------- Bends, roundabouts and bumps ---------- */
+  function leanStep(dt) {
+    if (!S.live) S.turn = T < S.simTurnEnd ? S.simTurn : 0;
+    S.turnS += (S.turn - S.turnS) * (1 - Math.exp(-dt * 3));
+    S.latG = S.speed / 3.6 * S.turnS * Math.PI / 180 / 9.81;
+    S.hop = Math.max(0, S.hop - dt * 3);
+    if (!S.live) S.tunnel = T < S.simTunEnd;
+    if (S.tunnelPrev && !S.tunnel && !S.asleep) { setEv('happy', 2.5, 'Daar is het licht weer!'); beep('wake'); }
+    S.tunnelPrev = S.tunnel;
+    if (S.cheerMsg && T > S.cheerAt) { var cm = S.cheerMsg; S.cheerMsg = ''; cheer(cm); }
+    musicStep(dt);
+    if (S.speed > 8 && S.speed < 55 && Math.abs(S.turnS) > 8) {
+      if (S.raSum * S.turnS < 0) S.raSum = 0;
+      S.raSum += S.turnS * dt; S.raT = T;
+      if (Math.abs(S.raSum) >= 240 && !S.asleep) {
+        S.raSum = 0; S.dizzyUntil = T + 2.4; setEv('excited', 3, 'Rotonde! Wheee, ik word draaierig.'); beep('excited');
+      }
+    } else if (T - S.raT > 4) S.raSum = 0;
+    if (Math.abs(S.latG) > 0.5 && S.speed > 25 && T - S.lastCorner > 6 && !S.asleep) {
+      S.lastCorner = T; S.style = Math.max(0, S.style - 6); setEv('worried', 2.4, 'Rustig in de bocht!'); beep('startled');
+    }
+  }
+  function bump() {
+    if (S.asleep || T - S.lastBump < 2) return;
+    S.lastBump = T; S.hop = 1; setEv('startled', .9, 'Boing!'); beep('startled');
+  }
+  function simBend(dir, kind) {
+    if (S.asleep) wake();
+    if (S.speed < 10) { S.target = 30; S.maxDec = 12; speedEl.value = 30; }
+    var v = Math.max(10, S.speed) / 3.6;
+    var rate = kind === 'round' ? 32 : (0.3 * 9.81 / v) * 180 / Math.PI;
+    S.simTurn = dir * rate; S.simTurnEnd = T + (kind === 'round' ? 12 : 3);
+    if (kind === 'round' && S.speed > 45) { S.target = 30; speedEl.value = 30; }
+    toast(kind === 'round' ? 'Rotonde: hij draait een rondje mee.' : 'Bocht ' + (dir > 0 ? 'rechts' : 'links') + '.');
+  }
+
+
+  /* ---------- Celebrations, greetings, tunnel and music ---------- */
+  function confetti() {
+    var cols = [HEART, BLUSH, EYE, '#FFC857'];
+    for (var i = 0; i < 36; i++) parts.push({ k: 'c', x: rand(10, 230), y: rand(-30, 0), vx: rand(-8, 8), vy: rand(40, 80), l: 0, m: 2.6, s: rand(3, 6), col: cols[i % 4] });
+  }
+  function cheer(msg) { setEv('happy', 4.5, msg); confetti(); beep('race'); S.love = Math.min(100, S.love + 8); }
+  function queueCheer(msg) { S.cheerMsg = msg; S.cheerAt = T + 4; }
+  var MONTHS = { januari: 1, februari: 2, maart: 3, april: 4, mei: 5, juni: 6, juli: 7, augustus: 8, september: 9, oktober: 10, november: 11, december: 12 };
+  var SPECIAL = [[1, 1, 'Gelukkig nieuwjaar!'], [14, 2, 'Fijne Valentijnsdag!'], [27, 4, 'Hoera, het is Koningsdag!'], [31, 10, 'Halloween! Boe!'], [5, 12, 'Fijne pakjesavond!'], [25, 12, 'Vrolijk kerstfeest!'], [31, 12, 'Oud en nieuw. Straks vuurwerk!']];
+  function specialToday() {
+    var d = new Date(), dd = d.getDate(), mm = d.getMonth() + 1, key = d.getFullYear() + '-' + mm + '-' + dd;
+    if (mem.lastSpecial === key) return null;
+    if (mem.bday && mem.bday.d === dd && mem.bday.m === mm) return { key: key, msg: 'Gefeliciteerd met je verjaardag' + (mem.me ? ', ' + mem.me : '') + '!' };
+    for (var i = 0; i < SPECIAL.length; i++) if (SPECIAL[i][0] === dd && SPECIAL[i][1] === mm) return { key: key, msg: SPECIAL[i][2] };
+    return null;
+  }
+  function hello() {
+    if (S.helloDone) return; S.helloDone = true;
+    var sp = specialToday();
+    if (sp) { mem.lastSpecial = sp.key; save(); cheer(sp.msg); return; }
+    var h = new Date().getHours(), who = mem.me ? ' ' + mem.me : '';
+    var m = h >= 5 && h < 12 ? 'Goedemorgen' + who + '!' : h >= 12 && h < 18 ? 'Goedemiddag' + who + '!' : h >= 18 && h < 23 ? 'Goedenavond' + who + '!' : 'Het is laat' + who + '. Rij voorzichtig.';
+    setEv('happy', 3.5, m);
+  }
+  function tunnelFx() {
+    if (!S.tunnel) return;
+    ctx.save(); ctx.strokeStyle = '#FFC857'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    for (var i = 0; i < 16; i++) {
+      var a = i * TAU / 16 + .2, f = (T * 1.1 + i * .37) % 1, r1 = 40 + f * f * 95, r2 = r1 + 4 + f * 14;
+      ctx.globalAlpha = .15 + f * .55;
+      ctx.beginPath(); ctx.moveTo(120 + Math.cos(a) * r1, 120 + Math.sin(a) * r1); ctx.lineTo(120 + Math.cos(a) * r2, 120 + Math.sin(a) * r2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  /* music: only the loudness of the microphone is used, nothing is recorded */
+  var mac = null, mstream = null, an = null, mbuf = null, micAvg = 0, lastBeat = 0;
+  function musicStep(dt) {
+    if (!an) { S.music = false; return; }
+    an.getByteTimeDomainData(mbuf);
+    var sum = 0; for (var i = 0; i < mbuf.length; i++) { var v = (mbuf[i] - 128) / 128; sum += v * v; }
+    var rms = Math.sqrt(sum / mbuf.length);
+    micAvg += (rms - micAvg) * (1 - Math.exp(-dt * .6));
+    S.music = micAvg > .02;
+    if (S.music && rms > micAvg * 1.5 && rms > .035 && T - lastBeat > .25) { lastBeat = T; S.beat = 1; }
+    S.beat = Math.max(0, S.beat - dt * 4);
+  }
+  function micToggle() {
+    var b = $('bMic');
+    if (an) { try { mstream.getTracks().forEach(function (t) { t.stop(); }); mac.close(); } catch (e) {} an = null; mstream = null; S.music = false; b.setAttribute('aria-pressed', 'false'); b.textContent = 'Muziek horen: uit'; $('micNote').hidden = true; return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('Deze browser kan de microfoon niet gebruiken.'); return; }
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(function (st) {
+      mstream = st; mac = new (window.AudioContext || window.webkitAudioContext)();
+      var src = mac.createMediaStreamSource(st); an = mac.createAnalyser(); an.fftSize = 512; mbuf = new Uint8Array(an.fftSize); src.connect(an);
+      b.setAttribute('aria-pressed', 'true'); b.textContent = 'Muziek horen: aan'; $('micNote').hidden = false;
+    }, function () { toast('Geen toestemming voor de microfoon.'); });
+  }
+
+  /* ---------- Race start: 0 to 100 and the checkered flag ---------- */
+  function launchDone(tt) {
+    if (tt > 10 || tt < 3.5 || S.asleep) return;
+    var rec = mem.best === 0 || tt < mem.best;
+    if (rec) mem.best = tt;
+    mem.launches++; mem.hard++;
+    var m = '0→100 in ' + fmt1(tt) + ' s' + (rec ? ' — nieuw record!' : '. Record: ' + fmt1(mem.best) + ' s.');
+    S.flagUntil = T + 5; S.flagMsg = fmt1(tt) + ' s'; S.flagRec = rec;
+    setEv('excited', 5, m); S.lastExc = T; S.love = Math.min(100, S.love + 10);
+    save(); beep('race');
+  }
+
+  /* ---------- Gags: little acts so he feels alive ---------- */
+  var fdx = 0, fdy = 0, frot = 0, fsc = 1, eyeL = 1, eyeR = 1, fxNoBlink = false, fxSpiral = false, fxTongue = false;
+  function dir(x, y) { gx = tgx = x; gy = tgy = y; nextGaze = T + 0.3; }
+  function note(x, y) { parts.push({ k: 'n', x: x, y: y, vx: rand(-8, 8), vy: -rand(18, 28), l: 0, m: 1.5, s: rand(12, 17) }); }
+  function burst(x, y, n) { for (var i = 0; i < n; i++) { var a = rand(0, TAU), v = rand(30, 70); parts.push({ k: 'd', x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, l: 0, m: .6, s: rand(2, 4) }); } }
+  var GAGS = {
+    impatient: { name: 'Wordt ongeduldig', dur: 5.6, idle: 1, mood: 'bored', msg: 'Rood\u2026 nog steeds rood\u2026',
+      upd: function (g, tt) { dir(0, tt < 3.6 ? -.7 : .2); fdy = tt > 1.5 ? Math.abs(Math.sin(tt * 6)) * 3 : 0; if (tt > 3.6) { g.msg = 'Kom op, groen!'; g.mood = 'anticipate'; } } },
+    fly: { name: 'Jaagt op een vlieg', dur: 5.8, idle: 1, mood: 'alert', msg: 'Een vliegje! Waar is hij…',
+      upd: function (g, tt) {
+        var x = Math.sin(tt * 2.1) * .9 + Math.sin(tt * 5) * .1, y = Math.cos(tt * 1.6) * .6;
+        g.fx = 120 + x * 75; g.fy = 88 + y * 40;
+        if (tt < 4.8) dir(x * .9, y * .9);
+        else { g.fx = 120; g.fy = 96; dir(0, .1); g.mood = 'happy'; g.msg = 'Gevangen! … oh, hij is weg.'; }
+      },
+      draw: function (g, tt) {
+        if (tt >= 4.8) return;
+        ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(g.fx, g.fy, 2.6, 0, TAU); ctx.fill();
+        ctx.globalAlpha = .6; var f = Math.sin(tt * 60) > 0 ? 4 : 2;
+        ctx.beginPath(); ctx.ellipse(g.fx - 4, g.fy - 3, 4, f, -.6, 0, TAU); ctx.ellipse(g.fx + 4, g.fy - 3, 4, f, .6, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+      } },
+    bubble: { name: 'Blaast een bel', dur: 5, idle: 1, mood: 'blow', msg: 'Ik blaas een bel…',
+      upd: function (g, tt) {
+        dir(0, .3);
+        if (tt < 3.6) { g.r = 3 + tt / 3.6 * 27; }
+        else { g.r = 0; g.mood = 'happy'; g.msg = 'Plop!'; if (!g.popped) { g.popped = 1; burst(120, 168, 12); } }
+      },
+      draw: function (g, tt) {
+        if (!g.r) return;
+        var x = 120 + Math.sin(tt * 3) * 2, y = 182 - g.r * .4;
+        ctx.strokeStyle = EYE; ctx.lineWidth = 2.5; ctx.globalAlpha = .85;
+        ctx.beginPath(); ctx.arc(x, y, g.r, 0, TAU); ctx.stroke();
+        ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, g.r * .7, -2.6, -1.7); ctx.stroke(); ctx.globalAlpha = 1;
+      } },
+    look: { name: 'Kijkt rond', dur: 4.6, idle: 1, drive: 1, mood: 'alert', msg: 'Even rondkijken…',
+      upd: function (g, tt) { var i = Math.floor(tt / .85) % 5; dir([-1, 1, -.6, .8, 0][i], [0, -.3, .2, -.2, 0][i]); if (tt > 4) g.msg = 'Alles veilig.'; } },
+    spin: { name: 'Rolt met zijn ogen', dur: 4.8, idle: 1, mood: 'bored', msg: 'Wheeeee…',
+      upd: function (g, tt) { var a = tt * 6.5; dir(Math.cos(a) * .95, Math.sin(a) * .85); if (tt > 3.3) { fxSpiral = true; g.mood = 'worried'; g.msg = 'Oei, duizelig…'; } } },
+    count: { name: 'Telt de streepjes', dur: 6.2, idle: 1, mood: 'bored', msg: 'Streepje 1…',
+      upd: function (g, tt) {
+        var n = Math.floor(tt / .8), f = (tt / .8) % 1;
+        dir(f * 2 - 1, .2);
+        g.msg = n < 6 ? 'Streepje ' + (n + 1) + '…' : 'Zeven! Nee, ik ben de tel kwijt.';
+      } },
+    sneeze: { name: 'Moet niesen', dur: 3.8, idle: 1, mood: 'yawn', msg: 'Ah… ah…',
+      upd: function (g, tt) {
+        if (tt < 2) { fdy = -tt * 3; eyeL = eyeR = 1 - tt * .2; dir(0, -.4); }
+        else { g.mood = 'startled'; fdy = 9; g.msg = 'HATSJOE!'; eyeL = eyeR = .15; if (!g.b) { g.b = 1; burst(120, 172, 16); } }
+      } },
+    hum: { name: 'Zingt een deuntje', dur: 6, idle: 1, drive: 1, mood: 'happy', msg: 'La la la…',
+      upd: function (g, tt) {
+        fdx = Math.sin(tt * 3) * 5; frot = Math.sin(tt * 3) * .05; dir(Math.sin(tt * 1.5) * .3, -.15);
+        if (tt > (g.nn || 0)) { g.nn = (g.nn || 0) + .55; note(150 + rand(-10, 20), 80); }
+      } },
+    wink: { name: 'Knipoogt', dur: 2.2, idle: 1, drive: 1, mood: 'happy', msg: 'Knipoog!',
+      upd: function (g, tt) { if (tt > .4 && tt < 1.3) { eyeR = .08; if (!g.b) { g.b = 1; burst(190, 96, 6); } } dir(0, 0); } },
+    dance: { name: 'Danst', dur: 6, idle: 1, mood: 'excited', msg: 'Dansje!',
+      upd: function (g, tt) {
+        fdx = Math.sin(tt * 5) * 10; fdy = -Math.abs(Math.sin(tt * 5)) * 7; frot = Math.sin(tt * 5) * .12; dir(Math.sin(tt * 5) * .5, 0);
+        if (tt > (g.nn || 0)) { g.nn = (g.nn || 0) + .45; note(rand(40, 200), rand(60, 100)); }
+        if (tt > 4.8) g.msg = 'Kijk mij eens!';
+      } },
+    tongue: { name: 'Steekt zijn tong uit', dur: 2.6, idle: 1, mood: 'happy', msg: 'Bleh!',
+      upd: function (g, tt) { fxTongue = tt > .3 && tt < 2.2; dir(0, .1); if (tt > .3 && tt < 2.2) eyeL = .45; } },
+    stare: { name: 'Staarwedstrijd', dur: 6.4, idle: 1, mood: 'alert', msg: 'Wie knippert eerst? Ik niet.',
+      upd: function (g, tt) { dir(0, 0); if (tt < 5.4) fxNoBlink = true; else { g.msg = 'Oei, ik knipperde. Jij wint.'; if (!g.b) { g.b = 1; blinkStart = T; } } } },
+    nod: { name: 'Valt bijna in slaap', dur: 6.4, idle: 1, mood: 'sleepy', msg: 'Zzz… zo moe…',
+      upd: function (g, tt) {
+        if (tt < 4.4) { fdy = tt * 3.2; frot = tt * .012; dir(0, .6); }
+        else { g.mood = 'startled'; g.msg = 'Ik sliep niet!'; dir(0, 0); }
+      } },
+    hiccup: { name: 'Heeft de hik', dur: 4.6, idle: 1, drive: 1, mood: 'neutral', msg: 'Hik… sorry.',
+      upd: function (g, tt) {
+        var h = tt % .95;
+        if (h < .14 && tt < 4) { fdy = -9; g.mood = 'startled'; g.msg = 'Hik!'; if (!g.hh || g.hh !== Math.floor(tt / .95) + 1) g.hh = Math.floor(tt / .95) + 1; }
+        else { g.mood = 'neutral'; if (tt < 4) g.msg = 'Hik… sorry.'; else g.msg = 'Weg. Denk ik.'; }
+      } }
+  };
+  function gagWeight(k) {
+    var w = mem.gagW[k] === undefined ? 1 : mem.gagW[k], th = character().thrill;
+    if (k === 'impatient') return S.trip ? w * 5 : w * 0.15;
+    if (k === 'dance' || k === 'spin') w *= 1 + th / 80;
+    if (k === 'nod' || k === 'hum' || k === 'look') w *= 1 + (100 - th) / 200;
+    return w;
+  }
+  function startGag(forceKey) {
+    var driving = S.speed >= 15 && !S.cam && !S.traj && S.fastT < 1;
+    var idle = S.speed < 1 && S.idle > 6 * ix();
+    var keys = Object.keys(GAGS).filter(function (k) {
+      if (forceKey) return k === forceKey;
+      return (idle && GAGS[k].idle) || (driving && GAGS[k].drive);
+    });
+    keys = keys.filter(function (k) { return k !== S.lastGag || keys.length < 2; });
+    if (!keys.length) { S.nextGag = T + 3; return; }
+    var tot = 0; keys.forEach(function (k) { tot += gagWeight(k); });
+    var r = Math.random() * tot, k = keys[0];
+    for (var i = 0; i < keys.length; i++) { r -= gagWeight(keys[i]); if (r <= 0) { k = keys[i]; break; } }
+    var d = GAGS[k];
+    S.gag = { k: k, name: d.name, t0: T, end: T + d.dur, mood: d.mood, msg: d.msg, w: 0 };
+    S.lastGag = k;
+    S.nextGag = T + d.dur + (idle ? rand(7, 15) * (S.live ? 2.5 : 1) : rand(45, 90));
+    beep('gag');
+  }
+  function endGag(noDecay) {
+    var g = S.gag; if (!g) return;
+    S.gag = null;
+    if (!noDecay && !g.liked) mem.gagW[g.k] = Math.max(0.4, (mem.gagW[g.k] === undefined ? 1 : mem.gagW[g.k]) * 0.96);
+  }
+  function likeGag() {
+    var g = S.gag; if (!g) return;
+    g.liked = true;
+    mem.gagW[g.k] = Math.min(4, (mem.gagW[g.k] === undefined ? 1 : mem.gagW[g.k]) + 0.6);
+    toast('Hij onthoudt dat jij "' + g.name.toLowerCase() + '" leuk vindt.'); save();
+  }
+  function gagTick() {
+    eyeL = eyeR = 1; fxNoBlink = false; fxSpiral = false; fxTongue = false; fdx = fdy = frot = 0; fsc = 1;
+    var g = S.gag;
+    if (g) {
+      var d = GAGS[g.k];
+      if (T >= g.end || S.asleep || (S.cam && S.cam.dist <= 600) || S.traj || S.tunnel || (!d.drive && S.speed >= 3) || (d.drive && !d.idle && S.speed < 3)) { endGag(); g = null; }
+      else d.upd(g, T - g.t0);
+    }
+    /* leaning into bends: head tilts outward, eyes look where you are going */
+    var Lc = clamp(S.latG / 0.35, -1, 1);
+    if (!S.asleep && Math.abs(Lc) > .08) { frot -= Lc * .3; fdx -= Lc * 10; fdy += Math.abs(Lc) * 3; if (!g) dir(Lc * .9, .05); }
+    if (S.dizzyUntil > T) { fxSpiral = true; }
+    if (S.hop > 0) fdy -= Math.sin(S.hop * Math.PI) * 14;
+    if (S.music && !S.asleep && !S.gag) { fdx += Math.sin(T * 4) * 4; frot += Math.sin(T * 4) * .05; fdy -= S.beat * 5; if (S.beat > .95) note(rand(60, 180), 70); }
+    /* breathing and a slow sway, so even doing nothing looks alive */
+    if (!reduce && !S.asleep) { fsc = 1 + Math.sin(T * 1.9) * .012; frot += Math.sin(T * .6) * .015; }
+    if (S.asleep) fsc = 1 + Math.sin(T * 1.1) * .02;
+    if (S.flagUntil > T) { var fa = Math.min(1, (S.flagUntil - T) * 3, (5 - (S.flagUntil - T)) * 3 + .01); fdx -= 14 * fa; fdy += 6 * fa; fsc *= 1 - .09 * fa; }
+    if (reduce) { fdx *= .3; fdy *= .3; frot *= .3; }
+  }
+  function faceBegin() {
+    ctx.save(); ctx.translate(120 + fdx, 120 + fdy); ctx.rotate(frot); ctx.scale(fsc, fsc); ctx.translate(-120, -120);
+  }
+  function faceEnd() { ctx.restore(); }
+  function spiral(cx, cy, side) {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(T * 7 * side);
+    ctx.strokeStyle = EYE; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.beginPath();
+    for (var a = 0; a < 12.5; a += .25) { var r = a * 1.9; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    ctx.stroke(); ctx.restore();
+  }
+  function gagDraw() {
+    var g = S.gag; if (!g) return;
+    GAGS[g.k].draw && GAGS[g.k].draw(g, T - g.t0);
+    if (fxTongue) {
+      ctx.fillStyle = BLUSH; ctx.beginPath(); ctx.ellipse(120, 182, 8, 11, 0, 0, Math.PI); ctx.fill();
+      ctx.strokeStyle = SCREEN; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(120, 178); ctx.lineTo(120, 188); ctx.stroke();
+    }
+  }
+  function flagDraw() {
+    var left = S.flagUntil - T; if (left <= 0) return;
+    var a = Math.min(1, left * 3, (5 - left) * 3 + .01);
+    ctx.save(); ctx.globalAlpha = a;
+    var ox = (1 - a) * 30;
+    /* pole in a little hand */
+    ctx.strokeStyle = EYE; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(212 + ox, 178); ctx.lineTo(188 + ox, 28); ctx.stroke();
+    ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(212 + ox, 178, 8, 0, TAU); ctx.fill();
+    ctx.fillStyle = SCREEN; ctx.beginPath(); ctx.arc(212 + ox, 178, 3, 0, TAU); ctx.fill();
+    /* checkered cloth that waves */
+    var cw = 10, ch = 9, cols = 6, rows = 3, wv = reduce ? 0 : 1;
+    for (var c = 0; c < cols; c++) for (var r = 0; r < rows; r++) {
+      var w = Math.sin(T * 10 - c * .9) * 3 * (c / cols) * wv;
+      ctx.fillStyle = (c + r) % 2 ? '#222831' : '#FFFFFF';
+      ctx.fillRect(188 + ox - (c + 1) * cw + 0.5, 29 + r * ch + w, cw - .5, ch - .5);
+    }
+    ctx.fillStyle = EYE; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '700 15px "Chakra Petch", sans-serif';
+    ctx.fillText('0→100  ' + S.flagMsg, 120, 214);
+    if (S.flagRec) { ctx.fillStyle = HEART; ctx.font = '700 12px "Chakra Petch", sans-serif'; ctx.fillText('NIEUW RECORD', 120, 200); }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+  }
+
+  /* ---------- Talking: a small rule-based brain (no internet needed) ---------- */
+  var JOKES = [
+    'Waarom nam de auto geen koffie? Hij was al opgeladen.',
+    'Ik vroeg de rotonde hoe het ging. Hij zei: ik draai er niet omheen.',
+    'Waarom is de snelweg nooit eenzaam? Er rijdt altijd iemand met je mee.',
+    'Wat zei het stoplicht tegen de auto? Kijk niet, ik ben aan het omkleden.',
+    'Wat is het lievelingsdier van een auto? De uit-laat-gazelle. Sorry.'
+  ];
+  var FALLBACK = ['Dat snap ik nog niet helemaal.', 'Hm, daar heb ik nog geen antwoord op.', 'Ik ben nog aan het leren. Probeer het anders te zeggen?'];
+  function norm(t) { return t.toLowerCase().replace(/[^a-z0-9à-ÿ ]/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function who() { return mem.me ? mem.me : 'jij'; }
+  function trick(k, text) { startGag(k); return text; }
+  function localReply(raw) {
+    var t = norm(raw), m;
+    if (!t) return null;
+    /* things you can teach him */
+    if ((m = t.match(/^als ik (.+?) zeg (?:dan )?zeg jij (.+)$/))) {
+      mem.taught = mem.taught.filter(function (x) { return x.q !== m[1]; });
+      mem.taught.push({ q: m[1], a: m[2] }); if (mem.taught.length > 40) mem.taught.shift(); save();
+      return { k: 'cmd', t: 'Onthouden! Als je "' + m[1] + '" zegt, zeg ik "' + m[2] + '".' };
+    }
+    if ((m = t.match(/^onthoud (?:dat )?(.+)$/))) { mem.notes.push(m[1]); if (mem.notes.length > 30) mem.notes.shift(); save(); return { k: 'cmd', t: 'Ik onthoud: ' + m[1] + '.' }; }
+    if ((m = t.match(/(?:je heet vanaf nu|ik noem je|jouw naam is|je naam is|noem jezelf) (.+)$/))) {
+      mem.name = m[1].replace(/\b\w/g, function (c) { return c.toUpperCase(); }).slice(0, 18); save();
+      return { k: 'cmd', t: 'Leuk! Ik heet nu ' + mem.name + '.' };
+    }
+    if ((m = t.match(/(?:ik heet|mijn naam is|noem mij) (.+)$/))) {
+      mem.me = m[1].replace(/\b\w/g, function (c) { return c.toUpperCase(); }).slice(0, 18); save();
+      return { k: 'cmd', t: 'Aangenaam, ' + mem.me + '! Ik onthoud het.' };
+    }
+    if ((m = t.match(/ik ben jarig (?:op )?(\d{1,2}) (januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)/)) && +m[1] >= 1 && +m[1] <= 31) {
+      mem.bday = { d: +m[1], m: MONTHS[m[2]] }; save();
+      return { k: 'cmd', t: 'Ik onthoud het: jij bent jarig op ' + m[1] + ' ' + m[2] + '. Dan geef ik een feestje!' };
+    }
+    for (var i = 0; i < mem.taught.length; i++) if (t === mem.taught[i].q) return { k: 'cmd', t: mem.taught[i].a };
+    for (var j = 0; j < mem.taught.length; j++) if (mem.taught[j].q.length > 3 && t.indexOf(mem.taught[j].q) >= 0) return { k: 'cmd', t: mem.taught[j].a };
+    /* tricks */
+    if (/dans/.test(t)) return { k: 'cmd', t: trick('dance', 'Kijk maar!') };
+    if (/zing|lied|deuntje/.test(t)) return { k: 'cmd', t: trick('hum', 'Ik doe mijn best.') };
+    if (/knipoog/.test(t)) return { k: 'cmd', t: trick('wink', ';)') };
+    if (/tong/.test(t)) return { k: 'cmd', t: trick('tongue', 'Bleh.') };
+    if (/nies|hatsj/.test(t)) return { k: 'cmd', t: trick('sneeze', 'Even kijken of dat lukt…') };
+    if (/bel blazen|bubbel|zeepbel/.test(t)) return { k: 'cmd', t: trick('bubble', 'Komt eraan.') };
+    if (/hik/.test(t)) return { k: 'cmd', t: trick('hiccup', 'Hik!') };
+    if (/vlieg/.test(t)) return { k: 'cmd', t: trick('fly', 'Waar?') };
+    if (/staar|wie knippert/.test(t)) return { k: 'cmd', t: trick('stare', 'Daar gaan we.') };
+    if (/verras|doe iets|iets leuks|grapje doen|doe een grapje/.test(t)) { startGag(pick(Object.keys(GAGS).filter(function (k) { return GAGS[k].idle; }))); return { k: 'cmd', t: 'Even kijken…' }; }
+    if (/welterusten|ga slapen|slaap lekker|ga maar slapen/.test(t)) { S.idle = 71 * ix(); return { k: 'cmd', t: 'Slaap lekker. Tik op me als je weer weg wilt.' }; }
+    /* knowledge about you */
+    if (/wat weet je (over|van) (mij|me)|wat heb je (van mij )?geleerd/.test(t)) {
+      var bits = [];
+      if (mem.me) bits.push('je heet ' + mem.me);
+      bits.push('je rijdt gemiddeld ' + Math.round(mem.avg) + ' km/h');
+      if (mem.trips) bits.push('we hebben ' + mem.trips + ' ritten gereden');
+      if (mem.best) bits.push('je snelste 0→100 is ' + fmt1(mem.best) + ' s');
+      if (mem.notes.length) bits.push('je zei: ' + mem.notes.slice(-2).join('; '));
+      return { k: 'chat', t: 'Dit weet ik: ' + bits.join(', ') + '.' };
+    }
+    if (/hoe heet ik|wat is mijn naam/.test(t)) return { k: 'chat', t: mem.me ? 'Je heet ' + mem.me + '.' : 'Dat weet ik nog niet. Zeg "ik heet …".' };
+    if (/hoe heet je|wie ben je|wat is je naam/.test(t)) return { k: 'chat', t: 'Ik ben ' + mem.name + ', het robotje op jouw dashboard.' };
+    if (/wat kun je|wat kan je|wat doe je|help/.test(t)) return { k: 'chat', t: 'Ik reageer op hoe je rijdt, waarschuw voor flitsers, onthoud je gewoontes, doe grapjes en praat een beetje. Probeer: "doe een dansje", "vertel een grap" of "wat weet je over mij".' };
+    if (/record|0 naar 100|0 100|snelste/.test(t)) return { k: 'chat', t: mem.best ? 'Je snelste 0→100 is ' + fmt1(mem.best) + ' s. Kun je dat verbeteren?' : 'Ik heb nog geen 0→100 gemeten. Geef maar vol gas, als het veilig en toegestaan is.' };
+    if (/hoeveel ritten|hoe vaak gereden/.test(t)) return { k: 'chat', t: 'Samen hebben we ' + mem.trips + ' ritten gereden, zo’n ' + fmt1(mem.km) + ' km.' };
+    if (/hoe laat/.test(t)) { var d = new Date(); return { k: 'chat', t: 'Het is ' + fmt(d.getHours() + d.getMinutes() / 60) + '.' }; }
+    if (/welke dag|welke datum|hoeveel is het vandaag/.test(t)) return { k: 'chat', t: 'Vandaag is het ' + new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }) + '.' };
+    if (/flitser|trajectcontrole|boete|mobiele/.test(t)) return { k: 'chat', t: 'Ik waarschuw voor vaste flitsers en trajectcontroles uit OpenStreetMap. Mobiele controles ken ik niet. Houd je dus gewoon aan de limiet.' };
+    if (/weer|regen|zon/.test(t)) return { k: 'chat', t: 'Het weer weet ik niet. Ik heb geen internet nodig, maar dat is dus ook mijn zwakte.' };
+    /* feelings and small talk */
+    if (/grap|mop|lach/.test(t)) { var jk = pick(JOKES); startGag('wink'); return { k: 'chat', t: jk }; }
+    if (/hoe gaat het|hoe is het|hoe voel je|alles goed/.test(t)) {
+      var st = S.energy < 30 ? 'Een beetje moe.' : S.love > 60 ? 'Heel goed, ik voel me geliefd.' : S.idle > 30 ? 'Een beetje verveeld, eerlijk gezegd.' : 'Prima!';
+      return { k: 'chat', t: st + ' Energie ' + Math.round(S.energy) + ', genegenheid ' + Math.round(S.love) + '.' };
+    }
+    if (/hou van je|lief|schattig|leuk|geweldig|top|knap|mooi|beste/.test(t)) { S.love = Math.min(100, S.love + 10); setEv('love', 2.4); beep('pet'); return { k: 'chat', t: 'Dankjewel' + (mem.me ? ', ' + mem.me : '') + '! Jij ook.' }; }
+    if (/stom|dom|saai|lelijk|hekel/.test(t)) { setEv('worried', 2.6); return { k: 'chat', t: 'Auw. Dat komt aan in mijn pixels.' }; }
+    if (/bedankt|dankje|dank je|thanks|dankjewel/.test(t)) return { k: 'chat', t: 'Graag gedaan!' };
+    if (/^(hoi|hallo|hey|hee|hi|yo|goedemorgen|goedemiddag|goedenavond|goedenacht)/.test(t)) { setEv('happy', 2); beep('wake'); return { k: 'chat', t: 'Hoi' + (mem.me ? ' ' + mem.me : '') + '! Waar gaan we heen?' }; }
+    if (/^(ja|nee|ok|oke|prima|goed|haha|hihi)$/.test(t)) return { k: 'chat', t: 'Hihi.' };
+    return null;
+  }
+  function remember(u) { mem.unknown.push(u.slice(0, 60)); if (mem.unknown.length > 8) mem.unknown.shift(); save(); }
+  var logEl = $('log'), chatIn = $('chatIn'), chatSend = $('chatSend'), turns = [], claudeAsk = null, busy = false, ctl = null;
+  function addMsg(cls, text) {
+    var el = document.createElement('div'); el.className = 'msg ' + cls; el.textContent = text;
+    logEl.appendChild(el);
+    while (logEl.children.length > 40) logEl.removeChild(logEl.firstChild);
+    logEl.scrollTop = logEl.scrollHeight;
+    return el;
+  }
+  function claudePrompt() {
+    var d = new Date();
+    return 'Je bent ' + mem.name + ', een schattig klein robotje op het dashboard van een Tesla Model Y. Je praat Nederlands, warm en speels, in maximaal twee korte zinnen, zonder opsommingen en zonder emoji’s. ' +
+      'Je weet alleen dit: ' + (mem.me ? 'de bestuurder heet ' + mem.me + '; ' : '') + 'hij rijdt gemiddeld ' + Math.round(mem.avg) + ' km/h; ' + mem.trips + ' ritten samen; ' +
+      (mem.best ? 'zijn snelste 0 naar 100 is ' + fmt1(mem.best) + ' seconden; ' : '') + 'het is nu ' + fmt(d.getHours() + d.getMinutes() / 60) + '; je energie is ' + Math.round(S.energy) + ' van 100 en je genegenheid ' + Math.round(S.love) + ' van 100. ' +
+      (mem.notes.length ? 'Dit heeft de bestuurder je gevraagd te onthouden: ' + mem.notes.slice(-5).join('; ') + '. ' : '') +
+      'Je kunt niet rijden, niets bedienen en geen actuele informatie opzoeken. Bij onbekende feiten zeg je dat eerlijk. Moedig nooit te hard rijden aan. Je praat alleen als de auto stilstaat.';
+  }
+  function chatAllowed() { return S.speed < 1 && !S.asleep || (S.asleep && S.speed < 1); }
+  function submitChat(text) {
+    text = (text || '').trim();
+    if (!text || busy) return;
+    if (S.speed >= 1) { addMsg('sys', 'Praten kan alleen als de auto stilstaat.'); return; }
+    if (S.asleep) wake();
+    S.idle = 0;
+    addMsg('me', text);
+    var r = localReply(text), useClaude = claudeAsk && $('claudeOn').checked && !(r && r.k === 'cmd');
+    if (!useClaude) {
+      var out = r ? r.t : pick(FALLBACK) + (Math.random() < .5 ? ' Leer het me: zeg "als ik X zeg, zeg jij Y".' : '');
+      if (!r) remember(text);
+      addMsg('bot', out); turns.push({ role: 'user', content: text }, { role: 'assistant', content: out });
+      if (!r) setEv('worried', 1.4); else if (r.k === 'chat' && !S.ev) setEv('happy', 1.6);
+      return;
+    }
+    busy = true; chatSend.disabled = true; chatIn.value = '';
+    var bubble = addMsg('bot', 'Even denken…');
+    ctl = new AbortController();
+    var hist = turns.slice(-8);
+    var input = [{ role: 'user', content: claudePrompt() + '\n\nDe bestuurder zegt hieronder iets. Antwoord als ' + mem.name + '.' }, { role: 'assistant', content: 'Begrepen. Ik antwoord kort en lief.' }].concat(hist, [{ role: 'user', content: text }]);
+    claudeAsk(input, { cache: false, modelTier: 'quick', signal: ctl.signal, onText: function (o) { bubble.textContent = o.text; logEl.scrollTop = logEl.scrollHeight; } }).then(function (res) {
+      bubble.textContent = res.text || '…'; turns.push({ role: 'user', content: text }, { role: 'assistant', content: res.text });
+      setEv('happy', 1.6);
+    }, function (e) {
+      var fallback = r ? r.t : pick(FALLBACK);
+      bubble.textContent = (e && e.code === 'not_granted') ? 'Zonder toestemming kan ik niet via Claude praten. ' + fallback : (e && e.code === 'cancelled') ? '…' : fallback;
+      if (e && e.code === 'not_granted') { $('claudeOn').checked = false; }
+      turns.push({ role: 'user', content: text }, { role: 'assistant', content: bubble.textContent });
+    }).then(function () { busy = false; ctl = null; });
+  }
+  $('chatForm').addEventListener('submit', function (e) { e.preventDefault(); var v = chatIn.value; chatIn.value = ''; submitChat(v); });
+  (function () {
+    var C = ['Hoi!', 'Vertel een grap', 'Doe een dansje', 'Wat weet je over mij?', 'Hoe gaat het?', 'Wat kun je?'];
+    var box = $('chips');
+    C.forEach(function (c) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = c;
+      b.addEventListener('click', function () { submitChat(c); });
+      box.appendChild(b);
+    });
+    addMsg('sys', 'Typ iets of tik op een knop. Alleen als de auto stilstaat.');
+    try {
+      if (window.claude && window.claude.use) {
+        window.claude.use('sample').then(function (f) {
+          if (f) { claudeAsk = f; $('claudeRow').hidden = false; $('claudeNote').hidden = false; $('claudeNote').textContent = 'Zet dit aan voor echte gesprekken. Je geeft dan per bericht je zin en een paar gegevens (naam, gemiddelde snelheid, ritten) aan Claude. Trucjes zoals dansen en onthouden blijven lokaal. Zonder internet valt hij terug op zijn eigen minibrein.'; }
+        }, function () {});
+      }
+    } catch (e) {}
+  })();
+  var lastFacts = -9, lastChatState = null;
+  function renderFacts() {
+    var ul = $('facts'), L = [], ch = character();
+    L.push('<b>Naam:</b> ' + esc(mem.name) + (mem.me ? ' · jij bent ' + esc(mem.me) : ''));
+    L.push('<b>Karakter:</b> ' + ch.label + ' (waaghalsfactor ' + ch.thrill + ' van 100). Dit past zich aan hoe jij rijdt.');
+    L.push('<b>Ritten:</b> ' + mem.trips + ' · ' + fmt1(mem.km) + ' km samen');
+    var tot = mem.sh.reduce(function (a, c) { return a + c; }, 0), bi = 0;
+    for (var i = 1; i < 15; i++) if (mem.sh[i] > mem.sh[bi]) bi = i;
+    L.push(tot > 60 ? '<b>Meest gereden snelheid:</b> ' + (bi * 10) + '–' + (bi * 10 + 10) + ' km/h' : '<b>Snelheid:</b> nog te weinig gereden om je patroon te zien');
+    L.push(mem.stops >= 2 ? '<b>Je blijft gemiddeld</b> ' + fmtDur(mem.stopAvg) + ' staan voor je vertrekt' : '<b>Stilstaan:</b> nog te weinig vertrekken gezien');
+    L.push('<b>Remmen:</b> ' + (mem.nBrake < 3 ? 'nog aan het afwachten' : mem.brake < 12 ? 'zacht' : mem.brake < 22 ? 'normaal' : 'stevig') + (mem.nBrake >= 3 ? ' — hij schrikt pas bij meer dan ' + Math.round(startleAt()) + ' km/h per seconde' : ''));
+    L.push('<b>Snelste 0→100:</b> ' + (mem.best ? fmt1(mem.best) + ' s (' + mem.launches + ' keer snel gestart)' : 'nog niet gemeten'));
+    var fav = Object.keys(mem.gagW).filter(function (k) { return mem.gagW[k] > 1.1 && GAGS[k]; }).sort(function (a, b) { return mem.gagW[b] - mem.gagW[a]; }).slice(0, 3).map(function (k) { return GAGS[k].name.toLowerCase(); });
+    L.push('<b>Favoriete grapjes:</b> ' + (fav.length ? fav.join(', ') : 'nog geen. Tik op zijn gezicht tijdens een grapje dat je leuk vindt.'));
+    if (mem.taught.length) L.push('<b>Door jou geleerd:</b> ' + mem.taught.length + ' zinnetje' + (mem.taught.length > 1 ? 's' : '') + (mem.notes.length ? ' en ' + mem.notes.length + (mem.notes.length > 1 ? ' dingen' : ' ding') + ' om te onthouden' : ''));
+    if (mem.unknown.length) L.push('<b>Nog niet begrepen:</b> “' + esc(mem.unknown.slice(-3).join('”, “')) + '”');
+    ul.innerHTML = L.map(function (x) { return '<li>' + x + '</li>'; }).join('');
+  }
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function chatState() {
+    var ok = S.speed < 1;
+    if (ok === lastChatState) return; lastChatState = ok;
+    chatIn.disabled = !ok; if (!busy) chatSend.disabled = !ok;
+    chatIn.placeholder = ok ? 'Zeg iets tegen hem' : 'Praten kan alleen als we stilstaan';
+    Array.prototype.forEach.call($('chips').children, function (b) { b.disabled = !ok; });
+  }
+
+  /* ---------- Face drawing ---------- */
+  var cv = $('face'), ctx = cv.getContext('2d'), SC = cv.width / 240;
+  var gx = 0, gy = 0, tgx = 0, tgy = 0, nextGaze = 0, nextBlink = 2, blinkStart = -1, blink = 1;
+  var parts = [], pTimer = 0;
+  var curKey = 'neutral', lastKey = '';
+
+  function newGaze(key) {
+    if (key === 'startled' || key === 'focused' || key === 'excited' || key === 'love' || key === 'happy' || key === 'alert') { tgx = 0; tgy = -0.05; nextGaze = T + 0.6; }
+    else if (key === 'bored') { tgx = (Math.random() < .5 ? -1 : 1) * rand(.6, 1); tgy = rand(-.5, .5); nextGaze = T + rand(.8, 1.8); }
+    else if (key === 'anticipate') { tgx = (Math.random() < .5 ? -1 : 1) * .9; tgy = -.6; nextGaze = T + rand(.5, 1); }
+    else if (key === 'sleepy' || key === 'sleeping' || key === 'yawn') { tgx = rand(-.2, .2); tgy = .5; nextGaze = T + rand(1.5, 3); }
+    else if (key === 'relaxed' || key === 'neutral' && S.speed >= 1) { tgx = rand(-.25, .25); tgy = -.1 + rand(-.1, .1); nextGaze = T + rand(.8, 2); }
+    else { tgx = rand(-.5, .5); tgy = rand(-.3, .3); nextGaze = T + rand(1.5, 3.5); }
+  }
+
+  function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function eye(cx, cy, side) {
+    var p = cur;
+    var w = 44 * p.scale, h = Math.max(3, 62 * p.open * p.scale * blink * (side === 1 ? eyeR : eyeL));
+    var x = cx - w / 2, y = cy - h / 2, r = Math.min(w, h) / 2 * 0.85;
+    ctx.save();
+    rr(x, y, w, h, r); ctx.clip();
+    ctx.fillStyle = EYE; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+    ctx.fillStyle = SCREEN;
+    if (p.lid > 0.01 || Math.abs(p.tilt) > 0.01) {
+      var cov = p.lid * h, tl = p.tilt * h * 0.38;
+      var yl = y + cov + (side === -1 ? -tl : tl), yr = y + cov + (side === -1 ? tl : -tl);
+      ctx.beginPath(); ctx.moveTo(x - 4, y - 4); ctx.lineTo(x + w + 4, y - 4); ctx.lineTo(x + w + 4, yr); ctx.lineTo(x - 4, yl); ctx.closePath(); ctx.fill();
+    }
+    if (p.squint > 0.01) {
+      ctx.beginPath(); ctx.ellipse(cx, cy + h * (1.05 - p.squint * 0.7), w * 0.85, h * 0.55, 0, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function mouth(oy) {
+    var p = cur, cx = 120, cy = 170 + oy * 0.5;
+    ctx.lineCap = 'round'; ctx.strokeStyle = EYE; ctx.fillStyle = EYE; ctx.lineWidth = 5;
+    if (p.mo > 0.05) {
+      ctx.beginPath(); ctx.ellipse(cx, cy + 2, 6 + 5 * p.mo, 3 + 10 * p.mo, 0, 0, TAU); ctx.fill();
+    }
+    var m = p.mouth, hw = 12 + 8 * Math.abs(m);
+    ctx.globalAlpha = 1 - Math.min(1, p.mo);
+    ctx.beginPath(); ctx.moveTo(cx - hw, cy); ctx.quadraticCurveTo(cx, cy + m * 18, cx + hw, cy); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  function heart(x, y, s) {
+    ctx.beginPath(); ctx.moveTo(x, y + s * .35);
+    ctx.bezierCurveTo(x - s, y - s * .3, x - s * .5, y - s * 1.1, x, y - s * .5);
+    ctx.bezierCurveTo(x + s * .5, y - s * 1.1, x + s, y - s * .3, x, y + s * .35);
+    ctx.fill();
+  }
+  function spark(x, y, s) {
+    ctx.beginPath();
+    for (var i = 0; i < 8; i++) { var a = i * Math.PI / 4, r = i % 2 ? s * .3 : s; ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
+    ctx.closePath(); ctx.fill();
+  }
+
+  function spawn(dt) {
+    if (reduce) return;
+    pTimer -= dt; if (pTimer > 0) return;
+    if (curKey === 'love') { parts.push({ k: 'h', x: 120 + rand(-50, 50), y: 78, vx: rand(-6, 6), vy: -rand(22, 36), l: 0, m: 1.6, s: rand(5, 9) }); pTimer = .22; }
+    else if (curKey === 'excited') { parts.push({ k: 's', x: 120 + rand(-85, 85), y: rand(40, 120), vx: 0, vy: -rand(2, 8), l: 0, m: .9, s: rand(4, 8) }); pTimer = .14; }
+    else if (curKey === 'sleeping') { parts.push({ k: 'z', x: 158, y: 78, vx: 8, vy: -14, l: 0, m: 2.4, s: 16 }); pTimer = 1.2; }
+  }
+
+  function render(dt) {
+    var tg = P[curKey], k = 1 - Math.exp(-dt * 11);
+    for (var n in tg) cur[n] += (tg[n] - cur[n]) * k;
+    if (T > nextGaze) newGaze(curKey);
+    var kg = 1 - Math.exp(-dt * 9);
+    gx += (tgx - gx) * kg; gy += (tgy - gy) * kg;
+
+    blink = 1;
+    if (curKey !== 'sleeping' && !fxNoBlink) {
+      if (T > nextBlink) { blinkStart = T; nextBlink = T + rand(2.2, 5.5); }
+      var bt = (T - blinkStart) / 0.16;
+      if (bt >= 0 && bt < 1) blink = 1 - 0.92 * Math.sin(Math.PI * bt);
+    }
+
+    ctx.setTransform(SC, 0, 0, SC, 0, 0);
+    ctx.fillStyle = SCREEN; ctx.fillRect(0, 0, 240, 240);
+    tunnelFx();
+    var ox = gx * 9, oy = gy * 7;
+    faceBegin();
+    if (fxSpiral) { spiral(73 + ox, 106 + oy, -1); spiral(167 + ox, 106 + oy, 1); }
+    else { eye(73 + ox, 106 + oy, -1); eye(167 + ox, 106 + oy, 1); }
+    if (cur.blush > 0.02) {
+      ctx.fillStyle = BLUSH; ctx.globalAlpha = cur.blush * 0.5;
+      ctx.beginPath(); ctx.ellipse(52 + ox * .5, 150, 14, 8, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(188 + ox * .5, 150, 14, 8, 0, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    mouth(oy);
+    faceEnd();
+    gagDraw();
+
+    spawn(dt);
+    for (var i = parts.length - 1; i >= 0; i--) {
+      var q = parts[i]; q.l += dt; q.x += q.vx * dt; q.y += q.vy * dt;
+      if (q.l > q.m) { parts.splice(i, 1); continue; }
+      var a = Math.min(1, q.l * 6) * (1 - q.l / q.m);
+      ctx.globalAlpha = a;
+      if (q.k === 'h') { ctx.fillStyle = HEART; heart(q.x, q.y, q.s); }
+      else if (q.k === 's') { ctx.fillStyle = EYE; spark(q.x, q.y, q.s); }
+      else if (q.k === 'c') { ctx.fillStyle = q.col; ctx.fillRect(q.x, q.y, q.s, q.s * .6); }
+      else if (q.k === 'd') { ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(q.x, q.y, q.s, 0, TAU); ctx.fill(); }
+      else if (q.k === 'n') { ctx.fillStyle = EYE; ctx.font = '700 ' + q.s + 'px sans-serif'; ctx.fillText('\u266A', q.x, q.y); }
+      else { ctx.fillStyle = EYE; ctx.font = '600 ' + (q.s * (1 + q.l / q.m * .6)) + 'px "Chakra Petch", sans-serif'; ctx.fillText('z', q.x, q.y); }
+      ctx.globalAlpha = 1;
+    }
+    flagDraw();
+    overlay(dt);
+  }
+
+  function sign(v) {
+    ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(120, 210, 17, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#D7352B'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(120, 210, 15, 0, TAU); ctx.stroke();
+    ctx.fillStyle = '#111111'; ctx.font = '700 14px "Chakra Petch", sans-serif'; ctx.fillText(v == null ? '–' : String(v), 120, 211);
+  }
+  function ring(p, color) {
+    ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.25; ctx.beginPath(); ctx.arc(120, 120, 112, 0, TAU); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(120, 120, 112, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(p, 0, 1)); ctx.stroke();
+  }
+  /* ---------- Own speed on the round screen ---------- */
+  function speedDraw() {
+    var mode = S.spdMode | 0;
+    if (!mode || S.asleep || S.flagUntil > T) return;
+    var v = Math.round(S.speed), camOn = S.cam && S.cam.dist <= 600, lim = camOn && S.cam.limit != null ? S.cam.limit : S.roadLim;
+    var bad = lim != null && v > lim, col = bad ? HEART : EYE;
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (mode & 2) {
+      var a0 = Math.PI * .75, sweep = Math.PI * 1.5, f = clamp(S.speed / 140, 0, 1);
+      ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.strokeStyle = EYE; ctx.globalAlpha = .16; ctx.beginPath(); ctx.arc(120, 120, 106, a0, a0 + sweep); ctx.stroke();
+      if (f > 0.005) { ctx.strokeStyle = col; ctx.globalAlpha = .9; ctx.beginPath(); ctx.arc(120, 120, 106, a0, a0 + sweep * f); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
+    if (mode & 1) {
+      ctx.fillStyle = col; ctx.globalAlpha = S.speed < 1 ? .55 : 1;
+      if (S.traj) { ctx.font = '700 15px "Chakra Petch", sans-serif'; ctx.fillText(v + ' km/h', 120, 50); }
+      else if (camOn) { ctx.font = '700 24px "Chakra Petch", sans-serif'; ctx.fillText(String(v), 152, 210); }
+      else {
+        ctx.font = '700 26px "Chakra Petch", sans-serif'; ctx.fillText(String(v), 120, 205);
+        ctx.font = '600 9px "Chakra Petch", sans-serif'; ctx.globalAlpha *= .6; ctx.fillText(S.roadLim != null ? 'MAX ' + S.roadLim : 'KM/H', 120, 222);
+      }
+    }
+    ctx.restore();
+  }
+  function overlay(dt) {
+    var pulse = 0.5 + 0.5 * Math.sin(T * 8);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '600 13px "Chakra Petch", sans-serif';
+    if (S.cam && S.cam.dist <= 600) {
+      var bad = ovr(Math.round(S.speed), S.cam.limit), col = bad ? HEART : EYE;
+      ctx.fillStyle = EYE; ctx.fillRect(116, 26, 8, 12);
+      rr(100, 12, 40, 18, 5); ctx.fillStyle = EYE; ctx.fill();
+      ctx.fillStyle = SCREEN; ctx.beginPath(); ctx.arc(112, 21, 5, 0, TAU); ctx.fill();
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(112, 21, 2.5, 0, TAU); ctx.fill();
+      ctx.globalAlpha = bad && !reduce ? 0.35 + 0.65 * pulse : 1;
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(131, 21, 2.5, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = EYE; ctx.font = '600 13px "Chakra Petch", sans-serif';
+      ctx.fillText(Math.max(0, Math.round(S.cam.dist / 10) * 10) + ' m', 120, 50);
+      ctx.save(); ctx.translate(-36, 0); sign(S.cam.limit); ctx.restore();
+      ring(1 - S.cam.dist / 600, col);
+    }
+    if (S.traj) {
+      var avg = trajAvg(), bad2 = ovr(avg, S.traj.limit), col2 = bad2 ? HEART : EYE;
+      ring(S.traj.done / S.traj.len, col2);
+      ctx.fillStyle = col2; ctx.font = '600 13px "Chakra Petch", sans-serif';
+      ctx.fillText('A \u203A B', 120, 30);
+      ctx.font = '700 15px "Chakra Petch", sans-serif';
+      ctx.fillText('\u00D8 ' + Math.round(avg) + ' / ' + (S.traj.limit != null ? S.traj.limit : '?'), 120, 210);
+    }
+    speedDraw();
+    if (S.flash > 0) {
+      ctx.fillStyle = '#FFFFFF'; ctx.globalAlpha = Math.min(1, S.flash) * (reduce || S.live ? 0.3 : 1);
+      ctx.fillRect(0, 0, 240, 240); ctx.globalAlpha = 1;
+      S.flash = Math.max(0, S.flash - dt * 2.2);
+    }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  }
+
+  /* ---------- UI ---------- */
+  var lastUI = -1;
+  function updateUI() {
+    $('spd').textContent = Math.round(S.speed);
+    var e = Math.round(S.energy), b = Math.round(clamp(S.idle / 30, 0, 1) * 100), l = Math.round(S.love);
+    $('mEnergy').style.width = e + '%'; $('vEnergy').textContent = e;
+    $('mBored').style.width = b + '%'; $('vBored').textContent = b;
+    $('mLove').style.width = l + '%'; $('vLove').textContent = l;
+    $('bSleep').textContent = S.asleep ? 'Wakker maken' : 'Laat slapen';
+    var dm = Math.floor(S.driveT);
+    $('vDrive').textContent = Math.floor(dm / 60) + 'u' + (dm % 60 < 10 ? '0' : '') + (dm % 60);
+    $('mDrive').style.width = clamp(S.driveT / 120, 0, 1) * 100 + '%';
+    $('mStyle').style.width = Math.round(S.style) + '%'; $('vStyle').textContent = Math.round(S.style);
+    chatState();
+    if (T - lastFacts > 1.5) { lastFacts = T; renderFacts(); }
+    $('bCam').textContent = S.cam ? 'Flitser annuleren' : 'Flitser vooruit';
+    $('bTraj').textContent = S.traj ? 'Traject annuleren' : 'Trajectcontrole';
+  }
+  var baseThought = '', shownThought = '', shownName = '';
+  function updateMood() {
+    var nm = S.gag && !(S.ev && T < S.evUntil) ? S.gag.name : S.flagUntil > T ? 'Startvlag' : NAMES[curKey];
+    if (nm !== shownName) { shownName = nm; $('moodName').textContent = nm; }
+    if (curKey !== lastKey) {
+      lastKey = curKey;
+      baseThought = curKey === 'worried'
+        ? 'Sneller dan normaal. Jij rijdt meestal ' + Math.round(mem.avg) + '.'
+        : pick(THOUGHTS[curKey]);
+    }
+    var msg = contextMsg() || baseThought;
+    if (msg !== shownThought) { shownThought = msg; $('thought').textContent = msg; }
+  }
+
+  function drawHist() {
+    var h = $('hist'), m = Math.max(1, maxHours()), cl = Math.floor(S.hour) % 24;
+    if (!h.children.length) for (var i = 0; i < 24; i++) h.appendChild(document.createElement('i'));
+    for (var j = 0; j < 24; j++) {
+      var el = h.children[j], v = mem.hours[j];
+      el.style.setProperty('--v', (v / m).toFixed(3));
+      el.className = (maxHours() >= 3 && v >= 0.5 * maxHours() ? 'hot ' : '') + (j === cl ? 'now' : '');
+    }
+    var sum = mem.hours.reduce(function (a, c) { return a + c; }, 0);
+    h.setAttribute('aria-label', 'Vertrekken per uur van de dag, ' + sum + ' in totaal');
+    $('chip').textContent = sum + ' vertrekken onthouden' + (mem.example ? ' (inclusief voorbeelddata)' : '') + '. Gemiddelde snelheid onderweg: ' + Math.round(mem.avg) + ' km/h.';
+  }
+  function updateInsight() {
+    var m = maxHours(), el = $('insight');
+    if (m < 3) { el.textContent = 'Nog te weinig ritjes om iets te leren. Laat hem een paar keer vertrekken.'; return; }
+    var hot = [];
+    for (var i = 0; i < 24; i++) if (mem.hours[i] >= 0.5 * m) hot.push(fmt(i));
+    var list = hot.length > 1 ? hot.slice(0, -1).join(', ') + ' en ' + hot[hot.length - 1] : hot[0];
+    el.textContent = 'Hij verwacht je rond ' + list + '. Rijd je 25 km/h sneller dan jouw gemiddelde van ' + Math.round(mem.avg) + ', dan kijkt hij bezorgd.';
+  }
+
+  /* ---------- Controls ---------- */
+  var speedEl = $('speed');
+  speedEl.addEventListener('input', function () { S.target = +speedEl.value; S.maxDec = 12; S.maxAcc = 0; });
+  $('bGo').addEventListener('click', function () {
+    S.target = Math.min(130, Math.round(S.speed) + 45); S.maxDec = 12; speedEl.value = S.target;
+  });
+  $('bStop').addEventListener('click', function () { S.target = 0; S.maxDec = 12; speedEl.value = 0; });
+  $('bHard').addEventListener('click', function () { S.target = 0; S.maxDec = 60; speedEl.value = 0; });
+  $('bRocket').addEventListener('click', function () {
+    if (S.asleep) wake();
+    S.maxDec = 12; S.maxAcc = 17; S.target = 110; speedEl.value = 110;
+    toast('Raketstart! Hij meet hoe snel je op 100 komt.');
+  });
+  $('bLeft').addEventListener('click', function () { simBend(-1, 'bend'); });
+  $('bRight').addEventListener('click', function () { simBend(1, 'bend'); });
+  $('bRound').addEventListener('click', function () { simBend(1, 'round'); });
+  $('bBump').addEventListener('click', function () { bump(); });
+  $('bTunnel').addEventListener('click', function () { if (S.asleep) wake(); if (S.speed < 10) { S.target = 40; speedEl.value = 40; } S.simTunEnd = T + 6; toast('Tunnel van 6 seconden.'); });
+  $('bMic').addEventListener('click', micToggle);
+  $('bGag').addEventListener('click', function () {
+    if (S.asleep) wake();
+    S.gag = null; S.idle = Math.max(S.idle, 7 * ix());
+    startGag(); S.nextGag = T + 12;
+    if (!S.gag) toast('Nu even geen zin in een grapje.');
+  });
+  $('face').addEventListener('click', function () {
+    if (S.speed >= 1) return;
+    if (S.asleep) wake();
+    if (S.gag) likeGag();
+    mem.taps++;
+    S.idle = 0; S.love = Math.min(100, S.love + 15);
+    setEv('love', 2.4); beep('pet');
+  });
+  $('bSleep').addEventListener('click', function () {
+    if (S.asleep) { wake(); return; }
+    S.target = 0; speedEl.value = 0; S.idle = 71 * ix();
+  });
+  $('bSound').addEventListener('click', function () {
+    var b = $('bSound');
+    if (!sound) {
+      try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.resume) ac.resume(); sound = true; } catch (e) { sound = false; }
+    } else sound = false;
+    b.setAttribute('aria-pressed', sound ? 'true' : 'false');
+    b.textContent = 'Geluid: ' + (sound ? 'aan' : 'uit');
+    if (sound) beep('pet');
+  });
+  var clockEl = $('clock');
+  clockEl.value = S.hour; $('clockOut').textContent = fmt(S.hour);
+  clockEl.addEventListener('input', function () { S.hour = +clockEl.value; $('clockOut').textContent = fmt(S.hour); drawHist(); });
+  $('bDay').addEventListener('click', function () {
+    mem.hours[7]++; mem.hours[17]++;
+    mem.avg = (mem.avg * mem.cruise + 62 * 200) / (mem.cruise + 200); mem.cruise += 200;
+    save(); drawHist(); updateInsight(); toast('Voorbeelddag toegevoegd: vertrek om 07:00 en 17:00.');
+  });
+  $('bWipe').addEventListener('click', function () {
+    mem = fill({ hours: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], avg: 60, cruise: 0, example: false });
+    save(); drawHist(); updateInsight(); toast('Geheugen gewist.');
+  });
+
+  var SPDKEY = 'dashboardmaatje-snelheid-v1';
+  try { var sm = localStorage.getItem(SPDKEY); if (sm !== null && /^[0-3]$/.test(sm)) S.spdMode = +sm; } catch (e) {}
+  $('spdMode').value = String(S.spdMode);
+  $('spdMode').addEventListener('change', function () { S.spdMode = +$('spdMode').value; try { localStorage.setItem(SPDKEY, String(S.spdMode)); } catch (e) {} });
+  var limitEl = $('limit'), camOnEl = $('camOn');
+  S.roadLim = +limitEl.value;
+  limitEl.addEventListener('change', function () { if (!S.live) S.roadLim = +limitEl.value; });
+  camOnEl.addEventListener('change', function () {
+    S.camOn = camOnEl.checked;
+    if (!S.camOn) { S.cam = null; S.traj = null; }
+    toast(S.camOn ? 'Flitsmeldingen aan.' : 'Flitsmeldingen uit.');
+  });
+  $('bCam').addEventListener('click', function () {
+    if (!S.camOn) { toast('Zet eerst flitsmeldingen aan.'); return; }
+    if (S.cam) { S.cam = null; return; }
+    if (S.asleep) wake();
+    S.cam = { dist: 900, limit: +limitEl.value };
+    toast('Flitser ligt 900 m verder. Rijd door om erlangs te komen.');
+  });
+  $('bTraj').addEventListener('click', function () {
+    if (!S.camOn) { toast('Zet eerst flitsmeldingen aan.'); return; }
+    if (S.traj) { S.traj = null; return; }
+    if (S.asleep) wake();
+    S.traj = { len: 3000, done: 0, time: 0, sumV: 0, limit: +limitEl.value };
+    toast('Trajectcontrole gestart, 3 km. Houd het gemiddelde onder de limiet.');
+  });
+  $('bDrive').addEventListener('click', function () { S.driveT += 60; toast('Rijtijd +1 uur.'); });
+
+  /* ---------- Live phone GPS ---------- */
+  S.live = false; S.liveSpeed = 0; S.liveT = 0;
+  var watchId = null, lastPos = null, wakeLock = null, shownTag = 'GPS gesimuleerd', lastClk = 0, lastHr = -1;
+  var LIVE_LOCKED = ['speed', 'bGo', 'bStop', 'bHard', 'bRocket', 'bLeft', 'bRight', 'bRound', 'bBump', 'bTunnel', 'bCam', 'bTraj', 'bDrive', 'clock'];
+  function setTag(t) { if (t !== shownTag) { shownTag = t; $('gpsTag').textContent = t; } }
+  function hav(a, b, c, d) {
+    var R = 6371000, r = Math.PI / 180, dLa = (c - a) * r, dLo = (d - b) * r;
+    var x = Math.sin(dLa / 2) * Math.sin(dLa / 2) + Math.cos(a * r) * Math.cos(c * r) * Math.sin(dLo / 2) * Math.sin(dLo / 2);
+    return 2 * R * Math.asin(Math.sqrt(x));
+  }
+  function lockScreen() {
+    try {
+      if (navigator.wakeLock && navigator.wakeLock.request) {
+        navigator.wakeLock.request('screen').then(function (l) { wakeLock = l; }, function () {});
+      }
+    } catch (e) {}
+  }
+  function unlockScreen() { try { if (wakeLock) wakeLock.release(); } catch (e) {} wakeLock = null; }
+  document.addEventListener('visibilitychange', function () { if (S.live && document.visibilityState === 'visible') lockScreen(); });
+  function onPos(pos) {
+    var c = pos.coords, v = null;
+    if (typeof c.speed === 'number' && isFinite(c.speed) && c.speed >= 0) v = c.speed * 3.6;
+    else if (lastPos) {
+      var dt = (pos.timestamp - lastPos.t) / 1000;
+      if (dt > 0.5 && dt < 10) v = hav(lastPos.lat, lastPos.lon, c.latitude, c.longitude) / dt * 3.6;
+    }
+    var hdg = null;
+    if (typeof c.heading === 'number' && isFinite(c.heading) && v !== null && v >= 5) hdg = c.heading;
+    else if (hdgRef && gdist(hdgRef.lat, hdgRef.lon, c.latitude, c.longitude) >= 8) hdg = gbearing(hdgRef.lat, hdgRef.lon, c.latitude, c.longitude);
+    if (hdg !== null) {
+      if (lastHdg !== null && prevHdgT !== null && v !== null && v >= 8) {
+        var dtt = (pos.timestamp - prevHdgT) / 1000;
+        if (dtt > 0.4 && dtt < 4) S.turn = (((hdg - lastHdg + 540) % 360) - 180) / dtt;
+      } else if (v === null || v < 8) S.turn = 0;
+      prevHdgT = pos.timestamp; lastHdg = hdg;
+    }
+    if (!hdgRef || gdist(hdgRef.lat, hdgRef.lon, c.latitude, c.longitude) >= 8) hdgRef = { lat: c.latitude, lon: c.longitude };
+    lastPos = { t: pos.timestamp, lat: c.latitude, lon: c.longitude };
+    S.liveT = T;
+    clearGpsHelp();
+    if (v !== null && c.accuracy < 60) S.liveSpeed = v < 2 ? 0 : v;
+    camFix(c.latitude, c.longitude, c.accuracy, pos.timestamp / 1000);
+    setTag('GPS live \u00B7 \u00B1' + Math.round(c.accuracy) + ' m');
+  }
+  function onPosErr(e) {
+    if (e.code === 1) {
+      stopLive();
+      gpsHelp(/^https?:$/.test(location.protocol)
+        ? 'Locatie is geweigerd. Open in Chrome het menu, kies Instellingen, Site-instellingen, Locatie, en zet deze site op Toestaan. Controleer ook dat Locatie van je telefoon aanstaat.'
+        : 'Locatie werkt niet als je dit als los bestand opent. Open de pagina via het https-adres van je GitHub Pages-site.');
+    }
+    else if (e.code === 2) { setTag('GPS niet beschikbaar'); gpsHelp('De telefoon geeft geen locatie door. Zet Locatie aan in de snelle instellingen van je telefoon en ga naar buiten of bij een raam staan.'); }
+    else gpsHelp('Nog geen GPS-signaal. Ga naar buiten of bij een raam staan en wacht even.'), setTag('GPS zoekt\u2026');
+  }
+  function setLiveUI(on) {
+    var b = $('bLive');
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.textContent = 'Telefoon-GPS: ' + (on ? 'aan' : 'uit');
+    LIVE_LOCKED.forEach(function (id) { $(id).disabled = on; });
+    if (!on) setTag('GPS gesimuleerd');
+  }
+  function startLive() {
+    if (!navigator.geolocation) { toast('Deze browser kan geen locatie bepalen.'); return; }
+    if (window.isSecureContext === false) {
+      gpsHelp('Locatie werkt alleen via een https-adres. Zet de pagina online met GitHub Pages en open het https-adres.');
+      return;
+    }
+    S.live = true; S.cam = null; S.traj = null; S.liveSpeed = 0; S.liveT = T; lastPos = null;
+    S.roadLim = null; roadQ = null; roadWays = []; clearGpsHelp(); lastHdg = null; hdgRef = null; mon.cur = null; mon.traj = null; mon.handled = {};
+    setLiveUI(true); setTag('GPS zoekt\u2026'); lockScreen();
+    watchId = navigator.geolocation.watchPosition(onPos, onPosErr, { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 });
+  }
+  function stopLive() {
+    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    watchId = null; S.live = false; unlockScreen(); setLiveUI(false); S.roadLim = +$('limit').value;
+    S.cam = null; S.traj = null; mon.cur = null; mon.traj = null;
+    S.target = 0; speedEl.value = 0; S.maxDec = 12;
+  }
+  /*CAMS-BEGIN*/
+  var RAD = Math.PI / 180;
+  function gdist(la1, lo1, la2, lo2) {
+    var dLa = (la2 - la1) * RAD, dLo = (lo2 - lo1) * RAD;
+    var x = Math.sin(dLa / 2) * Math.sin(dLa / 2) + Math.cos(la1 * RAD) * Math.cos(la2 * RAD) * Math.sin(dLo / 2) * Math.sin(dLo / 2);
+    return 12742000 * Math.asin(Math.sqrt(x));
+  }
+  function gbearing(la1, lo1, la2, lo2) {
+    var y = Math.sin((lo2 - lo1) * RAD) * Math.cos(la2 * RAD);
+    var x = Math.cos(la1 * RAD) * Math.sin(la2 * RAD) - Math.sin(la1 * RAD) * Math.cos(la2 * RAD) * Math.cos((lo2 - lo1) * RAD);
+    return (Math.atan2(y, x) / RAD + 360) % 360;
+  }
+  function adiff(a, b) { var d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
+  function ovr(v, L) { return L != null && v > L; }
+  function parseLimit(v) { var m = /^\s*(\d{2,3})\s*(km\/h)?\s*$/.exec(String(v == null ? '' : v)); return m ? +m[1] : null; }
+
+  function parseCams(json) {
+    var els = (json && json.elements) || [], nodes = {}, rels = [], cams = [], trajs = [], used = {}, i;
+    for (i = 0; i < els.length; i++) {
+      if (els[i].type === 'node') nodes[els[i].id] = els[i];
+      else if (els[i].type === 'relation') rels.push(els[i]);
+    }
+    rels.forEach(function (r) {
+      var tg = r.tags || {}, from = null, to = null, devs = [];
+      (r.members || []).forEach(function (m) {
+        var n = m.type === 'node' ? nodes[m.ref] : null;
+        if (!n) return;
+        if (m.role === 'from') from = n; else if (m.role === 'to') to = n; else if (m.role === 'device') devs.push(n);
+      });
+      var lim = parseLimit(tg.maxspeed);
+      devs.forEach(function (d) { used[d.id] = true; });
+      if (tg.enforcement === 'average_speed' && from && to) {
+        trajs.push({ id: 'r' + r.id, from: { lat: from.lat, lon: from.lon }, to: { lat: to.lat, lon: to.lon }, limit: lim, len: gdist(from.lat, from.lon, to.lat, to.lon) });
+      } else {
+        devs.forEach(function (d) { cams.push({ id: 'n' + d.id, lat: d.lat, lon: d.lon, limit: lim != null ? lim : parseLimit((d.tags || {}).maxspeed) }); });
+      }
+    });
+    for (i = 0; i < els.length; i++) {
+      var nd = els[i];
+      if (nd.type === 'node' && !used[nd.id] && nd.tags && nd.tags.highway === 'speed_camera') cams.push({ id: 'n' + nd.id, lat: nd.lat, lon: nd.lon, limit: parseLimit(nd.tags.maxspeed) });
+    }
+    return { cams: cams, trajs: trajs };
+  }
+
+  function newMonitor() { return { items: [], cur: null, traj: null, handled: {} }; }
+  function setMonitorData(M, cams, trajs) {
+    var items = [], i;
+    for (i = 0; i < cams.length; i++) items.push({ id: cams[i].id, kind: 'cam', lat: cams[i].lat, lon: cams[i].lon, limit: cams[i].limit });
+    for (i = 0; i < trajs.length; i++) items.push({ id: trajs[i].id, kind: 'traj', lat: trajs[i].from.lat, lon: trajs[i].from.lon, limit: trajs[i].limit, tr: trajs[i] });
+    M.items = items.concat(typeof mobItems === 'undefined' || !mobItems ? [] : mobItems);
+  }
+  function aheadInfo(lat, lon, hdg, it) {
+    if (hdg == null) return null;
+    var d = gdist(lat, lon, it.lat, it.lon);
+    if (d > 600) return null;
+    var a = adiff(gbearing(lat, lon, it.lat, it.lon), hdg);
+    if (a > 40) return null;
+    if (d * Math.sin(a * RAD) > 30 + 0.06 * d) return null;
+    return { d: d };
+  }
+  function monitorStep(M, f) {
+    var ev = [], d, tr, c;
+    if (M.traj) {
+      tr = M.traj;
+      if (tr.last) {
+        var dtt = Math.max(0, f.t - tr.last.t);
+        tr.done += gdist(tr.last.lat, tr.last.lon, f.lat, f.lon); tr.time += dtt; tr.sumV += f.v * dtt;
+      }
+      tr.last = { lat: f.lat, lon: f.lon, t: f.t };
+      d = gdist(f.lat, f.lon, tr.to.lat, tr.to.lon);
+      if (d < tr.minEnd) tr.minEnd = d;
+      if (d <= 100 || (tr.minEnd < 250 && d > tr.minEnd + 30)) {
+        var avg = tr.time > 0 ? tr.sumV / tr.time : f.v;
+        ev.push({ type: 'traj_end', avg: avg, limit: tr.limit, over: ovr(avg, tr.limit) });
+        M.handled[tr.id] = f.t; M.traj = null;
+      } else if (tr.done > tr.len * 2 + 800) {
+        M.handled[tr.id] = f.t; M.traj = null; ev.push({ type: 'traj_cancel' });
+      }
+    }
+    if (!M.cur) {
+      if (f.v >= 20 && f.hdg != null) {
+        var best = null, i, it, a;
+        for (i = 0; i < M.items.length; i++) {
+          it = M.items[i];
+          if (M.handled[it.id] !== undefined && f.t - M.handled[it.id] < 180) continue;
+          if (it.kind === 'traj' && M.traj) continue;
+          a = aheadInfo(f.lat, f.lon, f.hdg, it);
+          if (a && (!best || a.d < best.d)) best = { it: it, d: a.d };
+        }
+        if (best) M.cur = { it: best.it, dist: best.d, min: best.d, vMin: f.v };
+      }
+    } else {
+      c = M.cur;
+      c.dist = gdist(f.lat, f.lon, c.it.lat, c.it.lon);
+      if (c.dist < c.min) { c.min = c.dist; c.vMin = f.v; }
+      if (c.it.kind === 'traj' && c.dist <= 70) {
+        if (!M.traj) {
+          M.traj = { id: c.it.id, to: c.it.tr.to, limit: c.it.limit, len: c.it.tr.len, done: 0, time: 0, sumV: 0, last: { lat: f.lat, lon: f.lon, t: f.t }, minEnd: 1e9 };
+          ev.push({ type: 'traj_start', limit: c.it.limit });
+        }
+        M.handled[c.it.id] = f.t; M.cur = null;
+      } else if (c.dist > c.min + 25) {
+        if (c.min < 120 && c.it.kind === 'cam') {
+          ev.push({ type: 'cam_pass', v: c.vMin, limit: c.it.limit, over: ovr(c.vMin, c.it.limit) });
+          M.handled[c.it.id] = f.t;
+        }
+        M.cur = null;
+      } else if (c.dist > 800) { M.cur = null; }
+    }
+    return ev;
+  }
+  /*CAMS-END*/
+
+  var CAMKEY = 'dashboardmaatje-flitsers-v1';
+  var mon = newMonitor(), camCache = null, camLoading = false, camFailT = -999, camErr = '', lastHdg = null, hdgRef = null, prevHdgT = null;
+  try { var rawC = JSON.parse(localStorage.getItem(CAMKEY)); if (rawC && rawC.cams && rawC.trajs) camCache = rawC; } catch (e) {}
+  function showCamStat() {
+    var el = $('camStat');
+    if (!camCache) { el.textContent = 'Flitsdata: nog niet geladen. Wordt opgehaald als de GPS aan staat.' + (camErr ? ' ' + camErr : ''); return; }
+    var days = Math.floor((Date.now() - camCache.t) / 864e5);
+    el.textContent = 'Flitsdata: ' + camCache.cams.length + ' flitsers en ' + camCache.trajs.length + ' trajecten in de buurt (OpenStreetMap, ' + (days < 1 ? 'vandaag opgehaald' : days + ' dagen oud') + '). Onvolledig en soms verouderd, mobiele controles alleen via de gemelde lijst hieronder. Let altijd zelf op je snelheid.' + (camErr ? ' ' + camErr : '');
+  }
+  function applyCamData() { if (camCache) setMonitorData(mon, camCache.cams, camCache.trajs); showCamStat(); }
+  function gpsHelp(msg) { var el = $('gpsHelp'); el.textContent = msg; el.hidden = false; }
+  function clearGpsHelp() { var el = $('gpsHelp'); el.hidden = true; el.textContent = ''; }
+
+  function overpassQuery(lat, lon, r) {
+    var dLa = r / 111320, dLo = r / (111320 * Math.cos(lat * RAD));
+    var bb = (lat - dLa).toFixed(5) + ',' + (lon - dLo).toFixed(5) + ',' + (lat + dLa).toFixed(5) + ',' + (lon + dLo).toFixed(5);
+    return '[out:json][timeout:25];node["highway"="speed_camera"](' + bb + ')->.c;rel["type"="enforcement"]["enforcement"~"^(maxspeed|average_speed)$"](' + bb + ')->.r;node(r.r)->.m;(.c;.m;.r;);out body;';
+  }
+  var OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+  function fetchOverpass(q, i) {
+    i = i || 0;
+    var ctl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, 30000) : 0;
+    return fetch(OVERPASS[i], { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q), signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { if (timer) clearTimeout(timer); if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+      .catch(function (err) { if (timer) clearTimeout(timer); if (i + 1 < OVERPASS.length) return fetchOverpass(q, i + 1); throw err; });
+  }
+  function loadCams(lat, lon) {
+    var stale = !camCache || gdist(lat, lon, camCache.lat, camCache.lon) > 8000 || Date.now() - camCache.t > 7 * 864e5;
+    if (!stale || camLoading || T - camFailT < 60) return;
+    camLoading = true; $('camStat').textContent = 'Flitsdata laden…';
+    fetchOverpass(overpassQuery(lat, lon, 20000)).then(function (json) {
+      var p = parseCams(json);
+      camCache = { lat: lat, lon: lon, t: Date.now(), cams: p.cams, trajs: p.trajs };
+      camErr = '';
+      try { localStorage.setItem(CAMKEY, JSON.stringify(camCache)); } catch (e) {}
+      applyCamData();
+    }).catch(function () {
+      camFailT = T;
+      camErr = camCache ? 'Verversen mislukt, de oude data blijft in gebruik.' : 'Laden mislukt: geen internet of de server reageert niet. Je krijgt nu geen flitsmeldingen.';
+      showCamStat();
+    }).then(function () { camLoading = false; });
+  }
+
+  function applyEvent(e) {
+    var a;
+    if (e.type === 'cam_pass') {
+      if (e.limit == null) setEv('alert', 2.5, 'Flitser gepasseerd.');
+      else if (e.over) { S.flash = 1; setEv('startled', 3.5, 'Flitser gepasseerd met ' + Math.round(e.v) + ' bij limiet ' + e.limit + '.'); beep('startled'); S.style = Math.max(0, S.style - 15); }
+      else { setEv('happy', 3, 'Netjes! Flitser gepasseerd.'); beep('wake'); S.love = Math.min(100, S.love + 6); }
+    } else if (e.type === 'traj_start') {
+      setEv('alert', 2.5, 'Trajectcontrole begint. Ik bewaak het gemiddelde.');
+    } else if (e.type === 'traj_end') {
+      a = Math.round(e.avg);
+      if (e.over) { S.flash = 1; setEv('startled', 3.5, 'Gemiddeld ' + a + ' op het traject, limiet ' + e.limit + '.'); beep('startled'); S.style = Math.max(0, S.style - 10); }
+      else { setEv('happy', 3, 'Traject klaar. Gemiddeld ' + a + (e.limit != null ? '. Netjes!' : '.')); beep('wake'); S.love = Math.min(100, S.love + 6); }
+    }
+  }
+  function camFix(lat, lon, acc, t) {
+    loadCams(lat, lon);
+    loadMobile();
+    roadStep(lat, lon, acc);
+    if (!S.camOn || acc >= 60) { if (!S.camOn) { mon.cur = null; mon.traj = null; S.cam = null; S.traj = null; } return; }
+    var ev = monitorStep(mon, { lat: lat, lon: lon, v: S.liveSpeed, hdg: lastHdg, t: t });
+    S.cam = mon.cur ? { dist: mon.cur.dist, limit: mon.cur.it.limit, kind: mon.cur.it.kind, mobile: !!mon.cur.it.mobile, live: true } : null;
+    S.traj = mon.traj ? { len: mon.traj.len * 1.1, done: mon.traj.done, time: mon.traj.time, sumV: mon.traj.sumV, limit: mon.traj.limit, live: true } : null;
+    ev.forEach(applyEvent);
+  }
+  applyCamData();
+
+
+  /* ---------- Gemelde mobiele controles (flitsers.nl RSS, persoonlijk gebruik) ---------- */
+  var HMPKEY = 'dashboardmaatje-hmp-v1', PROXYKEY = 'dashboardmaatje-proxy-v1', MODEKEY = 'dashboardmaatje-pdokmode-v1';
+  var mobItems = [], mobT = -9999, mobBusy = false, mobErr = '', mobMsg = '', hmpCache = {}, proxy = '', pdokMode = null;
+  try { hmpCache = JSON.parse(localStorage.getItem(HMPKEY)) || {}; } catch (e) { hmpCache = {}; }
+  try { proxy = localStorage.getItem(PROXYKEY) || ''; pdokMode = JSON.parse(localStorage.getItem(MODEKEY)); } catch (e) {}
+  $('proxyUrl').value = proxy;
+  function pbase() { return proxy.replace(/\/+$/, ''); }
+  function rssUrl() { return pbase() ? pbase() + '/rss' : 'https://flitsers.nl/flitsers.rss'; }
+  var PDOKP = '/rws/nationaal-wegenbestand-wegen/ogc/v1/collections/wegvakken/items?';
+  function pdokUrl(q) { return pbase() ? pbase() + '/pdok' + PDOKP + q : 'https://api.pdok.nl' + PDOKP + q; }
+  function pdokFix(u) { return pbase() ? u.replace('https://api.pdok.nl', pbase() + '/pdok') : u; }
+  function getText(u) {
+    var ctl = ('AbortController' in window) ? new AbortController() : null, tm = ctl ? setTimeout(function () { ctl.abort(); }, 20000) : 0;
+    return fetch(u, { signal: ctl ? ctl.signal : undefined }).then(function (r) { if (tm) clearTimeout(tm); if (!r.ok) throw new Error('http ' + r.status); return r.text(); }, function (e) { if (tm) clearTimeout(tm); throw e; });
+  }
+  function parseFeed(xml) {
+    var doc = new DOMParser().parseFromString(xml, 'text/xml'), its = doc.getElementsByTagName('item'), out = [];
+    function tx(el, n) { var x = el.getElementsByTagName(n)[0]; return x ? x.textContent : ''; }
+    for (var i = 0; i < its.length; i++) {
+      var title = tx(its[i], 'title').trim(), m = title.match(/^\s*([AN])\s?(\d{1,3})\b(.*?)\bhmp\s+(\d+(?:[.,]\d+)?)/i);
+      var o = { id: tx(its[i], 'guid') || title, text: title, pub: Date.parse(tx(its[i], 'pubDate')) || 0, road: null, num: null, km: null };
+      if (m) { o.road = m[1].toUpperCase() + (+m[2]); o.num = +m[2]; o.km = parseFloat(m[4].replace(',', '.')); }
+      out.push(o);
+    }
+    return out;
+  }
+  function polyPoint(coords, t) {
+    var L = [], tot = 0, i;
+    for (i = 1; i < coords.length; i++) { var d = gdist(coords[i - 1][1], coords[i - 1][0], coords[i][1], coords[i][0]); L.push(d); tot += d; }
+    if (!tot) return { lat: coords[0][1], lon: coords[0][0] };
+    var want = Math.max(0, Math.min(1, t)) * tot, acc = 0;
+    for (i = 0; i < L.length; i++) {
+      if (acc + L[i] >= want) { var f = L[i] ? (want - acc) / L[i] : 0; return { lat: coords[i][1] + (coords[i + 1][1] - coords[i][1]) * f, lon: coords[i][0] + (coords[i + 1][0] - coords[i][0]) * f }; }
+      acc += L[i];
+    }
+    var e = coords[coords.length - 1]; return { lat: e[1], lon: e[0] };
+  }
+  /* undefined = this filter does not work, [] = road found but km not on it, [points] = found */
+  function pickPoints(j, km, field, value) {
+    var fs = j && j.features; if (!fs || !fs.length) return undefined;
+    var pts = [], match = 0;
+    for (var i = 0; i < fs.length; i++) {
+      var pr = fs[i].properties || {};
+      if (String(pr[field]) !== String(value)) continue;
+      match++;
+      var b = pr.beginkm, e = pr.eindkm;
+      if (typeof b !== 'number' || typeof e !== 'number' || b === e) continue;
+      var lo = Math.min(b, e), hi = Math.max(b, e);
+      if (km < lo - 0.0005 || km > hi + 0.0005) continue;
+      var g = fs[i].geometry; if (!g) continue;
+      var line = g.type === 'MultiLineString' ? [].concat.apply([], g.coordinates) : g.coordinates;
+      if (line && line.length > 1) pts.push(polyPoint(line, (km - b) / (e - b)));
+    }
+    return match ? pts : undefined;
+  }
+  function pdokPages(url, km, field, value, n) {
+    return getText(url).then(function (txt) {
+      var j = JSON.parse(txt), r = pickPoints(j, km, field, value);
+      if (r === undefined || (r.length && true)) return r;
+      var nx = (j.links || []).filter(function (l) { return l.rel === 'next'; })[0];
+      if (nx && n < 4) return pdokPages(pdokFix(nx.href), km, field, value, n + 1);
+      return r;
+    });
+  }
+  function pad3(n) { return ('00' + n).slice(-3); }
+  function locate(it) {
+    var key = it.road + '@' + it.km;
+    if (hmpCache[key]) return Promise.resolve(hmpCache[key]);
+    var V = [], F = ['wegnr_aw', 'wegnummer', 'wegnr_hmp'], X = [it.road, pad3(it.num), String(it.num)];
+    F.forEach(function (f) { X.forEach(function (v) { V.push([f, v]); }); });
+    if (pdokMode) V.unshift(pdokMode);
+    var i = 0;
+    function next() {
+      if (i >= V.length) return Promise.resolve(null);
+      var v = V[i++];
+      return pdokPages(pdokUrl('f=json&limit=1000&' + v[0] + '=' + encodeURIComponent(v[1])), it.km, v[0], v[1], 0).then(function (r) {
+        if (r === undefined) return next();
+        pdokMode = v; try { localStorage.setItem(MODEKEY, JSON.stringify(v)); } catch (e) {}
+        if (r.length) { hmpCache[key] = r; try { localStorage.setItem(HMPKEY, JSON.stringify(hmpCache)); } catch (e) {} }
+        return r;
+      }, function () { return next(); });
+    }
+    return next();
+  }
+  function showMob() {
+    var el = $('mobStat');
+    if (!$('mobOn').checked) { el.textContent = 'Gemelde controles staan uit.'; return; }
+    el.textContent = mobMsg || 'Gemelde controles: nog niet opgehaald. Dit gebeurt elke 5 minuten als de GPS aan staat.';
+    if (mobErr) el.textContent += ' ' + mobErr;
+  }
+  function loadMobile(force) {
+    if (!$('mobOn').checked) { if (mobItems.length) { mobItems = []; applyCamData(); } return; }
+    if (mobBusy || (!force && T - mobT < 300)) return;
+    mobBusy = true; mobT = T;
+    getText(rssUrl()).then(function (xml) {
+      var all = parseFeed(xml), recent = all.filter(function (x) { return !x.pub || Date.now() - x.pub < 4 * 36e5; }).slice(0, 60);
+      var withKm = recent.filter(function (x) { return x.km !== null; }), items = [], fails = 0, k = 0;
+      function step() {
+        if (k >= withKm.length) return Promise.resolve();
+        var it = withKm[k++];
+        return locate(it).then(function (pts) {
+          if (!pts || !pts.length) { fails++; return; }
+          pts.forEach(function (pt, n) { items.push({ id: 'm:' + it.id + ':' + n, kind: 'cam', lat: pt.lat, lon: pt.lon, limit: null, mobile: true, text: it.text }); });
+        }).then(step);
+      }
+      return step().then(function () {
+        mobItems = items; applyCamData();
+        var d = new Date();
+        mobMsg = 'Gemelde controles (flitsers.nl): ' + recent.length + ' gemeld, ' + withKm.length + ' met hectometerpaal, ' + Math.floor(items.length) + ' op de kaart gezet. Bijgewerkt ' + fmt(d.getHours() + d.getMinutes() / 60) + '. Meldingen kunnen al weg zijn. Let altijd zelf op.';
+        mobErr = fails ? fails + ' melding' + (fails > 1 ? 'en' : '') + ' kon ik niet op de kaart zetten.' : '';
+        showMob();
+      });
+    }).catch(function () {
+      mobErr = pbase() ? 'Ophalen via je eigen koppeling mislukt. Controleer het adres.' : 'Ophalen mislukt. Waarschijnlijk mag de browser dit niet rechtstreeks. Stel hieronder je eigen koppeling in.';
+      mobT = T - 240; showMob();
+    }).then(function () { mobBusy = false; });
+  }
+  $('mobOn').addEventListener('change', function () { if ($('mobOn').checked) loadMobile(true); else { mobItems = []; applyCamData(); showMob(); } });
+  $('proxySave').addEventListener('click', function () {
+    var v = $('proxyUrl').value.trim();
+    if (v && !/^https:\/\/[^\s]+$/.test(v)) { toast('Het adres moet met https:// beginnen.'); return; }
+    proxy = v; try { localStorage.setItem(PROXYKEY, proxy); } catch (e) {}
+    toast(v ? 'Adres bewaard.' : 'Adres gewist: ik probeer weer rechtstreeks.');
+    if (S.live) loadMobile(true);
+  });
+  window.__mob = { parseFeed: parseFeed, loadMobile: loadMobile, items: function () { return mobItems; } };
+
+
+  /* ---------- Snelheidslimiet van de weg (OpenStreetMap) ---------- */
+  var roadWays = [], roadQ = null, roadBusy = false, roadFail = -999, roadCand = null, roadCnt = 0, roadMiss = 0;
+  function parseMax(v) {
+    if (!v) return null; v = String(v).trim();
+    var m = v.match(/^(\d{2,3})(\s*km\/h)?$/); if (m) return +m[1];
+    var map = { 'NL:urban': 50, 'NL:rural': 80, 'NL:motorway': 100, 'NL:trunk': 100, 'NL:zone30': 30, 'NL:zone60': 60, 'NL:living_street': 15 };
+    return map[v] || null;
+  }
+  function roadQuery(lat, lon) {
+    var dLa = 1500 / 111320, dLo = 1500 / (111320 * Math.cos(lat * RAD));
+    var bb = (lat - dLa).toFixed(5) + ',' + (lon - dLo).toFixed(5) + ',' + (lat + dLa).toFixed(5) + ',' + (lon + dLo).toFixed(5);
+    return '[out:json][timeout:25];way["highway"]["maxspeed"](' + bb + ');out tags geom;';
+  }
+  function loadRoads(lat, lon) {
+    if (roadBusy || T - roadFail < 60) return;
+    if (roadQ && gdist(lat, lon, roadQ.lat, roadQ.lon) <= 700) return;
+    roadBusy = true;
+    fetchOverpass(roadQuery(lat, lon)).then(function (j) {
+      var out = [];
+      (j.elements || []).forEach(function (e) {
+        if (e.type !== 'way' || !e.geometry || e.geometry.length < 2) return;
+        var lim = parseMax(e.tags && e.tags.maxspeed); if (lim == null) return;
+        out.push({ lim: lim, g: e.geometry });
+      });
+      roadWays = out; roadQ = { lat: lat, lon: lon };
+    }).catch(function () { roadFail = T; }).then(function () { roadBusy = false; });
+  }
+  function segInfo(lat, lon, a, b) {
+    var k = Math.cos(lat * RAD) * 111320, ax = (a.lon - lon) * k, ay = (a.lat - lat) * 111320, bx = (b.lon - lon) * k, by = (b.lat - lat) * 111320;
+    var dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy, t = L2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L2)) : 0;
+    var px = ax + t * dx, py = ay + t * dy;
+    return { d: Math.sqrt(px * px + py * py), brg: (Math.atan2(dx, dy) / RAD + 360) % 360 };
+  }
+  function roadStep(lat, lon, acc) {
+    if (!S.live) return;
+    loadRoads(lat, lon);
+    var best = null, i, j;
+    for (i = 0; i < roadWays.length; i++) {
+      var w = roadWays[i];
+      for (j = 1; j < w.g.length; j++) {
+        var si = segInfo(lat, lon, w.g[j - 1], w.g[j]);
+        if (si.d > Math.max(22, Math.min(40, acc + 12))) continue;
+        if (lastHdg != null) { var df = adiff(si.brg, lastHdg); if (df > 35 && df < 145) continue; }
+        if (!best || si.d < best.d) best = { d: si.d, lim: w.lim };
+      }
+    }
+    if (!best) { if (++roadMiss >= 4 && S.roadLim != null) { S.roadLim = null; roadCand = null; } return; }
+    roadMiss = 0;
+    if (best.lim === S.roadLim) { roadCand = null; return; }
+    if (roadCand === best.lim) { if (++roadCnt >= 2) { S.roadLim = best.lim; roadCand = null; } }
+    else { roadCand = best.lim; roadCnt = 1; }
+  }
+  window.__road = function () { return S.roadLim; };
+
+  /* ---------- Installeren als app ---------- */
+  var deferredInstall = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferredInstall = e; $('bInstall').hidden = false; });
+  window.addEventListener('appinstalled', function () { $('bInstall').hidden = true; deferredInstall = null; });
+  $('bInstall').addEventListener('click', function () {
+    if (!deferredInstall) return;
+    deferredInstall.prompt(); deferredInstall = null; $('bInstall').hidden = true;
+  });
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) { navigator.serviceWorker.register('sw.js').catch(function () {}); }
+
+  window.addEventListener('devicemotion', function (e) {
+    if (!S.live || S.speed < 5) return;
+    var a = e.accelerationIncludingGravity;
+    if (!a || a.x == null) return;
+    if (Math.abs(Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z) - 9.81) > 4.5) bump();
+  });
+  $('bLive').addEventListener('click', function () { if (S.live) stopLive(); else startLive(); });
+  function liveTick() {
+    if (!S.live) return;
+    if (T - S.liveT > 3) S.turn = 0;
+    S.tunnel = S.speed > 20 && T - S.liveT > 4 && T - S.liveT < 90;
+    if (T - S.liveT > (S.tunnel ? 90 : 10)) { S.liveSpeed = 0; setTag('GPS geen signaal'); }
+    if (T - lastClk > 1) {
+      lastClk = T;
+      var d = new Date();
+      S.hour = d.getHours() + d.getMinutes() / 60;
+      $('clock').value = Math.min(23.75, Math.floor(S.hour * 4) / 4); $('clockOut').textContent = fmt(S.hour);
+      if (Math.floor(S.hour) !== lastHr) { lastHr = Math.floor(S.hour); drawHist(); }
+    }
+  }
+
+  /* ---------- Loop ---------- */
+  var last = null;
+  function frame(ts) {
+    var t = ts / 1000;
+    if (last === null) last = t;
+    var dt = Math.min(0.1, t - last); last = t; T = t;
+    if (dt > 0) step(dt);
+    liveTick();
+    gagTick();
+    curKey = mood();
+    updateMood();
+    render(dt > 0 ? dt : 0.016);
+    if (T - lastUI > 0.12) { updateUI(); lastUI = T; }
+    requestAnimationFrame(frame);
+  }
+  drawHist(); updateInsight(); updateUI();
+  setTimeout(hello, 900);
+  window.__mm = { hello: hello, cheer: cheer, bump: bump, S: S, mem: function () { return mem; }, GAGS: GAGS, startGag: startGag, submitChat: submitChat, localReply: localReply };
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
+
