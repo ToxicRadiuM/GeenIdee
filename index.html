@@ -68,6 +68,17 @@ h2 {
   border-top: 1px solid var(--line); padding-top: 16px;
 }
 
+/* Autostand */
+body.car { background: #000; --ink: #f3f4f6; --muted: #9aa3ad; }
+body.car main > *:not(.stage) { display: none !important; }
+body.car main { padding: 0; gap: 0; }
+body.car, html:has(body.car) { overflow: hidden; height: 100dvh; }
+body.car .stage { min-height: 100dvh; justify-content: center; gap: 10px; }
+body.car .helmet { width: min(94vw, 74vh); }
+body.car .foot { display: none; }
+#carBack { display: none; position: fixed; top: 10px; right: 10px; z-index: 50; min-height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #555; background: #1b1b1b; color: #eee; font: 600 14px var(--f-display); }
+body.car #carBack { display: block; }
+
 /* Robot */
 .stage { align-items: center; gap: 18px; }
 .helmet {
@@ -167,6 +178,7 @@ details.set > * + * { margin-top: 10px; }
 
 </head>
 <body>
+<button id="carBack" type="button">Terug</button>
 <main>
   <header>
     <p class="eyebrow">Simulator · brein van je robotje</p>
@@ -204,6 +216,8 @@ details.set > * + * { margin-top: 10px; }
       <button class="btn" id="bSleep" type="button">Laat slapen</button>
       <button class="btn" id="bLive" type="button" aria-pressed="false" style="grid-column:1/-1">Telefoon-GPS: uit</button>
       <button class="btn" id="bSound" type="button" aria-pressed="false" style="grid-column:1/-1">Geluid: uit</button>
+      <button class="btn primary" id="bCar" type="button" style="grid-column:1/-1">Autostand: alleen gezicht, groot</button>
+      <button class="btn" id="bReplay" type="button" style="grid-column:1/-1">Laatste rit afspelen (4x sneller)</button>
     </div>
     <p class="foot" id="micNote" hidden>Muziek horen meet alleen het volume om mee te bewegen. Er wordt niets opgenomen, opgeslagen of verstuurd.</p>
     <p class="note" id="note" aria-live="polite"></p>
@@ -215,10 +229,17 @@ details.set > * + * { margin-top: 10px; }
   <section aria-label="Onderweg">
     <h2>Onderweg</h2>
     <div class="limitrow"><label for="spdMode">Snelheid op zijn scherm</label><select id="spdMode"><option value="1">Cijfer</option><option value="2">Ring</option><option value="3">Cijfer en ring</option><option value="0">Uit</option></select></div>
+    <div class="switchrow"><input type="checkbox" id="spkOn"><label for="spkOn">Flitsmeldingen hardop zeggen (Nederlands)</label></div>
     <div class="switchrow"><input type="checkbox" id="camOn" checked><label for="camOn">Flitsmeldingen aan</label></div>
     <p class="chip" id="camStat">Flitsdata: nog niet geladen. Wordt opgehaald als de GPS aan staat.</p>
     <div class="switchrow"><input type="checkbox" id="mobOn" checked><label for="mobOn">Gemelde controles van flitsers.nl erbij (alleen persoonlijk gebruik)</label></div>
     <p class="chip" id="mobStat">Gemelde controles: nog niet opgehaald. Dit gebeurt elke 5 minuten als de GPS aan staat.</p>
+    <div class="btns">
+      <button class="btn" id="bLog" type="button">Kopieer testlog</button>
+      <button class="btn" id="bLogClear" type="button">Log wissen</button>
+    </div>
+    <p class="foot" id="logInfo">De testlog bewaart wat er onderweg gebeurt (snelheid, limiet, meldingen, fouten), zonder je locatie. Kopieer hem na de rit en stuur hem naar Claude.</p>
+    <textarea id="logBox" rows="6" hidden readonly style="width:100%;font:12px monospace;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
     <details class="set"><summary>Eigen koppeling instellen</summary>
       <p class="foot">Een webpagina mag flitsers.nl meestal niet rechtstreeks uitlezen. Met een eigen gratis tussenstation (Cloudflare Worker, uitleg bij de app) werkt het wel. Plak hier het adres ervan. Laat leeg om rechtstreeks te proberen.</p>
       <div class="mobrow"><input type="text" id="proxyUrl" inputmode="url" autocomplete="off" placeholder="https://jouw-naam.workers.dev"><button class="btn" id="proxySave" type="button">Bewaar adres</button></div>
@@ -419,7 +440,7 @@ details.set > * + * { margin-top: 10px; }
     clearTimeout(noteTimer);
     noteTimer = setTimeout(function () { $('note').textContent = ''; }, 4500);
   }
-  function setEv(k, dur, msg) { S.ev = k; S.evUntil = T + dur; S.evMsg = msg || null; S.gag = null; }
+  function setEv(k, dur, msg) { if (S.live && msg) lg('ev ' + k + ': ' + msg); S.ev = k; S.evUntil = T + dur; S.evMsg = msg || null; S.gag = null; }
   function ix() { return S.live ? 4 : 1; }
   function maxHours() { return Math.max.apply(null, mem.hours); }
   function expected() {
@@ -507,7 +528,7 @@ details.set > * + * { margin-top: 10px; }
     else if (S.stoppedT >= (S.live ? 900 : 20)) { S.driveT = 0; S.driveWarn = 120; }
     if (S.driveT >= S.driveWarn) {
       S.driveWarn += 120;
-      if (!S.asleep) { setEv('yawn', 4, 'Je rijdt al ' + Math.floor(S.driveT / 60) + ' uur. Zin in een pauze?'); beep('sleep'); }
+      if (!S.asleep) { setEv('yawn', 4, 'Je rijdt al ' + Math.floor(S.driveT / 60) + ' uur. Zin in een pauze?'); beep('sleep'); say('Je rijdt al ' + Math.floor(S.driveT / 60) + ' uur. Zin in een pauze?', true); }
     }
     /* smooth-driving score per trip */
     if (S.speed >= 5) { S.trip = true; S.tripT += dt; }
@@ -626,6 +647,7 @@ details.set > * + * { margin-top: 10px; }
     }
   }
   function bump() {
+    if (S.live && !S.asleep && T - S.lastBump >= 2) lg('drempel/schok');
     if (S.asleep || T - S.lastBump < 2) return;
     S.lastBump = T; S.hop = 1; setEv('startled', .9, 'Boing!'); beep('startled');
   }
@@ -1623,13 +1645,14 @@ details.set > * + * { margin-top: 10px; }
       try { localStorage.setItem(CAMKEY, JSON.stringify(camCache)); } catch (e) {}
       applyCamData();
     }).catch(function () {
-      camFailT = T;
+      camFailT = T; lg('FOUT flitsdata laden mislukt');
       camErr = camCache ? 'Verversen mislukt, de oude data blijft in gebruik.' : 'Laden mislukt: geen internet of de server reageert niet. Je krijgt nu geen flitsmeldingen.';
       showCamStat();
     }).then(function () { camLoading = false; });
   }
 
   function applyEvent(e) {
+    lg('flitsevent ' + e.type + (e.v != null ? ' v=' + Math.round(e.v) : '') + (e.limit != null ? ' limiet=' + e.limit : '') + (e.avg != null ? ' gem=' + Math.round(e.avg) : ''));
     var a;
     if (e.type === 'cam_pass') {
       if (e.limit == null) setEv('alert', 2.5, 'Flitser gepasseerd.');
@@ -1647,6 +1670,7 @@ details.set > * + * { margin-top: 10px; }
     loadCams(lat, lon);
     loadMobile();
     roadStep(lat, lon, acc);
+    sampleLog(acc);
     if (!S.camOn || acc >= 60) { if (!S.camOn) { mon.cur = null; mon.traj = null; S.cam = null; S.traj = null; } return; }
     var ev = monitorStep(mon, { lat: lat, lon: lon, v: S.liveSpeed, hdg: lastHdg, t: t });
     S.cam = mon.cur ? { dist: mon.cur.dist, limit: mon.cur.it.limit, kind: mon.cur.it.kind, mobile: !!mon.cur.it.mobile, live: true } : null;
@@ -1746,11 +1770,25 @@ details.set > * + * { margin-top: 10px; }
     el.textContent = mobMsg || 'Gemelde controles: nog niet opgehaald. Dit gebeurt elke 5 minuten als de GPS aan staat.';
     if (mobErr) el.textContent += ' ' + mobErr;
   }
+  var RSSVIA = ['', 'https://api.allorigins.win/raw?url=', 'https://corsproxy.io/?', 'https://api.codetabs.com/v1/proxy?quest='], rssHow = '';
+  function getRss() {
+    if (pbase()) return getText(rssUrl()).then(function (x) { rssHow = 'eigen koppeling'; return x; });
+    var raw = 'https://flitsers.nl/flitsers.rss', i = 0;
+    function next() {
+      if (i >= RSSVIA.length) return Promise.reject(new Error('geen route'));
+      var pre = RSSVIA[i++], u = pre ? pre + encodeURIComponent(raw) : raw;
+      return getText(u).then(function (x) {
+        if (!/<item[\s>]/i.test(x)) throw new Error('geen feed');
+        rssHow = pre ? pre.replace(/^https:\/\/([^\/]+).*/, '$1') : 'rechtstreeks'; lg('Feed via ' + rssHow); return x;
+      }).catch(next);
+    }
+    return next();
+  }
   function loadMobile(force) {
     if (!$('mobOn').checked) { if (mobItems.length) { mobItems = []; applyCamData(); } return; }
     if (mobBusy || (!force && T - mobT < 300)) return;
     mobBusy = true; mobT = T;
-    getText(rssUrl()).then(function (xml) {
+    getRss().then(function (xml) {
       var all = parseFeed(xml), recent = all.filter(function (x) { return !x.pub || Date.now() - x.pub < 4 * 36e5; }).slice(0, 60);
       var withKm = recent.filter(function (x) { return x.km !== null; }), items = [], fails = 0, k = 0;
       function step() {
@@ -1764,13 +1802,13 @@ details.set > * + * { margin-top: 10px; }
       return step().then(function () {
         mobItems = items; applyCamData();
         var d = new Date();
-        mobMsg = 'Gemelde controles (flitsers.nl): ' + recent.length + ' gemeld, ' + withKm.length + ' met hectometerpaal, ' + Math.floor(items.length) + ' op de kaart gezet. Bijgewerkt ' + fmt(d.getHours() + d.getMinutes() / 60) + '. Meldingen kunnen al weg zijn. Let altijd zelf op.';
+        mobMsg = 'Gemelde controles (flitsers.nl via ' + rssHow + '): ' + recent.length + ' gemeld, ' + withKm.length + ' met hectometerpaal, ' + Math.floor(items.length) + ' op de kaart gezet. Bijgewerkt ' + fmt(d.getHours() + d.getMinutes() / 60) + '. Meldingen kunnen al weg zijn. Let altijd zelf op.';
         mobErr = fails ? fails + ' melding' + (fails > 1 ? 'en' : '') + ' kon ik niet op de kaart zetten.' : '';
         showMob();
       });
     }).catch(function () {
-      mobErr = pbase() ? 'Ophalen via je eigen koppeling mislukt. Controleer het adres.' : 'Ophalen mislukt. Waarschijnlijk mag de browser dit niet rechtstreeks. Stel hieronder je eigen koppeling in.';
-      mobT = T - 240; showMob();
+      mobErr = pbase() ? 'Ophalen via je eigen koppeling mislukt. Controleer het adres.' : 'Ophalen mislukt, ook via de openbare doorgeefdiensten. Stel hieronder je eigen koppeling in.';
+      mobT = T - 240; lg('FOUT gemelde controles: ' + (pbase() ? 'eigen koppeling' : 'rechtstreeks')); showMob();
     }).then(function () { mobBusy = false; });
   }
   $('mobOn').addEventListener('change', function () { if ($('mobOn').checked) loadMobile(true); else { mobItems = []; applyCamData(); showMob(); } });
@@ -1809,7 +1847,7 @@ details.set > * + * { margin-top: 10px; }
         out.push({ lim: lim, g: e.geometry });
       });
       roadWays = out; roadQ = { lat: lat, lon: lon };
-    }).catch(function () { roadFail = T; }).then(function () { roadBusy = false; });
+    }).catch(function () { roadFail = T; lg('FOUT wegenlimiet laden mislukt'); }).then(function () { roadBusy = false; });
   }
   function segInfo(lat, lon, a, b) {
     var k = Math.cos(lat * RAD) * 111320, ax = (a.lon - lon) * k, ay = (a.lat - lat) * 111320, bx = (b.lon - lon) * k, by = (b.lat - lat) * 111320;
@@ -1837,6 +1875,33 @@ details.set > * + * { margin-top: 10px; }
     else { roadCand = best.lim; roadCnt = 1; }
   }
   window.__road = function () { return S.roadLim; };
+
+
+  /* ---------- Testlog (zonder locatie) ---------- */
+  var LOGKEY = 'dashboardmaatje-log-v1', logs = [], logT = 0, logSave = 0;
+  try { logs = JSON.parse(localStorage.getItem(LOGKEY)) || []; } catch (e) { logs = []; }
+  function lg(m) {
+    logs.push({ t: Date.now(), m: String(m).slice(0, 200) });
+    if (logs.length > 500) logs.splice(0, logs.length - 500);
+    if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
+  }
+  function sampleLog(acc) {
+    if (T - logT < 10) return; logT = T;
+    lg('v=' + Math.round(S.liveSpeed) + ' nauwk=' + Math.round(acc) + 'm limiet=' + (S.roadLim == null ? '-' : S.roadLim) + ' draai=' + S.turnS.toFixed(0) + ' vaste=' + (camCache ? camCache.cams.length : 0) + '/' + (camCache ? camCache.trajs.length : 0) + ' gemeld=' + mobItems.length + ' stemming=' + curKey);
+  }
+  window.addEventListener('error', function (e) { lg('FOUT ' + (e.message || '') + ' @' + (e.lineno || '')); });
+  function logText() {
+    var f = function (t) { var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); };
+    var head = 'Dashboardmaatje testlog\nApparaat: ' + navigator.userAgent + '\nGPS-tag: ' + shownTag + '\nFlitsdata: ' + $('camStat').textContent + '\nGemeld: ' + $('mobStat').textContent + '\nRitten: ' + mem.trips + ', km: ' + mem.km.toFixed(1) + ', beste 0-100: ' + (mem.best ? mem.best.toFixed(1) : '-') + '\n---\n';
+    return head + logs.map(function (x) { return f(x.t) + ' ' + x.m; }).join('\n');
+  }
+  $('bLog').addEventListener('click', function () {
+    var txt = logText(), box = $('logBox');
+    function fallback() { box.hidden = false; box.value = txt; box.focus(); box.select(); toast('Houd de tekst ingedrukt en kies Kopieer.'); }
+    try { navigator.clipboard.writeText(txt).then(function () { toast('Testlog gekopieerd (' + logs.length + ' regels). Plak hem in je bericht aan Claude.'); }, fallback); } catch (e) { fallback(); }
+  });
+  $('bLogClear').addEventListener('click', function () { logs = []; try { localStorage.removeItem(LOGKEY); } catch (e) {} $('logBox').hidden = true; toast('Log gewist.'); });
+  if (!logs.length) lg('app gestart');
 
   /* ---------- Installeren als app ---------- */
   var deferredInstall = null;
@@ -1878,12 +1943,84 @@ details.set > * + * { margin-top: 10px; }
     if (dt > 0) step(dt);
     liveTick();
     gagTick();
+    try { extraTick(); } catch (e) { lg('FOUT extra ' + e.message); }
     curKey = mood();
     updateMood();
     render(dt > 0 ? dt : 0.016);
     if (T - lastUI > 0.12) { updateUI(); lastUI = T; }
     requestAnimationFrame(frame);
   }
+
+  /* ---------- Extra: spraak, autostand, ritopname ---------- */
+  var SPKKEY = 'dashboardmaatje-spk-v1', RIDEKEY = 'dashboardmaatje-ride-v1', spkOn = false, lastSay = -99, spkSt = { prev: null, a: false, b: false, o: false, oT: -99 };
+  try { spkOn = localStorage.getItem(SPKKEY) === '1'; } catch (e) {}
+  $('spkOn').checked = spkOn;
+  function say(txt, force) {
+    if (!spkOn || !('speechSynthesis' in window)) return;
+    if (!force && T - lastSay < 3) return;
+    lastSay = T;
+    try {
+      var u = new SpeechSynthesisUtterance(txt); u.lang = 'nl-NL'; u.rate = 1.0; u.volume = 1;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  window.__say = function (t) { return say(t, true); };
+  $('spkOn').addEventListener('change', function () {
+    spkOn = $('spkOn').checked; try { localStorage.setItem(SPKKEY, spkOn ? '1' : '0'); } catch (e) {}
+    if (spkOn) { if (!('speechSynthesis' in window)) { toast('Deze browser kan niet praten.'); spkOn = false; $('spkOn').checked = false; return; } say('Ik zeg het als er een flitser aankomt.', true); }
+  });
+  function camSpeak() {
+    var c = S.cam, st = spkSt;
+    if (!c || c.dist > 650) { st.prev = null; st.a = st.b = st.o = false; return; }
+    if (st.prev !== null && c.dist > st.prev + 250) { st.a = st.b = st.o = false; }
+    st.prev = c.dist;
+    var what = c.kind === 'traj' ? 'Trajectcontrole' : (c.mobile ? 'Gemelde controle' : 'Flitser');
+    if (!st.a && c.dist <= 600) { st.a = true; say(what + ' over ' + Math.round(c.dist / 100) * 100 + ' meter' + (c.limit != null ? ', limiet ' + c.limit : '') + '.', true); }
+    else if (!st.b && c.dist <= 250) { st.b = true; say(what + ' over ' + Math.round(c.dist / 50) * 50 + ' meter.', true); }
+    if (c.limit != null && ovr(Math.round(S.speed), c.limit) && T - st.oT > 20 && c.dist <= 600) { st.oT = T; say('Let op, je rijdt te hard. Limiet ' + c.limit + '.', true); }
+  }
+
+  /* autostand */
+  function carOn(on) {
+    document.body.classList.toggle('car', on);
+    try { if (on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {}); else if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {}); } catch (e) {}
+    scrollTo(0, 0); lg('autostand ' + (on ? 'aan' : 'uit'));
+  }
+  $('bCar').addEventListener('click', function () { carOn(true); });
+  $('carBack').addEventListener('click', function () { carOn(false); });
+
+  /* ritopname + afspelen */
+  var wasLive = false, ride = [], rideT = 0, rideSave = 0, rp = null;
+  try { ride = JSON.parse(localStorage.getItem(RIDEKEY)) || []; } catch (e) { ride = []; }
+  function extraTick() {
+    camSpeak();
+    if (S.live && !wasLive) ride = [];
+    wasLive = S.live;
+    if (S.live && T - rideT >= 2) {
+      rideT = T;
+      if (S.liveSpeed >= 1 || ride.length) { ride.push(Math.round(S.liveSpeed)); if (ride.length > 1800) ride.shift(); }
+      if (T - rideSave > 20) { rideSave = T; try { localStorage.setItem(RIDEKEY, JSON.stringify(ride)); } catch (e) {} }
+    }
+    if (rp) {
+      if (S.live) { rp = null; $('bReplay').textContent = 'Laatste rit afspelen (4x sneller)'; return; }
+      if (T >= rp.next) {
+        rp.next = T + 0.5;
+        if (rp.i >= rp.v.length) { rp = null; S.target = 0; S.maxDec = 12; speedEl.value = 0; $('bReplay').textContent = 'Laatste rit afspelen (4x sneller)'; toast('Rit afgespeeld.'); return; }
+        var v = rp.v[rp.i++]; S.maxDec = (S.speed - v > 8) ? 60 : 12; S.maxAcc = 0; S.target = v; speedEl.value = v;
+      }
+    }
+  }
+  $('bReplay').addEventListener('click', function () {
+    if (rp) { rp = null; S.target = 0; speedEl.value = 0; $('bReplay').textContent = 'Laatste rit afspelen (4x sneller)'; return; }
+    if (S.live) { toast('Zet eerst de telefoon-GPS uit om af te spelen.'); return; }
+    try { localStorage.setItem(RIDEKEY, JSON.stringify(ride)); } catch (e) {}
+    if (ride.length < 10) { toast('Nog geen rit opgenomen. Zet de GPS aan tijdens een rit.'); return; }
+    if (S.asleep) wake();
+    rp = { v: ride.slice(), i: 0, next: 0 }; $('bReplay').textContent = 'Stop afspelen (' + ride.length * 2 + ' s rit)';
+    toast('Je laatste rit wordt afgespeeld.');
+  });
+  window.__extra = { ride: function () { return ride; }, replaying: function () { return !!rp; }, pushRide: function (a) { ride = a; } };
+
   drawHist(); updateInsight(); updateUI();
   setTimeout(hello, 900);
   window.__mm = { hello: hello, cheer: cheer, bump: bump, S: S, mem: function () { return mem; }, GAGS: GAGS, startGag: startGag, submitChat: submitChat, localReply: localReply };
