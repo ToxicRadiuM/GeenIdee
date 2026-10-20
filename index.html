@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Dashboardmaatje</title>
+<title>Buddy</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -88,6 +88,8 @@ body.car #carBack { display: block; }
 body.car #carAdd, body.car #carAddM { display: block; }
 #carStart { display: none; position: fixed; left: 2vw; top: 50%; transform: translateY(-50%); z-index: 50; width: min(19vw, 170px); min-height: min(24vh, 120px); border-radius: 22px; border: 3px solid #34c759; background: #0b2414; color: #8ff0a8; font: 700 clamp(15px, 2.4vw, 24px)/1.2 var(--f-body); text-align: center; }
 #carStart:active { background: #34c759; color: #000; }
+#carStart .vlag { width: min(70%, 84px); height: auto; display: block; margin: 0 auto; }
+@media (max-aspect-ratio: 1/1) { #carStart .vlag { width: 44px; } }
 #carStart.nee { border-color: #8a8f98; background: #1b1d21; color: #d6d9de; }
 body.car #carStart { display: block; }
 body.car .stage { padding-right: min(22vw, 190px); padding-left: min(22vw, 190px); box-sizing: border-box; }
@@ -205,12 +207,12 @@ details.set > * + * { margin-top: 10px; }
 <button id="carBack" type="button">Terug</button>
 <button id="carAdd" type="button">Vaste<br>flitser</button>
 <button id="carAddM" type="button">Mobiele<br>flitser</button>
-<button id="carStart" type="button">1 2 3<br>Start</button>
+<button id="carStart" type="button" aria-label="Start met startvlag"><svg class="vlag" viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="6" width="4" height="54" rx="2" fill="#8ff0a8"/><rect x="12" y="8" width="40" height="32" fill="#f4f4f4"/><g fill="#111"><rect x="12" y="8" width="8" height="8"/><rect x="28" y="8" width="8" height="8"/><rect x="44" y="8" width="8" height="8"/><rect x="20" y="16" width="8" height="8"/><rect x="36" y="16" width="8" height="8"/><rect x="12" y="24" width="8" height="8"/><rect x="28" y="24" width="8" height="8"/><rect x="44" y="24" width="8" height="8"/><rect x="20" y="32" width="8" height="8"/><rect x="36" y="32" width="8" height="8"/></g></svg></button>
 <div id="errBar" hidden onclick="this.hidden=true" style="position:fixed;left:8px;right:8px;top:8px;z-index:99;background:#b71c1c;color:#fff;padding:10px 12px;border-radius:10px;font:13px system-ui"></div>
 <main>
   <header>
     <p class="eyebrow">Simulator · brein van je robotje</p>
-    <h1>Dashboardmaatje</h1>
+    <h1>Buddy</h1>
     <p class="lede">Zo reageert je robotje straks op de weg. Zijn basis zijn vaste regels plus een geheugen dat bijhoudt hoe jij rijdt: vertrekuren, snelheden, remstijl, je 0→100. Dat past op de M5Dial zelf en werkt zonder internet. Praten kan ook: met een eigen minibrein zonder internet, of slimmer via Claude.</p>
   </header>
 
@@ -246,7 +248,7 @@ details.set > * + * { margin-top: 10px; }
 
   <section aria-label="Praten">
     <h2>Praten</h2>
-    <p class="foot"><b>Tijdens het rijden praat je met je stem.</b> Zet bij Instellingen “Luisteren naar hé maatje” aan, dan hoef je niets aan te raken. Hij antwoordt hardop. Ideeën om te zeggen: “hé maatje, vertel een grap”, “doe een dansje”, “hoe laat is het”, “wat is mijn snelste nul naar honderd”, “hoeveel ritten hebben we gereden”, “wat weet je over mij”, “onthoud dat ik om vijf uur moet bellen”, “als ik hoi zeg, zeg jij goedemorgen kapitein”, “welterusten”.</p>
+    <p class="foot"><b>Tijdens het rijden praat je met je stem.</b> Zet bij Instellingen “Luisteren naar hé Buddy” aan, dan hoef je niets aan te raken. Hij antwoordt hardop. Ideeën om te zeggen: “hé Buddy, vertel een grap”, “doe een dansje”, “hoe laat is het”, “wat is mijn snelste nul naar honderd”, “hoeveel ritten hebben we gereden”, “wat weet je over mij”, “onthoud dat ik om vijf uur moet bellen”, “als ik hoi zeg, zeg jij goedemorgen kapitein”, “welterusten”.</p>
     <p class="foot" id="btNote" hidden>Tip: als de telefoon met de Tesla verbonden is, gaat de auto bij de microfoon denken dat je belt (belicoon en lopende tijd). Dat is normaal bij Bluetooth. Het stopt zodra de microfoon klaar is. Wil je dat nooit: zet in de Bluetooth-instellingen van je telefoon bij de Tesla “Telefoongesprekken” uit.</p><p class="foot" id="chatInfo">Praten kan alleen als de auto stilstaat. Hij snapt een hoop zonder internet. Hij leert ook van jou: zeg bijvoorbeeld "als ik hoi zeg, zeg jij goedemorgen kapitein".</p>
     <div class="chat">
       <div class="log" id="log" role="log" aria-live="polite"></div>
@@ -336,9 +338,9 @@ details.set > * + * { margin-top: 10px; }
     <p class="chip" id="wxStat">Weer: nog niet opgehaald. Dit gebeurt als de GPS aan staat.</p>
     <p class="sub">Geluid en spraak</p>
     <div class="switchrow"><input type="checkbox" id="babOn" checked><label for="babOn">Schattige piepjes als hij iets zegt (met Geluid aan)</label></div>
-    <div class="switchrow"><input type="checkbox" id="wakeOn"><label for="wakeOn">Luisteren naar “hé maatje” (handsfree, ook tijdens het rijden)</label></div>
+    <div class="switchrow"><input type="checkbox" id="wakeOn"><label for="wakeOn">Luisteren naar “hé Buddy” (handsfree, ook tijdens het rijden)</label></div>
     <p class="chip" id="wakeStat">Luisteren staat uit.</p>
-    <p class="foot">Als de telefoon met de Tesla verbonden is, zie je bij luisteren steeds het belicoon. Dat is normaal bij Bluetooth. Zeg bijvoorbeeld: “hé maatje, hoe heet ik?” Hij luistert alleen als de pagina open staat.</p>
+    <p class="foot">Als de telefoon met de Tesla verbonden is, zie je bij luisteren steeds het belicoon. Dat is normaal bij Bluetooth. Zeg bijvoorbeeld: “hé Buddy, hoe heet ik?” Hij luistert alleen als de pagina open staat.</p>
     <div class="mobrow"><input type="text" id="meIn" maxlength="18" placeholder="Jouw naam"><button class="btn" id="meSave" type="button">Bewaar naam</button></div>
     <p class="sub">Wegwerkzaamheden</p>
     <div class="switchrow"><input type="checkbox" id="wkOn" checked><label for="wkOn">Waarschuwen voor wegwerkzaamheden</label></div>
@@ -391,7 +393,7 @@ details.set > * + * { margin-top: 10px; }
       <li><strong>Flitsers en trajecten</strong> komen uit OpenStreetMap (voor Nederland ongeveer 875 camerapunten). Mobiele controles staan er niet in.</li>
     </ul>
   </section>
-  <p class="foot" id="verTxt" style="text-align:center">Dashboardmaatje</p>
+  <p class="foot" id="verTxt" style="text-align:center">Buddy</p>
 </main>
 
 <script>
@@ -411,8 +413,9 @@ details.set > * + * { margin-top: 10px; }
   var KEY = 'dashboardmaatje-geheugen-v1';
   function fill(m) {
     var d = { trips: 0, km: 0, hard: 0, brake: 14, nBrake: 0, styleAvg: 85, stopAvg: 0, stops: 0, best: 0, launches: 0,
-      sh: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], taps: 0, name: 'Maatje', me: '', gagW: {}, notes: [], taught: [], unknown: [] };
+      sh: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], taps: 0, name: 'Buddy', me: '', gagW: {}, notes: [], taught: [], unknown: [] };
     for (var k in d) if (m[k] === undefined) m[k] = d[k];
+    if (m.name === 'Maatje') m.name = 'Buddy'; /* oude standaardnaam; een zelfgekozen naam blijft staan */
     if (m.kmMile === undefined) m.kmMile = Math.floor(m.km / 100);
     if (m.bday === undefined) m.bday = null;
     if (m.lastSpecial === undefined) m.lastSpecial = '';
@@ -541,8 +544,8 @@ details.set > * + * { margin-top: 10px; }
   }
   function setEv(k, dur, msg) {
     if (S.live && msg) lg('ev ' + k + ': ' + msg); if (msg) babble(k, msg); S.ev = k; S.evUntil = T + dur; S.evMsg = msg || null;
-    /* startvlag: de eerste 2 seconden na GO niet onderbreken, zodat je de vlag ziet vallen */
-    var g = S.gag, beschermd = g && typeof GAGS !== 'undefined' && GAGS[g.k] && GAGS[g.k].go && T - g.t0 >= 3 && T - g.t0 < 5;
+    /* startvlag: niet onderbreken tijdens het aftellen (als je zelf op start drukte) en 2 seconden na GO */
+    var g = S.gag, beschermd = g && typeof GAGS !== 'undefined' && GAGS[g.k] && GAGS[g.k].go && T - g.t0 < 5 && (g.zelf || T - g.t0 >= 3); /* zelf gestart: heel het aftellen */
     if (!beschermd) S.gag = null;
   }
   function ix() { return S.live ? 4 : 1; }
@@ -1141,7 +1144,7 @@ details.set > * + * { margin-top: 10px; }
   function submitChat(text, voice) {
     text = (text || '').trim();
     if (!text || busy) return;
-    if (S.speed >= 1 && !voice) { addMsg('sys', 'Typen kan alleen als de auto stilstaat. Gebruik de microfoon of zeg “hé maatje”.'); return; }
+    if (S.speed >= 1 && !voice) { addMsg('sys', 'Typen kan alleen als de auto stilstaat. Gebruik de microfoon of zeg “hé Buddy”.'); return; }
     if (S.asleep) wake();
     S.idle = 0;
     addMsg('me', text);
@@ -1179,7 +1182,7 @@ details.set > * + * { margin-top: 10px; }
       b.addEventListener('click', function () { submitChat(c); });
       box.appendChild(b);
     });
-    addMsg('sys', 'Typen en knoppen: alleen als de auto stilstaat. Praten mag altijd: tik op 🎤 of zeg “hé maatje …”. Probeer: “hé maatje, vertel een grap”.');
+    addMsg('sys', 'Typen en knoppen: alleen als de auto stilstaat. Praten mag altijd: tik op 🎤 of zeg “hé Buddy …”. Probeer: “hé Buddy, vertel een grap”.');
     try {
       if (window.claude && window.claude.use) {
         window.claude.use('sample').then(function (f) {
@@ -1211,7 +1214,7 @@ details.set > * + * { margin-top: 10px; }
     var ok = S.speed < 1;
     if (ok === lastChatState) return; lastChatState = ok;
     chatIn.disabled = !ok; if (!busy) chatSend.disabled = !ok; if ($('micBtn')) $('micBtn').disabled = false;
-    chatIn.placeholder = ok ? 'Zeg iets tegen hem' : 'Typen kan alleen als we stilstaan. Praten mag altijd: 🎤 of zeg hé maatje';
+    chatIn.placeholder = ok ? 'Zeg iets tegen hem' : 'Typen kan alleen als we stilstaan. Praten mag altijd: 🎤 of zeg hé Buddy';
     Array.prototype.forEach.call($('chips').children, function (b) { b.disabled = !ok; });
   }
 
@@ -1313,8 +1316,9 @@ details.set > * + * { margin-top: 10px; }
     wxBack(dt);
     var ox = gx * 9, oy = gy * 7;
     var isClock = curKey === 'clock' && !S.asleep;
+    var geenGezicht = !!(S.gag && GAGS[S.gag.k] && GAGS[S.gag.k].noFace); /* bv. de startvlag-show: alleen de animatie */
     faceBegin();
-    if (isClock) clockDraw(); else {
+    if (isClock) clockDraw(); else if (!geenGezicht) {
     if (fxSpiral) { spiral(73 + ox, 106 + oy, -1); spiral(167 + ox, 106 + oy, 1); }
     else eyesDraw(ox, oy);
     if (cur.blush > 0.02) {
@@ -1379,7 +1383,7 @@ details.set > * + * { margin-top: 10px; }
   /* ---------- Own speed on the round screen ---------- */
   function speedDraw() {
     var mode = S.spdMode | 0;
-    if (!mode || S.asleep || S.flagUntil > T || curKey === 'clock') return;
+    if (!mode || S.asleep || S.flagUntil > T || curKey === 'clock' || (S.gag && GAGS[S.gag.k] && GAGS[S.gag.k].noFace)) return;
     var v = Math.round(S.speed), camOn = S.cam && S.cam.dist <= 600, lim = camOn && S.cam.limit != null ? S.cam.limit : S.roadLim;
     var est = !(camOn && S.cam.limit != null) && !!S.roadEst, bad = lim != null && !est && v > lim, col = bad ? HEART : EYE;
     ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -2619,7 +2623,7 @@ details.set > * + * { margin-top: 10px; }
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
   var VERSION = 'v40';
-  $('verTxt').textContent = 'Dashboardmaatje ' + VERSION;
+  $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
     if (T - logT < 10) return; logT = T;
@@ -2628,7 +2632,7 @@ details.set > * + * { margin-top: 10px; }
   window.addEventListener('error', function (e) { lg('FOUT ' + (e.message || '') + ' @' + (e.lineno || '')); var b = $('errBar'); if (b && errShown < 3) { errShown++; b.textContent = 'Foutje: ' + (e.message || '') + ' @' + (e.lineno || '') + ' (tik om te sluiten)'; b.hidden = false; } });
   function logText() {
     var f = function (t) { var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); };
-    var head = 'Dashboardmaatje testlog\nApparaat: ' + navigator.userAgent + '\nGPS-tag: ' + shownTag + '\nFlitsdata: ' + $('camStat').textContent + '\nGemeld: ' + $('mobStat').textContent + '\nRitten: ' + mem.trips + ', km: ' + mem.km.toFixed(1) + ', beste 0-100: ' + (mem.best ? mem.best.toFixed(1) : '-') + '\n---\n';
+    var head = 'Buddy testlog\nApparaat: ' + navigator.userAgent + '\nGPS-tag: ' + shownTag + '\nFlitsdata: ' + $('camStat').textContent + '\nGemeld: ' + $('mobStat').textContent + '\nRitten: ' + mem.trips + ', km: ' + mem.km.toFixed(1) + ', beste 0-100: ' + (mem.best ? mem.best.toFixed(1) : '-') + '\n---\n';
     return head + logs.map(function (x) { return f(x.t) + ' ' + x.m; }).join('\n');
   }
   $('bLog').addEventListener('click', function () {
@@ -2804,7 +2808,8 @@ details.set > * + * { margin-top: 10px; }
     function wake_() { try { wake(); } catch (e) {} }
     function heard(t) {
       t = t.toLowerCase().trim();
-      var m = t.match(/(?:^|\s)(?:h[eé]+y?|hoi|ok[eé]+)?\s*(maatje|maatjes|matje|mats)\b\s*(.*)$/);
+      /* 'Buddy' wordt door spraakherkenning vaak als 'body' of 'baddie' gehoord: die alleen mét hé/hoi ervoor */
+      var m = t.match(/(?:^|\s)(?:h[eé]+y?|hoi|ok[eé]+)?\s*(buddy|buddie|maatje|maatjes|matje|mats)\b\s*(.*)$/) || t.match(/(?:^|\s)(?:h[eé]+y?|hoi|ok[eé]+)\s*(body|bodie|boddy|baddie|badie|budy|bodi)\b\s*(.*)$/);
       if (m) { armed = T + 9; var rest = m[2].trim(); if (!rest) { setEv('anticipate', 3, 'Ja? Ik luister.'); return; } armed = 0; voiceCmd(rest); }
       else if (T < armed) { armed = 0; voiceCmd(t); }
     }
@@ -2816,7 +2821,7 @@ details.set > * + * { margin-top: 10px; }
         rec.onresult = function (ev) { for (var i = ev.resultIndex; i < ev.results.length; i++) { if (ev.results[i].isFinal && ev.results[i][0]) heard(ev.results[i][0].transcript); } };
         rec.onerror = function (ev) { lg('luisteren: ' + ev.error); if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { wake.checked = false; setStat('Microfoon niet toegestaan. Zet hem aan voor deze pagina.'); } };
         rec.onend = function () { if (wake.checked) setTimeout(start, 500); };
-        rec.start(); setStat('Luistert… zeg “hé maatje”.');
+        rec.start(); setStat('Luistert… zeg “hé Buddy”.');
       } catch (e) { setStat('Luisteren lukt niet in deze browser.'); }
     }
     wake.addEventListener('change', function () {
@@ -2997,8 +3002,9 @@ details.set > * + * { margin-top: 10px; }
     var b = $('carStart');
     if (S.asleep) wake();
     if (S.speed >= 3) {
+      if (!b.dataset.vlag) b.dataset.vlag = b.innerHTML;
       b.classList.add('nee'); b.innerHTML = 'Eerst<br>stilstaan';
-      setTimeout(function () { b.classList.remove('nee'); b.innerHTML = '1 2 3<br>Start'; }, 2200);
+      setTimeout(function () { b.classList.remove('nee'); b.innerHTML = b.dataset.vlag; }, 2200);
       return;
     }
     startGag('startgrid'); if (S.gag && S.gag.k === 'startgrid') S.gag.zelf = true;
@@ -3063,16 +3069,34 @@ details.set > * + * { margin-top: 10px; }
     eye(xs[0], cy, -1); eye(xs[1], cy, 1);
     eyeCol = EYE;
   }
+  /* Klok: de rand van het scherm (de oranje ring van de M5Dial) is de klokrand.
+     Digitale tijd groot in het midden, wijzers alleen in de buitenring zodat ze de cijfers niet bedekken. */
+  var DAGEN = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'], MAANDEN = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
   function clockDraw() {
-    var d = new Date(), hr = d.getHours() % 12 + d.getMinutes() / 60, mn = d.getMinutes() + d.getSeconds() / 60, sc = d.getSeconds() + d.getMilliseconds() / 1000, i, cx = 120, cy = 108;
-    ctx.strokeStyle = EYE; ctx.lineCap = 'round'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(cx, cy, 76, 0, TAU); ctx.stroke();
-    ctx.lineWidth = 3;
-    for (i = 0; i < 12; i++) { var a = i * TAU / 12, r1 = i % 3 ? 66 : 60; ctx.beginPath(); ctx.moveTo(cx + Math.sin(a) * r1, cy - Math.cos(a) * r1); ctx.lineTo(cx + Math.sin(a) * 71, cy - Math.cos(a) * 71); ctx.stroke(); }
-    function hand(v, len, w, col) { var a = v * TAU; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.sin(a) * len, cy - Math.cos(a) * len); ctx.stroke(); }
-    hand(hr / 12, 38, 6, EYE); hand(mn / 60, 56, 4, EYE); hand(sc / 60, 62, 2, HEART);
-    ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(cx, cy, 4, 0, TAU); ctx.fill();
-    ctx.font = '700 22px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2), 120, 204);
+    var d = new Date(), hr = d.getHours() % 12 + d.getMinutes() / 60, mn = d.getMinutes() + d.getSeconds() / 60, sc = d.getSeconds() + d.getMilliseconds() / 1000, i, cx = 120, cy = 120;
+    var R = 100; /* buitenkant van het ronde scherm */
+    ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = EYE;
+    /* streepjes langs de rand: 60 minuten, elke 5 minuten dikker en langer */
+    for (i = 0; i < 60; i++) {
+      var a = i * TAU / 60, groot = i % 5 === 0, r1 = groot ? R - 14 : R - 7;
+      ctx.globalAlpha = groot ? 1 : .45; ctx.lineWidth = groot ? (i % 15 === 0 ? 4 : 3) : 1.5;
+      ctx.beginPath(); ctx.moveTo(cx + Math.sin(a) * r1, cy - Math.cos(a) * r1); ctx.lineTo(cx + Math.sin(a) * (R - 2), cy - Math.cos(a) * (R - 2)); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    /* wijzers: beginnen buiten de digitale tijd (straal 70) en lopen naar buiten */
+    function hand(v, r0, r1, w, col) { var a = v * TAU; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(cx + Math.sin(a) * r0, cy - Math.cos(a) * r0); ctx.lineTo(cx + Math.sin(a) * r1, cy - Math.cos(a) * r1); ctx.stroke(); }
+    hand(hr / 12, 70, 80, 9, EYE);
+    hand(mn / 60, 70, R - 10, 4, EYE);
+    /* seconden: een stipje dat langs de rand draait */
+    var sa = sc / 60 * TAU; ctx.fillStyle = HEART; ctx.beginPath(); ctx.arc(cx + Math.sin(sa) * (R - 6), cy - Math.cos(sa) * (R - 6), 4, 0, TAU); ctx.fill();
+    /* digitale tijd in het midden */
+    ctx.fillStyle = EYE; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '700 38px "Chakra Petch", sans-serif';
+    ctx.fillText(('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2), cx, cy - 2);
+    ctx.globalAlpha = .7; ctx.font = '600 13px "Chakra Petch", sans-serif';
+    ctx.fillText(DAGEN[d.getDay()] + ' ' + d.getDate() + ' ' + MAANDEN[d.getMonth()], cx, cy + 26);
+    ctx.globalAlpha = 1; ctx.restore();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
   function moodFx(dt) {
     var k = curKey, i, j, ph;
@@ -3322,15 +3346,20 @@ details.set > * + * { margin-top: 10px; }
       ctx.fillStyle = HEART; ctx.beginPath(); ctx.ellipse(g.bx, g.by, 11, 14, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(g.bx, g.by + 14); ctx.lineTo(g.bx - 3, g.by + 19); ctx.lineTo(g.bx + 3, g.by + 19); ctx.fill();
       ctx.fillStyle = SCREEN; ctx.globalAlpha = .5; ctx.beginPath(); ctx.ellipse(g.bx - 4, g.by - 5, 2.5, 4, .5, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
     } };
-  GAGS.startgrid = { name: 'Startvlag-show', dur: 8, idle: 1, go: 1, mood: 'anticipate', msg: 'Klaar voor de start\u2026',
+  GAGS.startgrid = { name: 'Startvlag-show', dur: 8, idle: 1, go: 1, noFace: 1, mood: 'anticipate', msg: 'Klaar voor de start\u2026',
     upd: function (g, tt) {
       var n = tt < 3 ? 3 - Math.floor(tt) : 0; if (n !== g.n) { g.n = n; if (n) beep('wake'); else beep('race'); }
       if (tt < 3) dir(.6, -.2); else { dir(1, 0); g.mood = 'excited'; g.msg = tt < 4.6 ? 'Gaaaan!' : 'Wat een start!'; fdx = Math.min(10, (tt - 3) * 20); }
     },
     draw: function (g, tt) {
       var go = tt >= 3, n = g.n || 3;
-      ctx.lineWidth = 6; ctx.strokeStyle = go ? '#34c759' : '#ff3b30'; ctx.beginPath(); ctx.arc(58, 112, 34, 0, TAU); ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '700 ' + (go ? 28 : 44) + 'px "Chakra Petch", sans-serif'; ctx.fillText(go ? 'GO!' : String(n), 58, 114);
+      /* groot startlicht links (het gezicht is tijdens deze show weg) */
+      var lx = 76, ly = 120, puls = go ? 1 : 1 + .06 * Math.max(0, 1 - (tt % 1) * 3);
+      ctx.save(); ctx.translate(lx, ly); ctx.scale(puls, puls);
+      ctx.fillStyle = go ? 'rgba(52,199,89,.18)' : 'rgba(255,59,48,.18)'; ctx.beginPath(); ctx.arc(0, 0, 44, 0, TAU); ctx.fill();
+      ctx.lineWidth = 7; ctx.strokeStyle = go ? '#34c759' : '#ff3b30'; ctx.beginPath(); ctx.arc(0, 0, 44, 0, TAU); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '700 ' + (go ? 34 : 58) + 'px "Chakra Petch", sans-serif'; ctx.fillText(go ? 'GO!' : String(n), 0, 3);
+      ctx.restore();
       /* een vlaggenvrouw (pictogram, zoals bij de race-games) van achteren */
       ctx.fillStyle = EYE; ctx.strokeStyle = EYE; ctx.lineCap = 'round';
       rr(168, 124, 22, 28, 7); ctx.fill();

@@ -1,7 +1,7 @@
 {
-  "name": "Dashboardmaatje",
-  "short_name": "Maatje",
-  "description": "Dashboardrobotje dat meekijkt tijdens het rijden.",
+  "name": "Buddy",
+  "short_name": "Buddy",
+  "description": "Buddy: het robotje dat meekijkt tijdens het rijden.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
