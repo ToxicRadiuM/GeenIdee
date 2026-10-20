@@ -201,6 +201,7 @@ details.set > * + * { margin-top: 10px; }
 <button id="carBack" type="button">Terug</button>
 <button id="carAdd" type="button">Vaste<br>flitser</button>
 <button id="carAddM" type="button">Mobiele<br>flitser</button>
+<div id="errBar" hidden onclick="this.hidden=true" style="position:fixed;left:8px;right:8px;top:8px;z-index:99;background:#b71c1c;color:#fff;padding:10px 12px;border-radius:10px;font:13px system-ui"></div>
 <main>
   <header>
     <p class="eyebrow">Simulator · brein van je robotje</p>
@@ -238,95 +239,9 @@ details.set > * + * { margin-top: 10px; }
     <p class="foot">Telefoon-GPS werkt alleen als deze pagina via https is geopend en je locatie toestaat. Het scherm blijft dan aan. Bedien de pagina niet tijdens het rijden: zet je telefoon in een houder.</p>
   </section>
 
-  <details class="set big" id="animDet"><summary>Animaties en testen</summary>
-    <p class="foot">Hier probeer je alles uit zonder te rijden. Met telefoon-GPS aan gebruikt hij je echte rit en doen de rijknoppen niets.</p>
-    <p class="sub">Snelheid</p>
-    <input type="range" id="speed" min="0" max="130" step="1" value="0" aria-label="Snelheid in kilometer per uur">
-    <p class="sub">Rijden nabootsen</p>
-    <div class="btns">
-      <button class="btn" id="bGo" type="button">Optrekken</button>
-      <button class="btn" id="bStop" type="button">Stoppen</button>
-      <button class="btn" id="bHard" type="button">Hard remmen</button>
-      <button class="btn" id="bRocket" type="button">Raketstart 0→100</button>
-      <button class="btn" id="bLeft" type="button">Bocht links</button>
-      <button class="btn" id="bRight" type="button">Bocht rechts</button>
-      <button class="btn" id="bRound" type="button">Rotonde</button>
-      <button class="btn" id="bBump" type="button">Drempel</button>
-      <button class="btn" id="bWorks" type="button">Wegwerkzaamheden</button>
-      <button class="btn" id="bTunnel" type="button">Tunnel</button>
-      <button class="btn" id="bGag" type="button">Doe een grapje</button>
-      <button class="btn" id="bSleep" type="button">Laat slapen</button>
-      <button class="btn" id="bMic" type="button" aria-pressed="false">Muziek horen: uit</button>
-      <button class="btn" id="bReplay" type="button" style="grid-column:1/-1">Laatste rit afspelen (4x sneller)</button>
-    </div>
-    <p class="foot" id="micNote" hidden>Muziek horen meet alleen het volume om mee te bewegen. Er wordt niets opgenomen, opgeslagen of verstuurd.</p>
-    <p class="sub">Gezichten en weer</p>
-    <div class="limitrow"><label for="moodTest">Uitdrukking testen</label><select id="moodTest"><option value="">Kies een gezicht</option><option value="sad">Verdrietig met tranen</option><option value="angry">Boos met stoom</option><option value="laugh">Lachen</option><option value="think">Nadenken</option><option value="clock">Klok</option><option value="love">Hartjesogen</option><option value="stars">Sterogen</option><option value="nerv">Zweetdruppel</option><option value="snot">Slapen met bel</option></select></div>
-    <div class="limitrow"><label for="wxTest">Weer testen</label><select id="wxTest"><option value="">Echt weer</option><option value="sun">Zon</option><option value="cloud">Bewolkt</option><option value="rain">Regen</option><option value="heavy">Zware regen</option><option value="thunder">Onweer</option><option value="snow">Sneeuw</option><option value="fog">Mist</option><option value="wind">Storm</option><option value="cold">Vrieskou</option><option value="hot">Hitte</option><option value="night">Nacht</option></select></div>
-    <p class="sub">Flitsers nabootsen</p>
-    <div class="limitrow"><label for="limit">Limiet</label><select id="limit"><option>50</option><option>70</option><option>80</option><option selected>100</option><option>120</option></select><span class="unit">KM/H</span></div>
-    <div class="btns">
-      <button class="btn" id="bCam" type="button">Flitser vooruit</button>
-      <button class="btn" id="bTraj" type="button">Trajectcontrole</button>
-      <button class="btn" id="bDrive" type="button" style="grid-column:1/-1">+1 uur rijtijd (pauzeherinnering testen)</button>
-    </div>
-    <p class="foot">Gesimuleerd. Afstanden lopen ×10, zodat je het snel ziet: een flitser ligt 900 m verder, een traject is 3 km. Met telefoon-GPS aan gebruikt hij de echte flitsers uit OpenStreetMap en gelden deze testknoppen niet. In sommige landen, zoals Duitsland en Zwitserland, is een flitsmelding verboden: zet hem daar uit. Buiten Nederland kunnen andere regels gelden voor flitsmeldingen. Rijtijd loopt hier 60× sneller: 1 seconde is 1 minuut.</p>
-  </details>
-
-  <details class="set big" id="setDet"><summary>Instellingen</summary>
-    <p class="sub">Scherm</p>
-    <div class="limitrow"><label for="spdMode">Snelheid op zijn scherm</label><select id="spdMode"><option value="1">Cijfer</option><option value="2">Ring</option><option value="3">Cijfer en ring</option><option value="0">Uit</option></select></div>
-    <div class="limitrow"><label for="leanDir">Leunen in bochten</label><select id="leanDir"><option value="1">Naar de bocht toe</option><option value="-1">Van de bocht af</option></select></div>
-    <div class="switchrow"><input type="checkbox" id="wxOn" checked><label for="wxOn">Weer-animaties (weer op je locatie)</label></div>
-    <p class="chip" id="wxStat">Weer: nog niet opgehaald. Dit gebeurt als de GPS aan staat.</p>
-    <p class="sub">Geluid en spraak</p>
-    <div class="switchrow"><input type="checkbox" id="babOn" checked><label for="babOn">Schattige piepjes als hij iets zegt (met Geluid aan)</label></div>
-    <div class="switchrow"><input type="checkbox" id="wakeOn"><label for="wakeOn">Luisteren naar “hé maatje” (handsfree, ook tijdens het rijden)</label></div>
-    <p class="chip" id="wakeStat">Luisteren staat uit.</p>
-    <p class="foot">Als de telefoon met de Tesla verbonden is, zie je bij luisteren steeds het belicoon. Dat is normaal bij Bluetooth. Zeg bijvoorbeeld: “hé maatje, hoe heet ik?” Hij luistert alleen als de pagina open staat.</p>
-    <div class="mobrow"><input type="text" id="meIn" maxlength="18" placeholder="Jouw naam"><button class="btn" id="meSave" type="button">Bewaar naam</button></div>
-    <p class="sub">Wegwerkzaamheden</p>
-    <div class="switchrow"><input type="checkbox" id="wkOn" checked><label for="wkOn">Waarschuwen voor wegwerkzaamheden</label></div>
-    <p class="chip" id="wkStat">Nog niet geladen.</p>
-    <p class="foot">Bron: live data van NDW (de overheid): werk, afsluitingen, tijdelijke maximumsnelheid, ongelukken en files. Lukt dat niet, dan gebruik ik OpenStreetMap. Voor NDW heb je het Worker-adres nodig (bij Flitsers, tussenstation).</p>
-    <div class="switchrow"><input type="checkbox" id="msiOn" checked><label for="msiOn">Matrixborden boven de snelweg (snelheid, rood kruis)</label></div>
-    <p class="chip" id="msiStat">Matrixborden: nog niet geladen. Dat gebeurt vanzelf als je op de snelweg rijdt.</p>
-    <p class="sub">Flitsers</p>
-    <div class="switchrow"><input type="checkbox" id="camOn" checked><label for="camOn">Flitsmeldingen aan</label></div>
-    <div class="switchrow"><input type="checkbox" id="spkOn"><label for="spkOn">Flitsmeldingen hardop zeggen (Nederlands)</label></div>
-    <p class="chip" id="camStat">Flitsdata: nog niet geladen. Wordt opgehaald als de GPS aan staat.</p>
-    <div class="switchrow"><input type="checkbox" id="mobOn" checked><label for="mobOn">Gemelde controles van flitsers.nl erbij (alleen persoonlijk gebruik)</label></div>
-    <p class="chip" id="mobStat">Gemelde controles: nog niet opgehaald. Dit gebeurt elke 5 minuten als de GPS aan staat.</p>
-    <button class="btn" id="bUcam" type="button" style="grid-column:1/-1">Vaste flitser: onthoud deze plek</button>
-    <button class="btn" id="bUmob" type="button" style="grid-column:1/-1">Mobiele flitser: onthoud deze plek (3 uur)</button>
-    <p class="sub">Samen met collega’s</p>
-    <p class="foot">Vul dezelfde groepscode in op alle telefoons (6 tot 32 letters of cijfers, houd hem geheim). Flitsers die iemand toevoegt komen dan bij iedereen. Er worden alleen plek en limiet gedeeld. Je hebt het Worker-adres hierboven nodig, met opslag gekoppeld.</p>
-    <div class="mobrow"><input type="text" id="grpCode" maxlength="32" autocomplete="off" autocapitalize="none" placeholder="Groepscode"><button class="btn" id="grpSave" type="button">Opslaan en verversen</button></div>
-    <p class="chip" id="grpStat">Geen groepscode ingevuld.</p>
-    <button class="btn" id="grpDel" type="button">Mijn laatst toegevoegde flitser verwijderen</button>
-    <details class="set"><summary>Eigen koppeling instellen</summary>
-      <p class="foot">Een webpagina mag flitsers.nl meestal niet rechtstreeks uitlezen. Met een eigen gratis tussenstation (Cloudflare Worker, uitleg bij de app) werkt het wel. Plak hier het adres ervan. Laat leeg om rechtstreeks te proberen.</p>
-      <div class="mobrow"><input type="text" id="proxyUrl" inputmode="url" autocomplete="off" placeholder="https://jouw-naam.workers.dev"><button class="btn" id="proxySave" type="button">Bewaar adres</button></div>
-    </details>
-    <details class="set"><summary>Zelf een lijst plakken</summary>
-      <p class="foot">Open zelf de flitserspagina in je browser. Klap alleen de wegen open waar flitsers staan, kies alles selecteren en kopieer. Klap je ze liever één voor één open, dat kan ook: elke keer plakken voegt toe aan de lijst en er gaat niets verloren. Doe dit alleen als je stilstaat of als passagier. Ik haal alleen wegnummers en hectometerpalen eruit en zet ze 3 uur op de kaart. Er wordt niets automatisch bij die site opgehaald.</p>
-      <textarea id="pasteBox" rows="4" placeholder="Plak hier de tekst van de pagina" style="width:100%;font:13px sans-serif;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
-      <div class="mobrow"><button class="btn primary" id="pasteClip" type="button">Plakken van klembord</button><button class="btn" id="pasteGo" type="button">Lees lijst in</button><button class="btn" id="pasteClear" type="button">Wis geplakte flitsers</button></div>
-      <p class="chip" id="pasteStat"></p>
-    </details>
-  </details>
-
-  <details class="set big" id="logDet"><summary>Testlog</summary>
-    <div class="btns">
-      <button class="btn" id="bLog" type="button">Kopieer testlog</button>
-      <button class="btn" id="bLogClear" type="button">Log wissen</button>
-    </div>
-    <p class="foot" id="logInfo">De testlog bewaart wat er onderweg gebeurt (snelheid, limiet, meldingen, fouten), zonder je locatie. Kopieer hem na de rit en stuur hem naar Claude.</p>
-    <textarea id="logBox" rows="6" hidden readonly style="width:100%;font:12px monospace;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
-  </details>
-
   <section aria-label="Praten">
     <h2>Praten</h2>
+    <p class="foot"><b>Tijdens het rijden praat je met je stem.</b> Zet bij Instellingen “Luisteren naar hé maatje” aan, dan hoef je niets aan te raken. Hij antwoordt hardop. Ideeën om te zeggen: “hé maatje, vertel een grap”, “doe een dansje”, “hoe laat is het”, “wat is mijn snelste nul naar honderd”, “hoeveel ritten hebben we gereden”, “wat weet je over mij”, “onthoud dat ik om vijf uur moet bellen”, “als ik hoi zeg, zeg jij goedemorgen kapitein”, “welterusten”.</p>
     <p class="foot" id="btNote" hidden>Tip: als de telefoon met de Tesla verbonden is, gaat de auto bij de microfoon denken dat je belt (belicoon en lopende tijd). Dat is normaal bij Bluetooth. Het stopt zodra de microfoon klaar is. Wil je dat nooit: zet in de Bluetooth-instellingen van je telefoon bij de Tesla “Telefoongesprekken” uit.</p><p class="foot" id="chatInfo">Praten kan alleen als de auto stilstaat. Hij snapt een hoop zonder internet. Hij leert ook van jou: zeg bijvoorbeeld "als ik hoi zeg, zeg jij goedemorgen kapitein".</p>
     <div class="chat">
       <div class="log" id="log" role="log" aria-live="polite"></div>
@@ -370,6 +285,95 @@ details.set > * + * { margin-top: 10px; }
     </div>
     <p class="foot">Laten leren: zet de schuif op een tijd, laat hem 8 seconden stilstaan en trek op. Dat vertrek wordt onthouden. Op een uur waarop je vaak vertrekt, kijkt hij verwachtingsvol.</p>
   </section>
+
+  <h2 style="margin-top:28px">Hulpmiddelen</h2>
+  <details class="set big" id="animDet"><summary>Animaties en testen</summary>
+    <p class="foot">Hier probeer je alles uit zonder te rijden. Met telefoon-GPS aan gebruikt hij je echte rit en doen de rijknoppen niets.</p>
+    <p class="sub">Snelheid</p>
+    <input type="range" id="speed" min="0" max="130" step="1" value="0" aria-label="Snelheid in kilometer per uur">
+    <p class="sub">Rijden nabootsen</p>
+    <div class="btns">
+      <button class="btn" id="bGo" type="button">Optrekken</button>
+      <button class="btn" id="bStop" type="button">Stoppen</button>
+      <button class="btn" id="bHard" type="button">Hard remmen</button>
+      <button class="btn" id="bRocket" type="button">Raketstart 0→100</button>
+      <button class="btn" id="bLeft" type="button">Bocht links</button>
+      <button class="btn" id="bRight" type="button">Bocht rechts</button>
+      <button class="btn" id="bRound" type="button">Rotonde</button>
+      <button class="btn" id="bBump" type="button">Drempel</button>
+      <button class="btn" id="bWorks" type="button">Wegwerkzaamheden</button>
+      <button class="btn" id="bTunnel" type="button">Tunnel</button>
+      <button class="btn" id="bGag" type="button">Doe een grapje</button>
+      <button class="btn" id="bStart" type="button">Startvlag-show 3-2-1</button>
+      <button class="btn" id="bSleep" type="button">Laat slapen</button>
+      <button class="btn" id="bMic" type="button" aria-pressed="false">Muziek horen: uit</button>
+      <button class="btn" id="bReplay" type="button" style="grid-column:1/-1">Laatste rit afspelen (4x sneller)</button>
+    </div>
+    <p class="foot" id="micNote" hidden>Muziek horen meet alleen het volume om mee te bewegen. Er wordt niets opgenomen, opgeslagen of verstuurd.</p>
+    <p class="sub">Gezichten en weer</p>
+    <div class="limitrow"><label for="moodTest">Uitdrukking testen</label><select id="moodTest"><option value="">Kies een gezicht</option><option value="sad">Verdrietig met tranen</option><option value="angry">Boos met stoom</option><option value="laugh">Lachen</option><option value="think">Nadenken</option><option value="clock">Klok</option><option value="love">Hartjesogen</option><option value="stars">Sterogen</option><option value="nerv">Zweetdruppel</option><option value="snot">Slapen met bel</option></select></div>
+    <div class="limitrow"><label for="wxTest">Weer testen</label><select id="wxTest"><option value="">Echt weer</option><option value="sun">Zon</option><option value="cloud">Bewolkt</option><option value="rain">Regen</option><option value="heavy">Zware regen</option><option value="thunder">Onweer</option><option value="snow">Sneeuw</option><option value="fog">Mist</option><option value="wind">Storm</option><option value="cold">Vrieskou</option><option value="hot">Hitte</option><option value="night">Nacht</option></select></div>
+    <p class="sub">Flitsers nabootsen</p>
+    <div class="limitrow"><label for="limit">Limiet</label><select id="limit"><option>50</option><option>70</option><option>80</option><option selected>100</option><option>120</option></select><span class="unit">KM/H</span></div>
+    <div class="btns">
+      <button class="btn" id="bCam" type="button">Flitser vooruit</button>
+      <button class="btn" id="bTraj" type="button">Trajectcontrole</button>
+      <button class="btn" id="bDrive" type="button" style="grid-column:1/-1">+1 uur rijtijd (pauzeherinnering testen)</button>
+    </div>
+    <p class="foot">Gesimuleerd. Afstanden lopen ×10, zodat je het snel ziet: een flitser ligt 900 m verder, een traject is 3 km. Met telefoon-GPS aan gebruikt hij de echte flitsers uit OpenStreetMap en gelden deze testknoppen niet. In sommige landen, zoals Duitsland en Zwitserland, is een flitsmelding verboden: zet hem daar uit. Buiten Nederland kunnen andere regels gelden voor flitsmeldingen. Rijtijd loopt hier 60× sneller: 1 seconde is 1 minuut.</p>
+  </details>
+
+  <details class="set big" id="setDet"><summary>Instellingen</summary>
+    <p class="sub">Scherm</p>
+    <div class="limitrow"><label for="spdMode">Snelheid op zijn scherm</label><select id="spdMode"><option value="1">Cijfer</option><option value="2">Ring</option><option value="3">Cijfer en ring</option><option value="0">Uit</option></select></div>
+    <div class="limitrow"><label for="leanDir">Leunen in bochten</label><select id="leanDir"><option value="1">Naar de bocht toe</option><option value="-1">Van de bocht af</option></select></div>
+    <div class="switchrow"><input type="checkbox" id="wxOn" checked><label for="wxOn">Weer-animaties (weer op je locatie)</label></div>
+    <p class="chip" id="wxStat">Weer: nog niet opgehaald. Dit gebeurt als de GPS aan staat.</p>
+    <p class="sub">Geluid en spraak</p>
+    <div class="switchrow"><input type="checkbox" id="babOn" checked><label for="babOn">Schattige piepjes als hij iets zegt (met Geluid aan)</label></div>
+    <div class="switchrow"><input type="checkbox" id="wakeOn"><label for="wakeOn">Luisteren naar “hé maatje” (handsfree, ook tijdens het rijden)</label></div>
+    <p class="chip" id="wakeStat">Luisteren staat uit.</p>
+    <p class="foot">Als de telefoon met de Tesla verbonden is, zie je bij luisteren steeds het belicoon. Dat is normaal bij Bluetooth. Zeg bijvoorbeeld: “hé maatje, hoe heet ik?” Hij luistert alleen als de pagina open staat.</p>
+    <div class="mobrow"><input type="text" id="meIn" maxlength="18" placeholder="Jouw naam"><button class="btn" id="meSave" type="button">Bewaar naam</button></div>
+    <p class="sub">Wegwerkzaamheden</p>
+    <div class="switchrow"><input type="checkbox" id="wkOn" checked><label for="wkOn">Waarschuwen voor wegwerkzaamheden</label></div>
+    <p class="chip" id="wkStat">Nog niet geladen.</p>
+    <p class="foot">Bron: eerst de ANWB (files met vertraging, ongelukken, werk en afgesloten op- en afritten). Daarna check ik de live data van NDW (de overheid): wat de ANWB niet heeft, zoals tijdelijke maximumsnelheden, komt erbij en dubbele meldingen laat ik weg. Werkt de ANWB niet, dan gebruik ik alleen NDW, en lukt dat ook niet, dan OpenStreetMap. Hiervoor heb je het Worker-adres nodig (bij Flitsers, tussenstation). ANWB-gegevens zijn alleen voor persoonlijk gebruik.</p>
+    <div class="switchrow"><input type="checkbox" id="msiOn" checked><label for="msiOn">Matrixborden boven de snelweg (snelheid, rood kruis)</label></div>
+    <p class="chip" id="msiStat">Matrixborden: nog niet geladen. Dat gebeurt vanzelf als je op de snelweg rijdt.</p>
+    <p class="sub">Flitsers</p>
+    <div class="switchrow"><input type="checkbox" id="camOn" checked><label for="camOn">Flitsmeldingen aan</label></div>
+    <div class="switchrow"><input type="checkbox" id="spkOn"><label for="spkOn">Flitsmeldingen hardop zeggen (Nederlands)</label></div>
+    <p class="chip" id="camStat">Flitsdata: nog niet geladen. Wordt opgehaald als de GPS aan staat.</p>
+    <div class="switchrow"><input type="checkbox" id="mobOn" checked><label for="mobOn">Gemelde controles van flitsers.nl erbij (alleen persoonlijk gebruik)</label></div>
+    <p class="chip" id="mobStat">Gemelde controles: nog niet opgehaald. Dit gebeurt elke 2 minuten als de GPS aan staat.</p>
+    <button class="btn" id="bUcam" type="button" style="grid-column:1/-1">Vaste flitser: onthoud deze plek</button>
+    <button class="btn" id="bUmob" type="button" style="grid-column:1/-1">Mobiele flitser: onthoud deze plek (3 uur)</button>
+    <p class="sub">Samen met collega’s</p>
+    <p class="foot">Vul dezelfde groepscode in op alle telefoons (6 tot 32 letters of cijfers, houd hem geheim). Flitsers die iemand toevoegt komen dan bij iedereen. Er worden alleen plek en limiet gedeeld. Je hebt het Worker-adres hierboven nodig, met opslag gekoppeld.</p>
+    <div class="mobrow"><input type="text" id="grpCode" maxlength="32" autocomplete="off" autocapitalize="none" placeholder="Groepscode"><button class="btn" id="grpSave" type="button">Opslaan en verversen</button></div>
+    <p class="chip" id="grpStat">Geen groepscode ingevuld.</p>
+    <button class="btn" id="grpDel" type="button">Mijn laatst toegevoegde flitser verwijderen</button>
+    <details class="set"><summary>Eigen koppeling instellen</summary>
+      <p class="foot">Een webpagina mag flitsers.nl meestal niet rechtstreeks uitlezen. Met een eigen gratis tussenstation (Cloudflare Worker, uitleg bij de app) werkt het wel. Plak hier het adres ervan. Laat leeg om rechtstreeks te proberen.</p>
+      <div class="mobrow"><input type="text" id="proxyUrl" inputmode="url" autocomplete="off" placeholder="https://jouw-naam.workers.dev"><button class="btn" id="proxySave" type="button">Bewaar adres</button></div>
+    </details>
+    <details class="set"><summary>Zelf een lijst plakken</summary>
+      <p class="foot">Open zelf de flitserspagina in je browser. Klap alleen de wegen open waar flitsers staan, kies alles selecteren en kopieer. Klap je ze liever één voor één open, dat kan ook: elke keer plakken voegt toe aan de lijst en er gaat niets verloren. Doe dit alleen als je stilstaat of als passagier. Ik haal alleen wegnummers en hectometerpalen eruit en zet ze 3 uur op de kaart. Er wordt niets automatisch bij die site opgehaald.</p>
+      <textarea id="pasteBox" rows="4" placeholder="Plak hier de tekst van de pagina" style="width:100%;font:13px sans-serif;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
+      <div class="mobrow"><button class="btn primary" id="pasteClip" type="button">Plakken van klembord</button><button class="btn" id="pasteGo" type="button">Lees lijst in</button><button class="btn" id="pasteClear" type="button">Wis geplakte flitsers</button></div>
+      <p class="chip" id="pasteStat"></p>
+    </details>
+  </details>
+
+  <details class="set big" id="logDet"><summary>Testlog</summary>
+    <div class="btns">
+      <button class="btn" id="bLog" type="button">Kopieer testlog</button>
+      <button class="btn" id="bLogClear" type="button">Log wissen</button>
+    </div>
+    <p class="foot" id="logInfo">De testlog bewaart wat er onderweg gebeurt (snelheid, limiet, meldingen, fouten), zonder je locatie. Kopieer hem na de rit en stuur hem naar Claude.</p>
+    <textarea id="logBox" rows="6" hidden readonly style="width:100%;font:12px monospace;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
+  </details>
 
   <section aria-label="Plan voor de M5Dial">
     <h2>Naar de M5Dial</h2>
@@ -565,10 +569,10 @@ details.set > * + * { margin-top: 10px; }
     var kk = 1 - Math.exp(-dt * 6);
     S.accel += ((S.speed - prev) / dt - S.accel) * kk;
 
-    if (S.accel > 9 && S.speed > 4 && T - S.lastExc > 5 && !S.asleep) { setEv('excited', 2.2, 'Whoeeh, optrekken!'); S.lastExc = T; S.style = Math.max(0, S.style - 3); mem.hard++; beep('excited'); }
+    if (S.accel > 9 && S.speed > 4 && T - S.lastExc > 5 && !S.asleep && S.flagUntil < T) { setEv('excited', 2.2, 'Whoeeh, optrekken!'); S.lastExc = T; S.style = Math.max(0, S.style - 3); mem.hard++; beep('excited'); }
     learnStep(dt);
     leanStep(dt);
-    if (S.accel < -startleAt() && T - S.lastStart > 5 && !S.asleep) { if (S.accel < -35) setEv('startled', 3, 'Pfff\u2026 dat was op het randje. Alles goed?'); else setEv('startled', 1.8, 'Oef, stevig remmen!'); S.lastStart = T; S.style = Math.max(0, S.style - 8); beep('startled'); }
+    if (S.accel < -startleAt() && T - S.lastStart > 5 && !S.asleep && S.flagUntil < T) { if (S.accel < -35) setEv('startled', 3, 'Pfff\u2026 dat was op het randje. Alles goed?'); else setEv('startled', 1.8, 'Oef, stevig remmen!'); S.lastStart = T; S.style = Math.max(0, S.style - 8); beep('startled'); }
 
     if (S.speed < 1) { S.stoppedT += dt; S.idle += dt; }
     else {
@@ -623,9 +627,9 @@ details.set > * + * { margin-top: 10px; }
     }
     /* smooth-driving score per trip */
     if (S.speed >= 5) { S.trip = true; S.tripT += dt; }
-    else if (S.trip && S.speed < 1 && S.stoppedT > 3) {
+    else if (S.trip && S.speed < 1 && S.stoppedT > (S.live ? 480 : 3)) {  /* live: pas een nieuwe rit na 8 min stilstaan, niet bij elk stoplicht */
       S.trip = false;
-      if (S.tripT > 15) {
+      if (S.tripT > (S.live ? 120 : 15)) {
         var sc = Math.round(S.style);
         mem.trips++; mem.styleAvg += (sc - mem.styleAvg) * 0.2; save();
         if (mem.trips === 1) queueCheer('Onze eerste rit samen!');
@@ -742,6 +746,12 @@ details.set > * + * { margin-top: 10px; }
     str = str || 5;
     var gap = T - S.lastBump, twin = gap >= .25 && gap < 1.2 && !S.bumpTwin && S.speed < 50;
     if (S.asleep || gap < .25 || (gap < 1.2 && !twin)) return;
+    S.bumpLog = (S.bumpLog || []).filter(function (t) { return T - t < 20; }); S.bumpLog.push(T);
+    if (S.bumpLog.length >= 4 && str < 9) {
+      if (T > (S.roughUntil || 0) - 30) { S.roughMsgT = T; setEv('neutral', 2.5, 'Hobbelige weg. Ik laat de boings even zitten.'); }
+      S.roughUntil = T + 45; S.lastBump = T; S.hop = .3; S.squash = .5; if (S.live) lg('hobbelige weg (' + S.bumpLog.length + ' klappen in 20 s)'); return;
+    }
+    if (T < (S.roughUntil || 0) && str < 9) { S.lastBump = T; S.hop = .25; S.squash = .4; return; }
     if (S.live) lg('drempel/schok sterkte ' + str.toFixed(1) + (S.speed ? ' bij ' + Math.round(S.speed) + ' km/h' : '') + (twin ? ' (tweede klap)' : ''));
     S.bumpTwin = twin; S.lastBump = T;
     S.hop = Math.min(1, .55 + str / 14); S.squash = 1;
@@ -831,8 +841,8 @@ details.set > * + * { margin-top: 10px; }
     if (rec) mem.best = tt;
     mem.launches++; mem.hard++;
     var m = '0→100 in ' + fmt1(tt) + ' s' + (rec ? ' — nieuw record!' : '. Record: ' + fmt1(mem.best) + ' s.');
-    S.flagUntil = T + 5; S.starUntil = T + 5; S.flagMsg = fmt1(tt) + ' s'; S.flagRec = rec;
-    setEv('excited', 5, m); S.lastExc = T; S.love = Math.min(100, S.love + 10);
+    S.flagUntil = T + 9; S.starUntil = T + 7; S.flagMsg = fmt1(tt) + ' s'; S.flagRec = rec;
+    setEv('excited', 8, m); S.lastExc = T; S.love = Math.min(100, S.love + 10);
     save(); beep('race');
   }
 
@@ -972,7 +982,7 @@ details.set > * + * { margin-top: 10px; }
     /* breathing and a slow sway, so even doing nothing looks alive */
     if (!reduce && !S.asleep) { fsc *= 1 + Math.sin(T * 1.9) * .012; frot += Math.sin(T * .6) * .015; }
     if (S.asleep) fsc = 1 + Math.sin(T * 1.1) * .02;
-    if (S.flagUntil > T) { var fa = Math.min(1, (S.flagUntil - T) * 3, (5 - (S.flagUntil - T)) * 3 + .01); fdx -= 14 * fa; fdy += 6 * fa; fsc *= 1 - .09 * fa; }
+    if (S.flagUntil > T) { var fa = Math.min(1, (S.flagUntil - T) * 3, (9 - (S.flagUntil - T)) * 3 + .01); fdx -= 14 * fa; fdy += 6 * fa; fsc *= 1 - .09 * fa; }
     if (reduce) { fdx *= .3; fdy *= .3; frot *= .3; }
   }
   function faceBegin() {
@@ -995,7 +1005,7 @@ details.set > * + * { margin-top: 10px; }
   }
   function flagDraw() {
     var left = S.flagUntil - T; if (left <= 0) return;
-    var a = Math.min(1, left * 3, (5 - left) * 3 + .01);
+    var a = Math.min(1, left * 3, (9 - left) * 3 + .01);
     ctx.save(); ctx.globalAlpha = a;
     var ox = (1 - a) * 30;
     /* pole in a little hand */
@@ -1113,13 +1123,13 @@ details.set > * + * { margin-top: 10px; }
       'Je weet alleen dit: ' + (mem.me ? 'de bestuurder heet ' + mem.me + '; ' : '') + 'hij rijdt gemiddeld ' + Math.round(mem.avg) + ' km/h; ' + mem.trips + ' ritten samen; ' +
       (mem.best ? 'zijn snelste 0 naar 100 is ' + fmt1(mem.best) + ' seconden; ' : '') + 'het is nu ' + fmt(d.getHours() + d.getMinutes() / 60) + '; je energie is ' + Math.round(S.energy) + ' van 100 en je genegenheid ' + Math.round(S.love) + ' van 100. ' +
       (mem.notes.length ? 'Dit heeft de bestuurder je gevraagd te onthouden: ' + mem.notes.slice(-5).join('; ') + '. ' : '') +
-      'Je kunt niet rijden, niets bedienen en geen actuele informatie opzoeken. Bij onbekende feiten zeg je dat eerlijk. Moedig nooit te hard rijden aan. Je praat alleen als de auto stilstaat.';
+      'Je kunt niet rijden, niets bedienen en geen actuele informatie opzoeken. Bij onbekende feiten zeg je dat eerlijk. Moedig nooit te hard rijden aan. Je bestuurder praat soms tegen je tijdens het rijden; antwoord dan heel kort (een zin).';
   }
   function chatAllowed() { return S.speed < 1 && !S.asleep || (S.asleep && S.speed < 1); }
-  function submitChat(text) {
+  function submitChat(text, voice) {
     text = (text || '').trim();
     if (!text || busy) return;
-    if (S.speed >= 1) { addMsg('sys', 'Praten kan alleen als de auto stilstaat.'); return; }
+    if (S.speed >= 1 && !voice) { addMsg('sys', 'Typen kan alleen als de auto stilstaat. Gebruik de microfoon of zeg “hé maatje”.'); return; }
     if (S.asleep) wake();
     S.idle = 0;
     addMsg('me', text);
@@ -1128,6 +1138,7 @@ details.set > * + * { margin-top: 10px; }
       var out = r ? r.t : pick(FALLBACK) + (Math.random() < .5 ? ' Leer het me: zeg "als ik X zeg, zeg jij Y".' : '');
       if (!r) remember(text);
       addMsg('bot', out); turns.push({ role: 'user', content: text }, { role: 'assistant', content: out });
+      if (voice) sayNow(out);
       if (!r) setEv('worried', 1.4); else if (r.k === 'chat' && !S.ev) setEv('happy', 1.6);
       return;
     }
@@ -1138,6 +1149,7 @@ details.set > * + * { margin-top: 10px; }
     var input = [{ role: 'user', content: claudePrompt() + '\n\nDe bestuurder zegt hieronder iets. Antwoord als ' + mem.name + '.' }, { role: 'assistant', content: 'Begrepen. Ik antwoord kort en lief.' }].concat(hist, [{ role: 'user', content: text }]);
     claudeAsk(input, { cache: false, modelTier: 'quick', signal: ctl.signal, onText: function (o) { bubble.textContent = o.text; logEl.scrollTop = logEl.scrollHeight; } }).then(function (res) {
       bubble.textContent = res.text || '…'; turns.push({ role: 'user', content: text }, { role: 'assistant', content: res.text });
+      if (voice) sayNow(res.text);
       setEv('happy', 1.6);
     }, function (e) {
       var fallback = r ? r.t : pick(FALLBACK);
@@ -1155,7 +1167,7 @@ details.set > * + * { margin-top: 10px; }
       b.addEventListener('click', function () { submitChat(c); });
       box.appendChild(b);
     });
-    addMsg('sys', 'Typ iets of tik op een knop. Alleen als de auto stilstaat.');
+    addMsg('sys', 'Typen en knoppen: alleen als de auto stilstaat. Praten mag altijd: tik op 🎤 of zeg “hé maatje …”. Probeer: “hé maatje, vertel een grap”.');
     try {
       if (window.claude && window.claude.use) {
         window.claude.use('sample').then(function (f) {
@@ -1186,8 +1198,8 @@ details.set > * + * { margin-top: 10px; }
   function chatState() {
     var ok = S.speed < 1;
     if (ok === lastChatState) return; lastChatState = ok;
-    chatIn.disabled = !ok; if (!busy) chatSend.disabled = !ok; if ($('micBtn')) $('micBtn').disabled = !ok;
-    chatIn.placeholder = ok ? 'Zeg iets tegen hem' : 'Praten kan alleen als we stilstaan';
+    chatIn.disabled = !ok; if (!busy) chatSend.disabled = !ok; if ($('micBtn')) $('micBtn').disabled = false;
+    chatIn.placeholder = ok ? 'Zeg iets tegen hem' : 'Typen kan alleen als we stilstaan. Praten mag altijd: 🎤 of zeg hé maatje';
     Array.prototype.forEach.call($('chips').children, function (b) { b.disabled = !ok; });
   }
 
@@ -1331,6 +1343,22 @@ details.set > * + * { margin-top: 10px; }
     ctx.strokeStyle = '#D7352B'; ctx.lineWidth = 4; if (est) ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(120, 210, 15, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
     ctx.fillStyle = '#111111'; ctx.font = '700 14px "Chakra Petch", sans-serif'; ctx.fillText(v == null ? '?' : String(v), 120, 211);
   }
+  /* Wegnummer van een flitser: uit /flitsers (weg) of uit de meldingstekst ("A73 ... hmp 17.0") */
+  function wegVan(it) {
+    var w = it && typeof it.weg === 'string' ? it.weg : '';
+    if (!w && it && typeof it.text === 'string') { var m = it.text.match(/^\s*([AN])\s?(\d{1,3})\b/i); if (m) w = m[1].toUpperCase() + (+m[2]); }
+    return /^[AN]\d{1,3}$/.test(w) ? w : null;
+  }
+  /* Wegschild zoals langs de Nederlandse weg: A-weg rood met wit, N-weg geel met zwart */
+  function wegBord(w) {
+    var a = w.charAt(0) === 'A', bw = 14 + w.length * 9;
+    ctx.save();
+    rr(120 - bw / 2, 199, bw, 22, 4); ctx.fillStyle = a ? '#D7352B' : '#F7D117'; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = a ? '#FFFFFF' : '#111111'; rr(120 - bw / 2 + 2, 201, bw - 4, 18, 3); ctx.stroke();
+    ctx.fillStyle = a ? '#FFFFFF' : '#111111'; ctx.font = '700 14px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(w, 120, 211);
+    ctx.restore();
+  }
   function ring(p, color) {
     ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.strokeStyle = color;
     ctx.globalAlpha = 0.25; ctx.beginPath(); ctx.arc(120, 120, 112, 0, TAU); ctx.stroke();
@@ -1371,7 +1399,11 @@ details.set > * + * { margin-top: 10px; }
       var pa = reduce ? .6 : 0.5 + 0.5 * Math.sin(T * (nearC ? 15 : 8)), va = (nearC ? .55 : .28) * (reduce ? .6 : pa), gr = ctx.createRadialGradient(120, 120, 62, 120, 120, 104);
       gr.addColorStop(0, 'rgba(255,40,40,0)'); gr.addColorStop(1, 'rgba(255,40,40,' + va.toFixed(3) + ')'); ctx.fillStyle = gr; ctx.fillRect(0, 0, 240, 240);
       ctx.save(); ctx.translate(120, 40); ctx.scale(1.7, 1.7); ctx.translate(-120, -25);
-      ctx.fillStyle = EYE; ctx.fillRect(116, 26, 8, 12);
+      if (S.cam.mobile) {
+        /* Mobiele controle: camera op een driepoot */
+        ctx.strokeStyle = EYE; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(120, 29); ctx.lineTo(110, 37); ctx.moveTo(120, 29); ctx.lineTo(120, 37); ctx.moveTo(120, 29); ctx.lineTo(130, 37); ctx.stroke();
+      } else { ctx.fillStyle = EYE; ctx.fillRect(116, 26, 8, 12); }
       rr(100, 12, 40, 18, 5); ctx.fillStyle = EYE; ctx.fill();
       ctx.fillStyle = SCREEN; ctx.beginPath(); ctx.arc(112, 21, 5, 0, TAU); ctx.fill();
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(112, 21, 2.5, 0, TAU); ctx.fill();
@@ -1380,7 +1412,7 @@ details.set > * + * { margin-top: 10px; }
       ctx.globalAlpha = 1; ctx.restore();
       ctx.fillStyle = nearC ? '#ffffff' : EYE; ctx.font = '700 26px "Chakra Petch", sans-serif';
       var dtxt = Math.max(0, Math.round(S.cam.dist / 10) * 10) + ' m'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = SCREEN; ctx.strokeText(dtxt, 120, 76); ctx.fillText(dtxt, 120, 76);
-      ctx.save(); ctx.translate(-36, 0); sign(S.cam.limit); ctx.restore();
+      ctx.save(); ctx.translate(-36, 0); if (S.cam.limit == null && S.cam.weg) wegBord(S.cam.weg); else sign(S.cam.limit); ctx.restore();
       ring(1 - S.cam.dist / 600, col);
     }
     if (S.traj) {
@@ -1471,6 +1503,7 @@ details.set > * + * { margin-top: 10px; }
   $('bRight').addEventListener('click', function () { simBend(1, 'bend'); });
   $('bRound').addEventListener('click', function () { simBend(1, 'round'); });
   $('bBump').addEventListener('click', function () { bump(); });
+  $('bStart').addEventListener('click', function () { if (S.asleep) wake(); S.speed < 3 ? startGag('startgrid') : toast('Zet de snelheid eerst op 0.'); });
   $('bWorks').addEventListener('click', function () { worksAlert({ name: 'Test', d: 800 }); });
   $('bTunnel').addEventListener('click', function () { if (S.asleep) wake(); if (S.speed < 10) { S.target = 40; speedEl.value = 40; } S.simTunEnd = T + 6; toast('Tunnel van 6 seconden.'); });
   $('bMic').addEventListener('click', micToggle);
@@ -1889,20 +1922,95 @@ details.set > * + * { margin-top: 10px; }
         ndw = { t: Date.now(), lat: lat, lon: lon, items: items, n: items.length }; ndwErr = '';
         var c = {}; items.forEach(function (x) { c[x.k] = (c[x.k] || 0) + 1; });
         lg('NDW geladen: ' + items.length + ' meldingen in de buurt ' + JSON.stringify(c));
-        wkStat('Live verkeersinfo (NDW): ' + items.length + ' meldingen binnen 40 km. Werk/afsluitingen ' + ((c.closure || 0) + (c.lane || 0)) + ', snelheid ' + (c.speed || 0) + ', ongelukken ' + (c.accident || 0) + ', files ' + (c.jam || 0) + '.');
-      }).catch(function (e) { ndwFail = T; ndwErr = e.message || String(e); lg('FOUT NDW: ' + ndwErr); wkStat('Live verkeersinfo laden mislukt (' + ndwErr + '). Ik gebruik OpenStreetMap en probeer het opnieuw.'); })
+        verkeerStat();
+      }).catch(function (e) { ndwFail = T; ndwErr = e.message || String(e); lg('FOUT NDW: ' + ndwErr); verkeerStat(); })
       .then(function () { clearTimeout(to); ndwBusy = false; });
+  }
+  /* ---------- Files en werkzaamheden van de ANWB (via eigen Worker /verkeer) ----------
+     Eerst ANWB. NDW wordt daarna gecheckt: wat de ANWB niet heeft (bijv. tijdelijke maximumsnelheid)
+     komt erbij, dubbele meldingen vallen weg. Werkt de ANWB niet, dan gebruiken we alleen NDW. */
+  var anwbV = { t: 0, items: [] }, anwbBusy = false, anwbFail = -9999, anwbErr = '', vkMerged = { a: -1, n: -1, items: [], dub: 0 };
+  var ANWBK = { jam: 1, accident: 1, closure: 1, ramp: 1, lane: 1 };
+  function anwbItem(m) {
+    if (!m || typeof m !== 'object' || !ANWBK[m.k] || !Array.isArray(m.pts)) return null;
+    var pts = [];
+    for (var i = 0; i < m.pts.length && pts.length < 80; i++) {
+      var p = m.pts[i], la = p && +p[0], lo = p && +p[1];
+      if (isFinite(la) && isFinite(lo) && la > 50.6 && la < 53.7 && lo > 3 && lo < 7.4) pts.push([la, lo]);
+    }
+    if (!pts.length) return null;
+    var str = function (v, n) { return typeof v === 'string' ? v.slice(0, n) : ''; };
+    var ln = +m.lengte, dl = +m.vertraging;
+    return { id: 'a:' + str(String(m.id), 60), k: m.k, lim: null, ql: isFinite(ln) && ln > 0 ? ln : null, dl: isFinite(dl) && dl > 0 ? dl : null,
+      cs: '', br: null, pts: pts, src: 'anwb', tx: str(m.tekst, 80), weg: str(m.weg, 6), van: str(m.van, 60) };
+  }
+  function anwbLoad(lat, lon) {
+    if (!pbase() || anwbBusy || T - anwbFail < 60 || (anwbV.t && Date.now() - anwbV.t < 2 * 60e3)) return;
+    anwbBusy = true;
+    getText(pbase() + '/verkeer').then(function (txt) {
+      var j = JSON.parse(txt);
+      if (!j || j.success !== true || !Array.isArray(j.meldingen)) throw new Error((j && j.error) || 'onverwacht antwoord');
+      var cosl = Math.cos(lat * Math.PI / 180), items = [];
+      j.meldingen.forEach(function (m) {
+        var it = anwbItem(m); if (!it) return;
+        var md = 1e9; it.pts.forEach(function (p) { var d = Math.hypot((p[0] - lat) * 111195, (p[1] - lon) * cosl * 111195); if (d < md) md = d; });
+        if (md <= 40000) items.push(it);
+      });
+      anwbV = { t: Date.now(), lat: lat, lon: lon, items: items }; anwbErr = '';
+      lg('ANWB verkeer geladen: ' + items.length + ' meldingen in de buurt (van ' + j.meldingen.length + ')');
+    }).catch(function (e) { anwbFail = T; anwbErr = (e && e.message) || String(e); lg('FOUT ANWB verkeer: ' + anwbErr); })
+      .then(function () { anwbBusy = false; verkeerStat(); });
+  }
+  /* Soort melding -> groep om dubbele te herkennen */
+  function vkGroep(k) { return k === 'jam' || k === 'accident' ? 'flow' : k === 'speed' ? 'speed' : 'werk'; }
+  function vkBox(pts, m) {
+    var b = [1e9, 1e9, -1e9, -1e9]; pts.forEach(function (p) { b[0] = Math.min(b[0], p[0]); b[1] = Math.min(b[1], p[1]); b[2] = Math.max(b[2], p[0]); b[3] = Math.max(b[3], p[1]); });
+    return [b[0] - m, b[1] - m * 1.6, b[2] + m, b[3] + m * 1.6];
+  }
+  function vkDubbel(it, anwbItems) {
+    var g = vkGroep(it.k); if (g === 'speed') return false;
+    var bi = vkBox(it.pts, 0);
+    for (var i = 0; i < anwbItems.length; i++) {
+      var a = anwbItems[i]; if (vkGroep(a.k) !== g) continue;
+      var lim = a.k === 'ramp' || it.k === 'ramp' ? 150 : 400, ba = a.box || (a.box = vkBox(a.pts, 0.005));
+      if (bi[2] < ba[0] || bi[0] > ba[2] || bi[3] < ba[1] || bi[1] > ba[3]) continue;
+      for (var x = 0; x < it.pts.length; x++) for (var y = 0; y < a.pts.length; y++) {
+        if (gdist(it.pts[x][0], it.pts[x][1], a.pts[y][0], a.pts[y][1]) < lim) return true;
+      }
+    }
+    return false;
+  }
+  function verkeerItems() {
+    var aOk = anwbV.t && Date.now() - anwbV.t < 10 * 60e3, nOk = ndw.t && Date.now() - ndw.t < 20 * 60e3;
+    var a = aOk ? anwbV.items : [], n = nOk ? ndw.items : [];
+    if (!a.length) return n;
+    if (vkMerged.a === anwbV.t && vkMerged.n === (nOk ? ndw.t : 0)) return vkMerged.items;
+    var extra = n.filter(function (it) { return !vkDubbel(it, a); });
+    vkMerged = { a: anwbV.t, n: nOk ? ndw.t : 0, items: a.concat(extra), dub: n.length - extra.length };
+    return vkMerged.items;
+  }
+  function verkeerStat() {
+    var items = verkeerItems(), c = {};
+    items.forEach(function (x) { c[x.k] = (c[x.k] || 0) + 1; });
+    var s = 'Live verkeersinfo binnen 40 km: ' + items.length + ' meldingen (files ' + (c.jam || 0) + ', ongelukken ' + (c.accident || 0) + ', werk/afsluitingen ' + ((c.closure || 0) + (c.lane || 0) + (c.ramp || 0)) + ', tijdelijke snelheid ' + (c.speed || 0) + '). ';
+    s += 'ANWB: ' + (anwbV.t ? anwbV.items.length + ' meldingen' : anwbErr ? 'mislukt (' + anwbErr + ')' : pbase() ? 'nog niet geladen' : 'geen Worker-adres ingevuld') + '. ';
+    var merged = anwbV.items.length && vkMerged.a === anwbV.t && vkMerged.n === ndw.t;
+    s += 'NDW: ' + (ndw.t ? (merged ? (ndw.items.length - vkMerged.dub) + ' aanvullend, ' + vkMerged.dub + ' dubbel weggelaten' : ndw.items.length + ' meldingen') : ndwErr ? 'mislukt (' + ndwErr + ')' : 'nog niet geladen') + '.';
+    if (!anwbV.t && !ndw.t && (anwbErr || ndwErr)) s += ' Ik gebruik OpenStreetMap en probeer het opnieuw.';
+    wkStat(s);
   }
   function ndwFix(lat, lon, acc) {
     var hdg = null;
     if (ndwPos && gdist(ndwPos.lat, ndwPos.lon, lat, lon) >= 15) { ndwHdg = gbearing(ndwPos.lat, ndwPos.lon, lat, lon); ndwPos = { lat: lat, lon: lon }; }
     else if (!ndwPos) ndwPos = { lat: lat, lon: lon };
     hdg = ndwHdg;
-    ndwLoad(lat, lon);
-    if (!ndw.t || Date.now() - ndw.t > 20 * 60e3) return false;
+    anwbLoad(lat, lon); /* eerst ANWB */
+    ndwLoad(lat, lon);  /* daarna NDW: aanvulling en reserve */
+    var vkItems = verkeerItems();
+    if (!(ndw.t && Date.now() - ndw.t <= 20 * 60e3) && !(anwbV.t && Date.now() - anwbV.t <= 10 * 60e3)) return false;
     if (acc >= 60 || S.liveSpeed < 15 || hdg === null) return true;
     var cosl = Math.cos(lat * Math.PI / 180), best = null;
-    ndw.items.forEach(function (it) {
+    vkItems.forEach(function (it) {
       var md = 1e9, mb = null, j, p = it.pts;
       if (p.length === 1) { md = Math.hypot((p[0][0] - lat) * 111195, (p[0][1] - lon) * cosl * 111195); mb = it.br; }
       else for (j = 0; j + 1 < p.length; j++) {
@@ -1925,13 +2033,17 @@ details.set > * + * { margin-top: 10px; }
   function ndwAlert(it, d) {
     var m, mood = 'alert', gag = false;
     if (it.k === 'speed') m = 'Tijdelijk max ' + (it.lim || '?') + ' over ' + ndwDist(d) + '. Let op!';
-    else if (it.k === 'accident') { m = 'Ongeluk voor je, over ' + ndwDist(d) + '. Voorzichtig!'; mood = 'worried'; }
-    else if (it.k === 'jam') { m = 'File voor je, over ' + ndwDist(d) + (it.ql ? ' (' + (it.ql / 1000).toFixed(1).replace('.', ',') + ' km lang)' : '') + '. Rustig aan.'; mood = 'worried'; }
+    else if (it.k === 'accident') { m = 'Ongeluk voor je, over ' + ndwDist(d) + (it.dl ? ' (+' + Math.max(1, Math.round(it.dl / 60)) + ' min)' : '') + '. Voorzichtig!'; mood = 'worried'; }
+    else if (it.k === 'jam') {
+      var ex = []; if (it.ql) ex.push((it.ql / 1000).toFixed(1).replace('.', ',') + ' km lang'); if (it.dl) ex.push('+' + Math.max(1, Math.round(it.dl / 60)) + ' min');
+      m = 'File voor je, over ' + ndwDist(d) + (ex.length ? ' (' + ex.join(', ') + ')' : '') + '. Rustig aan.'; mood = 'worried';
+    }
+    else if (it.k === 'ramp') m = (it.tx || 'Op- of afrit dicht') + (it.van ? ' bij ' + it.van : '') + ', over ' + ndwDist(d) + '.';
     else if (it.k === 'closure') { m = 'Afsluiting over ' + ndwDist(d) + '. Let op de omleiding!'; gag = true; }
     else { m = (it.cs === 'roadMaintenance' || it.cs === 'constructionWork' ? 'Werk aan de weg' : 'Rijstrook dicht') + ' over ' + ndwDist(d) + '. Rustig aan!'; gag = true; }
     setEv(mood, gag ? 1 : 5, m); babble(mood, m); beep(mood === 'worried' ? 'startled' : 'wake');
     if (gag) { startGag('works'); if (S.gag) S.gag.msg = m; S.nextGag = Math.max(S.nextGag, T + 15); }
-    lg('NDW melding ' + it.k + ' ' + Math.round(d) + ' m: ' + m);
+    lg((it.src === 'anwb' ? 'ANWB' : 'NDW') + ' melding ' + it.k + ' ' + Math.round(d) + ' m: ' + m);
   }
 
   /* Brugopeningen (NDW planningsfeed: geplande openingen, niet live gemeten) */
@@ -1991,6 +2103,7 @@ details.set > * + * { margin-top: 10px; }
       if (tt > 1.5 && tt < 5.5) { var bx = 30 + (tt - 1.5) / 4 * 180; ctx.fillStyle = EYE; ctx.beginPath(); ctx.moveTo(bx - 14, 196); ctx.lineTo(bx + 14, 196); ctx.lineTo(bx + 9, 204); ctx.lineTo(bx - 9, 204); ctx.closePath(); ctx.fill(); ctx.fillRect(bx - 1, 184, 2, 12); ctx.fillRect(bx - 1, 184, 9, 5); }
     } };
   /* Matrixborden (NDW live) met vaste locaties uit msi-locaties.json */
+  var msHold = null;
   var ms = { arr: null, loc: null, locBusy: false, locFail: -9999, t: -9999, busy: false, fail: -9999, items: [], prev: {}, seen: {} };
   function msLocLoad() {
     if (ms.loc || ms.locBusy || T - ms.locFail < 120) return; ms.locBusy = true;
@@ -2036,15 +2149,19 @@ details.set > * + * { margin-top: 10px; }
     ms.items.forEach(function (g) {
       var d = gdist(lat, lon, g.lat, g.lon), pv = ms.prev[g.k]; ms.prev[g.k] = d;
       if (d > 1500 || pv == null || d > pv - 3 || adiff(gbearing(lat, lon, g.lat, g.lon), hdg) > 50 || (g.b != null && adiff(g.b, hdg) > 75)) return;
-      if (ms.seen[g.k] && Date.now() - ms.seen[g.k] < 10 * 60e3) return;
-      if (!best || d < best.d) best = { g: g, d: d };
+      if (d < 90 && g.s != null) msHold = { v: g.s, k: g.k, until: T + 150 };   /* je rijdt onder het bord door: limiet blijft staan */
+      var want = d <= 600 ? 2 : 1, sn = ms.seen[g.k];
+      if (sn && Date.now() - sn.t < 10 * 60e3 && sn.st >= want) return;
+      if (!best || d < best.d) best = { g: g, d: d, want: want };
     });
     if (!best || T - ndwLast < 12) return;
-    ndwLast = T; var g = best.g; ms.seen[g.k] = Date.now();
+    ndwLast = T; var g = best.g, rem = !!(ms.seen[g.k] && Date.now() - ms.seen[g.k].t < 10 * 60e3 && ms.seen[g.k].st === 1 && best.want === 2);
+    ms.seen[g.k] = { t: Date.now(), st: best.want };
     var m, mood = 'alert', mt = 's';
     if (g.s != null) { m = 'Matrixbord: max ' + g.s + ' over ' + ndwDist(best.d) + '.'; if (S.speed > g.s + 5) { m = 'Matrixbord: max ' + g.s + ' over ' + ndwDist(best.d) + '! Je rijdt nu ' + Math.round(S.speed) + '.'; mood = 'worried'; } }
     else if (g.x > 0) { m = 'Rood kruis over ' + ndwDist(best.d) + ': rijstrook dicht.'; mt = 'x'; }
     else { m = 'Rijstrook dicht verderop, over ' + ndwDist(best.d) + '.'; mt = 'x'; }
+    if (rem) { setEv(mood, 3, 'Nog even: ' + m); beep(mood === 'worried' ? 'startled' : 'wake'); lg('matrix herinnering ' + Math.round(best.d) + ' m: ' + m); return; }
     setEv(mood, 1, m); babble(mood, m); beep(mood === 'worried' ? 'startled' : 'wake'); startGag('matrix');
     if (S.gag) { S.gag.msg = m; S.gag.mt = mt; S.gag.mv = g.s; S.gag.mood = mood; } S.nextGag = Math.max(S.nextGag, T + 15);
     lg('matrix ' + Math.round(best.d) + ' m: ' + m);
@@ -2130,7 +2247,7 @@ details.set > * + * { margin-top: 10px; }
     sampleLog(acc);
     if (!S.camOn || acc >= 60) { if (!S.camOn) { mon.cur = null; mon.traj = null; S.cam = null; S.traj = null; } return; }
     var ev = monitorStep(mon, { lat: lat, lon: lon, v: S.liveSpeed, hdg: lastHdg, t: t });
-    S.cam = mon.cur ? { dist: mon.cur.dist, limit: mon.cur.it.limit, kind: mon.cur.it.kind, mobile: !!mon.cur.it.mobile, live: true } : null;
+    S.cam = mon.cur ? { dist: mon.cur.dist, limit: mon.cur.it.limit, kind: mon.cur.it.kind, mobile: !!mon.cur.it.mobile, weg: wegVan(mon.cur.it), live: true } : null;
     S.traj = mon.traj ? { len: mon.traj.len * 1.1, done: mon.traj.done, time: mon.traj.time, sumV: mon.traj.sumV, limit: mon.traj.limit, live: true } : null;
     ev.forEach(applyEvent);
   }
@@ -2141,7 +2258,9 @@ details.set > * + * { margin-top: 10px; }
   var HMPKEY = 'dashboardmaatje-hmp-v1', PROXYKEY = 'dashboardmaatje-proxy-v1', MODEKEY = 'dashboardmaatje-pdokmode-v1';
   var mobItems = [], mobT = -9999, mobBusy = false, mobErr = '', mobMsg = '', hmpCache = {}, proxy = '', pdokMode = null;
   try { hmpCache = JSON.parse(localStorage.getItem(HMPKEY)) || {}; } catch (e) { hmpCache = {}; }
-  try { proxy = localStorage.getItem(PROXYKEY) || ''; pdokMode = JSON.parse(localStorage.getItem(MODEKEY)); } catch (e) {}
+  var DEFAULT_PROXY = 'https://ndw.ricardoboegheim19.workers.dev';
+  proxy = DEFAULT_PROXY;
+  try { var pv = localStorage.getItem(PROXYKEY); if (pv !== null) proxy = pv; pdokMode = JSON.parse(localStorage.getItem(MODEKEY)); } catch (e) {}
   $('proxyUrl').value = proxy;
   function pbase() { return proxy.replace(/\/+$/, ''); }
   function rssUrl() { return pbase() ? pbase() + '/rss' : 'https://flitsers.nl/flitsers.rss'; }
@@ -2224,7 +2343,7 @@ details.set > * + * { margin-top: 10px; }
   function showMob() {
     var el = $('mobStat');
     if (!$('mobOn').checked) { el.textContent = 'Gemelde controles staan uit.'; return; }
-    el.textContent = mobMsg || 'Gemelde controles: nog niet opgehaald. Dit gebeurt elke 5 minuten als de GPS aan staat.';
+    el.textContent = mobMsg || 'Gemelde controles: nog niet opgehaald. Dit gebeurt elke 2 minuten als de GPS aan staat.';
     if (mobErr) el.textContent += ' ' + mobErr;
   }
   var RSSVIA = ['', 'https://api.allorigins.win/raw?url=', 'https://corsproxy.io/?', 'https://api.codetabs.com/v1/proxy?quest='], rssHow = '';
@@ -2241,10 +2360,86 @@ details.set > * + * { margin-top: 10px; }
     }
     return next();
   }
+  /* ---------- Eigen Worker-endpoint /flitsers (JSON met latitude/longitude) ----------
+     Antwoord: { success: true, flitsers: [ { id, weg, hm, richting, omschrijving, latitude, longitude, tijd } ] }
+     Werkt dit, dan is de PDOK-omrekening van hectometerpalen niet nodig. Lukt het niet,
+     dan valt de app terug op de oude RSS-route (loadMobileRss). */
+  var MOBEVERY = 120;       /* seconden: elke 2 minuten verversen zolang de GPS aan staat */
+  var MOBRETRY = 60;        /* na een mislukte poging: over 1 minuut opnieuw */
+  var MOBMAXAGE = 4 * 36e5; /* meldingen ouder dan 4 uur negeren */
+  function flitserItem(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    var lat = Number(raw.latitude), lon = Number(raw.longitude);
+    if (raw.latitude === null || raw.longitude === null || raw.latitude === '' || raw.longitude === '') return null;
+    if (!isFinite(lat) || !isFinite(lon)) return null;
+    /* Ruim om Nederland en België heen; alles daarbuiten is vrijwel zeker een fout in de data */
+    if (lat < 49 || lat > 54.5 || lon < 2 || lon > 8) return null;
+    var tijd = typeof raw.tijd === 'string' ? Date.parse(raw.tijd) : NaN;
+    if (isFinite(tijd) && Date.now() - tijd > MOBMAXAGE) return null;
+    var weg = typeof raw.weg === 'string' ? raw.weg.trim().slice(0, 20) : '';
+    var oms = typeof raw.omschrijving === 'string' ? raw.omschrijving.trim().slice(0, 120) : '';
+    var ric = typeof raw.richting === 'string' ? raw.richting.trim().slice(0, 120) : '';
+    var hm = (raw.hm === null || raw.hm === '' || raw.hm === undefined) ? NaN : Number(raw.hm);
+    var id = raw.id != null ? String(raw.id).slice(0, 80) : (lat.toFixed(5) + ',' + lon.toFixed(5));
+    if (!oms) oms = 'Gemelde controle';
+    return {
+      id: 'w:' + id, kind: 'cam', lat: lat, lon: lon, limit: null, mobile: true,
+      weg: weg, omschrijving: oms, richting: ric, hm: isFinite(hm) ? hm : null,
+      text: (weg ? weg + ' ' : '') + oms + (isFinite(hm) ? ' hmp ' + hm : '') + (ric ? ' (' + ric + ')' : '')
+    };
+  }
+  function getFlitsersJson() {
+    if (!pbase()) return Promise.reject(new Error('geen Worker-adres'));
+    return getText(pbase() + '/flitsers').then(function (txt) {
+      var j = JSON.parse(txt);
+      if (!j || j.success !== true || !Array.isArray(j.flitsers)) throw new Error('onverwacht antwoord');
+      var out = [], seen = {}, i, it;
+      for (i = 0; i < j.flitsers.length && out.length < 300; i++) {
+        it = flitserItem(j.flitsers[i]);
+        if (!it || seen[it.id]) continue; /* dubbele id's maar één keer */
+        seen[it.id] = 1; out.push(it);
+      }
+      return { items: out, total: j.flitsers.length };
+    });
+  }
+  /* Geplakte flitsers hebben nog geen coördinaten: die zetten we via PDOK om, net als vroeger. */
+  function locatePasted() {
+    var list = pastedFresh().filter(function (x) { return x.km !== null; }), items = [], fails = 0, k = 0;
+    function step() {
+      if (k >= list.length) return Promise.resolve();
+      var it = list[k++];
+      return locate(it).then(function (pts) {
+        if (!pts || !pts.length) { fails++; return; }
+        pts.forEach(function (pt, n) { items.push({ id: 'p:' + it.id + ':' + n, kind: 'cam', lat: pt.lat, lon: pt.lon, limit: null, mobile: true, text: it.text }); });
+      }, function () { fails++; }).then(step);
+    }
+    return step().then(function () { return { items: items, fails: fails }; });
+  }
   function loadMobile(force) {
     if (!$('mobOn').checked) { if (mobItems.length) { mobItems = []; applyCamData(); } return; }
-    if (mobBusy || (!force && T - mobT < 900)) return;
+    if (mobBusy || (!force && T - mobT < MOBEVERY)) return;
     mobBusy = true; mobT = T;
+    getFlitsersJson().then(function (res) {
+      return locatePasted().then(function (p) {
+        mobBusy = false;
+        if (!$('mobOn').checked) return;
+        mobItems = res.items.concat(p.items); applyCamData();
+        var d = new Date(), skip = res.total - res.items.length;
+        mobMsg = 'Gemelde controles (eigen Worker /flitsers' + (pastedFresh().length ? ', ' + pastedFresh().length + ' geplakt' : '') + '): ' + res.items.length + ' op de kaart gezet' + (skip > 0 ? ' (' + skip + ' overgeslagen: dubbel, te oud of zonder geldige plek)' : '') + '. Bijgewerkt ' + fmt(d.getHours() + d.getMinutes() / 60) + ', ververst elke 2 minuten. Meldingen kunnen al weg zijn. Let altijd zelf op.';
+        mobErr = p.fails ? p.fails + ' geplakte melding' + (p.fails > 1 ? 'en' : '') + ' kon ik niet op de kaart zetten.' : '';
+        lg('flitsers via /flitsers: ' + res.items.length + '/' + res.total);
+        showMob();
+      });
+    }, function (e) {
+      if (pbase()) lg('/flitsers mislukt (' + ((e && e.message) || 'fout') + '), terug naar RSS');
+      loadMobileRss();
+    }).catch(function (e) {
+      /* Vangnet: onverwachte fout bij verwerken. Oude flitsers blijven staan, over 1 minuut opnieuw. */
+      lg('FOUT /flitsers verwerken: ' + ((e && e.message) || 'fout'));
+      mobBusy = false; mobT = T - (MOBEVERY - MOBRETRY);
+    });
+  }
+  function loadMobileRss() {
     getRss().then(function (xml) { return parseFeed(xml); }, function (e) { if (pastedFresh().length) return []; throw e; }).then(function (all0) {
       var all = all0.concat(pastedFresh()), recent = all.filter(function (x) { return !x.pub || Date.now() - x.pub < 4 * 36e5; }).slice(0, 60);
       var withKm = recent.filter(function (x) { return x.km !== null; }), items = [], fails = 0, k = 0;
@@ -2257,6 +2452,7 @@ details.set > * + * { margin-top: 10px; }
         }).then(step);
       }
       return step().then(function () {
+        if (!$('mobOn').checked) return;
         mobItems = items; applyCamData();
         var d = new Date();
         mobMsg = 'Gemelde controles (' + (all0.length ? 'flitsers.nl via ' + rssHow : 'geen feed') + (pastedFresh().length ? ', ' + pastedFresh().length + ' geplakt' : '') + '): ' + recent.length + ' gemeld, ' + withKm.length + ' met hectometerpaal, ' + Math.floor(items.length) + ' op de kaart gezet. Bijgewerkt ' + fmt(d.getHours() + d.getMinutes() / 60) + '. Meldingen kunnen al weg zijn. Let altijd zelf op.';
@@ -2265,7 +2461,7 @@ details.set > * + * { margin-top: 10px; }
       });
     }).catch(function () {
       mobErr = pbase() ? 'Ophalen via je eigen koppeling mislukt. Controleer het adres.' : 'Ophalen mislukt, ook via de openbare doorgeefdiensten. Stel hieronder je eigen koppeling in.';
-      mobT = T - 600; lg('FOUT gemelde controles: ' + (pbase() ? 'eigen koppeling' : 'rechtstreeks')); showMob();
+      mobT = T - (MOBEVERY - MOBRETRY); lg('FOUT gemelde controles: ' + (pbase() ? 'eigen koppeling' : 'rechtstreeks')); showMob();
     }).then(function () { mobBusy = false; });
   }
   $('mobOn').addEventListener('change', function () { if ($('mobOn').checked) loadMobile(true); else { mobItems = []; applyCamData(); showMob(); } });
@@ -2276,7 +2472,7 @@ details.set > * + * { margin-top: 10px; }
     toast(v ? 'Adres bewaard.' : 'Adres gewist: ik probeer weer rechtstreeks.');
     if (S.live) loadMobile(true);
   });
-  window.__mob = { parseFeed: parseFeed, loadMobile: loadMobile, items: function () { return mobItems; } };
+  window.__mob = { parseFeed: parseFeed, loadMobile: loadMobile, flitserItem: flitserItem, items: function () { return mobItems; } };
 
 
   /* ---------- Snelheidslimiet van de weg (OpenStreetMap) ---------- */
@@ -2293,7 +2489,7 @@ details.set > * + * { margin-top: 10px; }
   function tileWays(t) {
     return t.w.map(function (a) {
       var g = [], k; for (k = 0; k < a[2].length; k += 2) g.push({ lat: a[2][k], lon: a[2][k + 1] });
-      return { lim: a[0], est: a[1], g: g, c: a[3] || null };
+      return { lim: a[0], est: a[1], g: g, c: a[3] || null, mw: a[4] || 0 };
     });
   }
   try { roadTiles = JSON.parse(localStorage.getItem(ROADKEY)) || []; roadTiles.forEach(function (t) { t.ws = tileWays(t); }); } catch (e) { roadTiles = []; }
@@ -2330,7 +2526,8 @@ details.set > * + * { margin-top: 10px; }
         var cm = String(tg['maxspeed:conditional'] || '').match(/^\s*(\d{2,3})\s*@\s*\(?\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*\)?\s*$/);
         if (cm) c = { v: +cm[1], a: +cm[2] * 60 + +cm[3], b: +cm[4] * 60 + +cm[5] };
         var flat = []; e.geometry.forEach(function (q) { flat.push(+q.lat.toFixed(5), +q.lon.toFixed(5)); });
-        w.push(c ? [lim, est, flat, c] : [lim, est, flat]);
+        var mw = (est && tg.highway === 'motorway') ? 1 : 0;
+        w.push(mw ? [lim, est, flat, c, 1] : (c ? [lim, est, flat, c] : [lim, est, flat]));
       });
       addTile({ lat: qa, lon: qo, t: Date.now(), w: w });
       roadTry = 0; roadBack = 10;
@@ -2347,8 +2544,10 @@ details.set > * + * { margin-top: 10px; }
   }
   function wayLim(w) {
     if (w.c) { var d = new Date(), m = d.getHours() * 60 + d.getMinutes(), inn = w.c.a <= w.c.b ? (m >= w.c.a && m < w.c.b) : (m >= w.c.a || m < w.c.b); if (inn) return w.c.v; }
+    if (w.mw && nightNL()) return 130;
     return w.lim;
   }
+  function nightNL() { var h = new Date().getHours(); return h >= 19 || h < 6; }
   function segInfo(lat, lon, a, b) {
     var k = Math.cos(lat * RAD) * 111320, ax = (a.lon - lon) * k, ay = (a.lat - lat) * 111320, bx = (b.lon - lon) * k, by = (b.lat - lat) * 111320;
     var dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy, t = L2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L2)) : 0;
@@ -2356,8 +2555,25 @@ details.set > * + * { margin-top: 10px; }
     return { d: Math.sqrt(px * px + py * py), brg: (Math.atan2(dx, dy) / RAD + 360) % 360 };
   }
   function roadHold() { if (S.roadLim != null && T - S.roadSeen > 150) { S.roadLim = null; S.roadEst = false; roadCand = null; } }
+  var hiT = 0, loT = 0, hiLast = 0;
+  function roadGuess() {
+    var now = T, dt = hiLast ? Math.min(5, now - hiLast) : 0; hiLast = now;
+    if (S.liveSpeed >= 90) { hiT += dt; loT = 0; } else { hiT = 0; if (S.liveSpeed < 60) loT += dt; }
+    if (S.roadLim == null && hiT >= 45) { S.roadLim = nightNL() ? 130 : 100; S.roadEst = true; S.guessed = true; lg('limiet geschat uit je snelheid: ' + S.roadLim); }
+    else if (S.guessed && S.roadLim != null && loT >= 20) { S.roadLim = null; S.roadEst = false; S.guessed = false; }
+    else if (S.guessed && S.roadLim != null) { var g = nightNL() ? 130 : 100; if (g !== S.roadLim) S.roadLim = g; }
+  }
   function roadStep(lat, lon, acc) {
     if (!S.live) return;
+    roadStep0(lat, lon, acc);
+    if (msHold) {
+      var cur = null; ms.items.forEach(function (g) { if (g.k === msHold.k) cur = g; });
+      if (T > msHold.until || !cur || cur.s !== msHold.v) msHold = null;
+      else { S.roadLim = msHold.v; S.roadEst = false; S.guessed = false; S.roadSeen = T; }
+    }
+    if (S.roadLim != null && !S.guessed) hiT = 0; else roadGuess();
+  }
+  function roadStep0(lat, lon, acc) {
     loadRoads(lat, lon);
     if (acc > 45) { roadHold(); return; }
     if (!roadBuild || roadDirty || gdist(lat, lon, roadBuild.lat, roadBuild.lon) > 500) buildRoads(lat, lon);
@@ -2375,8 +2591,8 @@ details.set > * + * { margin-top: 10px; }
     if (!best) { roadMiss++; roadHold(); return; }
     roadMiss = 0; S.roadSeen = T;
     var key = best.lim + (best.est ? '~' : '');
-    if (best.lim === S.roadLim && best.est === !!S.roadEst) { roadCand = null; return; }
-    if (roadCand === key) { if (++roadCnt >= 2) { S.roadLim = best.lim; S.roadEst = best.est; roadCand = null; } }
+    if (best.lim === S.roadLim && best.est === !!S.roadEst) { roadCand = null; S.guessed = false; return; }
+    if (roadCand === key) { if (++roadCnt >= 2) { S.roadLim = best.lim; S.roadEst = best.est; roadCand = null; S.guessed = false; } }
     else { roadCand = key; roadCnt = 1; }
   }
   window.__road = function () { return S.roadLim; };
@@ -2390,14 +2606,14 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v32';
+  var VERSION = 'v40';
   $('verTxt').textContent = 'Dashboardmaatje ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
     if (T - logT < 10) return; logT = T;
     lg('v=' + Math.round(S.liveSpeed) + ' nauwk=' + Math.round(acc) + 'm limiet=' + (S.roadLim == null ? '-' : S.roadLim + (S.roadEst ? '~' : '')) + ' wegen=' + roadWays.length + ' draai=' + S.turnS.toFixed(0) + ' vaste=' + (camCache ? camCache.cams.length : 0) + '/' + (camCache ? camCache.trajs.length : 0) + ' gemeld=' + mobItems.length + ' stemming=' + curKey);
   }
-  window.addEventListener('error', function (e) { lg('FOUT ' + (e.message || '') + ' @' + (e.lineno || '')); });
+  window.addEventListener('error', function (e) { lg('FOUT ' + (e.message || '') + ' @' + (e.lineno || '')); var b = $('errBar'); if (b && errShown < 3) { errShown++; b.textContent = 'Foutje: ' + (e.message || '') + ' @' + (e.lineno || '') + ' (tik om te sluiten)'; b.hidden = false; } });
   function logText() {
     var f = function (t) { var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); };
     var head = 'Dashboardmaatje testlog\nApparaat: ' + navigator.userAgent + '\nGPS-tag: ' + shownTag + '\nFlitsdata: ' + $('camStat').textContent + '\nGemeld: ' + $('mobStat').textContent + '\nRitten: ' + mem.trips + ', km: ' + mem.km.toFixed(1) + ', beste 0-100: ' + (mem.best ? mem.best.toFixed(1) : '-') + '\n---\n';
@@ -2570,8 +2786,8 @@ details.set > * + * { margin-top: 10px; }
       if (S.asleep) wake_();
       addMsg('me', t);
       var r = localReply(t);
-      if (r) { addMsg('bot', r.t); setEv(r.k === 'cmd' ? 'happy' : 'content', 4.2, r.t); }
-      else setEv('worried', 2.2, 'Hm? Dat snap ik nog niet.');
+      if (r) { addMsg('bot', r.t); setEv(r.k === 'cmd' ? 'happy' : 'content', 4.2, r.t); sayNow(r.t); }
+      else { setEv('worried', 2.2, 'Hm? Dat snap ik nog niet.'); sayNow('Hm? Dat snap ik nog niet.'); }
     }
     function wake_() { try { wake(); } catch (e) {} }
     function heard(t) {
@@ -2599,7 +2815,15 @@ details.set > * + * { margin-top: 10px; }
 
   /* ---------- Loop ---------- */
   var last = null;
+  var errShown = 0;
   function frame(ts) {
+    try { frame2(ts); } catch (e) {
+      lg('FOUT frame ' + (e && e.message));
+      if (errShown < 3) { errShown++; var b = $('errBar'); if (b) { b.textContent = 'Foutje: ' + (e && e.message) + ' (tik om te sluiten)'; b.hidden = false; } }
+    }
+    requestAnimationFrame(frame);
+  }
+  function frame2(ts) {
     var t = ts / 1000;
     if (last === null) last = t;
     var dt = Math.min(0.1, t - last); last = t; T = t;
@@ -2612,7 +2836,6 @@ details.set > * + * { margin-top: 10px; }
     updateMood();
     render(dt > 0 ? dt : 0.016);
     if (T - lastUI > 0.12) { updateUI(); lastUI = T; }
-    requestAnimationFrame(frame);
   }
 
 
@@ -2666,11 +2889,11 @@ details.set > * + * { margin-top: 10px; }
     mic.hidden = false; $('btNote').hidden = false;
     function stop() { on = false; mic.textContent = '🎤'; mic.classList.remove('primary'); }
     mic.addEventListener('click', function () {
-      if (S.speed >= 1 || busy) return;
+      if (busy) return;
       if (on && rec) { try { rec.stop(); } catch (e) {} return; }
       try {
         rec = new SR(); rec.lang = 'nl-NL'; rec.interimResults = false; rec.maxAlternatives = 1; rec.continuous = false;
-        rec.onresult = function (ev) { var t = ev.results[0] && ev.results[0][0] ? ev.results[0][0].transcript : ''; if (t) { chatIn.value = t; submitChat(t); chatIn.value = ''; } };
+        rec.onresult = function (ev) { var t = ev.results[0] && ev.results[0][0] ? ev.results[0][0].transcript : ''; if (t) { chatIn.value = t; submitChat(t, true); chatIn.value = ''; } };
         rec.onerror = function (ev) { lg('microfoon: ' + ev.error); if (ev.error === 'not-allowed') toast('Zet de microfoon aan voor deze pagina in je browserinstellingen.'); else if (ev.error === 'no-speech') toast('Ik hoorde niks. Probeer nog eens.'); stop(); };
         rec.onend = stop;
         rec.start(); on = true; mic.textContent = '⏹'; mic.classList.add('primary'); setEv('anticipate', 6, 'Ik luister…');
@@ -2686,7 +2909,7 @@ details.set > * + * { margin-top: 10px; }
   try { ucams = JSON.parse(localStorage.getItem(UCKEY)) || []; } catch (e) { ucams = []; }
   applyCamData();
   /* Vaste en mobiele flitsers, ook delen met een groep via de Worker */
-  var GKEY = 'dashboardmaatje-grp-v1', grp = '', gcams = [], gT = -9999, gBusy = false, MOBMS = 3 * 3600e3;
+  var GKEY = 'dashboardmaatje-grp-v1', grp = '', gSeen = {}, gFirst = true, gcams = [], gT = -9999, gBusy = false, MOBMS = 3 * 3600e3;
   try { grp = localStorage.getItem(GKEY) || ''; } catch (e) {}
   ucams = ucams.filter(function (u) { return u.k !== 'mobile' || Date.now() - u.t < MOBMS; });
   function allUcams() {
@@ -2709,7 +2932,29 @@ details.set > * + * { margin-top: 10px; }
       var m = gcams.filter(function (c) { return c.k === 'mobile'; }).length;
       var d = new Date(); gStat('Groep: ' + gcams.length + ' flitsers (' + (gcams.length - m) + ' vast, ' + m + ' mobiel). Bijgewerkt ' + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes() + '.');
       applyCamData(); lg('groep ververst: ' + gcams.length);
+      try { gAnnounce(); } catch (e) { lg('FOUT melden ' + e.message); }
     }).catch(function (e) { gStat('Groep ophalen mislukt: ' + (e.message || e)); lg('FOUT groep ' + (e.message || e)); }).then(function () { gBusy = false; });
+  }
+  function myWho() { return (mem.me || '').replace(/[^A-Za-z\u00C0-\u017F \-]/g, '').slice(0, 18); }
+  function placeOf(lat, lon) {
+    var ctl = ('AbortController' in window) ? new AbortController() : null; if (ctl) setTimeout(function () { ctl.abort(); }, 4000);
+    return fetch('https://api.pdok.nl/bzk/locatieserver/search/v3_1/reverse?type=woonplaats&rows=1&fl=woonplaatsnaam&lat=' + lat.toFixed(5) + '&lon=' + lon.toFixed(5), ctl ? { signal: ctl.signal } : {})
+      .then(function (r) { return r.json(); }).then(function (j) { var d = j && j.response && j.response.docs && j.response.docs[0]; return d && d.woonplaatsnaam ? String(d.woonplaatsnaam).slice(0, 30) : ''; })
+      .catch(function () { return ''; });
+  }
+  function gAnnounce() {
+    var first = gFirst, fresh = null; gFirst = false;
+    gcams.forEach(function (c) {
+      if (gSeen[c.id]) return; gSeen[c.id] = 1;
+      if (first) return;
+      for (var i = 0; i < ucams.length; i++) if (ucams[i].id === c.id) return;
+      if (Date.now() - c.t > 15 * 60e3) return;
+      fresh = c;
+    });
+    if (!fresh) return;
+    var c = fresh, who = c.n || 'Een collega', what = c.k === 'mobile' ? 'een mobiele flitser' : 'een vaste flitser';
+    var m = who + ' heeft ' + what + ' gemeld' + (c.p ? ' bij ' + c.p : '') + '!';
+    beep('excited'); setEv('excited', 5, m); toast(m); lg('groepsmelding: ' + m);
   }
   function addUcam(kind, fromCar) {
     if (!S.live || !lastPos) { toast('Zet eerst de telefoon-GPS aan en rij erlangs.'); return false; }
@@ -2717,7 +2962,12 @@ details.set > * + * { margin-top: 10px; }
     ucams.push(u);
     try { localStorage.setItem(UCKEY, JSON.stringify(ucams)); } catch (e) {}
     applyCamData(); lg('eigen flitser opgeslagen (' + kind + ', ' + ucams.length + ')');
-    if (grp && pbase()) fetch(gUrl('/add', '&id=' + u.id + '&lat=' + u.lat.toFixed(6) + '&lon=' + u.lon.toFixed(6) + '&k=' + kind + (u.limit != null ? '&lim=' + u.limit : ''))).then(function () { gPull(); }).catch(function () { lg('FOUT groep delen'); });
+    if (grp && pbase()) {
+      gSeen[u.id] = 1;
+      placeOf(u.lat, u.lon).then(function (pl) {
+        return fetch(gUrl('/add', '&id=' + u.id + '&lat=' + u.lat.toFixed(6) + '&lon=' + u.lon.toFixed(6) + '&k=' + kind + (u.limit != null ? '&lim=' + u.limit : '') + '&n=' + encodeURIComponent(myWho()) + '&p=' + encodeURIComponent(pl)));
+      }).then(function () { gPull(); }).catch(function () { lg('FOUT groep delen'); });
+    }
     if (!fromCar) toast((kind === 'mobile' ? 'Mobiele flitser onthouden voor 3 uur.' : 'Vaste flitser onthouden.') + (grp ? ' Wordt gedeeld met je groep.' : '') + ' (Niet tikken tijdens het rijden.)');
     return true;
   }
@@ -3049,6 +3299,31 @@ details.set > * + * { margin-top: 10px; }
       ctx.fillStyle = HEART; ctx.beginPath(); ctx.ellipse(g.bx, g.by, 11, 14, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(g.bx, g.by + 14); ctx.lineTo(g.bx - 3, g.by + 19); ctx.lineTo(g.bx + 3, g.by + 19); ctx.fill();
       ctx.fillStyle = SCREEN; ctx.globalAlpha = .5; ctx.beginPath(); ctx.ellipse(g.bx - 4, g.by - 5, 2.5, 4, .5, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
     } };
+  GAGS.startgrid = { name: 'Startvlag-show', dur: 8, idle: 1, mood: 'anticipate', msg: 'Klaar voor de start\u2026',
+    upd: function (g, tt) {
+      var n = tt < 3 ? 3 - Math.floor(tt) : 0; if (n !== g.n) { g.n = n; if (n) beep('wake'); else beep('race'); }
+      if (tt < 3) dir(.6, -.2); else { dir(1, 0); g.mood = 'excited'; g.msg = tt < 4.6 ? 'Gaaaan!' : 'Wat een start!'; fdx = Math.min(10, (tt - 3) * 20); }
+    },
+    draw: function (g, tt) {
+      var go = tt >= 3, n = g.n || 3;
+      ctx.lineWidth = 6; ctx.strokeStyle = go ? '#34c759' : '#ff3b30'; ctx.beginPath(); ctx.arc(58, 112, 34, 0, TAU); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '700 ' + (go ? 28 : 44) + 'px "Chakra Petch", sans-serif'; ctx.fillText(go ? 'GO!' : String(n), 58, 114);
+      /* een vlaggenvrouw (pictogram, zoals bij de race-games) van achteren */
+      ctx.fillStyle = EYE; ctx.strokeStyle = EYE; ctx.lineCap = 'round';
+      rr(168, 124, 22, 28, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(179, 112, 10, 0, TAU); ctx.fill();
+      var sw = Math.sin(tt * 5) * 3; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(172, 108); ctx.quadraticCurveTo(160 + sw, 116, 162 + sw * 1.4, 134); ctx.stroke();
+      ctx.fillStyle = '#e53935'; rr(167, 150, 24, 15, 4); ctx.fill();
+      ctx.fillStyle = EYE; ctx.fillRect(170, 164, 8, 28); ctx.fillRect(181, 164, 8, 28);
+      ctx.fillRect(166, 191, 12, 5); ctx.fillRect(181, 191, 12, 5);
+      ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(171, 130); ctx.lineTo(162, 148); ctx.stroke();
+      var hx = 196, hy = 100; ctx.beginPath(); ctx.moveTo(188, 130); ctx.lineTo(hx, hy); ctx.stroke();
+      var ang = go ? Math.min(1, (tt - 3) / .35) : 0, rot = -ang * 2.5 + (go ? 0 : Math.sin(tt * 4) * .05);
+      ctx.save(); ctx.translate(hx, hy); ctx.rotate(rot);
+      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, 14); ctx.lineTo(0, -54); ctx.stroke();
+      for (var c = 0; c < 6; c++) for (var r = 0; r < 3; r++) { var w = go && ang < 1 ? 0 : Math.sin(tt * 9 - c) * 2.5 * (c / 6); ctx.fillStyle = (c + r) % 2 ? '#222831' : '#FFFFFF'; ctx.fillRect(-(c + 1) * 10 + .5, -54 + r * 9 + w, 9.5, 8.5); }
+      ctx.restore(); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    } };
   GAGS.coffee = { name: 'Drinkt koffie', dur: 6, idle: 1, mood: 'relaxed', msg: 'Koffie. Even bijtanken.',
     upd: function (g, tt) { var sip = tt > 2 && tt < 3.4; dir(0, sip ? -.5 : .2); g.cy = sip ? 176 : 196; if (tt > 4) g.msg = 'Aaah. Dat helpt.'; if (tt > 3.4) g.mood = 'happy'; },
     draw: function (g, tt) {
@@ -3300,6 +3575,10 @@ details.set > * + * { margin-top: 10px; }
       speechSynthesis.cancel(); speechSynthesis.speak(u);
     } catch (e) {}
   }
+  function sayNow(txt) {
+    if (!('speechSynthesis' in window) || !txt) return;
+    try { var u = new SpeechSynthesisUtterance(String(txt).replace(/[→;:)(]/g, ' ')); u.lang = 'nl-NL'; u.rate = 1.02; u.volume = 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+  }
   window.__say = function (t) { return say(t, true); };
   $('spkOn').addEventListener('change', function () {
     spkOn = $('spkOn').checked; try { localStorage.setItem(SPKKEY, spkOn ? '1' : '0'); } catch (e) {}
@@ -3386,9 +3665,10 @@ details.set > * + * { margin-top: 10px; }
   });
   window.__extra = { fx: function () { return { dx: fdx, rot: frot }; }, ride: function () { return ride; }, replaying: function () { return !!rp; }, pushRide: function (a) { ride = a; } };
 
-  drawHist(); updateInsight(); updateUI();
-  setTimeout(hello, 900);
-  window.__ndw = { msParse: msParse, brParse: brParse, parse: ndwParse, get: function () { return ndw; } };
+  try { drawHist(); updateInsight(); updateUI(); } catch (e) { lg('FOUT start ' + e.message); }
+  setTimeout(function () { try { hello(); } catch (e) { lg('FOUT hello ' + e.message); } }, 900);
+  window.__ndw = { msParse: msParse, brParse: brParse, parse: ndwParse, get: function () { return ndw; }, anwb: function () { return anwbV; }, items: verkeerItems, anwbLoad: anwbLoad, alert: ndwAlert, fix: ndwFix,
+    zet: function (a, n) { if (a) anwbV = a; if (n) ndw = n; vkMerged = { a: -1, n: -1, items: [], dub: 0 }; verkeerStat(); } };
   window.__mm = { hello: hello, cheer: cheer, bump: bump, S: S, mem: function () { return mem; }, GAGS: GAGS, startGag: startGag, submitChat: submitChat, localReply: localReply };
   requestAnimationFrame(frame);
 })();
