@@ -71,7 +71,7 @@ h2 {
 /* Autostand */
 body.car { background: #000; --ink: #f3f4f6; --muted: #9aa3ad; }
 body.car main > *:not(.stage) { display: none !important; }
-body.car main { padding: 0; gap: 0; }
+body.car main { padding: 0; gap: 0; max-width: none; width: 100%; }
 body.car, html:has(body.car) { overflow: hidden; height: 100dvh; }
 body.car .stage { min-height: 100dvh; justify-content: center; gap: 10px; }
 body.car .helmet { width: min(94vw, 74vh); }
@@ -79,6 +79,18 @@ body.car .foot { display: none; }
 #carBack { display: none; position: fixed; top: 10px; right: 10px; z-index: 50; min-height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #555; background: #1b1b1b; color: #eee; font: 600 14px var(--f-display); }
 body.car #carBack { display: block; }
 
+#carAdd { display: none; position: fixed; right: 2vw; top: 50%; transform: translateY(-50%); z-index: 50; width: min(26vw, 230px); min-height: min(46vh, 230px); border-radius: 26px; border: 3px solid #ffb02e; background: #2a1d05; color: #ffd27a; font: 700 clamp(20px, 3.4vw, 34px)/1.2 var(--f-body); text-align: center; }
+#carAdd:active { background: #ffb02e; color: #000; }
+#carAdd.ok { background: #1f6b32; border-color: #5ddc7c; color: #fff; }
+body.car #carAdd { display: block; }
+body.car .stage { padding-right: min(28vw, 240px); box-sizing: border-box; }
+body.car .helmet { width: min(66vw, 74vh); }
+@media (max-aspect-ratio: 1/1) { body.car #carAdd { top: auto; bottom: 3vh; transform: none; width: 90vw; min-height: 90px; } body.car .stage { padding-right: 0; } body.car .helmet { width: min(94vw, 62vh); } }
+#camWarn { position: fixed; left: 0; right: 0; top: 0; z-index: 60; padding: 14px 70px 14px 16px; text-align: center; font: 800 clamp(26px, 6vw, 56px)/1.1 var(--f-body); color: #fff; background: #d11a1a; box-shadow: 0 0 0 6px #ffd23c inset, 0 8px 30px rgba(209,26,26,.7); animation: camPulse .5s steps(2) infinite; pointer-events: none; }
+#camWarn[hidden] { display: none; }
+@keyframes camPulse { 0% { background: #d11a1a; } 100% { background: #7d0b0b; } }
+@media (prefers-reduced-motion: reduce) { #camWarn { animation: none; } }
+body.camnear { box-shadow: inset 0 0 0 10px #d11a1a; }
 /* Robot */
 .stage { align-items: center; gap: 18px; }
 .helmet {
@@ -174,11 +186,22 @@ input[type=range] { width: 100%; height: 34px; accent-color: var(--helmet); marg
 details.set { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
 details.set summary { cursor: pointer; font-weight: 600; }
 details.set > * + * { margin-top: 10px; }
+.set.big { margin: 14px 0; border: 1px solid var(--line); border-radius: 14px; padding: 0 14px; background: var(--panel); }
+.set.big > summary { min-height: 48px; display: flex; align-items: center; font: 600 16px var(--f-body); cursor: pointer; }
+.set.big[open] { padding-bottom: 14px; }
+.set.big > summary + * { margin-top: 4px; }
+.sub { font: 600 12px var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+.set.big .btns { margin: 8px 0; }
+.namecard { margin: 12px 0; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); display: grid; gap: 10px; }
+.namecard[hidden] { display: none; }
+.namecard label { font: 600 16px var(--f-body); }
 </style>
 
 </head>
 <body>
 <button id="carBack" type="button">Terug</button>
+<button id="carAdd" type="button">Flitser<br>toevoegen</button>
+<div id="camWarn" role="alert" aria-live="assertive" hidden></div>
 <main>
   <header>
     <p class="eyebrow">Simulator · brein van je robotje</p>
@@ -193,6 +216,11 @@ details.set > * + * { margin-top: 10px; }
       <span class="thought" id="thought">Waar gaan we heen?</span>
     </div>
     <p class="foot" id="tapHint">Tik op zijn gezicht als je stilstaat.</p>
+    <form class="namecard" id="nameCard" hidden autocomplete="off">
+      <label for="nameIn">Hoe heet jij?</label>
+      <div class="mobrow"><input type="text" id="nameIn" maxlength="18" autocomplete="given-name" placeholder="Jouw naam"><button class="btn primary" type="submit">Dit ben ik</button></div>
+      <button class="btn" type="button" id="nameLater">Later</button>
+    </form>
   </section>
 
   <section aria-label="Rijden">
@@ -200,70 +228,95 @@ details.set > * + * { margin-top: 10px; }
       <output class="num" id="spd" for="speed">0</output><span class="unit">KM/H</span>
       <span class="tag" id="gpsTag">GPS gesimuleerd</span>
     </div>
-    <input type="range" id="speed" min="0" max="130" step="1" value="0" aria-label="Snelheid in kilometer per uur">
     <div class="btns">
-      <button class="btn" id="bGo" type="button">Optrekken</button>
-      <button class="btn" id="bStop" type="button">Stoppen</button>
-      <button class="btn" id="bHard" type="button">Hard remmen</button>
-      <button class="btn" id="bRocket" type="button">Raketstart 0→100</button>
-      <button class="btn" id="bGag" type="button">Doe een grapje</button>
-      <button class="btn" id="bLeft" type="button">Bocht links</button>
-      <button class="btn" id="bRight" type="button">Bocht rechts</button>
-      <button class="btn" id="bRound" type="button">Rotonde</button>
-      <button class="btn" id="bBump" type="button">Drempel</button>
-      <button class="btn" id="bTunnel" type="button">Tunnel</button>
-      <button class="btn" id="bMic" type="button" aria-pressed="false">Muziek horen: uit</button>
-      <button class="btn" id="bSleep" type="button">Laat slapen</button>
       <button class="btn" id="bLive" type="button" aria-pressed="false" style="grid-column:1/-1">Telefoon-GPS: uit</button>
-      <button class="btn" id="bSound" type="button" aria-pressed="false" style="grid-column:1/-1">Geluid: uit</button>
       <button class="btn primary" id="bCar" type="button" style="grid-column:1/-1">Autostand: alleen gezicht, groot</button>
-      <button class="btn" id="bReplay" type="button" style="grid-column:1/-1">Laatste rit afspelen (4x sneller)</button>
+      <button class="btn" id="bSound" type="button" aria-pressed="false" style="grid-column:1/-1">Geluid: uit</button>
     </div>
-    <p class="foot" id="micNote" hidden>Muziek horen meet alleen het volume om mee te bewegen. Er wordt niets opgenomen, opgeslagen of verstuurd.</p>
     <p class="note" id="note" aria-live="polite"></p>
     <p class="warn" id="gpsHelp" role="status" hidden></p>
     <button class="btn" id="bInstall" type="button" hidden>Installeer als app</button>
     <p class="foot">Telefoon-GPS werkt alleen als deze pagina via https is geopend en je locatie toestaat. Het scherm blijft dan aan. Bedien de pagina niet tijdens het rijden: zet je telefoon in een houder.</p>
   </section>
 
-  <section aria-label="Onderweg">
-    <h2>Onderweg</h2>
-    <div class="limitrow"><label for="spdMode">Snelheid op zijn scherm</label><select id="spdMode"><option value="1">Cijfer</option><option value="2">Ring</option><option value="3">Cijfer en ring</option><option value="0">Uit</option></select></div>
-    <div class="switchrow"><input type="checkbox" id="wxOn" checked><label for="wxOn">Weer-animaties (weer op je locatie)</label></div>
-    <p class="chip" id="wxStat">Weer: nog niet opgehaald. Dit gebeurt als de GPS aan staat.</p>
+  <details class="set big" id="animDet"><summary>Animaties en testen</summary>
+    <p class="foot">Hier probeer je alles uit zonder te rijden. Met telefoon-GPS aan gebruikt hij je echte rit en doen de rijknoppen niets.</p>
+    <p class="sub">Snelheid</p>
+    <input type="range" id="speed" min="0" max="130" step="1" value="0" aria-label="Snelheid in kilometer per uur">
+    <p class="sub">Rijden nabootsen</p>
+    <div class="btns">
+      <button class="btn" id="bGo" type="button">Optrekken</button>
+      <button class="btn" id="bStop" type="button">Stoppen</button>
+      <button class="btn" id="bHard" type="button">Hard remmen</button>
+      <button class="btn" id="bRocket" type="button">Raketstart 0→100</button>
+      <button class="btn" id="bLeft" type="button">Bocht links</button>
+      <button class="btn" id="bRight" type="button">Bocht rechts</button>
+      <button class="btn" id="bRound" type="button">Rotonde</button>
+      <button class="btn" id="bBump" type="button">Drempel</button>
+      <button class="btn" id="bWorks" type="button">Wegwerkzaamheden</button>
+      <button class="btn" id="bTunnel" type="button">Tunnel</button>
+      <button class="btn" id="bGag" type="button">Doe een grapje</button>
+      <button class="btn" id="bSleep" type="button">Laat slapen</button>
+      <button class="btn" id="bMic" type="button" aria-pressed="false">Muziek horen: uit</button>
+      <button class="btn" id="bReplay" type="button" style="grid-column:1/-1">Laatste rit afspelen (4x sneller)</button>
+    </div>
+    <p class="foot" id="micNote" hidden>Muziek horen meet alleen het volume om mee te bewegen. Er wordt niets opgenomen, opgeslagen of verstuurd.</p>
+    <p class="sub">Gezichten en weer</p>
     <div class="limitrow"><label for="moodTest">Uitdrukking testen</label><select id="moodTest"><option value="">Kies een gezicht</option><option value="sad">Verdrietig met tranen</option><option value="angry">Boos met stoom</option><option value="laugh">Lachen</option><option value="think">Nadenken</option><option value="clock">Klok</option><option value="love">Hartjesogen</option><option value="stars">Sterogen</option><option value="nerv">Zweetdruppel</option><option value="snot">Slapen met bel</option></select></div>
     <div class="limitrow"><label for="wxTest">Weer testen</label><select id="wxTest"><option value="">Echt weer</option><option value="sun">Zon</option><option value="cloud">Bewolkt</option><option value="rain">Regen</option><option value="heavy">Zware regen</option><option value="thunder">Onweer</option><option value="snow">Sneeuw</option><option value="fog">Mist</option><option value="wind">Storm</option><option value="cold">Vrieskou</option><option value="hot">Hitte</option><option value="night">Nacht</option></select></div>
+    <p class="sub">Flitsers nabootsen</p>
+    <div class="limitrow"><label for="limit">Limiet</label><select id="limit"><option>50</option><option>70</option><option>80</option><option selected>100</option><option>120</option></select><span class="unit">KM/H</span></div>
+    <div class="btns">
+      <button class="btn" id="bCam" type="button">Flitser vooruit</button>
+      <button class="btn" id="bTraj" type="button">Trajectcontrole</button>
+      <button class="btn" id="bDrive" type="button" style="grid-column:1/-1">+1 uur rijtijd (pauzeherinnering testen)</button>
+    </div>
+    <p class="foot">Gesimuleerd. Afstanden lopen ×10, zodat je het snel ziet: een flitser ligt 900 m verder, een traject is 3 km. Met telefoon-GPS aan gebruikt hij de echte flitsers uit OpenStreetMap en gelden deze testknoppen niet. In sommige landen, zoals Duitsland en Zwitserland, is een flitsmelding verboden: zet hem daar uit. Buiten Nederland kunnen andere regels gelden voor flitsmeldingen. Rijtijd loopt hier 60× sneller: 1 seconde is 1 minuut.</p>
+  </details>
+
+  <details class="set big" id="setDet"><summary>Instellingen</summary>
+    <p class="sub">Scherm</p>
+    <div class="limitrow"><label for="spdMode">Snelheid op zijn scherm</label><select id="spdMode"><option value="1">Cijfer</option><option value="2">Ring</option><option value="3">Cijfer en ring</option><option value="0">Uit</option></select></div>
     <div class="limitrow"><label for="leanDir">Leunen in bochten</label><select id="leanDir"><option value="1">Naar de bocht toe</option><option value="-1">Van de bocht af</option></select></div>
-    <div class="switchrow"><input type="checkbox" id="spkOn"><label for="spkOn">Flitsmeldingen hardop zeggen (Nederlands)</label></div>
+    <div class="switchrow"><input type="checkbox" id="wxOn" checked><label for="wxOn">Weer-animaties (weer op je locatie)</label></div>
+    <p class="chip" id="wxStat">Weer: nog niet opgehaald. Dit gebeurt als de GPS aan staat.</p>
+    <p class="sub">Geluid en spraak</p>
+    <div class="switchrow"><input type="checkbox" id="babOn" checked><label for="babOn">Schattige piepjes als hij iets zegt (met Geluid aan)</label></div>
+    <div class="switchrow"><input type="checkbox" id="wakeOn"><label for="wakeOn">Luisteren naar “hé maatje” (handsfree, ook tijdens het rijden)</label></div>
+    <p class="chip" id="wakeStat">Luisteren staat uit.</p>
+    <p class="foot">Als de telefoon met de Tesla verbonden is, zie je bij luisteren steeds het belicoon. Dat is normaal bij Bluetooth. Zeg bijvoorbeeld: “hé maatje, hoe heet ik?” Hij luistert alleen als de pagina open staat.</p>
+    <div class="mobrow"><input type="text" id="meIn" maxlength="18" placeholder="Jouw naam"><button class="btn" id="meSave" type="button">Bewaar naam</button></div>
+    <p class="sub">Wegwerkzaamheden</p>
+    <div class="switchrow"><input type="checkbox" id="wkOn" checked><label for="wkOn">Waarschuwen voor wegwerkzaamheden</label></div>
+    <p class="chip" id="wkStat">Nog niet geladen.</p>
+    <p class="foot">Bron: live data van NDW (de overheid): werk, afsluitingen, tijdelijke maximumsnelheid, ongelukken en files. Lukt dat niet, dan gebruik ik OpenStreetMap. Voor NDW heb je het Worker-adres nodig (bij Flitsers, tussenstation).</p>
+    <p class="sub">Flitsers</p>
     <div class="switchrow"><input type="checkbox" id="camOn" checked><label for="camOn">Flitsmeldingen aan</label></div>
+    <div class="switchrow"><input type="checkbox" id="spkOn"><label for="spkOn">Flitsmeldingen hardop zeggen (Nederlands)</label></div>
     <p class="chip" id="camStat">Flitsdata: nog niet geladen. Wordt opgehaald als de GPS aan staat.</p>
     <div class="switchrow"><input type="checkbox" id="mobOn" checked><label for="mobOn">Gemelde controles van flitsers.nl erbij (alleen persoonlijk gebruik)</label></div>
     <p class="chip" id="mobStat">Gemelde controles: nog niet opgehaald. Dit gebeurt elke 5 minuten als de GPS aan staat.</p>
+    <button class="btn" id="bUcam" type="button" style="grid-column:1/-1">Flitser ontbreekt hier: onthoud deze plek</button>
+    <details class="set"><summary>Eigen koppeling instellen</summary>
+      <p class="foot">Een webpagina mag flitsers.nl meestal niet rechtstreeks uitlezen. Met een eigen gratis tussenstation (Cloudflare Worker, uitleg bij de app) werkt het wel. Plak hier het adres ervan. Laat leeg om rechtstreeks te proberen.</p>
+      <div class="mobrow"><input type="text" id="proxyUrl" inputmode="url" autocomplete="off" placeholder="https://jouw-naam.workers.dev"><button class="btn" id="proxySave" type="button">Bewaar adres</button></div>
+    </details>
+    <details class="set"><summary>Zelf een lijst plakken</summary>
+      <p class="foot">Open zelf de flitserspagina in je browser. Klap alleen de wegen open waar flitsers staan, kies alles selecteren en kopieer. Klap je ze liever één voor één open, dat kan ook: elke keer plakken voegt toe aan de lijst en er gaat niets verloren. Doe dit alleen als je stilstaat of als passagier. Ik haal alleen wegnummers en hectometerpalen eruit en zet ze 3 uur op de kaart. Er wordt niets automatisch bij die site opgehaald.</p>
+      <textarea id="pasteBox" rows="4" placeholder="Plak hier de tekst van de pagina" style="width:100%;font:13px sans-serif;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
+      <div class="mobrow"><button class="btn primary" id="pasteClip" type="button">Plakken van klembord</button><button class="btn" id="pasteGo" type="button">Lees lijst in</button><button class="btn" id="pasteClear" type="button">Wis geplakte flitsers</button></div>
+      <p class="chip" id="pasteStat"></p>
+    </details>
+  </details>
+
+  <details class="set big" id="logDet"><summary>Testlog</summary>
     <div class="btns">
       <button class="btn" id="bLog" type="button">Kopieer testlog</button>
       <button class="btn" id="bLogClear" type="button">Log wissen</button>
     </div>
     <p class="foot" id="logInfo">De testlog bewaart wat er onderweg gebeurt (snelheid, limiet, meldingen, fouten), zonder je locatie. Kopieer hem na de rit en stuur hem naar Claude.</p>
     <textarea id="logBox" rows="6" hidden readonly style="width:100%;font:12px monospace;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
-    <details class="set"><summary>Eigen koppeling instellen</summary>
-      <p class="foot">Een webpagina mag flitsers.nl meestal niet rechtstreeks uitlezen. Met een eigen gratis tussenstation (Cloudflare Worker, uitleg bij de app) werkt het wel. Plak hier het adres ervan. Laat leeg om rechtstreeks te proberen.</p>
-      <div class="mobrow"><input type="text" id="proxyUrl" inputmode="url" autocomplete="off" placeholder="https://jouw-naam.workers.dev"><button class="btn" id="proxySave" type="button">Bewaar adres</button></div>
-    </details>
-    <details class="set"><summary>Zelf een lijst plakken</summary>
-      <p class="foot">Open zelf de flitserspagina in je browser, kies alles selecteren, kopieer en plak het hier. Doe dit alleen als je stilstaat of als passagier. Ik haal alleen wegnummers en hectometerpalen eruit en zet ze 3 uur op de kaart. Er wordt niets automatisch bij die site opgehaald.</p>
-      <textarea id="pasteBox" rows="4" placeholder="Plak hier de tekst van de pagina" style="width:100%;font:13px sans-serif;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
-      <div class="mobrow"><button class="btn primary" id="pasteClip" type="button">Plakken van klembord</button><button class="btn" id="pasteGo" type="button">Lees lijst in</button><button class="btn" id="pasteClear" type="button">Wis geplakte flitsers</button></div>
-      <p class="chip" id="pasteStat"></p>
-    </details>
-    <div class="limitrow"><label for="limit">Limiet</label><select id="limit"><option>50</option><option>70</option><option>80</option><option selected>100</option><option>120</option></select><span class="unit">KM/H</span></div>
-    <div class="btns">
-      <button class="btn" id="bCam" type="button">Flitser vooruit</button>
-      <button class="btn" id="bTraj" type="button">Trajectcontrole</button>
-      <button class="btn" id="bUcam" type="button" style="grid-column:1/-1">Flitser ontbreekt hier: onthoud deze plek</button>
-      <button class="btn" id="bDrive" type="button" style="grid-column:1/-1">+1 uur rijtijd (pauzeherinnering testen)</button>
-    </div>
-    <p class="foot">Gesimuleerd. Afstanden lopen ×10, zodat je het snel ziet: een flitser ligt 900 m verder, een traject is 3 km. Met telefoon-GPS aan gebruikt hij de echte flitsers uit OpenStreetMap en gelden deze testknoppen niet. In sommige landen, zoals Duitsland en Zwitserland, is een flitsmelding verboden: zet hem daar uit. Buiten Nederland kunnen andere regels gelden voor flitsmeldingen. Rijtijd loopt hier 60× sneller: 1 seconde is 1 minuut.</p>
-  </section>
+  </details>
 
   <section aria-label="Praten">
     <h2>Praten</h2>
@@ -427,6 +480,23 @@ details.set > * + * { margin-top: 10px; }
   /* ---------- Sound (buzzer stand-in) ---------- */
   var ac = null, sound = false;
   var TUNES = { race: [392, 523, 784, 1047, 1319], gag: [660, 880], pet: [784, 988], wake: [392, 523, 659], excited: [523, 659, 784, 1047], startled: [988, 330], sleep: [330, 262, 196] };
+  var lastBab = -9;
+  function babble(kind, text) {
+    if (!sound || !ac || T - lastBab < 1.2) return;
+    var bo = document.getElementById('babOn'); if (bo && !bo.checked) return;
+    lastBab = T; text = text || '';
+    var n = Math.max(2, Math.min(6, Math.round(text.length / 14) + 2));
+    var base = { happy: 640, excited: 720, love: 560, sad: 430, angry: 310, startled: 780, worried: 480, sleepy: 380, bored: 430, laugh: 700, content: 560 }[kind] || 560;
+    var up = /\?\s*$/.test(text) ? 1 : (kind === 'sad' || kind === 'sleepy' || kind === 'bored' || kind === 'worried' ? -1 : 0);
+    var t0 = ac.currentTime + .02, i;
+    for (i = 0; i < n; i++) {
+      var f = base * (1 + (up ? up * (i / n) * .5 : Math.sin(i * 1.7) * .25)) * (1 + (Math.random() - .5) * .08), st = t0 + i * .13;
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(f * .86, st); o.frequency.exponentialRampToValueAtTime(f * 1.18, st + .09);
+      g.gain.setValueAtTime(.0001, st); g.gain.exponentialRampToValueAtTime(.07, st + .015); g.gain.exponentialRampToValueAtTime(.0001, st + .11);
+      o.connect(g); g.connect(ac.destination); o.start(st); o.stop(st + .12);
+    }
+  }
   function beep(name) {
     if (!sound || !ac) return;
     var seq = TUNES[name]; if (!seq) return;
@@ -452,7 +522,7 @@ details.set > * + * { margin-top: 10px; }
     clearTimeout(noteTimer);
     noteTimer = setTimeout(function () { $('note').textContent = ''; }, 4500);
   }
-  function setEv(k, dur, msg) { if (S.live && msg) lg('ev ' + k + ': ' + msg); S.ev = k; S.evUntil = T + dur; S.evMsg = msg || null; S.gag = null; }
+  function setEv(k, dur, msg) { if (S.live && msg) lg('ev ' + k + ': ' + msg); if (msg) babble(k, msg); S.ev = k; S.evUntil = T + dur; S.evMsg = msg || null; S.gag = null; }
   function ix() { return S.live ? 4 : 1; }
   function maxHours() { return Math.max.apply(null, mem.hours); }
   function expected() {
@@ -662,7 +732,7 @@ details.set > * + * { margin-top: 10px; }
   }
   function bump(str) {
     str = str || 5;
-    var gap = T - S.lastBump, twin = gap >= .25 && gap < 1.2 && !S.bumpTwin;
+    var gap = T - S.lastBump, twin = gap >= .25 && gap < 1.2 && !S.bumpTwin && S.speed < 50;
     if (S.asleep || gap < .25 || (gap < 1.2 && !twin)) return;
     if (S.live) lg('drempel/schok sterkte ' + str.toFixed(1) + (S.speed ? ' bij ' + Math.round(S.speed) + ' km/h' : '') + (twin ? ' (tweede klap)' : ''));
     S.bumpTwin = twin; S.lastBump = T;
@@ -706,7 +776,12 @@ details.set > * + * { margin-top: 10px; }
     if (sp) { mem.lastSpecial = sp.key; save(); cheer(sp.msg); return; }
     var h = new Date().getHours(), who = mem.me ? ' ' + mem.me : '';
     var m = h >= 5 && h < 12 ? 'Goedemorgen' + who + '!' : h >= 12 && h < 18 ? 'Goedemiddag' + who + '!' : h >= 18 && h < 23 ? 'Goedenavond' + who + '!' : 'Het is laat' + who + '. Rij voorzichtig.';
-    setEv('happy', 3.5, m);
+    try {
+      var f = wxFlags();
+      if (f.ice) m += ' Pas op: kans op gladheid.'; else if (f.snow) m += ' Het sneeuwt.'; else if (f.rain) m += ' Het regent.'; else if (f.fog) m += ' Mistig, let op.';
+    } catch (e) {}
+    S.lastHello = T;
+    setEv('happy', mem.me ? 4.5 : 3.5, m);
   }
   function tunnelFx() {
     if (!S.tunnel) return;
@@ -1019,7 +1094,7 @@ details.set > * + * { margin-top: 10px; }
   var logEl = $('log'), chatIn = $('chatIn'), chatSend = $('chatSend'), turns = [], claudeAsk = null, busy = false, ctl = null;
   function addMsg(cls, text) {
     var el = document.createElement('div'); el.className = 'msg ' + cls; el.textContent = text;
-    logEl.appendChild(el);
+    logEl.appendChild(el); if (cls === 'bot') babble('happy', text);
     while (logEl.children.length > 40) logEl.removeChild(logEl.firstChild);
     logEl.scrollTop = logEl.scrollHeight;
     return el;
@@ -1384,6 +1459,7 @@ details.set > * + * { margin-top: 10px; }
   $('bRight').addEventListener('click', function () { simBend(1, 'bend'); });
   $('bRound').addEventListener('click', function () { simBend(1, 'round'); });
   $('bBump').addEventListener('click', function () { bump(); });
+  $('bWorks').addEventListener('click', function () { worksAlert({ name: 'Test', d: 800 }); });
   $('bTunnel').addEventListener('click', function () { if (S.asleep) wake(); if (S.speed < 10) { S.target = 40; speedEl.value = 40; } S.simTunEnd = T + 6; toast('Tunnel van 6 seconden.'); });
   $('bMic').addEventListener('click', micToggle);
   $('bGag').addEventListener('click', function () {
@@ -1523,6 +1599,7 @@ details.set > * + * { margin-top: 10px; }
       gpsHelp('Locatie werkt alleen via een https-adres. Zet de pagina online met GitHub Pages en open het https-adres.');
       return;
     }
+    if (T - (S.lastHello || -9999) > 1800) { S.helloDone = false; setTimeout(hello, 1200); }
     S.live = true; S.cam = null; S.traj = null; S.liveSpeed = 0; S.liveT = T; lastPos = null;
     S.roadLim = null; S.roadEst = false; S.roadSeen = T; S.energy = Math.max(S.energy, 80); roadQ = null; roadWays = []; roadBuild = null; clearGpsHelp(); lastHdg = null; hdgRef = null; mon.cur = null; mon.traj = null; mon.handled = {};
     setLiveUI(true); setTag('GPS zoekt\u2026'); lockScreen();
@@ -1676,25 +1753,40 @@ details.set > * + * { margin-top: 10px; }
   }
   var OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'], opGood = 0, opLast = '', camBack = 15, camTry = 0;
   function hostOf(u) { return u.replace(/^https:\/\/([^\/]+).*/, '$1'); }
-  function fetchOverpass(q, ms, n) {
-    n = n || 0; ms = ms || 25000;
-    if (n >= OVERPASS.length) return Promise.reject(new Error(opLast || 'geen server'));
-    var i = (opGood + n) % OVERPASS.length, host = hostOf(OVERPASS[i]);
-    var ctl = ('AbortController' in window) ? new AbortController() : null;
-    var timer = ctl ? setTimeout(function () { ctl.abort(); }, ms) : 0;
-    return fetch(OVERPASS[i], { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q), signal: ctl ? ctl.signal : undefined })
-      .then(function (r) { if (timer) clearTimeout(timer); if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
-      .then(function (j) {
-        if (!j || !j.elements) throw new Error('leeg antwoord');
-        if (!j.elements.length && j.remark && /error|timed out|memory/i.test(j.remark)) throw new Error('server druk');
-        opGood = i; return j;
-      })
-      .catch(function (err) {
-        if (timer) clearTimeout(timer);
-        opLast = host + ': ' + (err && err.name === 'AbortError' ? 'te traag' : (err && err.message) || 'fout');
-        lg('overpass ' + opLast);
-        return fetchOverpass(q, ms, n + 1);
-      });
+  function fetchOverpass(q, ms) {
+    ms = ms || 25000;
+    return new Promise(function (resolve, reject) {
+      var started = 0, failed = 0, done = false, hedge = 0, ctls = [];
+      function launch() {
+        if (done || started >= OVERPASS.length) return;
+        if (hedge) clearTimeout(hedge);
+        var i = (opGood + started) % OVERPASS.length, host = hostOf(OVERPASS[i]);
+        started++;
+        var ctl = ('AbortController' in window) ? new AbortController() : null; if (ctl) ctls.push(ctl);
+        var timer = ctl ? setTimeout(function () { ctl.abort(); }, ms) : 0;
+        fetch(OVERPASS[i], { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q), signal: ctl ? ctl.signal : undefined })
+          .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+          .then(function (j) {
+            if (!j || !j.elements) throw new Error('leeg antwoord');
+            if (!j.elements.length && j.remark && /error|timed out|memory/i.test(j.remark)) throw new Error('server druk');
+            if (timer) clearTimeout(timer);
+            if (done) return;
+            done = true; opGood = i; if (hedge) clearTimeout(hedge);
+            ctls.forEach(function (c) { if (c !== ctl) { try { c.abort(); } catch (e) {} } });
+            resolve(j);
+          })
+          .catch(function (err) {
+            if (timer) clearTimeout(timer);
+            if (done) return;
+            opLast = host + ': ' + (err && err.name === 'AbortError' ? 'te traag' : (err && err.message) || 'fout');
+            lg('overpass ' + opLast); failed++;
+            if (failed >= OVERPASS.length) { done = true; reject(new Error(opLast)); }
+            else if (failed >= started) launch();
+          });
+        if (started < OVERPASS.length) hedge = setTimeout(launch, 7000);
+      }
+      launch();
+    });
   }
   function camRegions() {
     if (!camCache) return [];
@@ -1734,6 +1826,146 @@ details.set > * + * { margin-top: 10px; }
     }).then(function () { camLoading = false; });
   }
 
+  /* Live verkeersinfo van NDW (open data): werk, afsluitingen, tijdelijke maximumsnelheid, ongelukken, files */
+  var ndw = { t: 0, items: [], n: 0 }, ndwBusy = false, ndwFail = -9999, ndwPrev = {}, ndwSeen = {}, ndwLast = -9999, ndwPos = null, ndwHdg = null, ndwErr = '';
+  function ndwUrl() { return pbase() ? pbase() + '/ndw' : 'https://opendata.ndw.nu/actueel_beeld.xml.gz'; }
+  function adiff(a, b) { return Math.abs(((a - b + 540) % 360) - 180); }
+  function ndwParse(xml, lat0, lon0, nowIso) {
+    var out = [], i = 0, a, b, cosl = Math.cos(lat0 * Math.PI / 180);
+    while ((a = xml.indexOf('<sit:situationRecord ', i)) >= 0) {
+      b = xml.indexOf('</sit:situationRecord>', a); if (b < 0) break; i = b + 22;
+      var r = xml.slice(a, b), ty = (r.match(/xsi:type="sit:(\w+)"/) || [])[1], k = null, lim = null, ql = null;
+      if (ty === 'RoadOrCarriagewayOrLaneManagement') {
+        var m = (r.match(/<sit:roadOrCarriagewayOrLaneManagementType>(\w+)/) || [])[1];
+        if (m === 'carriagewayClosures' || m === 'roadClosed') k = 'closure';
+        else if (m === 'laneClosures' || m === 'lanesDeviated' || m === 'narrowLanes' || m === 'other') k = 'lane';
+      } else if (ty === 'SpeedManagement') { k = 'speed'; lim = +((r.match(/<sit:temporarySpeedLimit>([\d.]+)/) || [])[1] || 0) || null; }
+      else if (ty === 'Accident') k = 'accident';
+      else if (ty === 'AbnormalTraffic') { k = 'jam'; ql = +((r.match(/<sit:queueLength>([\d.]+)/) || [])[1] || 0) || null; }
+      if (!k) continue;
+      var os = (r.match(/<com:overallStartTime>([^<]{19})/) || [])[1], oe = (r.match(/<com:overallEndTime>([^<]{19})/) || [])[1];
+      if ((os && os > nowIso) || (oe && oe < nowIso)) continue;
+      var vp = r.match(/<com:validPeriod>[\s\S]*?<\/com:validPeriod>/g);
+      if (vp) { var okp = false; vp.forEach(function (x) { var s1 = (x.match(/startOfPeriod>([^<]{19})/) || [])[1], e1 = (x.match(/endOfPeriod>([^<]{19})/) || [])[1]; if ((!s1 || s1 <= nowIso) && (!e1 || e1 >= nowIso)) okp = true; }); if (!okp) continue; }
+      var pts = [], pl = r.match(/<loc:posList>([^<]*)/);
+      if (pl) { var nn = pl[1].trim().split(/\s+/); for (var q = 0; q + 1 < nn.length; q += 2) pts.push([+nn[q], +nn[q + 1]]); }
+      else { var la = r.match(/<loc:latitude>([^<]*)/), lo = r.match(/<loc:longitude>([^<]*)/); if (la && lo) pts.push([+la[1], +lo[1]]); }
+      if (!pts.length) continue;
+      var md = 1e9, j; for (j = 0; j < pts.length; j++) { var dd = Math.hypot((pts[j][0] - lat0) * 111195, (pts[j][1] - lon0) * cosl * 111195); if (dd < md) md = dd; }
+      if (md > 40000) continue;
+      if (pts.length > 80) { var st = Math.ceil(pts.length / 80), keep = []; for (j = 0; j < pts.length; j += st) keep.push(pts[j]); if (keep[keep.length - 1] !== pts[pts.length - 1]) keep.push(pts[pts.length - 1]); pts = keep; }
+      var cs = (r.match(/<sit:causeType>(\w+)/) || [])[1], bg = (r.match(/<loc:bearing>([\d.]+)/) || [])[1];
+      out.push({ id: (r.match(/ id="([^"]+)"/) || [])[1] || String(out.length), k: k, lim: lim, ql: ql, cs: cs || '', br: bg != null ? +bg : null, pts: pts });
+    }
+    return out;
+  }
+  function ndwGunzip(buf) {
+    var u = new Uint8Array(buf);
+    if (u[0] === 0x1f && u[1] === 0x8b) {
+      if (typeof DecompressionStream === 'undefined') return Promise.reject(new Error('geen uitpakken in deze browser'));
+      return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    }
+    return Promise.resolve(new TextDecoder().decode(u));
+  }
+  function ndwLoad(lat, lon) {
+    if (ndwBusy || T - ndwFail < 120 || (ndw.t && Date.now() - ndw.t < 5 * 60e3 && gdist(lat, lon, ndw.lat, ndw.lon) < 15000)) return;
+    ndwBusy = true; if (!ndw.t) wkStat('Live verkeersinfo laden…');
+    var ctl = ('AbortController' in window) ? new AbortController() : null, to = setTimeout(function () { if (ctl) ctl.abort(); }, 40000);
+    fetch(ndwUrl(), ctl ? { signal: ctl.signal } : {}).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+      .then(ndwGunzip).then(function (xml) {
+        var items = ndwParse(xml, lat, lon, new Date().toISOString().slice(0, 19));
+        ndw = { t: Date.now(), lat: lat, lon: lon, items: items, n: items.length }; ndwErr = '';
+        var c = {}; items.forEach(function (x) { c[x.k] = (c[x.k] || 0) + 1; });
+        lg('NDW geladen: ' + items.length + ' meldingen in de buurt ' + JSON.stringify(c));
+        wkStat('Live verkeersinfo (NDW): ' + items.length + ' meldingen binnen 40 km. Werk/afsluitingen ' + ((c.closure || 0) + (c.lane || 0)) + ', snelheid ' + (c.speed || 0) + ', ongelukken ' + (c.accident || 0) + ', files ' + (c.jam || 0) + '.');
+      }).catch(function (e) { ndwFail = T; ndwErr = e.message || String(e); lg('FOUT NDW: ' + ndwErr); wkStat('Live verkeersinfo laden mislukt (' + ndwErr + '). Ik gebruik OpenStreetMap en probeer het opnieuw.'); })
+      .then(function () { clearTimeout(to); ndwBusy = false; });
+  }
+  function ndwFix(lat, lon, acc) {
+    var hdg = null;
+    if (ndwPos && gdist(ndwPos.lat, ndwPos.lon, lat, lon) >= 15) { ndwHdg = gbearing(ndwPos.lat, ndwPos.lon, lat, lon); ndwPos = { lat: lat, lon: lon }; }
+    else if (!ndwPos) ndwPos = { lat: lat, lon: lon };
+    hdg = ndwHdg;
+    ndwLoad(lat, lon);
+    if (!ndw.t || Date.now() - ndw.t > 20 * 60e3) return false;
+    if (acc >= 60 || S.liveSpeed < 15 || hdg === null) return true;
+    var cosl = Math.cos(lat * Math.PI / 180), best = null;
+    ndw.items.forEach(function (it) {
+      var md = 1e9, mb = null, j, p = it.pts;
+      if (p.length === 1) { md = Math.hypot((p[0][0] - lat) * 111195, (p[0][1] - lon) * cosl * 111195); mb = it.br; }
+      else for (j = 0; j + 1 < p.length; j++) {
+        var ax = (p[j][1] - lon) * cosl * 111195, ay = (p[j][0] - lat) * 111195, bx = (p[j + 1][1] - lon) * cosl * 111195, by = (p[j + 1][0] - lat) * 111195, dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L)) : 0, d = Math.hypot(ax + t * dx, ay + t * dy);
+        if (d < md) { md = d; mb = (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360; }
+      }
+      var pv = ndwPrev[it.id]; ndwPrev[it.id] = md;
+      var lim = it.k === 'accident' || it.k === 'jam' ? 1800 : 900;
+      if (md > lim || pv == null || md > pv - 3) return;
+      if (mb != null && adiff(mb, hdg) > 70) return;
+      var tb = null; for (var q = 0; q < p.length; q++) { var bb = gbearing(lat, lon, p[q][0], p[q][1]); if (adiff(bb, hdg) < 70 || md < 60) { tb = 1; break; } }
+      if (!tb) return;
+      if (ndwSeen[it.id] && Date.now() - ndwSeen[it.id] < 15 * 60e3) return;
+      if (!best || md < best.d) best = { it: it, d: md };
+    });
+    if (best && T - ndwLast > 12) { ndwSeen[best.it.id] = Date.now(); ndwLast = T; ndwAlert(best.it, best.d); }
+    return true;
+  }
+  function ndwDist(d) { d = Math.round(d / 100) * 100; if (d < 100) d = 100; return d >= 1000 ? (d / 1000).toFixed(1).replace('.', ',') + ' km' : d + ' m'; }
+  function ndwAlert(it, d) {
+    var m, mood = 'alert', gag = false;
+    if (it.k === 'speed') m = 'Tijdelijk max ' + (it.lim || '?') + ' over ' + ndwDist(d) + '. Let op!';
+    else if (it.k === 'accident') { m = 'Ongeluk voor je, over ' + ndwDist(d) + '. Voorzichtig!'; mood = 'worried'; }
+    else if (it.k === 'jam') { m = 'File voor je, over ' + ndwDist(d) + (it.ql ? ' (' + (it.ql / 1000).toFixed(1).replace('.', ',') + ' km lang)' : '') + '. Rustig aan.'; mood = 'worried'; }
+    else if (it.k === 'closure') { m = 'Afsluiting over ' + ndwDist(d) + '. Let op de omleiding!'; gag = true; }
+    else { m = (it.cs === 'roadMaintenance' || it.cs === 'constructionWork' ? 'Werk aan de weg' : 'Rijstrook dicht') + ' over ' + ndwDist(d) + '. Rustig aan!'; gag = true; }
+    setEv(mood, gag ? 1 : 5, m); babble(mood, m); beep(mood === 'worried' ? 'startled' : 'wake');
+    if (gag) { startGag('works'); if (S.gag) S.gag.msg = m; S.nextGag = Math.max(S.nextGag, T + 15); }
+    lg('NDW melding ' + it.k + ' ' + Math.round(d) + ' m: ' + m);
+  }
+
+  /* Wegwerkzaamheden (OpenStreetMap) */
+  var WKEY = 'dashboardmaatje-works-v1', works = { lat: 0, lon: 0, t: 0, items: [] }, wkLoading = false, wkFail = -9999, wkSeen = {}, wkPrev = {};
+  try { var rw = JSON.parse(localStorage.getItem(WKEY)); if (rw && rw.items) works = rw; } catch (e) {}
+  function wkStat(t) { var el = $('wkStat'); if (el) el.textContent = t; }
+  function wkQuery(lat, lon) {
+    var a = '(around:15000,' + lat.toFixed(5) + ',' + lon.toFixed(5) + ')';
+    return '[out:json][timeout:25];(way["highway"="construction"]' + a + ';way["construction:highway"]' + a + ';node["highway"="construction"]' + a + ';way["highway"]["construction"]' + a + ';);out center tags 200;';
+  }
+  function loadWorks(lat, lon) {
+    if (wkLoading || T - wkFail < 180) return;
+    if (works.t && Date.now() - works.t < 30 * 60e3 && gdist(lat, lon, works.lat, works.lon) < 6000) return;
+    wkLoading = true; wkStat('Wegwerkzaamheden laden…');
+    fetchOverpass(wkQuery(lat, lon), 30000).then(function (j) {
+      var out = [], seen = {};
+      (j.elements || []).forEach(function (e) {
+        var la = e.lat != null ? e.lat : e.center && e.center.lat, lo = e.lon != null ? e.lon : e.center && e.center.lon, tg = e.tags || {};
+        if (la == null || lo == null || seen[e.type + e.id]) return; seen[e.type + e.id] = 1;
+        if (tg.opening_date && Date.parse(tg.opening_date) < Date.now() - 864e5) return;
+        out.push({ id: e.type[0] + e.id, lat: la, lon: lo, name: tg.name || tg.ref || '' });
+      });
+      works = { lat: lat, lon: lon, t: Date.now(), items: out };
+      try { localStorage.setItem(WKEY, JSON.stringify(works)); } catch (e) {}
+      lg('wegwerkzaamheden geladen: ' + out.length); wkStat(out.length + ' plekken met werk in de buurt (OpenStreetMap).');
+    }).catch(function () { wkFail = T; wkStat('Laden van wegwerkzaamheden mislukt, ik probeer het later opnieuw.'); }).then(function () { wkLoading = false; });
+  }
+  function worksAlert(w) {
+    var d = Math.round(w.d / 100) * 100;
+    var m = 'Werk aan de weg over ' + (d >= 1000 ? (d / 1000).toFixed(1).replace('.', ',') + ' km' : d + ' m') + '. Rustig aan!';
+    setEv('alert', 1, m); babble('alert', m); beep('wake');
+    startGag('works'); if (S.gag) S.gag.msg = m; S.nextGag = Math.max(S.nextGag, T + 15);
+  }
+  function worksFix(lat, lon, acc) {
+    var on = $('wkOn'); if (on && !on.checked) return;
+    loadWorks(lat, lon);
+    if (ndwFix(lat, lon, acc)) return;
+    if (acc >= 60 || S.liveSpeed < 15 || !works.items.length) return;
+    works.items.forEach(function (w) {
+      var d = gdist(lat, lon, w.lat, w.lon), pv = wkPrev[w.id]; wkPrev[w.id] = d;
+      if (d < 900 && pv != null && d < pv - 3 && (!wkSeen[w.id] || Date.now() - wkSeen[w.id] > 15 * 60e3)) {
+        for (var k in wkSeen) if (Date.now() - wkSeen[k] < 90e3) return;
+        wkSeen[w.id] = Date.now(); worksAlert({ d: d, name: w.name });
+      }
+    });
+  }
   function applyEvent(e) {
     lg('flitsevent ' + e.type + (e.v != null ? ' v=' + Math.round(e.v) : '') + (e.limit != null ? ' limiet=' + e.limit : '') + (e.avg != null ? ' gem=' + Math.round(e.avg) : ''));
     var a;
@@ -1753,6 +1985,7 @@ details.set > * + * { margin-top: 10px; }
     loadCams(lat, lon);
     loadWeather(lat, lon);
     loadMobile();
+    try { worksFix(lat, lon, acc); } catch (e) { lg('FOUT werken ' + e.message); }
     roadStep(lat, lon, acc);
     sampleLog(acc);
     if (!S.camOn || acc >= 60) { if (!S.camOn) { mon.cur = null; mon.traj = null; S.cam = null; S.traj = null; } return; }
@@ -1870,7 +2103,7 @@ details.set > * + * { margin-top: 10px; }
   }
   function loadMobile(force) {
     if (!$('mobOn').checked) { if (mobItems.length) { mobItems = []; applyCamData(); } return; }
-    if (mobBusy || (!force && T - mobT < 300)) return;
+    if (mobBusy || (!force && T - mobT < 900)) return;
     mobBusy = true; mobT = T;
     getRss().then(function (xml) { return parseFeed(xml); }, function (e) { if (pastedFresh().length) return []; throw e; }).then(function (all0) {
       var all = all0.concat(pastedFresh()), recent = all.filter(function (x) { return !x.pub || Date.now() - x.pub < 4 * 36e5; }).slice(0, 60);
@@ -1892,7 +2125,7 @@ details.set > * + * { margin-top: 10px; }
       });
     }).catch(function () {
       mobErr = pbase() ? 'Ophalen via je eigen koppeling mislukt. Controleer het adres.' : 'Ophalen mislukt, ook via de openbare doorgeefdiensten. Stel hieronder je eigen koppeling in.';
-      mobT = T - 240; lg('FOUT gemelde controles: ' + (pbase() ? 'eigen koppeling' : 'rechtstreeks')); showMob();
+      mobT = T - 600; lg('FOUT gemelde controles: ' + (pbase() ? 'eigen koppeling' : 'rechtstreeks')); showMob();
     }).then(function () { mobBusy = false; });
   }
   $('mobOn').addEventListener('change', function () { if ($('mobOn').checked) loadMobile(true); else { mobItems = []; applyCamData(); showMob(); } });
@@ -1948,7 +2181,7 @@ details.set > * + * { margin-top: 10px; }
     if (lastHdg != null && S.liveSpeed > 20) { qa = lat + Math.cos(lastHdg * RAD) * 700 / 111320; qo = lon + Math.sin(lastHdg * RAD) * 700 / (111320 * Math.cos(lat * RAD)); }
     if (roadNear(qa, qo) <= 1200) return;
     roadBusy = true;
-    fetchOverpass(roadQuery(qa, qo), 14000).then(function (j) {
+    fetchOverpass(roadQuery(qa, qo), 25000).then(function (j) {
       var w = [];
       (j.elements || []).forEach(function (e) {
         if (e.type !== 'way' || !e.geometry || e.geometry.length < 2 || !e.tags) return;
@@ -2047,14 +2280,16 @@ details.set > * + * { margin-top: 10px; }
 
   var gEst = { x: null, y: null, z: null }, noiseEst = .4;
   window.addEventListener('devicemotion', function (e) {
-    if (!S.live || S.speed < 5) return;
+    if (!S.live || S.speed < 8) return;
     var a = e.accelerationIncludingGravity;
     if (!a || a.x == null) return;
     var al = .03;
     if (gEst.x === null) { gEst.x = a.x; gEst.y = a.y; gEst.z = a.z; return; }
     gEst.x += (a.x - gEst.x) * al; gEst.y += (a.y - gEst.y) * al; gEst.z += (a.z - gEst.z) * al;
     var dx = a.x - gEst.x, dy = a.y - gEst.y, dz = a.z - gEst.z, dev = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    var thr = Math.max(2.2, noiseEst * 3.2 + .8);
+    var sp = S.speed, floor = sp < 35 ? 2.2 : sp < 60 ? 3.6 : sp < 90 ? 5.2 : 7;
+    var thr = Math.max(floor, noiseEst * 3.2 + .8);
+    if (typeof lv !== 'undefined' && T - lv.lastTouch < 1.5) return;
     if (dev > thr) bump(dev); else noiseEst += (dev - noiseEst) * .004;
   });
   $('bLive').addEventListener('click', function () { if (S.live) stopLive(); else startLive(); });
@@ -2075,7 +2310,7 @@ details.set > * + * { margin-top: 10px; }
 
   /* ---------- Meer leven: remmen, groen licht, dag, vaste routes, aanraking, batterij ---------- */
   var CELLKEY = 'dashboardmaatje-cells-v1', ENDKEY = 'dashboardmaatje-ends-v1', DAYKEY = 'dashboardmaatje-day-v1';
-  var lv = { vPrev: 0, a: 0, stopT: 0, lastBrake: -99, lastAcc: -99, lastGreen: -99, wasLive: false, km0: 0, cells: {}, seen: {}, ends: [], lastCell: 0, oftenN: 0, oftenT: -999, homeDone: false, endDone: false, bat: null, batT: -999, batCh: null, tripMsg: 0, ptr: [] };
+  var lv = { lastTouch: -9, vPrev: 0, a: 0, stopT: 0, lastBrake: -99, lastAcc: -99, lastGreen: -99, wasLive: false, km0: 0, cells: {}, seen: {}, ends: [], lastCell: 0, oftenN: 0, oftenT: -999, homeDone: false, endDone: false, bat: null, batT: -999, batCh: null, tripMsg: 0, ptr: [] };
   try { lv.cells = JSON.parse(localStorage.getItem(CELLKEY)) || {}; lv.ends = JSON.parse(localStorage.getItem(ENDKEY)) || []; } catch (e) {}
   if (navigator.getBattery) navigator.getBattery().then(function (b) { lv.bat = b; }, function () {});
   function cellKey(la, lo) { return la.toFixed(3) + ',' + lo.toFixed(3); }
@@ -2135,7 +2370,7 @@ details.set > * + * { margin-top: 10px; }
     if (S.live && S.speed < 1 && lv.stopT > 90 && !lv.endDone && mem.km - lv.km0 > 2 && typeof lastPos !== 'undefined' && lastPos) {
       lv.endDone = true; lv.ends.push([lastPos.lat, lastPos.lon]); lifeSave();
     }
-    if (S.live && Math.floor(T) % 30 === 0 && T - lv.lastSave > 20) { lv.lastSave = T; lifeSave(); }
+    if (S.live && T - lv.lastSave > 20) { lv.lastSave = T; lifeSave(); }
     /* F. batterij */
     if (lv.bat && S.live && T - lv.batT > 30) {
       lv.batT = T;
@@ -2149,6 +2384,7 @@ details.set > * + * { margin-top: 10px; }
   (function () {
     var face = $('face'); if (!face) return;
     var down = false, path = 0, px = 0, py = 0, t0 = 0, lastPet = -99;
+    window.addEventListener('pointerdown', function () { lv.lastTouch = T; }, true);
     face.addEventListener('pointerdown', function (e) { down = true; px = e.clientX; py = e.clientY; path = 0; t0 = T; });
     window.addEventListener('pointerup', function () { down = false; });
     face.addEventListener('pointermove', function (e) {
@@ -2158,6 +2394,62 @@ details.set > * + * { margin-top: 10px; }
       path += Math.abs(e.clientX - px) + Math.abs(e.clientY - py); px = e.clientX; py = e.clientY;
       if (T - t0 > 4) { t0 = T; path = 0; }
       if (path > 500 && T - lastPet > 6) { lastPet = T; path = 0; S.love = Math.min(100, S.love + 12); setEv('love', 3, 'Mmm, zacht…'); beep('pet'); }
+    });
+  })();
+  /* Naam onthouden en groeten als je de app weer opent */
+  (function () {
+    var card = $('nameCard'), inp = $('nameIn'), skip = false;
+    try { skip = sessionStorage.getItem('maatje-nameskip') === '1'; } catch (e) {}
+    function cap(v) { return String(v || '').trim().replace(/\s+/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }).slice(0, 18); }
+    function setName(v) {
+      v = cap(v); if (!v) return false;
+      mem.me = v; save(); card.hidden = true; if ($('meIn')) $('meIn').value = v;
+      setEv('love', 3.6, 'Aangenaam, ' + v + '! Ik onthoud het.'); beep('wake'); return true;
+    }
+    card.addEventListener('submit', function (e) { e.preventDefault(); if (!setName(inp.value)) toast('Typ eerst je naam.'); });
+    $('nameLater').addEventListener('click', function () { skip = true; card.hidden = true; try { sessionStorage.setItem('maatje-nameskip', '1'); } catch (e) {} });
+    $('meSave').addEventListener('click', function () { if (setName($('meIn').value)) toast('Naam bewaard.'); else toast('Typ eerst je naam.'); });
+    if ($('meIn') && mem.me) $('meIn').value = mem.me;
+    var wasHidden = 0;
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) wasHidden = Date.now();
+      else if (wasHidden && Date.now() - wasHidden > 15 * 60e3) { S.helloDone = false; setTimeout(hello, 600); }
+    });
+    window.__nameTick = function () { card.hidden = !(!mem.me && !skip && S.speed < 1); };
+  })();
+  (function () {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition, wake = $('wakeOn'), stat = $('wakeStat'), rec = null, armed = 0;
+    if (!wake) return;
+    if (!SR) { wake.disabled = true; stat.textContent = 'Deze browser kan niet luisteren.'; return; }
+    function setStat(t) { stat.textContent = t; }
+    function voiceCmd(t) {
+      t = t.replace(/[.,!?]/g, '').trim(); if (!t) return;
+      if (S.asleep) wake_();
+      addMsg('me', t);
+      var r = localReply(t);
+      if (r) { addMsg('bot', r.t); setEv(r.k === 'cmd' ? 'happy' : 'content', 4.2, r.t); }
+      else setEv('worried', 2.2, 'Hm? Dat snap ik nog niet.');
+    }
+    function wake_() { try { wake(); } catch (e) {} }
+    function heard(t) {
+      t = t.toLowerCase().trim();
+      var m = t.match(/(?:^|\s)(?:h[eé]+y?|hoi|ok[eé]+)?\s*(maatje|maatjes|matje|mats)\b\s*(.*)$/);
+      if (m) { armed = T + 9; var rest = m[2].trim(); if (!rest) { setEv('anticipate', 3, 'Ja? Ik luister.'); return; } armed = 0; voiceCmd(rest); }
+      else if (T < armed) { armed = 0; voiceCmd(t); }
+    }
+    function start() {
+      if (!wake.checked) return;
+      try {
+        rec = new SR(); rec.lang = 'nl-NL'; rec.continuous = true; rec.interimResults = false;
+        window.__sr = rec;
+        rec.onresult = function (ev) { for (var i = ev.resultIndex; i < ev.results.length; i++) { if (ev.results[i].isFinal && ev.results[i][0]) heard(ev.results[i][0].transcript); } };
+        rec.onerror = function (ev) { lg('luisteren: ' + ev.error); if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { wake.checked = false; setStat('Microfoon niet toegestaan. Zet hem aan voor deze pagina.'); } };
+        rec.onend = function () { if (wake.checked) setTimeout(start, 500); };
+        rec.start(); setStat('Luistert… zeg “hé maatje”.');
+      } catch (e) { setStat('Luisteren lukt niet in deze browser.'); }
+    }
+    wake.addEventListener('change', function () {
+      if (wake.checked) start(); else { try { if (rec) { rec.onend = null; rec.stop(); } } catch (e) {} setStat('Luisteren staat uit.'); }
     });
   })();
   window.__life = { lv: lv, setStop: function (n) { lv.stopT = n; }, homeCell: homeCell };
@@ -2172,7 +2464,7 @@ details.set > * + * { margin-top: 10px; }
     liveTick();
     gagTick();
     try { extraTick(); } catch (e) { lg('FOUT extra ' + e.message); }
-    try { lifeTick(dt); } catch (e) { lg('FOUT leven ' + e.message); }
+    try { lifeTick(dt); if (window.__nameTick) window.__nameTick(); } catch (e) { lg('FOUT leven ' + e.message); }
     curKey = mood();
     updateMood();
     render(dt > 0 ? dt : 0.016);
@@ -2209,11 +2501,14 @@ details.set > * + * { margin-top: 10px; }
   $('pasteGo').addEventListener('click', function () {
     var it = parsePasted($('pasteBox').value);
     if (!it.length) { toast('Ik zie geen hectometerpalen in deze tekst. Kopieer de hele pagina.'); return; }
-    pasted = it; try { localStorage.setItem(PASTEKEY, JSON.stringify(pasted)); } catch (e) {}
+    var map = {}, before = pastedFresh().length;
+    pastedFresh().concat(it).forEach(function (x) { map[x.id] = x; });
+    pasted = Object.keys(map).map(function (k) { return map[k]; });
+    try { localStorage.setItem(PASTEKEY, JSON.stringify(pasted)); } catch (e) {}
     $('pasteBox').value = ''; lg('geplakte lijst: ' + it.length + ' flitsers'); pasteShow();
     if (!$('mobOn').checked) { $('mobOn').checked = true; }
     mobBusy = false; loadMobile(true);
-    toast(it.length + ' flitsers gevonden. Ik zet ze op de kaart.');
+    toast(it.length + ' erbij gelezen, samen ' + pasted.length + ' op de lijst. Plak gerust meer.');
   });
   $('pasteClip').addEventListener('click', function () {
     if (!navigator.clipboard || !navigator.clipboard.readText) { toast('Je browser mag het klembord niet lezen. Plak de tekst in het vak.'); return; }
@@ -2247,12 +2542,20 @@ details.set > * + * { margin-top: 10px; }
   var UCKEY = 'dashboardmaatje-ucams-v1', ucams = [];
   try { ucams = JSON.parse(localStorage.getItem(UCKEY)) || []; } catch (e) { ucams = []; }
   applyCamData();
-  $('bUcam').addEventListener('click', function () {
-    if (!S.live || !lastPos) { toast('Zet eerst de telefoon-GPS aan en rij erlangs.'); return; }
+  function addUcam(fromCar) {
+    if (!S.live || !lastPos) { toast('Zet eerst de telefoon-GPS aan en rij erlangs.'); return false; }
     ucams.push({ id: 'u' + Date.now(), lat: lastPos.lat, lon: lastPos.lon, limit: S.roadEst ? null : S.roadLim, t: Date.now() });
     try { localStorage.setItem(UCKEY, JSON.stringify(ucams)); } catch (e) {}
     applyCamData(); lg('eigen flitser opgeslagen (' + ucams.length + ')');
-    toast('Onthouden. Hier waarschuw ik je voortaan. Je hebt er ' + ucams.length + '. (Niet tikken tijdens het rijden.)');
+    if (!fromCar) toast('Onthouden. Hier waarschuw ik je voortaan. Je hebt er ' + ucams.length + '. (Niet tikken tijdens het rijden.)');
+    return true;
+  }
+  $('bUcam').addEventListener('click', function () { addUcam(false); });
+  $('carAdd').addEventListener('click', function () {
+    var b = $('carAdd'), ok = addUcam(true);
+    b.classList.toggle('ok', ok); b.innerHTML = ok ? 'Opgeslagen!<br>(' + ucams.length + ')' : 'Eerst<br>GPS aan';
+    if (ok) { beep('wake'); setEv('happy', 2.5, 'Onthouden! Hier waarschuw ik je voortaan.'); }
+    setTimeout(function () { b.classList.remove('ok'); b.innerHTML = 'Flitser<br>toevoegen'; }, 2200);
   });
 
 
@@ -2473,6 +2776,19 @@ details.set > * + * { margin-top: 10px; }
       ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-18, -22); ctx.lineTo(0, -4); ctx.lineTo(18, -22); ctx.stroke();
       ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(-31, -14, 6, 0, TAU); ctx.arc(31, -14, 6, 0, TAU); ctx.fill();
       ctx.restore();
+    } };
+  GAGS.works = { name: 'Werk aan de weg', dur: 6, idle: 1, drive: 1, need: function () { return false; }, mood: 'alert', msg: 'Werk aan de weg!',
+    upd: function (g, tt) { dir(Math.sin(tt * 1.5) * .5, .1); if (tt > 3.8) { g.mood = 'focused'; g.msg = 'Ik let goed op.'; } },
+    draw: function (g, tt) {
+      function cone(x, y) {
+        ctx.fillStyle = '#ff9a1f'; ctx.beginPath(); ctx.moveTo(x, y - 24); ctx.lineTo(x + 11, y); ctx.lineTo(x - 11, y); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.fillRect(x - 6, y - 14, 12, 4); ctx.fillStyle = '#ff9a1f'; ctx.fillRect(x - 14, y, 28, 4);
+      }
+      var by = Math.abs(Math.sin(tt * 5)) * 3;
+      cone(58, 184); cone(182, 184);
+      ctx.fillStyle = '#ffd23c'; ctx.beginPath(); ctx.moveTo(178, 40 - by); ctx.lineTo(198, 76 - by); ctx.lineTo(158, 76 - by); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = EYE; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.stroke();
+      ctx.fillStyle = EYE; ctx.fillRect(176.5, 52 - by, 3, 12); ctx.fillRect(176.5, 67 - by, 3, 3);
     } };
   GAGS.coffee = { name: 'Drinkt koffie', dur: 6, idle: 1, mood: 'relaxed', msg: 'Koffie. Even bijtanken.',
     upd: function (g, tt) { var sip = tt > 2 && tt < 3.4; dir(0, sip ? -.5 : .2); g.cy = sip ? 176 : 196; if (tt > 4) g.msg = 'Aaah. Dat helpt.'; if (tt > 3.4) g.mood = 'happy'; },
@@ -2741,6 +3057,33 @@ details.set > * + * { margin-top: 10px; }
     if (c.limit != null && ovr(Math.round(S.speed), c.limit) && T - st.oT > 20 && c.dist <= 600) { st.oT = T; say('Let op, je rijdt te hard. Limiet ' + c.limit + '.', true); }
   }
 
+  /* Opvallende flitswaarschuwing: banner, rand, harde piepjes die sneller worden, trillen */
+  var alT = 0, alTxt = '';
+  function alarmTone(f, dur, vol) {
+    if (!sound || !ac) return;
+    try {
+      var t0 = ac.currentTime + .01, o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'square'; o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + .01); g.gain.setValueAtTime(vol, t0 + dur * .7); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+      o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + dur + .02);
+    } catch (e) {}
+  }
+  function camAlarm() {
+    var w = $('camWarn'), c = S.cam;
+    if (!c || c.dist > 600 || c.dist < 0 || (S.cam && c.dist == null)) { if (!w.hidden) { w.hidden = true; document.body.classList.remove('camnear'); } alT = 0; return; }
+    var what = c.kind === 'traj' ? 'TRAJECTCONTROLE' : (c.mobile ? 'CONTROLE' : 'FLITSER'), d = Math.max(0, Math.round(c.dist / 10) * 10);
+    var txt = what + ' ' + d + ' m' + (c.limit != null ? ' · max ' + c.limit : ''), hot = c.limit != null && ovr(Math.round(S.speed), c.limit);
+    if (txt !== alTxt) { w.textContent = txt; alTxt = txt; }
+    if (w.hidden) { w.hidden = false; } document.body.classList.toggle('camnear', c.dist < 250 || hot);
+    var gap = Math.max(.22, Math.min(1.1, c.dist / 600 * 1.1)); if (hot) gap = Math.min(gap, .3);
+    if (T - alT >= gap) {
+      alT = T; var near = c.dist < 250;
+      alarmTone(near ? 1250 : 980, .14, hot || near ? .45 : .3);
+      if (near) setTimeout(function () { alarmTone(1250, .14, .45); }, 170);
+      try { if (navigator.vibrate) navigator.vibrate(near ? [120, 60, 120] : 120); } catch (e) {}
+    }
+  }
+
   /* autostand */
   function carOn(on) {
     document.body.classList.toggle('car', on);
@@ -2756,6 +3099,7 @@ details.set > * + * { margin-top: 10px; }
   function extraTick() {
     moodTick();
     camSpeak();
+    try { camAlarm(); } catch (e) {}
     wxTick();
     if (S.live && !wasLive) ride = [];
     wasLive = S.live;
@@ -2786,6 +3130,7 @@ details.set > * + * { margin-top: 10px; }
 
   drawHist(); updateInsight(); updateUI();
   setTimeout(hello, 900);
+  window.__ndw = { parse: ndwParse, get: function () { return ndw; } };
   window.__mm = { hello: hello, cheer: cheer, bump: bump, S: S, mem: function () { return mem; }, GAGS: GAGS, startGag: startGag, submitChat: submitChat, localReply: localReply };
   requestAnimationFrame(frame);
 })();
