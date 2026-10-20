@@ -225,6 +225,10 @@ details.set > * + * { margin-top: 10px; }
 .namecard { margin: 12px 0; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); display: grid; gap: 10px; }
 .namecard[hidden] { display: none; }
 .namecard label { font: 600 16px var(--f-body); }
+.namecard input[type=text] { width: 100%; box-sizing: border-box; font: 400 16px var(--f-body); min-height: 48px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
+.namecard input[type=text]:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.namecard .foot { text-align: left; }
+.namecard .mobrow { flex-direction: row; } .namecard .mobrow .btn { flex: 1; }
 </style>
 
 </head>
@@ -263,8 +267,11 @@ details.set > * + * { margin-top: 10px; }
     <p class="foot" id="tapHint">Tik op zijn gezicht als je stilstaat.</p>
     <form class="namecard" id="nameCard" hidden autocomplete="off">
       <label for="nameIn">Hoe heet jij?</label>
-      <div class="mobrow"><input type="text" id="nameIn" maxlength="18" autocomplete="given-name" placeholder="Jouw naam"><button class="btn primary" type="submit">Dit ben ik</button></div>
-      <button class="btn" type="button" id="nameLater">Later</button>
+      <input type="text" id="nameIn" maxlength="18" autocomplete="given-name" placeholder="Jouw naam">
+      <label for="autoCardIn">Welke auto rijd je?</label>
+      <input type="text" id="autoCardIn" maxlength="30" autocomplete="off" placeholder="Bijvoorbeeld: witte Model Y">
+      <p class="foot" style="margin:0">Je collega’s in je groep zien je naam en auto, zo herkennen jullie elkaar onderweg. Geen kenteken nodig.</p>
+      <div class="mobrow"><button class="btn primary" type="submit">Klaar</button><button class="btn" type="button" id="nameLater">Later</button></div>
     </form>
   </section>
 
@@ -284,6 +291,28 @@ details.set > * + * { margin-top: 10px; }
     <p class="foot">Telefoon-GPS werkt alleen als deze pagina via https is geopend en je locatie toestaat. Het scherm blijft dan aan. Bedien de pagina niet tijdens het rijden: zet je telefoon in een houder.</p>
   </section>
 
+  <section aria-label="Binnenkant">
+    <h2>Binnenkant</h2>
+    <div class="meters">
+      <div class="meter"><span>Energie</span><div class="bar"><i id="mEnergy" style="--c:var(--good)"></i></div><b id="vEnergy">0</b></div>
+      <div class="meter"><span>Verveling</span><div class="bar"><i id="mBored" style="--c:var(--muted)"></i></div><b id="vBored">0</b></div>
+      <div class="meter"><span>Genegenheid</span><div class="bar"><i id="mLove" style="--c:var(--helmet)"></i></div><b id="vLove">0</b></div>
+      <div class="meter"><span>Rijtijd</span><div class="bar"><i id="mDrive" style="--c:var(--muted)"></i></div><b id="vDrive">0u00</b></div>
+      <div class="meter"><span>Rijstijl</span><div class="bar"><i id="mStyle" style="--c:var(--good)"></i></div><b id="vStyle">100</b></div>
+    </div>
+  </section>
+
+  <section aria-label="Leaderboard">
+    <h2>Leaderboard</h2>
+    <p class="foot">Jouw groep, op basis van echte ritten met de GPS aan. De groepscode en je auto stel je in bij Instellingen, onder Flitsers.</p>
+    <div id="bordTabs" role="group" aria-label="Soort ranglijst">
+      <button type="button" class="btn" data-soort="km" aria-pressed="true">Km</button><button type="button" class="btn" data-soort="netjes" aria-pressed="false">Netjes</button><button type="button" class="btn" data-soort="gemeld" aria-pressed="false">Meldingen</button><button type="button" class="btn" data-soort="stijl" aria-pressed="false">Rijstijl</button>
+    </div>
+    <ol id="bordLijst"></ol>
+    <p class="chip" id="bordStat">Nog niet geladen.</p>
+    <button class="btn" id="bordVervers" type="button">Leaderboard verversen</button>
+  </section>
+
   <section aria-label="Praten">
     <h2>Praten</h2>
     <p class="foot"><b>Tijdens het rijden praat je met je stem.</b> Zet bij Instellingen “Luisteren naar hé Buddy” aan, dan hoef je niets aan te raken. Hij antwoordt hardop. Ideeën om te zeggen: “hé Buddy, vertel een grap”, “doe een dansje”, “hoe laat is het”, “wat is mijn snelste nul naar honderd”, “hoeveel ritten hebben we gereden”, “wat weet je over mij”, “onthoud dat ik om vijf uur moet bellen”, “als ik hoi zeg, zeg jij goedemorgen kapitein”, “welterusten”.</p>
@@ -298,17 +327,6 @@ details.set > * + * { margin-top: 10px; }
     <div class="chips" id="chips"></div>
     <div class="switchrow" id="claudeRow" hidden><input type="checkbox" id="claudeOn"><label for="claudeOn">Slimmer praten via Claude (kost een beetje van jouw Claude-gebruik)</label></div>
     <p class="foot" id="claudeNote" hidden></p>
-  </section>
-
-  <section aria-label="Binnenkant">
-    <h2>Binnenkant</h2>
-    <div class="meters">
-      <div class="meter"><span>Energie</span><div class="bar"><i id="mEnergy" style="--c:var(--good)"></i></div><b id="vEnergy">0</b></div>
-      <div class="meter"><span>Verveling</span><div class="bar"><i id="mBored" style="--c:var(--muted)"></i></div><b id="vBored">0</b></div>
-      <div class="meter"><span>Genegenheid</span><div class="bar"><i id="mLove" style="--c:var(--helmet)"></i></div><b id="vLove">0</b></div>
-      <div class="meter"><span>Rijtijd</span><div class="bar"><i id="mDrive" style="--c:var(--muted)"></i></div><b id="vDrive">0u00</b></div>
-      <div class="meter"><span>Rijstijl</span><div class="bar"><i id="mStyle" style="--c:var(--good)"></i></div><b id="vStyle">100</b></div>
-    </div>
   </section>
 
   <section aria-label="Leren">
@@ -395,18 +413,11 @@ details.set > * + * { margin-top: 10px; }
     <button class="btn" id="bUcam" type="button" style="grid-column:1/-1">Vaste flitser: onthoud deze plek</button>
     <button class="btn" id="bUmob" type="button" style="grid-column:1/-1">Mobiele flitser: onthoud deze plek (3 uur)</button>
     <p class="sub">Samen met collega’s</p>
-    <p class="foot">Vul dezelfde groepscode in op alle telefoons (6 tot 32 letters of cijfers, houd hem geheim). Flitsers die iemand toevoegt komen dan bij iedereen, en jullie kunnen elkaar in de autostand met de knop “Groep” een zwaai, koffievraag, file, “ik sta stil”, hartjes of “bijna thuis” sturen. Er worden alleen plek en limiet gedeeld, en je plaatsnaam bij “ik sta stil” (geen precieze plek). Je hebt het Worker-adres hierboven nodig, met opslag gekoppeld.</p>
+    <p class="foot">Standaard zit iedereen in groep 123456, dus collega’s hoeven niets in te vullen. Wil je een eigen groep, vul dan op alle telefoons dezelfde andere code in (6 tot 32 letters of cijfers, houd hem geheim). Flitsers die iemand toevoegt komen dan bij iedereen, en jullie kunnen elkaar in de autostand met de knop “Groep” een zwaai, koffievraag, file, “ik sta stil”, hartjes of “bijna thuis” sturen. Er worden alleen plek en limiet gedeeld, en je plaatsnaam bij “ik sta stil” (geen precieze plek). Je hebt het Worker-adres hierboven nodig, met opslag gekoppeld.</p>
     <div class="mobrow"><input type="text" id="grpCode" maxlength="32" autocomplete="off" autocapitalize="none" placeholder="Groepscode"><button class="btn" id="grpSave" type="button">Opslaan en verversen</button></div>
     <p class="chip" id="grpStat">Geen groepscode ingevuld.</p>
     <p class="foot">Je naam voor de groep is de naam die je hierboven bij “Jouw naam” bewaart. Je auto is optioneel, zo herkennen jullie elkaar op de weg (geen kenteken).</p>
     <div class="mobrow"><input type="text" id="autoIn" maxlength="30" autocomplete="off" placeholder="Jouw auto, bijv. witte Model Y"><button class="btn" id="autoSave" type="button">Bewaar auto</button></div>
-    <p class="sub">Leaderboard van je groep</p>
-    <div id="bordTabs" role="group" aria-label="Soort ranglijst">
-      <button type="button" class="btn" data-soort="km" aria-pressed="true">Km</button><button type="button" class="btn" data-soort="netjes" aria-pressed="false">Netjes</button><button type="button" class="btn" data-soort="gemeld" aria-pressed="false">Meldingen</button><button type="button" class="btn" data-soort="stijl" aria-pressed="false">Rijstijl</button>
-    </div>
-    <ol id="bordLijst"></ol>
-    <p class="chip" id="bordStat">Nog niet geladen.</p>
-    <button class="btn" id="bordVervers" type="button">Leaderboard verversen</button>
     <button class="btn" id="grpDel" type="button">Mijn laatst toegevoegde flitser verwijderen</button>
     <details class="set"><summary>Eigen koppeling instellen</summary>
       <p class="foot">Een webpagina mag flitsers.nl meestal niet rechtstreeks uitlezen. Met een eigen gratis tussenstation (Cloudflare Worker, uitleg bij de app) werkt het wel. Plak hier het adres ervan. Laat leeg om rechtstreeks te proberen.</p>
@@ -2837,7 +2848,19 @@ details.set > * + * { margin-top: 10px; }
       mem.me = v; save(); card.hidden = true; if ($('meIn')) $('meIn').value = v;
       setEv('love', 3.6, 'Aangenaam, ' + v + '! Ik onthoud het.'); beep('wake'); return true;
     }
-    card.addEventListener('submit', function (e) { e.preventDefault(); if (!setName(inp.value)) toast('Typ eerst je naam.'); });
+    function schoonAuto(v) { return String(v || '').replace(/[^A-Za-z0-9\u00C0-\u017F '\-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 30); }
+    if (mem.me) inp.value = mem.me;
+    if (mem.auto) $('autoCardIn').value = mem.auto;
+    card.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var au = schoonAuto($('autoCardIn').value);
+      if (!cap(inp.value)) { toast('Typ eerst je naam.'); inp.focus(); return; }
+      if (au.length < 2) { toast('Vul ook je auto in, bijvoorbeeld: witte Model Y.'); $('autoCardIn').focus(); return; }
+      mem.auto = au; if ($('autoIn')) $('autoIn').value = au;
+      setName(inp.value);
+      setEv('love', 3.6, 'Aangenaam, ' + mem.me + '! Mooie ' + au + '.');
+      if (typeof grLid === 'function') grLid(true);
+    });
     $('nameLater').addEventListener('click', function () { skip = true; card.hidden = true; try { sessionStorage.setItem('maatje-nameskip', '1'); } catch (e) {} });
     $('meSave').addEventListener('click', function () { if (setName($('meIn').value)) toast('Naam bewaard.'); else toast('Typ eerst je naam.'); });
     if ($('meIn') && mem.me) $('meIn').value = mem.me;
@@ -2846,7 +2869,7 @@ details.set > * + * { margin-top: 10px; }
       if (document.hidden) wasHidden = Date.now();
       else if (wasHidden && Date.now() - wasHidden > 15 * 60e3) { S.helloDone = false; setTimeout(hello, 600); }
     });
-    window.__nameTick = function () { card.hidden = !(!mem.me && !skip && S.speed < 1); };
+    window.__nameTick = function () { card.hidden = !((!mem.me || !mem.auto) && !skip && S.speed < 1); };
   })();
   (function () {
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition, wake = $('wakeOn'), stat = $('wakeStat'), rec = null, armed = 0;
@@ -2983,7 +3006,8 @@ details.set > * + * { margin-top: 10px; }
   applyCamData();
   /* Vaste en mobiele flitsers, ook delen met een groep via de Worker */
   var GKEY = 'dashboardmaatje-grp-v1', grp = '', gSeen = {}, gFirst = true, gcams = [], gT = -9999, gBusy = false, MOBMS = 3 * 3600e3;
-  try { grp = localStorage.getItem(GKEY) || ''; } catch (e) {}
+  var STANDAARD_GROEP = '123456'; /* zo werkt het voor collega's meteen; zelf ingevulde of gewiste code blijft staan */
+  try { var gv = localStorage.getItem(GKEY); grp = gv === null ? STANDAARD_GROEP : gv; } catch (e) { grp = STANDAARD_GROEP; }
   ucams = ucams.filter(function (u) { return u.k !== 'mobile' || Date.now() - u.t < MOBMS; });
   function allUcams() {
     var now = Date.now(), out = [], ids = {};
