@@ -370,6 +370,7 @@ details.set > * + * { margin-top: 10px; }
       <li><strong>Flitsers en trajecten</strong> komen uit OpenStreetMap (voor Nederland ongeveer 875 camerapunten). Mobiele controles staan er niet in.</li>
     </ul>
   </section>
+  <p class="foot" id="verTxt" style="text-align:center">Dashboardmaatje</p>
 </main>
 
 <script>
@@ -2249,6 +2250,9 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
+  var VERSION = 'v29';
+  $('verTxt').textContent = 'Dashboardmaatje ' + VERSION;
+  lg('start ' + VERSION);
   function sampleLog(acc) {
     if (T - logT < 10) return; logT = T;
     lg('v=' + Math.round(S.liveSpeed) + ' nauwk=' + Math.round(acc) + 'm limiet=' + (S.roadLim == null ? '-' : S.roadLim + (S.roadEst ? '~' : '')) + ' wegen=' + roadWays.length + ' draai=' + S.turnS.toFixed(0) + ' vaste=' + (camCache ? camCache.cams.length : 0) + '/' + (camCache ? camCache.trajs.length : 0) + ' gemeld=' + mobItems.length + ' stemming=' + curKey);
