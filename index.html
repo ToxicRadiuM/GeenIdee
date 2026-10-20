@@ -86,10 +86,14 @@ body.car #carBack { display: block; }
 #carAddM:active { background: #ff6b6b; color: #000; }
 #carAdd.ok, #carAddM.ok { background: #1f6b32; border-color: #5ddc7c; color: #fff; }
 body.car #carAdd, body.car #carAddM { display: block; }
-body.car .stage { padding-right: min(22vw, 190px); box-sizing: border-box; }
+#carStart { display: none; position: fixed; left: 2vw; top: 50%; transform: translateY(-50%); z-index: 50; width: min(19vw, 170px); min-height: min(24vh, 120px); border-radius: 22px; border: 3px solid #34c759; background: #0b2414; color: #8ff0a8; font: 700 clamp(15px, 2.4vw, 24px)/1.2 var(--f-body); text-align: center; }
+#carStart:active { background: #34c759; color: #000; }
+#carStart.nee { border-color: #8a8f98; background: #1b1d21; color: #d6d9de; }
+body.car #carStart { display: block; }
+body.car .stage { padding-right: min(22vw, 190px); padding-left: min(22vw, 190px); box-sizing: border-box; }
 body.car .namecard { display: none !important; }
 body.car .helmet { --hs: min(70vw, 74vh); }
-@media (max-aspect-ratio: 1/1) { body.car #carAdd, body.car #carAddM { top: auto; bottom: 3vh; transform: none; width: 44vw; min-height: 64px; } body.car #carAdd { left: 3vw; right: auto; } body.car #carAddM { right: 3vw; } body.car .stage { padding-right: 0; } body.car .helmet { --hs: min(94vw, 62vh); } }
+@media (max-aspect-ratio: 1/1) { body.car #carAdd, body.car #carAddM { top: auto; bottom: 3vh; transform: none; width: 44vw; min-height: 64px; } body.car #carAdd { left: 3vw; right: auto; } body.car #carAddM { right: 3vw; } body.car #carStart { top: auto; transform: none; left: 3vw; right: 3vw; width: auto; bottom: calc(3vh + 76px); min-height: 56px; } body.car .stage { padding-right: 0; padding-left: 0; } body.car .helmet { --hs: min(94vw, 54vh); } }
 /* Robot */
 .stage { align-items: center; gap: 18px; }
 .helmet {
@@ -201,6 +205,7 @@ details.set > * + * { margin-top: 10px; }
 <button id="carBack" type="button">Terug</button>
 <button id="carAdd" type="button">Vaste<br>flitser</button>
 <button id="carAddM" type="button">Mobiele<br>flitser</button>
+<button id="carStart" type="button">1 2 3<br>Start</button>
 <div id="errBar" hidden onclick="this.hidden=true" style="position:fixed;left:8px;right:8px;top:8px;z-index:99;background:#b71c1c;color:#fff;padding:10px 12px;border-radius:10px;font:13px system-ui"></div>
 <main>
   <header>
@@ -534,7 +539,12 @@ details.set > * + * { margin-top: 10px; }
     clearTimeout(noteTimer);
     noteTimer = setTimeout(function () { $('note').textContent = ''; }, 4500);
   }
-  function setEv(k, dur, msg) { if (S.live && msg) lg('ev ' + k + ': ' + msg); if (msg) babble(k, msg); S.ev = k; S.evUntil = T + dur; S.evMsg = msg || null; S.gag = null; }
+  function setEv(k, dur, msg) {
+    if (S.live && msg) lg('ev ' + k + ': ' + msg); if (msg) babble(k, msg); S.ev = k; S.evUntil = T + dur; S.evMsg = msg || null;
+    /* startvlag: de eerste 2 seconden na GO niet onderbreken, zodat je de vlag ziet vallen */
+    var g = S.gag, beschermd = g && typeof GAGS !== 'undefined' && GAGS[g.k] && GAGS[g.k].go && T - g.t0 >= 3 && T - g.t0 < 5;
+    if (!beschermd) S.gag = null;
+  }
   function ix() { return S.live ? 4 : 1; }
   function maxHours() { return Math.max.apply(null, mem.hours); }
   function expected() {
@@ -966,7 +976,9 @@ details.set > * + * { margin-top: 10px; }
     var g = S.gag;
     if (g) {
       var d = GAGS[g.k];
-      if (T >= g.end || S.asleep || (S.cam && S.cam.dist <= 600) || S.traj || S.tunnel || (!d.drive && S.speed >= 3) || (d.drive && !d.idle && S.speed < 3)) { endGag(); g = null; }
+      var naGo = d.go && T - g.t0 >= 3; /* startvlag: na GO mag je wegrijden */
+      if (d.go && g.zelf && !naGo && S.speed >= 3 && !S.asleep) { endGag(true); g = null; setEv('startled', 2.5, 'Valse start!'); beep('startled'); }
+      else if (T >= g.end || S.asleep || (S.cam && S.cam.dist <= 600) || S.traj || S.tunnel || (!d.drive && S.speed >= 3 && !naGo) || (d.drive && !d.idle && S.speed < 3)) { endGag(); g = null; }
       else d.upd(g, T - g.t0);
     }
     /* leaning into bends: head tilts outward, eyes look where you are going */
@@ -1503,7 +1515,7 @@ details.set > * + * { margin-top: 10px; }
   $('bRight').addEventListener('click', function () { simBend(1, 'bend'); });
   $('bRound').addEventListener('click', function () { simBend(1, 'round'); });
   $('bBump').addEventListener('click', function () { bump(); });
-  $('bStart').addEventListener('click', function () { if (S.asleep) wake(); S.speed < 3 ? startGag('startgrid') : toast('Zet de snelheid eerst op 0.'); });
+  $('bStart').addEventListener('click', function () { if (S.asleep) wake(); if (S.speed < 3) { startGag('startgrid'); if (S.gag && S.gag.k === 'startgrid') S.gag.zelf = true; } else toast('Zet de snelheid eerst op 0.'); });
   $('bWorks').addEventListener('click', function () { worksAlert({ name: 'Test', d: 800 }); });
   $('bTunnel').addEventListener('click', function () { if (S.asleep) wake(); if (S.speed < 10) { S.target = 40; speedEl.value = 40; } S.simTunEnd = T + 6; toast('Tunnel van 6 seconden.'); });
   $('bMic').addEventListener('click', micToggle);
@@ -2980,6 +2992,17 @@ details.set > * + * { margin-top: 10px; }
     });
   }
   carBtn('carAdd', 'fixed', 'Vaste<br>flitser'); carBtn('carAddM', 'mobile', 'Mobiele<br>flitser');
+  /* Autostand: 1 2 3 Start (startvlag-show), alleen bij stilstand */
+  $('carStart').addEventListener('click', function () {
+    var b = $('carStart');
+    if (S.asleep) wake();
+    if (S.speed >= 3) {
+      b.classList.add('nee'); b.innerHTML = 'Eerst<br>stilstaan';
+      setTimeout(function () { b.classList.remove('nee'); b.innerHTML = '1 2 3<br>Start'; }, 2200);
+      return;
+    }
+    startGag('startgrid'); if (S.gag && S.gag.k === 'startgrid') S.gag.zelf = true;
+  });
   $('bUcam').addEventListener('click', function () { addUcam('fixed', false); });
   $('bUmob').addEventListener('click', function () { addUcam('mobile', false); });
   $('grpCode').value = grp;
@@ -3299,7 +3322,7 @@ details.set > * + * { margin-top: 10px; }
       ctx.fillStyle = HEART; ctx.beginPath(); ctx.ellipse(g.bx, g.by, 11, 14, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(g.bx, g.by + 14); ctx.lineTo(g.bx - 3, g.by + 19); ctx.lineTo(g.bx + 3, g.by + 19); ctx.fill();
       ctx.fillStyle = SCREEN; ctx.globalAlpha = .5; ctx.beginPath(); ctx.ellipse(g.bx - 4, g.by - 5, 2.5, 4, .5, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
     } };
-  GAGS.startgrid = { name: 'Startvlag-show', dur: 8, idle: 1, mood: 'anticipate', msg: 'Klaar voor de start\u2026',
+  GAGS.startgrid = { name: 'Startvlag-show', dur: 8, idle: 1, go: 1, mood: 'anticipate', msg: 'Klaar voor de start\u2026',
     upd: function (g, tt) {
       var n = tt < 3 ? 3 - Math.floor(tt) : 0; if (n !== g.n) { g.n = n; if (n) beep('wake'); else beep('race'); }
       if (tt < 3) dir(.6, -.2); else { dir(1, 0); g.mood = 'excited'; g.msg = tt < 4.6 ? 'Gaaaan!' : 'Wat een start!'; fdx = Math.min(10, (tt - 3) * 20); }
