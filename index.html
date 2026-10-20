@@ -79,14 +79,17 @@ body.car .foot { display: none; }
 #carBack { display: none; position: fixed; top: 10px; right: 10px; z-index: 50; min-height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #555; background: #1b1b1b; color: #eee; font: 600 14px var(--f-display); }
 body.car #carBack { display: block; }
 
-#carAdd { display: none; position: fixed; right: 2vw; top: 50%; transform: translateY(-50%); z-index: 50; width: min(19vw, 170px); min-height: min(30vh, 150px); border-radius: 22px; border: 3px solid #ffb02e; background: #2a1d05; color: #ffd27a; font: 700 clamp(15px, 2.4vw, 24px)/1.2 var(--f-body); text-align: center; }
+#carAdd, #carAddM { display: none; position: fixed; right: 2vw; transform: translateY(-50%); z-index: 50; width: min(19vw, 170px); min-height: min(24vh, 120px); border-radius: 22px; border: 3px solid #ffb02e; background: #2a1d05; color: #ffd27a; font: 700 clamp(15px, 2.4vw, 24px)/1.2 var(--f-body); text-align: center; }
+#carAdd { top: 33%; }
+#carAddM { top: 67%; border-color: #ff6b6b; background: #2a0d0d; color: #ffb0b0; }
 #carAdd:active { background: #ffb02e; color: #000; }
-#carAdd.ok { background: #1f6b32; border-color: #5ddc7c; color: #fff; }
-body.car #carAdd { display: block; }
+#carAddM:active { background: #ff6b6b; color: #000; }
+#carAdd.ok, #carAddM.ok { background: #1f6b32; border-color: #5ddc7c; color: #fff; }
+body.car #carAdd, body.car #carAddM { display: block; }
 body.car .stage { padding-right: min(22vw, 190px); box-sizing: border-box; }
 body.car .namecard { display: none !important; }
 body.car .helmet { --hs: min(70vw, 74vh); }
-@media (max-aspect-ratio: 1/1) { body.car #carAdd { top: auto; bottom: 3vh; transform: none; width: 70vw; min-height: 64px; } body.car .stage { padding-right: 0; } body.car .helmet { --hs: min(94vw, 62vh); } }
+@media (max-aspect-ratio: 1/1) { body.car #carAdd, body.car #carAddM { top: auto; bottom: 3vh; transform: none; width: 44vw; min-height: 64px; } body.car #carAdd { left: 3vw; right: auto; } body.car #carAddM { right: 3vw; } body.car .stage { padding-right: 0; } body.car .helmet { --hs: min(94vw, 62vh); } }
 /* Robot */
 .stage { align-items: center; gap: 18px; }
 .helmet {
@@ -196,7 +199,8 @@ details.set > * + * { margin-top: 10px; }
 </head>
 <body>
 <button id="carBack" type="button">Terug</button>
-<button id="carAdd" type="button">Flitser<br>toevoegen</button>
+<button id="carAdd" type="button">Vaste<br>flitser</button>
+<button id="carAddM" type="button">Mobiele<br>flitser</button>
 <main>
   <header>
     <p class="eyebrow">Simulator · brein van je robotje</p>
@@ -285,13 +289,21 @@ details.set > * + * { margin-top: 10px; }
     <div class="switchrow"><input type="checkbox" id="wkOn" checked><label for="wkOn">Waarschuwen voor wegwerkzaamheden</label></div>
     <p class="chip" id="wkStat">Nog niet geladen.</p>
     <p class="foot">Bron: live data van NDW (de overheid): werk, afsluitingen, tijdelijke maximumsnelheid, ongelukken en files. Lukt dat niet, dan gebruik ik OpenStreetMap. Voor NDW heb je het Worker-adres nodig (bij Flitsers, tussenstation).</p>
+    <div class="switchrow"><input type="checkbox" id="msiOn" checked><label for="msiOn">Matrixborden boven de snelweg (snelheid, rood kruis)</label></div>
+    <p class="chip" id="msiStat">Matrixborden: nog niet geladen. Dat gebeurt vanzelf als je op de snelweg rijdt.</p>
     <p class="sub">Flitsers</p>
     <div class="switchrow"><input type="checkbox" id="camOn" checked><label for="camOn">Flitsmeldingen aan</label></div>
     <div class="switchrow"><input type="checkbox" id="spkOn"><label for="spkOn">Flitsmeldingen hardop zeggen (Nederlands)</label></div>
     <p class="chip" id="camStat">Flitsdata: nog niet geladen. Wordt opgehaald als de GPS aan staat.</p>
     <div class="switchrow"><input type="checkbox" id="mobOn" checked><label for="mobOn">Gemelde controles van flitsers.nl erbij (alleen persoonlijk gebruik)</label></div>
     <p class="chip" id="mobStat">Gemelde controles: nog niet opgehaald. Dit gebeurt elke 5 minuten als de GPS aan staat.</p>
-    <button class="btn" id="bUcam" type="button" style="grid-column:1/-1">Flitser ontbreekt hier: onthoud deze plek</button>
+    <button class="btn" id="bUcam" type="button" style="grid-column:1/-1">Vaste flitser: onthoud deze plek</button>
+    <button class="btn" id="bUmob" type="button" style="grid-column:1/-1">Mobiele flitser: onthoud deze plek (3 uur)</button>
+    <p class="sub">Samen met collega’s</p>
+    <p class="foot">Vul dezelfde groepscode in op alle telefoons (6 tot 32 letters of cijfers, houd hem geheim). Flitsers die iemand toevoegt komen dan bij iedereen. Er worden alleen plek en limiet gedeeld. Je hebt het Worker-adres hierboven nodig, met opslag gekoppeld.</p>
+    <div class="mobrow"><input type="text" id="grpCode" maxlength="32" autocomplete="off" autocapitalize="none" placeholder="Groepscode"><button class="btn" id="grpSave" type="button">Opslaan en verversen</button></div>
+    <p class="chip" id="grpStat">Geen groepscode ingevuld.</p>
+    <button class="btn" id="grpDel" type="button">Mijn laatst toegevoegde flitser verwijderen</button>
     <details class="set"><summary>Eigen koppeling instellen</summary>
       <p class="foot">Een webpagina mag flitsers.nl meestal niet rechtstreeks uitlezen. Met een eigen gratis tussenstation (Cloudflare Worker, uitleg bij de app) werkt het wel. Plak hier het adres ervan. Laat leeg om rechtstreeks te proberen.</p>
       <div class="mobrow"><input type="text" id="proxyUrl" inputmode="url" autocomplete="off" placeholder="https://jouw-naam.workers.dev"><button class="btn" id="proxySave" type="button">Bewaar adres</button></div>
@@ -1668,7 +1680,7 @@ details.set > * + * { margin-top: 10px; }
       for (var j = 0; j < cams.length; j++) if (gdist(b.lat, b.lon, cams[j].lat, cams[j].lon) < 70) return false;
       return true;
     }).map(function (b) { return { id: b.id, kind: 'cam', lat: b.lat, lon: b.lon, limit: b.limit, user: true }; });
-    var uc = typeof ucams === 'undefined' ? [] : ucams.map(function (u) { return { id: u.id, kind: 'cam', lat: u.lat, lon: u.lon, limit: u.limit, user: true }; });
+    var uc = typeof allUcams === 'undefined' ? [] : allUcams().map(function (u) { return { id: u.id, kind: 'cam', lat: u.lat, lon: u.lon, limit: u.limit, user: true, mobile: u.mobile }; });
     M.items = items.concat(typeof mobItems === 'undefined' || !mobItems ? [] : mobItems, uc, bi);
   }
   function aheadInfo(lat, lon, hdg, it) {
@@ -1922,6 +1934,131 @@ details.set > * + * { margin-top: 10px; }
     lg('NDW melding ' + it.k + ' ' + Math.round(d) + ' m: ' + m);
   }
 
+  /* Brugopeningen (NDW planningsfeed: geplande openingen, niet live gemeten) */
+  var br = { t: 0, items: [] }, brBusy = false, brFail = -9999, brPrev = {}, brSeen = {}, brWait = {};
+  function brUrl() { return pbase() ? pbase() + '/brug' : 'https://opendata.ndw.nu/planningsfeed_brugopeningen.xml.gz'; }
+  function brParse(xml, lat0, lon0, nowMs) {
+    var out = [], i = 0, a, b, cosl = Math.cos(lat0 * Math.PI / 180);
+    while ((a = xml.indexOf('<sit:situationRecord ', i)) >= 0) {
+      b = xml.indexOf('</sit:situationRecord>', a); if (b < 0) break; i = b + 22;
+      var r = xml.slice(a, b); if (r.indexOf('bridgeSwingInOperation') < 0) continue;
+      var os = (r.match(/<com:overallStartTime>([^<]{19})/) || [])[1], oe = (r.match(/<com:overallEndTime>([^<]{19})/) || [])[1], la = r.match(/<loc:latitude>([^<]*)/), lo = r.match(/<loc:longitude>([^<]*)/);
+      if (!os || !oe || !la || !lo) continue;
+      var st = Date.parse(os + 'Z'), en = Date.parse(oe + 'Z'), y = +la[1], x = +lo[1];
+      if (en < nowMs - 10 * 60e3 || st > nowMs + 3 * 3600e3) continue;
+      if (Math.hypot((y - lat0) * 111195, (x - lon0) * cosl * 111195) > 30000) continue;
+      out.push({ id: (r.match(/ id="([^"]+)"/) || [])[1] || String(out.length), lat: y, lon: x, st: st, en: en });
+    }
+    return out;
+  }
+  function brLoad(lat, lon) {
+    if (brBusy || T - brFail < 120 || (br.t && Date.now() - br.t < 10 * 60e3 && gdist(lat, lon, br.lat, br.lon) < 10000)) return;
+    brBusy = true;
+    fetch(brUrl()).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); }).then(ndwGunzip).then(function (xml) {
+      br = { t: Date.now(), lat: lat, lon: lon, items: brParse(xml, lat, lon, Date.now()) }; lg('bruggen geladen: ' + br.items.length);
+    }).catch(function (e) { brFail = T; lg('FOUT bruggen ' + (e.message || e)); }).then(function () { brBusy = false; });
+  }
+  function brFix(lat, lon, acc) {
+    brLoad(lat, lon);
+    if (!br.items.length || acc >= 60) return;
+    var now = Date.now(), hdg = ndwHdg, best = null;
+    br.items.forEach(function (it) {
+      if (now < it.st - 5 * 60e3 || now > it.en + 2 * 60e3) return;
+      var d = gdist(lat, lon, it.lat, it.lon), pv = brPrev[it.id]; brPrev[it.id] = d;
+      if (S.liveSpeed < 3) {
+        if (d < 300 && !brWait[it.id] && now >= it.st - 60e3 && now <= it.en) { brWait[it.id] = 1; best = { it: it, d: d, wait: true }; }
+        return;
+      }
+      if (hdg == null || d > 1000 || pv == null || d > pv - 3 || adiff(gbearing(lat, lon, it.lat, it.lon), hdg) > 60) return;
+      if (brSeen[it.id] && now - brSeen[it.id] < 15 * 60e3) return;
+      if (!best || d < best.d) best = { it: it, d: d };
+    });
+    if (!best) return;
+    var it = best.it, open = now >= it.st, m;
+    if (best.wait) m = 'De brug gaat open. Even geduld\u2026';
+    else { brSeen[it.id] = now; m = (open ? 'Brug is open' : 'Brug gaat zo open') + ', over ' + ndwDist(best.d) + '. Rustig aan!'; }
+    setEv('alert', 1, m); babble('alert', m); beep('wake'); startGag('bridge'); if (S.gag) S.gag.msg = m; S.nextGag = Math.max(S.nextGag, T + 20);
+    lg('brug ' + Math.round(best.d) + ' m: ' + m);
+  }
+  GAGS.bridge = { name: 'Brug gaat open', dur: 7, idle: 1, drive: 1, need: function () { return false; }, mood: 'alert', msg: 'Brug gaat open!',
+    upd: function (g, tt) { var u = Math.min(1, tt / 2); dir(0, -.3 + (tt > 2 ? Math.sin(tt) * .2 : 0)); if (tt > 5) { g.mood = 'happy'; g.msg = 'Boot is er doorheen!'; } },
+    draw: function (g, tt) {
+      var up = tt < 1.5 ? tt / 1.5 : tt < 5 ? 1 : Math.max(0, 1 - (tt - 5) / 1.5), an = up * 1.0, L = 62;
+      ctx.strokeStyle = EYE; ctx.lineWidth = 7; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(34, 188); ctx.lineTo(34 + Math.cos(an) * L, 188 - Math.sin(an) * L); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(206, 188); ctx.lineTo(206 - Math.cos(an) * L, 188 - Math.sin(an) * L); ctx.stroke();
+      ctx.globalAlpha = .45; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(20, 200); ctx.lineTo(220, 200); ctx.stroke(); ctx.globalAlpha = 1;
+      if (tt > 1.5 && tt < 5.5) { var bx = 30 + (tt - 1.5) / 4 * 180; ctx.fillStyle = EYE; ctx.beginPath(); ctx.moveTo(bx - 14, 196); ctx.lineTo(bx + 14, 196); ctx.lineTo(bx + 9, 204); ctx.lineTo(bx - 9, 204); ctx.closePath(); ctx.fill(); ctx.fillRect(bx - 1, 184, 2, 12); ctx.fillRect(bx - 1, 184, 9, 5); }
+    } };
+  /* Matrixborden (NDW live) met vaste locaties uit msi-locaties.json */
+  var ms = { arr: null, loc: null, locBusy: false, locFail: -9999, t: -9999, busy: false, fail: -9999, items: [], prev: {}, seen: {} };
+  function msLocLoad() {
+    if (ms.loc || ms.locBusy || T - ms.locFail < 120) return; ms.locBusy = true;
+    fetch('msi-locaties.json').then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (j) {
+      ms.loc = j; ms.arr = Object.keys(j).map(function (k) { return { k: k, lat: j[k][0], lon: j[k][1], b: j[k][2] }; }); lg('matrix-locaties geladen: ' + ms.arr.length);
+    }).catch(function (e) { ms.locFail = T; lg('FOUT matrix-locaties ' + (e.message || e)); }).then(function () { ms.locBusy = false; });
+  }
+  function msUrl() { return pbase() ? pbase() + '/msi' : 'https://opendata.ndw.nu/Matrixsignaalinformatie.xml.gz'; }
+  function msParse(xml, loc) {
+    var sg = {}, i = 0, a, b;
+    while ((a = xml.indexOf('<event>', i)) >= 0) {
+      b = xml.indexOf('</event>', a); if (b < 0) break; i = b + 8;
+      var e = xml.slice(a, b), u = (e.match(/<sign_id><uuid>([^<]*)/) || [])[1]; if (!u) continue;
+      var o = sg[u] || (sg[u] = {}), l = e.match(/<lanelocation><road>(\w+)<\/road><carriageway>(\w*)<\/carriageway><lane>\d+<\/lane><km>([\d.]+)<\/km>/);
+      if (l) o.k = l[1] + '|' + l[2] + '|' + (+l[3]).toFixed(3);
+      var d = e.match(/<display>([\s\S]*?)<\/display>/);
+      if (d) { var tg = d[1], sp = tg.match(/^<speedlimit[^>]*>(\d+)/); o.d = sp ? 's' + sp[1] : /^<lane_closed_ahead/.test(tg) ? 'a' : /^<lane_closed/.test(tg) ? 'x' : ''; }
+    }
+    var G = {};
+    Object.keys(sg).forEach(function (u) {
+      var o = sg[u]; if (!o.k || !o.d || !loc[o.k]) return; var g = G[o.k] || (G[o.k] = { k: o.k, lat: loc[o.k][0], lon: loc[o.k][1], b: loc[o.k][2], s: null, x: 0, a: 0 });
+      if (o.d[0] === 's') { var v = +o.d.slice(1); if (g.s == null || v < g.s) g.s = v; } else if (o.d === 'x') g.x++; else if (o.d === 'a') g.a++;
+    });
+    return Object.keys(G).map(function (k) { return G[k]; });
+  }
+  function msLoad() {
+    ms.busy = true;
+    fetch(msUrl()).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); }).then(ndwGunzip).then(function (xml) {
+      ms.items = msParse(xml, ms.loc); ms.t = T;
+      var sp = ms.items.filter(function (g) { return g.s != null; }).length, kr = ms.items.filter(function (g) { return g.x > 0 || g.a > 0; }).length, d = new Date();
+      var el = $('msiStat'); if (el) el.textContent = 'Matrixborden: ' + sp + ' met snelheid, ' + kr + ' met rood kruis in heel Nederland. Bijgewerkt ' + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes() + '.';
+      lg('matrix geladen: ' + sp + ' snelheid, ' + kr + ' kruis');
+    }).catch(function (e) { ms.fail = T; lg('FOUT matrix ' + (e.message || e)); var el = $('msiStat'); if (el) el.textContent = 'Matrixborden laden mislukt (' + (e.message || e) + ').'; }).then(function () { ms.busy = false; });
+  }
+  function msFix(lat, lon, acc) {
+    var on = $('msiOn'); if (on && !on.checked) return;
+    msLocLoad(); if (!ms.arr || acc >= 60 || S.liveSpeed < 30) return;
+    var near = 1e9, cl = Math.cos(lat * Math.PI / 180), q;
+    for (q = 0; q < ms.arr.length; q++) { var g0 = ms.arr[q], dd = Math.hypot((g0.lat - lat) * 111195, (g0.lon - lon) * cl * 111195); if (dd < near) near = dd; }
+    if (near < 4000 && !ms.busy && T - ms.t > 150 && T - ms.fail > 120) msLoad();
+    var hdg = ndwHdg; if (hdg == null || T - ms.t > 600) return;
+    var best = null;
+    ms.items.forEach(function (g) {
+      var d = gdist(lat, lon, g.lat, g.lon), pv = ms.prev[g.k]; ms.prev[g.k] = d;
+      if (d > 1500 || pv == null || d > pv - 3 || adiff(gbearing(lat, lon, g.lat, g.lon), hdg) > 50 || (g.b != null && adiff(g.b, hdg) > 75)) return;
+      if (ms.seen[g.k] && Date.now() - ms.seen[g.k] < 10 * 60e3) return;
+      if (!best || d < best.d) best = { g: g, d: d };
+    });
+    if (!best || T - ndwLast < 12) return;
+    ndwLast = T; var g = best.g; ms.seen[g.k] = Date.now();
+    var m, mood = 'alert', mt = 's';
+    if (g.s != null) { m = 'Matrixbord: max ' + g.s + ' over ' + ndwDist(best.d) + '.'; if (S.speed > g.s + 5) { m = 'Matrixbord: max ' + g.s + ' over ' + ndwDist(best.d) + '! Je rijdt nu ' + Math.round(S.speed) + '.'; mood = 'worried'; } }
+    else if (g.x > 0) { m = 'Rood kruis over ' + ndwDist(best.d) + ': rijstrook dicht.'; mt = 'x'; }
+    else { m = 'Rijstrook dicht verderop, over ' + ndwDist(best.d) + '.'; mt = 'x'; }
+    setEv(mood, 1, m); babble(mood, m); beep(mood === 'worried' ? 'startled' : 'wake'); startGag('matrix');
+    if (S.gag) { S.gag.msg = m; S.gag.mt = mt; S.gag.mv = g.s; S.gag.mood = mood; } S.nextGag = Math.max(S.nextGag, T + 15);
+    lg('matrix ' + Math.round(best.d) + ' m: ' + m);
+  }
+  GAGS.matrix = { name: 'Matrixbord', dur: 6, idle: 1, drive: 1, need: function () { return false; }, mood: 'alert', msg: 'Matrixbord!',
+    upd: function (g, tt) { dir(0, -.8); },
+    draw: function (g, tt) {
+      var blink = Math.sin(tt * 12) > 0;
+      rr(62, 24, 116, 70, 9); ctx.fillStyle = '#0b0f14'; ctx.fill(); ctx.strokeStyle = EYE; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = blink ? '#ffb02e' : '#5a4310'; ctx.beginPath(); ctx.arc(72, 32, 3.5, 0, TAU); ctx.arc(168, 32, 3.5, 0, TAU); ctx.fill();
+      ctx.fillStyle = blink ? '#5a4310' : '#ffb02e'; ctx.beginPath(); ctx.arc(72, 86, 3.5, 0, TAU); ctx.arc(168, 86, 3.5, 0, TAU); ctx.fill();
+      if (g.mt === 'x') { ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(100, 40); ctx.lineTo(140, 78); ctx.moveTo(140, 40); ctx.lineTo(100, 78); ctx.stroke(); }
+      else { ctx.beginPath(); ctx.arc(120, 59, 24, 0, TAU); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#e53935'; ctx.lineWidth = 6; ctx.stroke(); ctx.fillStyle = '#111'; ctx.font = '700 22px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(g.mv || ''), 120, 60); }
+    } };
   /* Wegwerkzaamheden (OpenStreetMap) */
   var WKEY = 'dashboardmaatje-works-v1', works = { lat: 0, lon: 0, t: 0, items: [] }, wkLoading = false, wkFail = -9999, wkSeen = {}, wkPrev = {};
   try { var rw = JSON.parse(localStorage.getItem(WKEY)); if (rw && rw.items) works = rw; } catch (e) {}
@@ -1986,6 +2123,9 @@ details.set > * + * { margin-top: 10px; }
     loadWeather(lat, lon);
     loadMobile();
     try { worksFix(lat, lon, acc); } catch (e) { lg('FOUT werken ' + e.message); }
+    if (grp && T - gT > 180) gPull();
+    try { brFix(lat, lon, acc); } catch (e) { lg('FOUT brug ' + e.message); }
+    try { msFix(lat, lon, acc); } catch (e) { lg('FOUT matrix ' + e.message); }
     roadStep(lat, lon, acc);
     sampleLog(acc);
     if (!S.camOn || acc >= 60) { if (!S.camOn) { mon.cur = null; mon.traj = null; S.cam = null; S.traj = null; } return; }
@@ -2250,7 +2390,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v29';
+  var VERSION = 'v32';
   $('verTxt').textContent = 'Dashboardmaatje ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -2545,22 +2685,68 @@ details.set > * + * { margin-top: 10px; }
   var UCKEY = 'dashboardmaatje-ucams-v1', ucams = [];
   try { ucams = JSON.parse(localStorage.getItem(UCKEY)) || []; } catch (e) { ucams = []; }
   applyCamData();
-  function addUcam(fromCar) {
+  /* Vaste en mobiele flitsers, ook delen met een groep via de Worker */
+  var GKEY = 'dashboardmaatje-grp-v1', grp = '', gcams = [], gT = -9999, gBusy = false, MOBMS = 3 * 3600e3;
+  try { grp = localStorage.getItem(GKEY) || ''; } catch (e) {}
+  ucams = ucams.filter(function (u) { return u.k !== 'mobile' || Date.now() - u.t < MOBMS; });
+  function allUcams() {
+    var now = Date.now(), out = [], ids = {};
+    ucams.concat(gcams).forEach(function (u) {
+      if (u.k === 'mobile' && now - u.t > MOBMS) return;
+      if (ids[u.id]) return;
+      for (var j = 0; j < out.length; j++) if (out[j].k === u.k && gdist(out[j].lat, out[j].lon, u.lat, u.lon) < 40) return;
+      ids[u.id] = 1; out.push({ id: u.id, lat: u.lat, lon: u.lon, limit: u.limit != null ? u.limit : (u.lim != null ? u.lim : null), mobile: u.k === 'mobile', t: u.t, k: u.k });
+    });
+    return out;
+  }
+  function gUrl(path, q) { return pbase() + '/cams' + path + '?g=' + encodeURIComponent(grp.toLowerCase()) + (q || ''); }
+  function gStat(t) { var e = $('grpStat'); if (e) e.textContent = t; }
+  function gPull() {
+    if (!grp || !pbase() || gBusy) { if (!grp) gStat('Geen groepscode ingevuld.'); else if (!pbase()) gStat('Vul eerst het Worker-adres in (Eigen koppeling instellen).'); return; }
+    gBusy = true; gT = T;
+    fetch(gUrl('')).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status); return j; }); }).then(function (j) {
+      gcams = (j.cams || []).filter(function (c) { return c && isFinite(c.lat) && isFinite(c.lon); });
+      var m = gcams.filter(function (c) { return c.k === 'mobile'; }).length;
+      var d = new Date(); gStat('Groep: ' + gcams.length + ' flitsers (' + (gcams.length - m) + ' vast, ' + m + ' mobiel). Bijgewerkt ' + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes() + '.');
+      applyCamData(); lg('groep ververst: ' + gcams.length);
+    }).catch(function (e) { gStat('Groep ophalen mislukt: ' + (e.message || e)); lg('FOUT groep ' + (e.message || e)); }).then(function () { gBusy = false; });
+  }
+  function addUcam(kind, fromCar) {
     if (!S.live || !lastPos) { toast('Zet eerst de telefoon-GPS aan en rij erlangs.'); return false; }
-    ucams.push({ id: 'u' + Date.now(), lat: lastPos.lat, lon: lastPos.lon, limit: S.roadEst ? null : S.roadLim, t: Date.now() });
+    var u = { id: 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), lat: lastPos.lat, lon: lastPos.lon, limit: kind === 'mobile' ? null : (S.roadEst ? null : S.roadLim), k: kind, t: Date.now() };
+    ucams.push(u);
     try { localStorage.setItem(UCKEY, JSON.stringify(ucams)); } catch (e) {}
-    applyCamData(); lg('eigen flitser opgeslagen (' + ucams.length + ')');
-    if (!fromCar) toast('Onthouden. Hier waarschuw ik je voortaan. Je hebt er ' + ucams.length + '. (Niet tikken tijdens het rijden.)');
+    applyCamData(); lg('eigen flitser opgeslagen (' + kind + ', ' + ucams.length + ')');
+    if (grp && pbase()) fetch(gUrl('/add', '&id=' + u.id + '&lat=' + u.lat.toFixed(6) + '&lon=' + u.lon.toFixed(6) + '&k=' + kind + (u.limit != null ? '&lim=' + u.limit : ''))).then(function () { gPull(); }).catch(function () { lg('FOUT groep delen'); });
+    if (!fromCar) toast((kind === 'mobile' ? 'Mobiele flitser onthouden voor 3 uur.' : 'Vaste flitser onthouden.') + (grp ? ' Wordt gedeeld met je groep.' : '') + ' (Niet tikken tijdens het rijden.)');
     return true;
   }
-  $('bUcam').addEventListener('click', function () { addUcam(false); });
-  $('carAdd').addEventListener('click', function () {
-    var b = $('carAdd'), ok = addUcam(true);
-    b.classList.toggle('ok', ok); b.innerHTML = ok ? 'Opgeslagen!<br>(' + ucams.length + ')' : 'Eerst<br>GPS aan';
-    if (ok) { beep('wake'); setEv('happy', 2.5, 'Onthouden! Hier waarschuw ik je voortaan.'); }
-    setTimeout(function () { b.classList.remove('ok'); b.innerHTML = 'Flitser<br>toevoegen'; }, 2200);
+  function carBtn(id, kind, label) {
+    $(id).addEventListener('click', function () {
+      var b = $(id), ok = addUcam(kind, true);
+      b.classList.toggle('ok', ok); b.innerHTML = ok ? 'Opgeslagen!' : 'Eerst<br>GPS aan';
+      if (ok) { beep('wake'); setEv('happy', 2.5, kind === 'mobile' ? 'Mobiele controle onthouden!' : 'Vaste flitser onthouden!'); }
+      setTimeout(function () { b.classList.remove('ok'); b.innerHTML = label; }, 2200);
+    });
+  }
+  carBtn('carAdd', 'fixed', 'Vaste<br>flitser'); carBtn('carAddM', 'mobile', 'Mobiele<br>flitser');
+  $('bUcam').addEventListener('click', function () { addUcam('fixed', false); });
+  $('bUmob').addEventListener('click', function () { addUcam('mobile', false); });
+  $('grpCode').value = grp;
+  $('grpSave').addEventListener('click', function () {
+    var v = $('grpCode').value.trim().toLowerCase();
+    if (v && !/^[a-z0-9]{6,32}$/.test(v)) { toast('Gebruik 6 tot 32 letters of cijfers, zonder spaties.'); return; }
+    grp = v; try { localStorage.setItem(GKEY, grp); } catch (e) {} gcams = []; applyCamData(); gPull();
   });
-
+  $('grpDel').addEventListener('click', function () {
+    if (!ucams.length) { toast('Je hebt zelf nog niets toegevoegd.'); return; }
+    var u = ucams.pop(); try { localStorage.setItem(UCKEY, JSON.stringify(ucams)); } catch (e) {}
+    gcams = gcams.filter(function (c) { return c.id !== u.id; });
+    if (grp && pbase()) fetch(gUrl('/del', '&id=' + u.id)).catch(function () {});
+    applyCamData(); toast('Laatste flitser verwijderd.');
+  });
+  window.__grp = { all: allUcams, pull: gPull };
+  gPull();
 
 
   /* ---------- Gezichtsuitdrukkingen (zoals een Dasai Mochi) ---------- */
@@ -3202,7 +3388,7 @@ details.set > * + * { margin-top: 10px; }
 
   drawHist(); updateInsight(); updateUI();
   setTimeout(hello, 900);
-  window.__ndw = { parse: ndwParse, get: function () { return ndw; } };
+  window.__ndw = { msParse: msParse, brParse: brParse, parse: ndwParse, get: function () { return ndw; } };
   window.__mm = { hello: hello, cheer: cheer, bump: bump, S: S, mem: function () { return mem; }, GAGS: GAGS, startGag: startGag, submitChat: submitChat, localReply: localReply };
   requestAnimationFrame(frame);
 })();
