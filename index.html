@@ -86,7 +86,32 @@ body.car #carBack { display: block; }
 #carAddM:active { background: #ff6b6b; color: #000; }
 #carAdd.ok, #carAddM.ok { background: #1f6b32; border-color: #5ddc7c; color: #fff; }
 body.car #carAdd, body.car #carAddM { display: block; }
-#carStart { display: none; position: fixed; left: 2vw; top: 50%; transform: translateY(-50%); z-index: 50; width: min(19vw, 170px); min-height: min(24vh, 120px); border-radius: 22px; border: 3px solid #34c759; background: #0b2414; color: #8ff0a8; font: 700 clamp(15px, 2.4vw, 24px)/1.2 var(--f-body); text-align: center; }
+#carGroep { display: none; position: fixed; left: 2vw; top: 67%; transform: translateY(-50%); z-index: 50; width: min(19vw, 170px); min-height: min(24vh, 120px); border-radius: 22px; border: 3px solid #5ac8fa; background: #0a1f2b; color: #b5e6ff; font: 700 clamp(15px, 2.4vw, 24px)/1.2 var(--f-body); text-align: center; }
+#carGroep .gi { display: block; font-size: 1.5em; line-height: 1.1; }
+#carGroep:active { background: #5ac8fa; color: #000; }
+body.car #carGroep { display: block; }
+#grPaneel { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.86); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 16px; box-sizing: border-box; }
+#grPaneel[hidden], #grKoffie[hidden] { display: none; }
+#grPaneel .grGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: min(100%, 760px); }
+#grPaneel .grGrid button { min-height: min(30vh, 150px); border-radius: 22px; border: 3px solid #5ac8fa; background: #0a1f2b; color: #e6f6ff; font: 700 clamp(16px, 2.6vw, 26px)/1.2 var(--f-body); }
+#grPaneel .grGrid button span { display: block; font-size: 1.9em; margin-bottom: 4px; }
+#grPaneel .grGrid button:active { background: #5ac8fa; color: #000; }
+#grPaneel .grGrid button[data-soort="pech"] { border-color: #ffb02e; }
+#grPaneel .grGrid button[data-soort="hart"] { border-color: #ff6b8a; }
+#grSluit { min-height: 52px; padding: 0 28px; border-radius: 26px; border: 1px solid #666; background: #1b1b1b; color: #eee; font: 600 16px var(--f-display); }
+#grKoffie { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); z-index: 61; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 22px; background: #2a1d05; border: 3px solid #ffb02e; color: #ffe2a8; font: 700 18px var(--f-body); box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+#grKoffie p { margin: 0 6px; }
+#grKoffie button { min-height: 56px; min-width: 96px; border-radius: 18px; border: 2px solid #ffb02e; background: #3d2a07; color: #fff; font: 700 18px var(--f-body); }
+#grKoffie #grKoffieJa { background: #ffb02e; color: #000; }
+#bordTabs { display: flex; flex-wrap: wrap; gap: 8px; }
+#bordTabs button[aria-pressed="true"] { border-color: var(--accent, #ff6b6b); font-weight: 700; }
+#bordLijst { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+#bordLijst li { display: grid; grid-template-columns: 2.4em 1fr auto; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+#bordLijst li.ik { border-color: #5ac8fa; }
+#bordLijst .pl { font-weight: 700; text-align: center; }
+#bordLijst .nm small { display: block; color: var(--muted); font-size: 12px; }
+#bordLijst .wd { font-weight: 700; font-variant-numeric: tabular-nums; }
+#carStart { display: none; position: fixed; left: 2vw; top: 33%; transform: translateY(-50%); z-index: 50; width: min(19vw, 170px); min-height: min(24vh, 120px); border-radius: 22px; border: 3px solid #34c759; background: #0b2414; color: #8ff0a8; font: 700 clamp(15px, 2.4vw, 24px)/1.2 var(--f-body); text-align: center; }
 #carStart:active { background: #34c759; color: #000; }
 #carStart .vlag { width: min(70%, 84px); height: auto; display: block; margin: 0 auto; }
 @media (max-aspect-ratio: 1/1) { #carStart .vlag { width: 44px; } }
@@ -95,7 +120,7 @@ body.car #carStart { display: block; }
 body.car .stage { padding-right: min(22vw, 190px); padding-left: min(22vw, 190px); box-sizing: border-box; }
 body.car .namecard { display: none !important; }
 body.car .helmet { --hs: min(70vw, 74vh); }
-@media (max-aspect-ratio: 1/1) { body.car #carAdd, body.car #carAddM { top: auto; bottom: 3vh; transform: none; width: 44vw; min-height: 64px; } body.car #carAdd { left: 3vw; right: auto; } body.car #carAddM { right: 3vw; } body.car #carStart { top: auto; transform: none; left: 3vw; right: 3vw; width: auto; bottom: calc(3vh + 76px); min-height: 56px; } body.car .stage { padding-right: 0; padding-left: 0; } body.car .helmet { --hs: min(94vw, 54vh); } }
+@media (max-aspect-ratio: 1/1) { body.car #carAdd, body.car #carAddM { top: auto; bottom: 3vh; transform: none; width: 44vw; min-height: 64px; } body.car #carAdd { left: 3vw; right: auto; } body.car #carAddM { right: 3vw; } body.car #carStart { top: auto; transform: none; left: 3vw; right: auto; width: 44vw; bottom: calc(3vh + 76px); min-height: 56px; } body.car #carGroep { top: auto; transform: none; right: 3vw; left: auto; width: 44vw; bottom: calc(3vh + 76px); min-height: 56px; } body.car #carGroep .gi { display: inline; font-size: 1.2em; margin-right: 6px; } #grPaneel .grGrid { grid-template-columns: repeat(2, 1fr); } #grPaneel .grGrid button { min-height: 17vh; } body.car .stage { padding-right: 0; padding-left: 0; } body.car .helmet { --hs: min(94vw, 54vh); } }
 /* Robot */
 .stage { align-items: center; gap: 18px; }
 .helmet {
@@ -207,6 +232,19 @@ details.set > * + * { margin-top: 10px; }
 <button id="carBack" type="button">Terug</button>
 <button id="carAdd" type="button">Vaste<br>flitser</button>
 <button id="carAddM" type="button">Mobiele<br>flitser</button>
+<button id="carGroep" type="button" aria-label="Bericht naar de groep"><span class="gi">👋</span><span>Groep</span></button>
+<div id="grPaneel" hidden role="dialog" aria-label="Bericht naar de groep">
+  <div class="grGrid">
+    <button type="button" data-soort="zwaai"><span>👋</span>Zwaai</button>
+    <button type="button" data-soort="koffie"><span>☕</span>Koffie?</button>
+    <button type="button" data-soort="file"><span>🚗</span>File hier</button>
+    <button type="button" data-soort="pech"><span>⚠️</span>Ik sta stil</button>
+    <button type="button" data-soort="hart"><span>❤️</span>Hartjes</button>
+    <button type="button" data-soort="thuis"><span>🏁</span>Bijna thuis</button>
+  </div>
+  <button type="button" id="grSluit">Sluiten</button>
+</div>
+<div id="grKoffie" hidden role="alertdialog" aria-label="Koffie?"><p id="grKoffieTxt">Koffie?</p><button type="button" id="grKoffieJa">☕ Ja!</button><button type="button" id="grKoffieNee">Straks</button></div>
 <button id="carStart" type="button" aria-label="Start met startvlag"><svg class="vlag" viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="6" width="4" height="54" rx="2" fill="#8ff0a8"/><rect x="12" y="8" width="40" height="32" fill="#f4f4f4"/><g fill="#111"><rect x="12" y="8" width="8" height="8"/><rect x="28" y="8" width="8" height="8"/><rect x="44" y="8" width="8" height="8"/><rect x="20" y="16" width="8" height="8"/><rect x="36" y="16" width="8" height="8"/><rect x="12" y="24" width="8" height="8"/><rect x="28" y="24" width="8" height="8"/><rect x="44" y="24" width="8" height="8"/><rect x="20" y="32" width="8" height="8"/><rect x="36" y="32" width="8" height="8"/></g></svg></button>
 <div id="errBar" hidden onclick="this.hidden=true" style="position:fixed;left:8px;right:8px;top:8px;z-index:99;background:#b71c1c;color:#fff;padding:10px 12px;border-radius:10px;font:13px system-ui"></div>
 <main>
@@ -357,9 +395,18 @@ details.set > * + * { margin-top: 10px; }
     <button class="btn" id="bUcam" type="button" style="grid-column:1/-1">Vaste flitser: onthoud deze plek</button>
     <button class="btn" id="bUmob" type="button" style="grid-column:1/-1">Mobiele flitser: onthoud deze plek (3 uur)</button>
     <p class="sub">Samen met collega’s</p>
-    <p class="foot">Vul dezelfde groepscode in op alle telefoons (6 tot 32 letters of cijfers, houd hem geheim). Flitsers die iemand toevoegt komen dan bij iedereen. Er worden alleen plek en limiet gedeeld. Je hebt het Worker-adres hierboven nodig, met opslag gekoppeld.</p>
+    <p class="foot">Vul dezelfde groepscode in op alle telefoons (6 tot 32 letters of cijfers, houd hem geheim). Flitsers die iemand toevoegt komen dan bij iedereen, en jullie kunnen elkaar in de autostand met de knop “Groep” een zwaai, koffievraag, file, “ik sta stil”, hartjes of “bijna thuis” sturen. Er worden alleen plek en limiet gedeeld, en je plaatsnaam bij “ik sta stil” (geen precieze plek). Je hebt het Worker-adres hierboven nodig, met opslag gekoppeld.</p>
     <div class="mobrow"><input type="text" id="grpCode" maxlength="32" autocomplete="off" autocapitalize="none" placeholder="Groepscode"><button class="btn" id="grpSave" type="button">Opslaan en verversen</button></div>
     <p class="chip" id="grpStat">Geen groepscode ingevuld.</p>
+    <p class="foot">Je naam voor de groep is de naam die je hierboven bij “Jouw naam” bewaart. Je auto is optioneel, zo herkennen jullie elkaar op de weg (geen kenteken).</p>
+    <div class="mobrow"><input type="text" id="autoIn" maxlength="30" autocomplete="off" placeholder="Jouw auto, bijv. witte Model Y"><button class="btn" id="autoSave" type="button">Bewaar auto</button></div>
+    <p class="sub">Leaderboard van je groep</p>
+    <div id="bordTabs" role="group" aria-label="Soort ranglijst">
+      <button type="button" class="btn" data-soort="km" aria-pressed="true">Km</button><button type="button" class="btn" data-soort="netjes" aria-pressed="false">Netjes</button><button type="button" class="btn" data-soort="gemeld" aria-pressed="false">Meldingen</button><button type="button" class="btn" data-soort="stijl" aria-pressed="false">Rijstijl</button>
+    </div>
+    <ol id="bordLijst"></ol>
+    <p class="chip" id="bordStat">Nog niet geladen.</p>
+    <button class="btn" id="bordVervers" type="button">Leaderboard verversen</button>
     <button class="btn" id="grpDel" type="button">Mijn laatst toegevoegde flitser verwijderen</button>
     <details class="set"><summary>Eigen koppeling instellen</summary>
       <p class="foot">Een webpagina mag flitsers.nl meestal niet rechtstreeks uitlezen. Met een eigen gratis tussenstation (Cloudflare Worker, uitleg bij de app) werkt het wel. Plak hier het adres ervan. Laat leeg om rechtstreeks te proberen.</p>
@@ -415,6 +462,8 @@ details.set > * + * { margin-top: 10px; }
     var d = { trips: 0, km: 0, hard: 0, brake: 14, nBrake: 0, styleAvg: 85, stopAvg: 0, stops: 0, best: 0, launches: 0,
       sh: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], taps: 0, name: 'Buddy', me: '', gagW: {}, notes: [], taught: [], unknown: [] };
     for (var k in d) if (m[k] === undefined) m[k] = d[k];
+    ['kmLive', 'kmLiveMile', 'netjes', 'gemeld', 'ritLive', 'stijlLive'].forEach(function (k) { if (typeof m[k] !== 'number' || !isFinite(m[k])) m[k] = 0; });
+    if (typeof m.auto !== 'string') m.auto = '';
     if (m.name === 'Maatje') m.name = 'Buddy'; /* oude standaardnaam; een zelfgekozen naam blijft staan */
     if (m.kmMile === undefined) m.kmMile = Math.floor(m.km / 100);
     if (m.bday === undefined) m.bday = null;
@@ -644,7 +693,9 @@ details.set > * + * { margin-top: 10px; }
       S.trip = false;
       if (S.tripT > (S.live ? 120 : 15)) {
         var sc = Math.round(S.style);
-        mem.trips++; mem.styleAvg += (sc - mem.styleAvg) * 0.2; save();
+        mem.trips++; mem.styleAvg += (sc - mem.styleAvg) * 0.2;
+        if (S.live) { mem.ritLive = (mem.ritLive || 0) + 1; mem.stijlLive = mem.ritLive === 1 ? sc : mem.stijlLive + (sc - mem.stijlLive) * 0.2; }
+        save();
         if (mem.trips === 1) queueCheer('Onze eerste rit samen!');
         else if ([10, 25, 50, 100, 250].indexOf(mem.trips) >= 0) queueCheer(mem.trips + ' ritten samen. Wat een team!');
         setEv(sc >= 85 ? 'happy' : 'worried', 3.5, sc >= 85 ? 'Zachte rit, rijstijl ' + sc + '. Top!' : 'Pittige rit, rijstijl ' + sc + '. Rustiger mag ook.');
@@ -713,6 +764,10 @@ details.set > * + * { margin-top: 10px; }
     if (S.speed >= 5) {
       mem.sh[Math.min(14, Math.floor(S.speed / 10))] += dt;
       mem.km += S.speed / 3.6 * dt / 1000;
+      if (S.live) { /* alleen echte ritten tellen mee voor het leaderboard */
+        mem.kmLive += S.speed / 3.6 * dt / 1000;
+        if (Math.floor(mem.kmLive / 100) > mem.kmLiveMile) { mem.kmLiveMile = Math.floor(mem.kmLive / 100); if (typeof grStuurMijlpaal === 'function') grStuurMijlpaal(mem.kmLiveMile * 100); }
+      }
       if (Math.floor(mem.km / 100) > mem.kmMile) { mem.kmMile = Math.floor(mem.km / 100); cheer('Weer 100 km samen! In totaal ' + (mem.kmMile * 100) + ' km.'); }
       if (T - lastSave > 5) { save(); lastSave = T; }
     }
@@ -1996,7 +2051,8 @@ details.set > * + * { margin-top: 10px; }
     }
     return false;
   }
-  function verkeerItems() {
+  function verkeerItems() { return verkeerBasis().concat(typeof grFilesVers === 'function' ? grFilesVers() : []); }
+  function verkeerBasis() {
     var aOk = anwbV.t && Date.now() - anwbV.t < 10 * 60e3, nOk = ndw.t && Date.now() - ndw.t < 20 * 60e3;
     var a = aOk ? anwbV.items : [], n = nOk ? ndw.items : [];
     if (!a.length) return n;
@@ -2023,7 +2079,7 @@ details.set > * + * { margin-top: 10px; }
     anwbLoad(lat, lon); /* eerst ANWB */
     ndwLoad(lat, lon);  /* daarna NDW: aanvulling en reserve */
     var vkItems = verkeerItems();
-    if (!(ndw.t && Date.now() - ndw.t <= 20 * 60e3) && !(anwbV.t && Date.now() - anwbV.t <= 10 * 60e3)) return false;
+    if (!(ndw.t && Date.now() - ndw.t <= 20 * 60e3) && !(anwbV.t && Date.now() - anwbV.t <= 10 * 60e3) && !(typeof grFilesVers === 'function' && grFilesVers().length)) return false;
     if (acc >= 60 || S.liveSpeed < 15 || hdg === null) return true;
     var cosl = Math.cos(lat * Math.PI / 180), best = null;
     vkItems.forEach(function (it) {
@@ -2052,14 +2108,14 @@ details.set > * + * { margin-top: 10px; }
     else if (it.k === 'accident') { m = 'Ongeluk voor je, over ' + ndwDist(d) + (it.dl ? ' (+' + Math.max(1, Math.round(it.dl / 60)) + ' min)' : '') + '. Voorzichtig!'; mood = 'worried'; }
     else if (it.k === 'jam') {
       var ex = []; if (it.ql) ex.push((it.ql / 1000).toFixed(1).replace('.', ',') + ' km lang'); if (it.dl) ex.push('+' + Math.max(1, Math.round(it.dl / 60)) + ' min');
-      m = 'File voor je, over ' + ndwDist(d) + (ex.length ? ' (' + ex.join(', ') + ')' : '') + '. Rustig aan.'; mood = 'worried';
+      m = (it.src === 'groep' ? (it.tx || 'File gemeld') + ', over ' + ndwDist(d) : 'File voor je, over ' + ndwDist(d) + (ex.length ? ' (' + ex.join(', ') + ')' : '')) + '. Rustig aan.'; mood = 'worried';
     }
     else if (it.k === 'ramp') m = (it.tx || 'Op- of afrit dicht') + (it.van ? ' bij ' + it.van : '') + ', over ' + ndwDist(d) + '.';
     else if (it.k === 'closure') { m = 'Afsluiting over ' + ndwDist(d) + '. Let op de omleiding!'; gag = true; }
     else { m = (it.cs === 'roadMaintenance' || it.cs === 'constructionWork' ? 'Werk aan de weg' : 'Rijstrook dicht') + ' over ' + ndwDist(d) + '. Rustig aan!'; gag = true; }
     setEv(mood, gag ? 1 : 5, m); babble(mood, m); beep(mood === 'worried' ? 'startled' : 'wake');
     if (gag) { startGag('works'); if (S.gag) S.gag.msg = m; S.nextGag = Math.max(S.nextGag, T + 15); }
-    lg((it.src === 'anwb' ? 'ANWB' : 'NDW') + ' melding ' + it.k + ' ' + Math.round(d) + ' m: ' + m);
+    lg((it.src === 'anwb' ? 'ANWB' : it.src === 'groep' ? 'Groep' : 'NDW') + ' melding ' + it.k + ' ' + Math.round(d) + ' m: ' + m);
   }
 
   /* Brugopeningen (NDW planningsfeed: geplande openingen, niet live gemeten) */
@@ -2242,7 +2298,7 @@ details.set > * + * { margin-top: 10px; }
     if (e.type === 'cam_pass') {
       if (e.limit == null) setEv('alert', 2.5, 'Flitser gepasseerd.');
       else if (e.over) { S.flash = 1; setEv('startled', 3.5, 'Flitser gepasseerd met ' + Math.round(e.v) + ' bij limiet ' + e.limit + '.'); beep('startled'); S.style = Math.max(0, S.style - 15); }
-      else { setEv('happy', 3, 'Netjes! Flitser gepasseerd.'); beep('wake'); S.love = Math.min(100, S.love + 6); }
+      else { setEv('happy', 3, 'Netjes! Flitser gepasseerd.'); beep('wake'); S.love = Math.min(100, S.love + 6); mem.netjes = (mem.netjes || 0) + 1; save(); }
     } else if (e.type === 'traj_start') {
       setEv('alert', 2.5, 'Trajectcontrole begint. Ik bewaak het gemiddelde.');
     } else if (e.type === 'traj_end') {
@@ -2980,7 +3036,7 @@ details.set > * + * { margin-top: 10px; }
     try { localStorage.setItem(UCKEY, JSON.stringify(ucams)); } catch (e) {}
     applyCamData(); lg('eigen flitser opgeslagen (' + kind + ', ' + ucams.length + ')');
     if (grp && pbase()) {
-      gSeen[u.id] = 1;
+      gSeen[u.id] = 1; mem.gemeld = (mem.gemeld || 0) + 1; save();
       placeOf(u.lat, u.lon).then(function (pl) {
         return fetch(gUrl('/add', '&id=' + u.id + '&lat=' + u.lat.toFixed(6) + '&lon=' + u.lon.toFixed(6) + '&k=' + kind + (u.limit != null ? '&lim=' + u.limit : '') + '&n=' + encodeURIComponent(myWho()) + '&p=' + encodeURIComponent(pl)));
       }).then(function () { gPull(); }).catch(function () { lg('FOUT groep delen'); });
@@ -3009,6 +3065,160 @@ details.set > * + * { margin-top: 10px; }
     }
     startGag('startgrid'); if (S.gag && S.gag.k === 'startgrid') S.gag.zelf = true;
   });
+  /* ---------- Groep: berichten met één knop (zwaai, koffie, file, pech, hartjes, bijna thuis), mijlpalen en leaderboard ----------
+     Via de eigen Worker (/cams/ping, /cams/pings, /cams/lid, /cams/bord) en dezelfde groepscode als de flitsers.
+     Er wordt geen precieze plek gedeeld, behalve bij "File hier" (die moet op de kaart om anderen te waarschuwen). */
+  var LIDKEY = 'dashboardmaatje-lid-v1', mijnId = '';
+  try { mijnId = localStorage.getItem(LIDKEY) || ''; } catch (e) {}
+  if (!/^[a-z0-9]{8,24}$/.test(mijnId)) { mijnId = 'b' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); try { localStorage.setItem(LIDKEY, mijnId); } catch (e) {} }
+  var GR = {
+    zwaai: { icoon: '👋', label: 'Zwaai' }, koffie: { icoon: '☕', label: 'Koffie?' }, file: { icoon: '🚗', label: 'File hier' },
+    pech: { icoon: '⚠️', label: 'Ik sta stil' }, hart: { icoon: '❤️', label: 'Hartjes' }, thuis: { icoon: '🏁', label: 'Bijna thuis' }
+  };
+  var grLog = [], grWachtSinds = 0, grSinds = 0, grEerste = true, grT = -9999, grBusy = false, grVerstuurd = {}, grRij = [], grRijT = -99, grFiles = [], grKoffieVan = null, grKoffieTot = 0;
+  function mijnAuto() { return String(mem.auto || '').replace(/[^A-Za-z0-9À-ſ '\-]/g, '').trim().slice(0, 30); }
+  function grQ(extra) { return '&van=' + mijnId + '&n=' + encodeURIComponent(myWho()) + '&a=' + encodeURIComponent(mijnAuto()) + (extra || ''); }
+  function grKan() { if (!grp) { toast('Vul eerst een groepscode in (Instellingen, Flitsers).'); return false; } if (!pbase()) { toast('Vul eerst het Worker-adres in.'); return false; } return true; }
+  function grStuur(soort, extra) {
+    var id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    grVerstuurd[id] = 1;
+    return fetch(gUrl('/ping', '&s=' + soort + '&id=' + id + grQ(extra))).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status); return j; }); });
+  }
+  /* Een knop uit het groepspaneel */
+  function grKnop(soort) {
+    grPaneel(false);
+    if (!grKan()) return;
+    if (grVerstuurd['_' + soort] && Date.now() - grVerstuurd['_' + soort] < 60e3) { toast('Net al verstuurd. Even wachten.'); grLog.push('geweigerd: ' + soort); return; }
+    var extra = '';
+    if (soort === 'file') {
+      if (!S.live || !lastPos) { toast('Zet eerst de telefoon-GPS aan.'); return; }
+      extra = '&lat=' + lastPos.lat.toFixed(5) + '&lon=' + lastPos.lon.toFixed(5);
+    }
+    grVerstuurd['_' + soort] = Date.now();
+    var plek = (soort === 'file' || soort === 'pech') && S.live && lastPos ? placeOf(lastPos.lat, lastPos.lon) : Promise.resolve('');
+    plek.then(function (pl) { return grStuur(soort, extra + (pl ? '&p=' + encodeURIComponent(pl) : '')); }).then(function () {
+      if (soort === 'file') { mem.gemeld = (mem.gemeld || 0) + 1; save(); grLid(true); }
+      lg('groepsbericht verstuurd: ' + soort);
+    }).catch(function (e) { delete grVerstuurd['_' + soort]; toast('Versturen mislukt: ' + ((e && e.message) || e)); lg('FOUT groepsbericht ' + soort); });
+    var bev = { zwaai: 'Ik zwaai naar de groep!', koffie: 'Koffievraag verstuurd.', file: 'File doorgegeven aan de groep.', pech: 'Ik laat de groep weten dat je stilstaat.', hart: 'Hartjes verstuurd!', thuis: 'Groep weet dat je bijna thuis bent.' }[soort];
+    beep('wake'); setEv(soort === 'hart' ? 'love' : 'happy', 2.5, bev);
+  }
+  function grPaneel(aan) {
+    var p = $('grPaneel'); if (!p) return;
+    p.hidden = !aan; clearTimeout(grPaneel.tm);
+    if (aan) grPaneel.tm = setTimeout(function () { p.hidden = true; }, 9000);
+  }
+  /* Ontvangen: elke minuut nieuwe berichten ophalen (alleen als de app open is) */
+  function grHaal() {
+    if (!grp || !pbase() || grBusy) return;
+    grBusy = true; grT = T;
+    fetch(gUrl('/pings', '&sinds=' + grSinds)).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !Array.isArray(j.pings)) throw new Error((j && j.error) || 'onverwacht antwoord');
+      j.pings.forEach(function (b) {
+        if (!b || !b.s) return;
+        if (b.s === 'file' && isFinite(b.lat) && isFinite(b.lon) && !grFiles.some(function (f) { return f.id === 'g:' + b.id; })) {
+          grFiles.push({ id: 'g:' + b.id, k: 'jam', lim: null, ql: null, cs: '', br: null, pts: [[+b.lat, +b.lon]], src: 'groep', t: b.t, tx: 'File gemeld door ' + (b.n || 'een collega'), van: b.van });
+        }
+        if (grEerste || b.van === mijnId || grVerstuurd[b.id]) return; /* oude berichten bij openen en eigen berichten niet melden */
+        if ((b.s === 'koffieJa' || b.s === 'koffieStraks') && b.aan && b.aan !== mijnId) return;
+        grRij.push(b);
+      });
+      grFiles = grFiles.filter(function (f) { return Date.now() - f.t < 60 * 60e3; });
+      if (isFinite(j.nu)) grSinds = j.nu; grEerste = false;
+    }).catch(function (e) { lg('FOUT groepsberichten: ' + ((e && e.message) || e)); }).then(function () { grBusy = false; });
+  }
+  function wie(b, metAuto) { var n = b.n || 'Een collega'; return metAuto && b.a ? n + ' in de ' + b.a : n; }
+  /* Eén bericht tegelijk laten zien, met een paar seconden ertussen */
+  function grToon() {
+    if (!grRij.length || T - grRijT < 6) { grWachtSinds = 0; return; }
+    /* wachten tot Buddy klaar is met wat hij zegt (hooguit 10 s), zodat het bericht niet wegvalt */
+    if (!grWachtSinds) grWachtSinds = T;
+    if (S.ev && T < S.evUntil && T - grWachtSinds < 10) return;
+    grWachtSinds = 0;
+    var b = grRij.shift(); grRijT = T;
+    var m = '', s = b.s;
+    if (s === 'zwaai') { m = wie(b, true) + ' zwaait naar je!'; setEv('happy', 4.8, m); startGag('wave'); if (S.gag) S.gag.msg = m; beep('excited'); }
+    else if (s === 'koffie') {
+      m = wie(b) + ' heeft zin in koffie. Pauze?'; setEv('excited', 5, m);
+      if (S.speed < 3) { startGag('coffee'); if (S.gag) S.gag.msg = m; }
+      beep('excited'); grKoffieVan = b; grKoffieTot = Date.now() + 30e3; var k = $('grKoffie'); if (k) { $('grKoffieTxt').textContent = wie(b) + ': koffie?'; k.hidden = false; }
+    }
+    else if (s === 'koffieJa') { m = wie(b) + ' zegt: ja, koffie!'; setEv('happy', 4, m); beep('excited'); }
+    else if (s === 'koffieStraks') { m = wie(b) + ' zegt: straks koffie.'; setEv('content', 4, m); beep('wake'); }
+    else if (s === 'file') { m = wie(b) + ' meldt een file' + (b.p ? ' bij ' + b.p : '') + '.'; setEv('worried', 4, m); beep('wake'); }
+    else if (s === 'pech') { m = wie(b) + ' staat stil' + (b.p ? ' bij ' + b.p : '') + '. Even bellen?'; setEv('worried', 6, m); beep('startled'); }
+    else if (s === 'hart') { m = wie(b) + ' stuurt je hartjes!'; S.love = Math.min(100, S.love + 10); setEv('love', 4.5, m); beep('pet'); }
+    else if (s === 'thuis') { m = wie(b) + ' is bijna thuis!'; cheer(m); }
+    else if (s === 'mijlpaal') { m = wie(b) + ' heeft ' + (b.w || 0) + ' km met Buddy gereden!'; cheer(m); }
+    if (!m) return;
+    toast(m); say(m, true); lg('groepsbericht ontvangen: ' + s + ' van ' + (b.n || '?')); grLog.push(m); if (grLog.length > 30) grLog.shift();
+  }
+  function grKoffieAntw(ja) {
+    var b = grKoffieVan; $('grKoffie').hidden = true; grKoffieVan = null;
+    if (!b || !grKan()) return;
+    grStuur(ja ? 'koffieJa' : 'koffieStraks', '&aan=' + encodeURIComponent(b.van)).catch(function () { toast('Antwoord versturen mislukt.'); });
+    setEv('happy', 2.5, ja ? 'Ik zeg ja tegen de koffie!' : 'Ik zeg: straks.'); beep('wake');
+  }
+  /* Groepsfiles: tellen mee in de verkeerswaarschuwingen (1 uur geldig) */
+  function grStuurMijlpaal(km) { if (grp && pbase()) grStuur('mijlpaal', '&w=' + km).catch(function () {}); }
+  function grFilesVers() { var nu = Date.now(); return grFiles.filter(function (f) { return nu - f.t < 60 * 60e3 && f.van !== mijnId; }); }
+  /* Leaderboard: eigen tellers (alleen echte ritten met GPS) delen, hooguit eens per 15 minuten */
+  var grLidT = -9999, grLidLaatst = '', bordData = [], bordSoort = 'km';
+  function grLid(nu) {
+    if (!grp || !pbase()) return;
+    var st = 'km=' + Math.round(mem.kmLive || 0) + '&netjes=' + (mem.netjes || 0) + '&gemeld=' + (mem.gemeld || 0) + '&stijl=' + Math.round(mem.stijlLive || 0) + '&ritten=' + (mem.ritLive || 0);
+    var sleutel = st + '|' + myWho() + '|' + mijnAuto();
+    if (!nu && (T - grLidT < 900 || sleutel === grLidLaatst)) return;
+    grLidT = T; grLidLaatst = sleutel;
+    fetch(gUrl('/lid', grQ('&' + st))).then(function () { grBord(); }).catch(function () { lg('FOUT leaderboard delen'); });
+  }
+  function grBord() {
+    if (!grp || !pbase()) { bordToon(); return; }
+    fetch(gUrl('/bord')).then(function (r) { return r.json(); }).then(function (j) { bordData = Array.isArray(j.leden) ? j.leden : []; bordToon(); }).catch(function () { bordToon('Leaderboard ophalen mislukt.'); });
+  }
+  var BORD = { km: { naam: 'Km met Buddy', w: function (l) { return l.km || 0; }, f: function (l) { return (l.km || 0) + ' km'; } },
+    netjes: { naam: 'Netjes langs flitsers', w: function (l) { return l.netjes || 0; }, f: function (l) { return (l.netjes || 0) + '×'; } },
+    gemeld: { naam: 'Meldingen voor de groep', w: function (l) { return l.gemeld || 0; }, f: function (l) { return (l.gemeld || 0) + '×'; } },
+    stijl: { naam: 'Rijstijl', w: function (l) { return (l.ritten || 0) >= 3 ? l.stijl || 0 : -1; }, f: function (l) { return (l.ritten || 0) >= 3 ? (l.stijl || 0) + '/100' : 'nog te weinig ritten'; } } };
+  function bordToon(fout) {
+    var ol = $('bordLijst'), st = $('bordStat'); if (!ol) return;
+    document.querySelectorAll('#bordTabs button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.soort === bordSoort ? 'true' : 'false'); });
+    while (ol.firstChild) ol.removeChild(ol.firstChild);
+    if (!grp) { st.textContent = 'Vul een groepscode in om samen een leaderboard te hebben.'; return; }
+    if (fout) { st.textContent = fout; return; }
+    var B = BORD[bordSoort], lijst = bordData.slice().sort(function (a, b) { return B.w(b) - B.w(a); });
+    st.textContent = lijst.length ? B.naam + ' · ' + lijst.length + ' in de groep. Alleen echte ritten met GPS tellen mee.' : 'Nog niemand op het leaderboard. Rij een stukje met de GPS aan.';
+    lijst.forEach(function (l, i) {
+      var li = document.createElement('li'); if (l.van === mijnId) li.className = 'ik';
+      var a = document.createElement('span'); a.className = 'pl'; a.textContent = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
+      var n = document.createElement('span'); n.className = 'nm'; n.textContent = (l.n || 'Naamloos') + (l.van === mijnId ? ' (jij)' : '');
+      if (l.a) { var au = document.createElement('small'); au.textContent = l.a; n.appendChild(au); }
+      var w = document.createElement('span'); w.className = 'wd'; w.textContent = B.f(l);
+      li.appendChild(a); li.appendChild(n); li.appendChild(w); ol.appendChild(li);
+    });
+  }
+  /* Knoppen koppelen */
+  $('carGroep').addEventListener('click', function () { if (S.asleep) wake(); grPaneel($('grPaneel').hidden); });
+  document.querySelectorAll('#grPaneel [data-soort]').forEach(function (b) { b.addEventListener('click', function () { grKnop(b.dataset.soort); }); });
+  $('grSluit').addEventListener('click', function () { grPaneel(false); });
+  $('grKoffieJa').addEventListener('click', function () { grKoffieAntw(true); });
+  $('grKoffieNee').addEventListener('click', function () { grKoffieAntw(false); });
+  document.querySelectorAll('#bordTabs button').forEach(function (b) { b.addEventListener('click', function () { bordSoort = b.dataset.soort; bordToon(); }); });
+  $('bordVervers').addEventListener('click', function () { grLid(true); grBord(); });
+  $('autoIn').value = mem.auto || '';
+  $('autoSave').addEventListener('click', function () { mem.auto = $('autoIn').value.replace(/[^A-Za-z0-9À-ſ '\-]/g, '').trim().slice(0, 30); $('autoIn').value = mem.auto; save(); toast(mem.auto ? 'Auto bewaard.' : 'Auto gewist.'); grLid(true); });
+  /* Elke paar seconden: berichten tonen, elke minuut ophalen, koffievraag laten verlopen, leaderboard bijwerken */
+  setInterval(function () {
+    try {
+      if (document.visibilityState === 'visible' && T - grT >= 60) grHaal();
+      grToon();
+      if (grKoffieVan && Date.now() > grKoffieTot) { $('grKoffie').hidden = true; grKoffieVan = null; }
+      grLid(false);
+    } catch (e) { lg('FOUT groep ' + e.message); }
+  }, 2000);
+  setTimeout(function () { grHaal(); grBord(); }, 1500);
+  window.__groep = { log: function () { return grLog; }, stuur: grKnop, haal: grHaal, toon: grToon, rij: function () { return grRij; }, files: grFilesVers, id: function () { return mijnId; }, lid: grLid, bord: grBord, data: function () { return bordData; }, reset: function () { grT = -9999; grSinds = 0; grEerste = true; grVerstuurd = {}; grRijT = -99; } };
+
   $('bUcam').addEventListener('click', function () { addUcam('fixed', false); });
   $('bUmob').addEventListener('click', function () { addUcam('mobile', false); });
   $('grpCode').value = grp;
