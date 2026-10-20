@@ -72,32 +72,28 @@ h2 {
 body.car { background: #000; --ink: #f3f4f6; --muted: #9aa3ad; }
 body.car main > *:not(.stage) { display: none !important; }
 body.car main { padding: 0; gap: 0; max-width: none; width: 100%; }
-body.car, html:has(body.car) { overflow: hidden; height: 100dvh; }
-body.car .stage { min-height: 100dvh; justify-content: center; gap: 10px; }
-body.car .helmet { width: min(94vw, 74vh); }
+body.car, html:has(body.car) { overflow: hidden; height: 100vh; height: 100dvh; }
+body.car .stage { min-height: 100vh; min-height: 100dvh; justify-content: center; gap: 10px; }
+body.car .helmet { --hs: min(94vw, 74vh); }
 body.car .foot { display: none; }
 #carBack { display: none; position: fixed; top: 10px; right: 10px; z-index: 50; min-height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #555; background: #1b1b1b; color: #eee; font: 600 14px var(--f-display); }
 body.car #carBack { display: block; }
 
-#carAdd { display: none; position: fixed; right: 2vw; top: 50%; transform: translateY(-50%); z-index: 50; width: min(26vw, 230px); min-height: min(46vh, 230px); border-radius: 26px; border: 3px solid #ffb02e; background: #2a1d05; color: #ffd27a; font: 700 clamp(20px, 3.4vw, 34px)/1.2 var(--f-body); text-align: center; }
+#carAdd { display: none; position: fixed; right: 2vw; top: 50%; transform: translateY(-50%); z-index: 50; width: min(19vw, 170px); min-height: min(30vh, 150px); border-radius: 22px; border: 3px solid #ffb02e; background: #2a1d05; color: #ffd27a; font: 700 clamp(15px, 2.4vw, 24px)/1.2 var(--f-body); text-align: center; }
 #carAdd:active { background: #ffb02e; color: #000; }
 #carAdd.ok { background: #1f6b32; border-color: #5ddc7c; color: #fff; }
 body.car #carAdd { display: block; }
-body.car .stage { padding-right: min(28vw, 240px); box-sizing: border-box; }
-body.car .helmet { width: min(66vw, 74vh); }
-@media (max-aspect-ratio: 1/1) { body.car #carAdd { top: auto; bottom: 3vh; transform: none; width: 90vw; min-height: 90px; } body.car .stage { padding-right: 0; } body.car .helmet { width: min(94vw, 62vh); } }
-#camWarn { position: fixed; left: 0; right: 0; top: 0; z-index: 60; padding: 14px 70px 14px 16px; text-align: center; font: 800 clamp(26px, 6vw, 56px)/1.1 var(--f-body); color: #fff; background: #d11a1a; box-shadow: 0 0 0 6px #ffd23c inset, 0 8px 30px rgba(209,26,26,.7); animation: camPulse .5s steps(2) infinite; pointer-events: none; }
-#camWarn[hidden] { display: none; }
-@keyframes camPulse { 0% { background: #d11a1a; } 100% { background: #7d0b0b; } }
-@media (prefers-reduced-motion: reduce) { #camWarn { animation: none; } }
-body.camnear { box-shadow: inset 0 0 0 10px #d11a1a; }
+body.car .stage { padding-right: min(22vw, 190px); box-sizing: border-box; }
+body.car .namecard { display: none !important; }
+body.car .helmet { --hs: min(70vw, 74vh); }
+@media (max-aspect-ratio: 1/1) { body.car #carAdd { top: auto; bottom: 3vh; transform: none; width: 70vw; min-height: 64px; } body.car .stage { padding-right: 0; } body.car .helmet { --hs: min(94vw, 62vh); } }
 /* Robot */
 .stage { align-items: center; gap: 18px; }
 .helmet {
   position: relative;
-  width: min(84vw, 340px); aspect-ratio: 1; max-width: 100%;
+  --hs: min(84vw, 340px); width: var(--hs); height: var(--hs); flex: none;
   border-radius: 50%;
-  padding: 6.5%;
+  padding: calc(var(--hs) * .065);
   background: radial-gradient(circle at 32% 24%, var(--helmet-hi), var(--helmet) 58%);
   box-shadow: 0 14px 30px -14px rgba(0,0,0,.45);
 }
@@ -105,8 +101,8 @@ body.camnear { box-shadow: inset 0 0 0 10px #d11a1a; }
   content: ""; position: absolute; left: 17%; top: 7%; width: 30%; height: 11%;
   border-radius: 50%; background: rgba(255,255,255,.35); transform: rotate(-24deg); filter: blur(3px);
 }
-.bezel { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: var(--screen); box-shadow: inset 0 0 0 3px rgba(0,0,0,.55); }
-.bezel canvas { width: 100%; height: 100%; display: block; }
+.bezel { position: relative; width: 100%; height: 0; padding-bottom: 100%; border-radius: 50%; overflow: hidden; background: var(--screen); box-shadow: inset 0 0 0 3px rgba(0,0,0,.55); }
+.bezel canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
 
 .mood { text-align: center; min-height: 3.4em; display: flex; flex-direction: column; gap: 4px; align-items: center; }
 .mood-name { font: 600 12px/1 var(--f-display); letter-spacing: .12em; text-transform: uppercase; color: var(--helmet); }
@@ -117,7 +113,7 @@ body.camnear { box-shadow: inset 0 0 0 10px #d11a1a; }
 .num { font: 700 56px/1 var(--f-display); font-variant-numeric: tabular-nums; min-width: 2.2ch; }
 .unit { font: 600 14px var(--f-display); color: var(--muted); letter-spacing: .08em; }
 .tag { margin-left: auto; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; }
-input[type=range] { width: 100%; height: 34px; accent-color: var(--helmet); margin: 0; }
+input[type=range] { width: 100%; height: 44px; accent-color: var(--helmet); margin: 0; touch-action: none; }
 
 .btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .btn {
@@ -201,7 +197,6 @@ details.set > * + * { margin-top: 10px; }
 <body>
 <button id="carBack" type="button">Terug</button>
 <button id="carAdd" type="button">Flitser<br>toevoegen</button>
-<div id="camWarn" role="alert" aria-live="assertive" hidden></div>
 <main>
   <header>
     <p class="eyebrow">Simulator · brein van je robotje</p>
@@ -1359,16 +1354,19 @@ details.set > * + * { margin-top: 10px; }
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = '600 13px "Chakra Petch", sans-serif';
     if (S.cam && S.cam.dist <= 600) {
-      var bad = ovr(Math.round(S.speed), S.cam.limit), col = bad ? HEART : EYE;
+      var bad = ovr(Math.round(S.speed), S.cam.limit), col = bad ? HEART : EYE, nearC = S.cam.dist < 250 || bad;
+      var pa = reduce ? .6 : 0.5 + 0.5 * Math.sin(T * (nearC ? 15 : 8)), va = (nearC ? .55 : .28) * (reduce ? .6 : pa), gr = ctx.createRadialGradient(120, 120, 62, 120, 120, 104);
+      gr.addColorStop(0, 'rgba(255,40,40,0)'); gr.addColorStop(1, 'rgba(255,40,40,' + va.toFixed(3) + ')'); ctx.fillStyle = gr; ctx.fillRect(0, 0, 240, 240);
+      ctx.save(); ctx.translate(120, 40); ctx.scale(1.7, 1.7); ctx.translate(-120, -25);
       ctx.fillStyle = EYE; ctx.fillRect(116, 26, 8, 12);
       rr(100, 12, 40, 18, 5); ctx.fillStyle = EYE; ctx.fill();
       ctx.fillStyle = SCREEN; ctx.beginPath(); ctx.arc(112, 21, 5, 0, TAU); ctx.fill();
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(112, 21, 2.5, 0, TAU); ctx.fill();
-      ctx.globalAlpha = bad && !reduce ? 0.35 + 0.65 * pulse : 1;
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(131, 21, 2.5, 0, TAU); ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = EYE; ctx.font = '600 13px "Chakra Petch", sans-serif';
-      ctx.fillText(Math.max(0, Math.round(S.cam.dist / 10) * 10) + ' m', 120, 50);
+      ctx.globalAlpha = nearC && !reduce ? 0.2 + 0.8 * pa : 1;
+      ctx.fillStyle = bad || S.cam.dist < 250 ? '#ff3b30' : col; ctx.beginPath(); ctx.arc(131, 21, 3, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1; ctx.restore();
+      ctx.fillStyle = nearC ? '#ffffff' : EYE; ctx.font = '700 26px "Chakra Petch", sans-serif';
+      var dtxt = Math.max(0, Math.round(S.cam.dist / 10) * 10) + ' m'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = SCREEN; ctx.strokeText(dtxt, 120, 76); ctx.fillText(dtxt, 120, 76);
       ctx.save(); ctx.translate(-36, 0); sign(S.cam.limit); ctx.restore();
       ring(1 - S.cam.dist / 600, col);
     }
@@ -1444,7 +1442,8 @@ details.set > * + * { margin-top: 10px; }
 
   /* ---------- Controls ---------- */
   var speedEl = $('speed');
-  speedEl.addEventListener('input', function () { S.target = +speedEl.value; S.maxDec = 12; S.maxAcc = 0; });
+  function speedIn() { S.target = +speedEl.value; S.maxDec = 12; S.maxAcc = 0; }
+  speedEl.addEventListener('input', speedIn); speedEl.addEventListener('change', speedIn);
   $('bGo').addEventListener('click', function () {
     S.target = Math.min(130, Math.round(S.speed) + 45); S.maxDec = 12; speedEl.value = S.target;
   });
@@ -2790,6 +2789,76 @@ details.set > * + * { margin-top: 10px; }
       ctx.strokeStyle = EYE; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.stroke();
       ctx.fillStyle = EYE; ctx.fillRect(176.5, 52 - by, 3, 12); ctx.fillRect(176.5, 67 - by, 3, 3);
     } };
+  /* extra animaties */
+  GAGS.snail = { name: 'Ziet een slakje', dur: 6.4, idle: 1, mood: 'content', msg: 'Een slakje! Hij heeft haast.',
+    upd: function (g, tt) { g.sx = 34 + tt * 24; dir(clamp((g.sx - 120) / 80, -1, 1) * .8, .8); if (tt > 5) g.msg = 'Hij komt er wel.'; },
+    draw: function (g, tt) {
+      var x = g.sx, y = 196; ctx.globalAlpha = .25; ctx.strokeStyle = EYE; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(30, y + 5); ctx.lineTo(x, y + 5); ctx.stroke(); ctx.globalAlpha = 1;
+      ctx.fillStyle = EYE; ctx.beginPath(); ctx.ellipse(x + 6, y, 17, 5, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.arc(x + 20, y - 5, 4, 0, TAU); ctx.fill();
+      ctx.lineWidth = 1.6; ctx.strokeStyle = EYE; ctx.beginPath(); ctx.moveTo(x + 20, y - 8); ctx.lineTo(x + 22 + Math.sin(tt * 4) * 2, y - 16); ctx.moveTo(x + 23, y - 7); ctx.lineTo(x + 28 + Math.sin(tt * 4 + 1) * 2, y - 14); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y - 8, 9, 0, TAU); ctx.fill(); ctx.strokeStyle = SCREEN; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y - 8, 5, 0, 4.7); ctx.stroke();
+    } };
+  GAGS.butterfly = { name: 'Volgt een vlinder', dur: 6.2, idle: 1, drive: 1, mood: 'alert', msg: 'Een vlinder!',
+    upd: function (g, tt) { g.bx = 120 + Math.sin(tt * 1.3) * 72 + Math.sin(tt * 3.1) * 8; g.by = 66 + Math.cos(tt * 1.9) * 26; dir(clamp((g.bx - 120) / 70, -1, 1), clamp((g.by - 110) / 60, -1, .3)); if (tt > 4.6) { g.mood = 'happy'; g.msg = 'Dag vlindertje!'; } },
+    draw: function (g, tt) {
+      var w = Math.abs(Math.sin(tt * 13)); ctx.save(); ctx.translate(g.bx, g.by); ctx.fillStyle = EYE;
+      ctx.beginPath(); ctx.ellipse(-7 * w - 1, -2, 7 * w + 1, 8, -.4, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.ellipse(7 * w + 1, -2, 7 * w + 1, 8, .4, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-5 * w - 1, 7, 5 * w + 1, 5, .4, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.ellipse(5 * w + 1, 7, 5 * w + 1, 5, -.4, 0, TAU); ctx.fill();
+      ctx.fillStyle = SCREEN; ctx.fillRect(-1, -6, 2, 16); ctx.restore();
+    } };
+  GAGS.rainbow = { name: 'Regenboog', dur: 5.6, idle: 1, mood: 'happy', msg: 'Kijk, een regenboog!',
+    upd: function (g, tt) { dir(0, -.7); if (tt > 4) g.msg = 'Zo mooi.'; },
+    draw: function (g, tt) {
+      var C = ['#ff6b6b', '#ffb02e', '#ffe14d', '#5ddc7c', '#5ab0ff', '#b48cff'], i, a = Math.min(1, tt) * (tt > 4.6 ? Math.max(0, (5.6 - tt)) / 1 : 1), p = Math.min(1, tt / 1.6);
+      ctx.lineWidth = 4; ctx.globalAlpha = a * .9;
+      for (i = 0; i < C.length; i++) { ctx.strokeStyle = C[i]; ctx.beginPath(); ctx.arc(120, 112, 80 - i * 4.4, Math.PI, Math.PI + Math.PI * p); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    } };
+  GAGS.selfie = { name: 'Maakt een selfie', dur: 5, idle: 1, mood: 'happy', msg: 'Selfie! Zeg kaas.',
+    upd: function (g, tt) { dir(0, -.2); fsc = 1 + (tt < 3 ? 0 : -.02); if (tt > 3 && !g.fl) { g.fl = 1; S.flash = .8; beep('wake'); } if (tt > 3.3) { g.mood = 'excited'; g.msg = 'Mooie foto!'; } },
+    draw: function (g, tt) {
+      rr(160, 44, 26, 38, 5); ctx.fillStyle = EYE; ctx.fill(); ctx.fillStyle = SCREEN; ctx.beginPath(); ctx.arc(173, 56, 5, 0, TAU); ctx.fill();
+      if (tt < 3) { ctx.fillStyle = EYE; ctx.font = '700 30px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(3 - Math.floor(tt)), 66, 62); }
+    } };
+  GAGS.paperplane = { name: 'Papieren vliegtuigje', dur: 4.8, idle: 1, drive: 1, mood: 'alert', msg: 'Hee, een vliegtuigje!',
+    upd: function (g, tt) { g.px = -20 + tt * 56; g.py = 80 - Math.sin(tt * 1.3) * 26; dir(clamp((g.px - 120) / 90, -1, 1), clamp((g.py - 110) / 60, -1, 0)); if (tt > 3.8) { g.mood = 'happy'; g.msg = 'Vlieg maar!'; } },
+    draw: function (g, tt) {
+      var x = g.px, y = g.py; ctx.fillStyle = EYE; ctx.beginPath(); ctx.moveTo(x + 14, y); ctx.lineTo(x - 10, y - 8); ctx.lineTo(x - 4, y); ctx.lineTo(x - 10, y + 7); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = .4; for (var i = 1; i < 6; i++) { ctx.beginPath(); ctx.arc(x - 12 - i * 8, y + Math.sin(i + tt * 4) * 2, 1.6, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1;
+    } };
+  GAGS.popcorn = { name: 'Maakt popcorn', dur: 5.6, idle: 1, mood: 'excited', msg: 'Popcorn! Pop, pop, pop.',
+    upd: function (g, tt) { dir(0, -.6 + Math.sin(tt * 6) * .3); fdy = Math.abs(Math.sin(tt * 7)) * -2; if (tt > 4.4) { g.mood = 'happy'; g.msg = 'Mmm, warm en zoet.'; } },
+    draw: function (g, tt) {
+      ctx.fillStyle = EYE; for (var i = 0; i < 9; i++) { var ph = (tt * 1.5 + i * .37) % 1, x = 46 + (i * 29) % 150, y = 196 - 4 * ph * (1 - ph) * 100; ctx.globalAlpha = .9; ctx.beginPath(); ctx.arc(x, y, 3 + ph * 3.5, 0, TAU); ctx.arc(x + 4, y - 2, 2.5 + ph * 2, 0, TAU); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    } };
+  GAGS.umbrella = { name: 'Paraplu', dur: 6, idle: 1, mood: 'content', msg: 'Ik blijf lekker droog.',
+    upd: function (g, tt) { dir(0, -.9); if (tt > 4.4) { g.msg = 'Regen? Welke regen?'; } },
+    draw: function (g, tt) {
+      ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(120, 62, 52, Math.PI, 0); ctx.fill(); ctx.strokeStyle = EYE; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(120, 62); ctx.lineTo(120, 92); ctx.arc(114, 92, 6, 0, Math.PI); ctx.stroke();
+      ctx.lineWidth = 1.6; ctx.globalAlpha = .55; for (var i = 0; i < 12; i++) { var x = 28 + i * 17, y = ((tt * 150 + i * 47) % 130) + 18; if (x > 62 && x < 178 && y < 70) continue; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 3, y + 9); ctx.stroke(); } ctx.globalAlpha = 1;
+    } };
+  GAGS.wave = { name: 'Zwaait', dur: 4.8, idle: 1, drive: 1, minV: 0, mood: 'happy', msg: 'Hoi, andere auto!',
+    upd: function (g, tt) { dir(.7, .2); if (tt > 3.6) { g.msg = 'Ze zwaaiden terug. Denk ik.'; } },
+    draw: function (g, tt) {
+      var a = Math.sin(tt * 10) * .45 - .5, bx = 178, by = 188, hx = bx + Math.sin(a) * 0 + Math.sin(a + 1.2) * 0; ctx.strokeStyle = EYE; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      var ex = bx + Math.sin(a) * 26, ey = by - Math.cos(a) * 26; ctx.beginPath(); ctx.moveTo(bx, by + 14); ctx.lineTo(ex, ey); ctx.stroke(); ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(ex, ey - 3, 8, 0, TAU); ctx.fill();
+    } };
+  GAGS.fireworks = { name: 'Vuurwerk', dur: 5.6, idle: 1, mood: 'excited', msg: 'Vuurwerk! Ooooh.',
+    upd: function (g, tt) { dir(Math.sin(tt) * .3, -.9); if (tt > 4.4) { g.mood = 'happy'; g.msg = 'Nog eentje!'; } },
+    draw: function (g, tt) {
+      var B = [[.2, 70, 56], [1.6, 168, 66], [3.0, 116, 40]], i, k;
+      for (i = 0; i < B.length; i++) { var ag = tt - B[i][0]; if (ag < 0 || ag > 1.3) continue; var r = 6 + ag * 30; ctx.globalAlpha = Math.max(0, 1 - ag / 1.3); ctx.strokeStyle = EYE; ctx.lineWidth = 2; ctx.lineCap = 'round';
+        for (k = 0; k < 10; k++) { var an = k / 10 * TAU; ctx.beginPath(); ctx.moveTo(B[i][1] + Math.cos(an) * r * .6, B[i][2] + Math.sin(an) * r * .6); ctx.lineTo(B[i][1] + Math.cos(an) * r, B[i][2] + Math.sin(an) * r); ctx.stroke(); } }
+      ctx.globalAlpha = 1;
+    } };
+  GAGS.balloon = { name: 'Ballon', dur: 6, idle: 1, mood: 'happy', msg: 'Een ballon! Hij vliegt weg\u2026',
+    upd: function (g, tt) { g.bx = 168 + Math.sin(tt * 1.6) * 12; g.by = 200 - tt * 28; dir(clamp((g.bx - 120) / 70, -1, 1) * .7, clamp((g.by - 120) / 70, -1, 0)); if (tt > 4.4) { g.msg = 'Dag ballon!'; g.mood = 'content'; } },
+    draw: function (g) {
+      ctx.strokeStyle = EYE; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(g.bx, g.by + 15); ctx.quadraticCurveTo(g.bx - 6, g.by + 30, g.bx + 2, g.by + 46); ctx.stroke();
+      ctx.fillStyle = HEART; ctx.beginPath(); ctx.ellipse(g.bx, g.by, 11, 14, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(g.bx, g.by + 14); ctx.lineTo(g.bx - 3, g.by + 19); ctx.lineTo(g.bx + 3, g.by + 19); ctx.fill();
+      ctx.fillStyle = SCREEN; ctx.globalAlpha = .5; ctx.beginPath(); ctx.ellipse(g.bx - 4, g.by - 5, 2.5, 4, .5, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+    } };
   GAGS.coffee = { name: 'Drinkt koffie', dur: 6, idle: 1, mood: 'relaxed', msg: 'Koffie. Even bijtanken.',
     upd: function (g, tt) { var sip = tt > 2 && tt < 3.4; dir(0, sip ? -.5 : .2); g.cy = sip ? 176 : 196; if (tt > 4) g.msg = 'Aaah. Dat helpt.'; if (tt > 3.4) g.mood = 'happy'; },
     draw: function (g, tt) {
@@ -3069,18 +3138,17 @@ details.set > * + * { margin-top: 10px; }
     } catch (e) {}
   }
   function camAlarm() {
-    var w = $('camWarn'), c = S.cam;
-    if (!c || c.dist > 600 || c.dist < 0 || (S.cam && c.dist == null)) { if (!w.hidden) { w.hidden = true; document.body.classList.remove('camnear'); } alT = 0; return; }
-    var what = c.kind === 'traj' ? 'TRAJECTCONTROLE' : (c.mobile ? 'CONTROLE' : 'FLITSER'), d = Math.max(0, Math.round(c.dist / 10) * 10);
-    var txt = what + ' ' + d + ' m' + (c.limit != null ? ' · max ' + c.limit : ''), hot = c.limit != null && ovr(Math.round(S.speed), c.limit);
-    if (txt !== alTxt) { w.textContent = txt; alTxt = txt; }
-    if (w.hidden) { w.hidden = false; } document.body.classList.toggle('camnear', c.dist < 250 || hot);
-    var gap = Math.max(.22, Math.min(1.1, c.dist / 600 * 1.1)); if (hot) gap = Math.min(gap, .3);
+    var c = S.cam;
+    if (!c || c.dist > 600 || c.dist < 0 || c.dist == null) { alT = 0; return; }
+    var hot = c.limit != null && ovr(Math.round(S.speed), c.limit), near = c.dist < 250;
+    var gap = Math.max(.2, Math.min(1.0, c.dist / 600 * 1.0)); if (hot) gap = Math.min(gap, .28);
     if (T - alT >= gap) {
-      alT = T; var near = c.dist < 250;
-      alarmTone(near ? 1250 : 980, .14, hot || near ? .45 : .3);
-      if (near) setTimeout(function () { alarmTone(1250, .14, .45); }, 170);
-      try { if (navigator.vibrate) navigator.vibrate(near ? [120, 60, 120] : 120); } catch (e) {}
+      alT = T;
+      var vol = hot ? .95 : near ? .85 : .55;
+      alarmTone(near ? 1300 : 1000, .16, vol); alarmTone(near ? 1950 : 1500, .16, vol * .5);
+      if (near) setTimeout(function () { alarmTone(1300, .16, vol); alarmTone(1950, .16, vol * .5); }, 190);
+      if (hot) setTimeout(function () { alarmTone(1000, .2, vol); }, 380);
+      try { if (navigator.vibrate) navigator.vibrate(near ? [150, 60, 150] : 150); } catch (e) {}
     }
   }
 
