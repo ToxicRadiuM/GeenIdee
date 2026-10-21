@@ -3641,7 +3641,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v57';
+  var VERSION = 'v58';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -4006,8 +4006,10 @@ details.set > * + * { margin-top: 10px; }
   try { var gv = localStorage.getItem(GKEY); grp = gv === null ? STANDAARD_GROEP : gv; } catch (e) { grp = STANDAARD_GROEP; }
   ucams = ucams.filter(function (u) { return u.k !== 'mobile' || Date.now() - u.t < MOBMS; });
   function allUcams() {
+    /* Kan al vroeg tijdens het opstarten worden aangeroepen (bewaarde flitsdata), voordat de eigen flitsers geladen zijn */
+    if (!Array.isArray(ucams)) return [];
     var now = Date.now(), out = [], ids = {};
-    ucams.concat(gcams).forEach(function (u) {
+    ucams.concat(Array.isArray(gcams) ? gcams : []).forEach(function (u) {
       if (u.k === 'mobile' && now - u.t > MOBMS) return;
       if (ids[u.id]) return;
       for (var j = 0; j < out.length; j++) if (out[j].k === u.k && gdist(out[j].lat, out[j].lon, u.lat, u.lon) < 40) return;
