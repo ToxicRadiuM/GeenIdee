@@ -2,6 +2,43 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
+<script>
+/* Buddy-bewaker: start Buddy niet goed op (zwart scherm) of loopt hij vast, dan verschijnt er een herstelknop.
+   Herstellen wist alleen de opgeslagen app-bestanden, niet je ritten, records of naam. */
+(function () {
+  var fouten = [];
+  window.__buddyFouten = fouten;
+  window.addEventListener('error', function (e) { fouten.push((e.message || 'fout') + (e.lineno ? ' @' + e.lineno : '')); });
+  window.addEventListener('unhandledrejection', function (e) { fouten.push('belofte: ' + String(e.reason && e.reason.message || e.reason).slice(0, 120)); });
+  function herstel() {
+    var klaar = function () { location.replace(location.pathname + '?herstel=' + Date.now()); };
+    var a = ('caches' in window) ? caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return /^buddy-v/.test(k); }).map(function (k) { return caches.delete(k); })); }) : Promise.resolve();
+    var b = (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) ? navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }) : Promise.resolve();
+    Promise.all([a, b]).then(klaar, klaar);
+  }
+  window.__buddyHerstel = herstel;
+  window.__buddyVastgelopen = function (waarom) {
+    if (document.getElementById('buddyRedder')) return;
+    var d = document.createElement('div'); d.id = 'buddyRedder';
+    d.style.cssText = 'position:fixed;inset:0;z-index:999;background:#0E1114;color:#E9EDEF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;font:16px system-ui;text-align:center';
+    d.innerHTML = '<div style="font-size:48px">🤖🔧</div><p style="margin:0;font-weight:700;font-size:20px">Buddy start niet goed op</p><p style="margin:0;max-width:34ch;color:#9aa3ad">Tik op herstellen. Je ritten, records en naam blijven bewaard.</p><button id="buddyRedKnop" style="min-height:56px;padding:0 28px;border-radius:28px;border:0;background:#34c759;color:#000;font:700 18px system-ui">Herstel Buddy</button><p id="buddyRedFout" style="margin:0;max-width:40ch;font:12px monospace;color:#9aa3ad;word-break:break-word"></p>';
+    (document.body || document.documentElement).appendChild(d);
+    document.getElementById('buddyRedKnop').onclick = herstel;
+    document.getElementById('buddyRedFout').textContent = (waarom || '') + (fouten.length ? ' | ' + fouten.slice(-3).join(' | ') : '');
+  };
+  /* Als Buddy binnen 8 seconden niet "ik leef" heeft gezegd: herstelknop tonen */
+  function wacht() {
+    setTimeout(function () {
+      if (window.__buddyLeeft) return;
+      if (document.visibilityState !== 'visible') { document.addEventListener('visibilitychange', function v() { if (document.visibilityState === 'visible') { document.removeEventListener('visibilitychange', v); wacht(); } }); return; }
+      window.__buddyVastgelopen('Opstarten duurde te lang.');
+    }, 8000);
+  }
+  wacht();
+  /* Net hersteld? Dan het ?herstel uit de adresbalk halen */
+  if (/[?&]herstel=/.test(location.search)) try { history.replaceState(null, '', location.pathname); } catch (e) {}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0E1114">
 <link rel="manifest" href="manifest.webmanifest">
@@ -1481,6 +1518,7 @@ details.set > * + * { margin-top: 10px; }
   }
 
   function render(dt) {
+    if (ctx.reset) ctx.reset(); else { ctx.globalAlpha = 1; }
     var tg = P[curKey], k = 1 - Math.exp(-dt * 11);
     for (var n in tg) cur[n] += (tg[n] - cur[n]) * k;
     if (T > nextGaze) newGaze(curKey);
@@ -3192,7 +3230,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v52';
+  var VERSION = 'v53';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -3455,10 +3493,14 @@ details.set > * + * { margin-top: 10px; }
   /* ---------- Loop ---------- */
   var last = null;
   var errShown = 0;
+  var frameOk = 0, frameFout = 0;
   function frame(ts) {
-    try { frame2(ts); } catch (e) {
+    try { frame2(ts); frameOk++; frameFout = 0; if (frameOk === 10) window.__buddyLeeft = true; } catch (e) {
+      frameFout++;
       lg('FOUT frame ' + (e && e.message));
       if (errShown < 3) { errShown++; var b = $('errBar'); if (b) { b.textContent = 'Foutje: ' + (e && e.message) + ' (tik om te sluiten)'; b.hidden = false; } }
+      /* Loopt hij steeds vast? Dan de herstelknop laten zien in plaats van een zwart scherm */
+      if (frameFout === 60 && window.__buddyVastgelopen) window.__buddyVastgelopen('Tekenen loopt vast: ' + (e && e.message));
     }
     requestAnimationFrame(frame);
   }
