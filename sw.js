@@ -2,7 +2,7 @@
    - Eigen bestanden: eerst internet (zodat updates meteen binnenkomen), lukt dat niet binnen 4 s dan de bewaarde versie.
    - Lettertypen van Google: uit de bewaarde versie, op de achtergrond verversen.
    - Al het andere (je Worker, PDOK, OpenStreetMap, weer…) gaat gewoon via internet en wordt hier niet bewaard. */
-const KAST = 'buddy-v1';
+const KAST = 'buddy-v2';
 const KERN = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './msi-locaties.json'];
 
 self.addEventListener('install', (e) => {

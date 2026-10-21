@@ -78,6 +78,9 @@ body.car .helmet { --hs: min(94vw, 74vh); }
 body.car .foot { display: none; }
 #carBack { display: none; position: fixed; top: 10px; right: 10px; z-index: 50; min-height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #555; background: #1b1b1b; color: #eee; font: 600 14px var(--f-display); }
 body.car #carBack { display: block; }
+#carRit { display: none; position: fixed; top: 10px; left: 10px; z-index: 50; min-height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #34c759; background: #0b2414; color: #8ff0a8; font: 600 14px var(--f-display); }
+#carRit.arm { background: #34c759; color: #000; }
+body.car #carRit { display: block; }
 
 #carAdd, #carAddM { display: none; position: fixed; right: 2vw; transform: translateY(-50%); z-index: 50; width: min(19vw, 170px); min-height: min(24vh, 120px); border-radius: 22px; border: 3px solid #ffb02e; background: #2a1d05; color: #ffd27a; font: 700 clamp(15px, 2.4vw, 24px)/1.2 var(--f-body); text-align: center; }
 #carAdd { top: 33%; }
@@ -241,6 +244,7 @@ details.set > * + * { margin-top: 10px; }
 </head>
 <body>
 <button id="carBack" type="button">Terug</button>
+<button id="carRit" type="button">🏁 Rit klaar</button>
 <button id="carAdd" type="button">Vaste<br>flitser</button>
 <button id="carAddM" type="button">Mobiele<br>flitser</button>
 <button id="carGroep" type="button" aria-label="Bericht naar de groep"><span class="gi">👋</span><span>Groep</span></button>
@@ -728,8 +732,18 @@ details.set > * + * { margin-top: 10px; }
     /* smooth-driving score per trip */
     if (S.speed >= 5) { if (!S.trip && S.live) ritStart(); S.trip = true; S.tripT += dt; }
     else if (S.trip && S.speed < 1 && S.stoppedT > (S.live ? 480 : 3)) {  /* live: pas een nieuwe rit na 8 min stilstaan, niet bij elk stoplicht */
+      ritAfsluiten(S.live ? 120 : 15);
+    }
+    if (!S.camOn) { S.cam = null; S.traj = null; return; }
+    stepRoad2(dt, d);
+  }
+  /* Rit afsluiten: automatisch na 8 min stilstaan, of met de knop "Rit klaar". Geeft true als de rit is meegeteld. */
+  function ritAfsluiten(minT) {
+    var telt = false;
+    if (S.trip) {
       S.trip = false;
-      if (S.tripT > (S.live ? 120 : 15)) {
+      if (S.tripT > minT) {
+        telt = true;
         var sc = Math.round(S.style);
         mem.trips++; mem.styleAvg += (sc - mem.styleAvg) * 0.2;
         if (S.live) { mem.ritLive = (mem.ritLive || 0) + 1; mem.stijlLive = mem.ritLive === 1 ? sc : mem.stijlLive + (sc - mem.stijlLive) * 0.2; }
@@ -742,7 +756,9 @@ details.set > * + * { margin-top: 10px; }
       }
       S.tripT = 0; S.style = 100;
     }
-    if (!S.camOn) { S.cam = null; S.traj = null; return; }
+    return telt;
+  }
+  function stepRoad2(dt, d) {
     if (S.live) return;
     if (S.cam) {
       S.cam.dist -= d;
@@ -2001,6 +2017,33 @@ details.set > * + * { margin-top: 10px; }
       launch();
     });
   }
+  /* Eerst via je eigen Worker (/osm): die bewaart elk vak, dus geen wachten op de overvolle Overpass-servers.
+     Lukt dat niet (oude Worker, geen adres, geen bereik), dan zoals vroeger rechtstreeks naar Overpass. */
+  var OSM_VAK = { wegen: { dLat: 0.03, dLon: 0.05, padLat: 0.006, padLon: 0.009 }, flits: { dLat: 0.10, dLon: 0.15, padLat: 0.11, padLon: 0.17 } };
+  var osmWorkerUit = -9999;
+  function osmVak(soort, lat, lon) {
+    var v = OSM_VAK[soort], ty = Math.floor(lat / v.dLat), tx = Math.floor(lon / v.dLon);
+    return { lat: (ty + .5) * v.dLat, lon: (tx + .5) * v.dLon, s: ty * v.dLat - v.padLat, w: tx * v.dLon - v.padLon, n: (ty + 1) * v.dLat + v.padLat, e: (tx + 1) * v.dLon + v.padLon };
+  }
+  function fetchOsm(soort, lat, lon, direct, ms) {
+    if (!pbase() || T - osmWorkerUit < 600) return fetchOverpass(direct, ms);
+    var vk = osmVak(soort, lat, lon), ctl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, 60000) : 0;
+    return fetch(pbase() + '/osm?soort=' + soort + '&lat=' + vk.lat.toFixed(5) + '&lon=' + vk.lon.toFixed(5), { signal: ctl ? ctl.signal : undefined })
+      .then(function (r) {
+        if (timer) clearTimeout(timer);
+        if (r.status === 404) { osmWorkerUit = T; throw new Error('Worker kent /osm nog niet'); }
+        if (!r.ok) throw new Error('http ' + r.status);
+        var bron = r.headers.get('X-Buddy-Bron') || '';
+        return r.json().then(function (j) { if (!j || !j.elements) throw new Error('leeg antwoord'); lg('osm ' + soort + ' via Worker' + (bron ? ' (' + bron + ')' : '') + ': ' + j.elements.length + ' stuks'); j._viaWorker = 1; return j; });
+      })
+      .catch(function (e) {
+        if (timer) clearTimeout(timer);
+        opLast = 'Worker: ' + (e && e.name === 'AbortError' ? 'te traag' : (e && e.message) || 'fout');
+        lg('osm ' + soort + ' ' + opLast + ', ik probeer Overpass rechtstreeks');
+        return fetchOverpass(direct, ms);
+      });
+  }
   function camRegions() {
     if (!camCache) return [];
     if (!camCache.regions) camCache.regions = [{ lat: camCache.lat, lon: camCache.lon, t: camCache.t }];
@@ -2020,7 +2063,7 @@ details.set > * + * { margin-top: 10px; }
     if (camLoading || T - camFailT < camBack) return;
     if (camCache && camCovered(lat, lon)) return;
     camLoading = true; $('camStat').textContent = 'Flitsdata laden…';
-    fetchOverpass(overpassQuery(lat, lon, 12000), 30000).then(function (json) {
+    fetchOsm('flits', lat, lon, overpassQuery(lat, lon, 12000), 30000).then(function (json) {
       var p = parseCams(json), prev = camCache || { cams: [], trajs: [] };
       var cams = mergeById(p.cams, prev.cams).filter(function (c) { return gdist(lat, lon, c.lat, c.lon) < 90000; });
       var trajs = mergeById(p.trajs, prev.trajs).filter(function (c) { return gdist(lat, lon, c.from.lat, c.from.lon) < 90000; });
@@ -2667,7 +2710,7 @@ details.set > * + * { margin-top: 10px; }
   try { roadTiles = JSON.parse(localStorage.getItem(ROADKEY)) || []; roadTiles.forEach(function (t) { t.ws = tileWays(t); }); } catch (e) { roadTiles = []; }
   function saveRoads() {
     for (var n = 0; n < 5; n++) {
-      try { localStorage.setItem(ROADKEY, JSON.stringify(roadTiles.map(function (t) { return { lat: t.lat, lon: t.lon, t: t.t, w: t.w }; }))); return; }
+      try { localStorage.setItem(ROADKEY, JSON.stringify(roadTiles.map(function (t) { return { lat: t.lat, lon: t.lon, b: t.b, t: t.t, w: t.w }; }))); return; }
       catch (e) { if (!roadTiles.length) return; roadTiles.sort(function (a, b) { return b.t - a.t; }); roadTiles.pop(); }
     }
   }
@@ -2678,6 +2721,15 @@ details.set > * + * { margin-top: 10px; }
     saveRoads(); roadDirty = true;
   }
   function roadNear(lat, lon) { var m = 1e9; roadTiles.forEach(function (t) { var d = gdist(lat, lon, t.lat, t.lon); if (d < m) m = d; }); return m; }
+  /* Ligt dit punt al ruim binnen een geladen vak? (Vakken van de Worker hebben randen, oude vakken een straal van 1,2 km) */
+  function roadCovered(lat, lon) {
+    for (var i = 0; i < roadTiles.length; i++) {
+      var t = roadTiles[i];
+      if (t.b) { if (lat > t.b[0] + .003 && lat < t.b[2] - .003 && lon > t.b[1] + .004 && lon < t.b[3] - .004) return true; }
+      else if (gdist(lat, lon, t.lat, t.lon) <= 1200) return true;
+    }
+    return false;
+  }
   function roadQuery(lat, lon) {
     var dLa = 1800 / 111320, dLo = 1800 / (111320 * Math.cos(lat * RAD));
     var bb = (lat - dLa).toFixed(5) + ',' + (lon - dLo).toFixed(5) + ',' + (lat + dLa).toFixed(5) + ',' + (lon + dLo).toFixed(5);
@@ -2687,9 +2739,10 @@ details.set > * + * { margin-top: 10px; }
     if (roadBusy || T - roadFail < roadBack) return;
     var qa = lat, qo = lon;
     if (lastHdg != null && S.liveSpeed > 20) { qa = lat + Math.cos(lastHdg * RAD) * 700 / 111320; qo = lon + Math.sin(lastHdg * RAD) * 700 / (111320 * Math.cos(lat * RAD)); }
-    if (roadNear(qa, qo) <= 1200) return;
+    if (roadCovered(qa, qo)) return;
     roadBusy = true;
-    fetchOverpass(roadQuery(qa, qo), 25000).then(function (j) {
+    var vk = pbase() && T - osmWorkerUit >= 600 ? osmVak('wegen', qa, qo) : null;
+    fetchOsm('wegen', qa, qo, roadQuery(qa, qo), 25000).then(function (j) {
       var w = [];
       (j.elements || []).forEach(function (e) {
         if (e.type !== 'way' || !e.geometry || e.geometry.length < 2 || !e.tags) return;
@@ -2701,7 +2754,9 @@ details.set > * + * { margin-top: 10px; }
         var mw = (est && tg.highway === 'motorway') ? 1 : 0;
         w.push(mw ? [lim, est, flat, c, 1] : (c ? [lim, est, flat, c] : [lim, est, flat]));
       });
-      addTile({ lat: qa, lon: qo, t: Date.now(), w: w });
+      /* Kwam het van de Worker? Dan is het een vast vak met randen. Rechtstreeks van Overpass: een cirkel rond qa/qo. */
+      var viaWorker = vk && j._viaWorker;
+      addTile(viaWorker ? { lat: vk.lat, lon: vk.lon, b: [vk.s, vk.w, vk.n, vk.e], t: Date.now(), w: w } : { lat: qa, lon: qo, t: Date.now(), w: w });
       roadTry = 0; roadBack = 10;
       lg('wegen geladen: ' + w.length + ' wegen');
     }).catch(function () {
@@ -2726,7 +2781,9 @@ details.set > * + * { margin-top: 10px; }
     var px = ax + t * dx, py = ay + t * dy;
     return { d: Math.sqrt(px * px + py * py), brg: (Math.atan2(dx, dy) / RAD + 360) % 360 };
   }
-  function roadHold() { if (S.roadLim != null && T - S.roadSeen > 150) { S.roadLim = null; S.roadEst = false; roadCand = null; } }
+  /* Geen weg meer gevonden onder je? Dan na 45 s de oude limiet weg (vroeger 150 s: dan bleef bv. 50 staan terwijl je al lang op de snelweg reed).
+     Een geschatte limiet laten we met rust: die regelt roadGuess zelf (anders werd hij elke seconde gewist en opnieuw geschat). */
+  function roadHold() { if (S.roadLim != null && !S.guessed && T - S.roadSeen > 45) { S.roadLim = null; S.roadEst = false; roadCand = null; } }
   var hiT = 0, loT = 0, hiLast = 0;
   function roadGuess() {
     var now = T, dt = hiLast ? Math.min(5, now - hiLast) : 0; hiLast = now;
@@ -2778,7 +2835,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v41';
+  var VERSION = 'v42';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -4545,6 +4602,24 @@ details.set > * + * { margin-top: 10px; }
   }
   $('bCar').addEventListener('click', function () { carOn(true); });
   $('carBack').addEventListener('click', function () { carOn(false); });
+  /* Rit klaar: rit meteen afsluiten (score, parkeerplek, leaderboard, back-up) in plaats van 8 min wachten.
+     Twee keer tikken, zodat je niet per ongeluk je rit afsluit. De GPS blijft aan: rij je weer, dan begint een nieuwe rit. */
+  var ritArm = 0, ritArmTimer = 0;
+  function ritKnopReset() { ritArm = 0; var b = $('carRit'); b.classList.remove('arm'); b.textContent = '🏁 Rit klaar'; }
+  $('carRit').addEventListener('click', function () {
+    var b = $('carRit');
+    if (!S.live || !S.trip) { ritKnopReset(); toast('Er loopt nu geen rit. Zet eerst de telefoon-GPS aan.'); return; }
+    if (S.speed >= 5) { ritKnopReset(); toast('Sluit je rit af als je stilstaat.'); return; }
+    if (Date.now() - ritArm > 4000) {
+      ritArm = Date.now(); b.classList.add('arm'); b.textContent = 'Zeker? Tik nog eens';
+      clearTimeout(ritArmTimer); ritArmTimer = setTimeout(ritKnopReset, 4000); return;
+    }
+    clearTimeout(ritArmTimer); ritKnopReset();
+    var telt = ritAfsluiten(60);
+    if (telt && lastPos) parkeer(lastPos.lat, lastPos.lon);
+    if (!telt) toast('Die rit was te kort (minder dan een minuut), die tel ik niet mee.');
+    lg('rit handmatig afgesloten' + (telt ? '' : ' (te kort)'));
+  });
 
   /* ritopname + afspelen */
   var wasLive = false, ride = [], rideT = 0, rideSave = 0, rp = null;
