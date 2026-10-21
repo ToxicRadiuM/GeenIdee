@@ -540,7 +540,7 @@ async function groep(url, env, g, json) {
     return json({ ok: true });
   }
 
-  // Collega in de buurt: je positie wordt 3 minuten bewaard en NOOIT teruggegeven, alleen namen van wie binnen 600 m is
+  // Collega in de buurt: je positie wordt 3 minuten bewaard en NOOIT teruggegeven, alleen namen van wie binnen 600 m is (en vanaf Buddy v63: tot 5 km, met de afstand afgerond op hele km)
   if (p === '/cams/hier') {
     const key = 'h:' + g, van = idv(q('van'));
     if (!van) return json({ error: 'Afzender ontbreekt.' }, 400);
@@ -555,6 +555,7 @@ async function groep(url, env, g, json) {
       if (k === van) continue;
       const d = Math.hypot((v.lat - lat) * 111195, (v.lon - lon) * 111195 * Math.cos(lat * Math.PI / 180));
       if (d < 600) buren.push({ van: k, n: v.n, a: v.a });
+      else if (q('ver') && d < 5000) buren.push({ van: k, n: v.n, a: v.a, d: Math.max(1, Math.round(d / 1000)) }); // v63: verder weg, alleen hele km
     }
     // Zuinig met schrijven (gratis plan: 1000 per dag): alleen opslaan als je echt verplaatst bent of de vorige oud wordt
     const ik = map[van];
