@@ -147,7 +147,15 @@ def tegels(bron, uit):
     db = sqlite3.connect(bron)
     laag, kol, gkol, epsg = zoek_laag(db)
     log('laag', laag, 'geometrie', gkol, 'EPSG', epsg)
+    log('kolommen', ', '.join(kol))
     K = {k.upper(): k for k in kol}
+    # Diagnose: hoe zien de tijd- en limietvelden er echt uit? (komt ook in meta.json)
+    diag = {'laag': laag, 'kolommen': kol}
+    for veld in ('MAXSHD', 'MAXSHD_ALT', 'BEGINTIJD', 'EINDTIJD', 'KENM_RICHT', 'VAN', 'NAAR'):
+        if veld in K:
+            rijen = db.execute(f'SELECT "{K[veld]}", COUNT(*) FROM "{laag}" GROUP BY 1 ORDER BY 2 DESC LIMIT 12').fetchall()
+            diag[veld] = [[str(a), b] for a, b in rijen]
+            log(veld, diag[veld])
 
     def k(n):
         return f'"{K[n]}"' if n in K else 'NULL'
@@ -157,7 +165,7 @@ def tegels(bron, uit):
     sql = (f'SELECT {k("MAXSHD")}, {k("MAXSHD_ALT")}, {k("BEGINTIJD")}, {k("EINDTIJD")}, {k("VAN")}, {k("NAAR")}, '
            f'{k("KENM_RICHT")}, {k("WEGNUMMER")}, {k("LENGTE")}, "{gkol}" FROM "{laag}"')
     vakken = defaultdict(list)
-    n = goed = 0
+    n = goed = tijd_n = 0
     for rij in db.execute(sql):
         n += 1
         if n % 200000 == 0:
@@ -194,6 +202,7 @@ def tegels(bron, uit):
         a_lim = snelheid(alt)
         tb, te = minuten(bt), minuten(et)
         c = [lim, tb, te] if (a_lim and tb is not None and te is not None and tb != te) else None
+        if c: tijd_n += 1
         basis = a_lim if c else lim
         rr, wn = richting(kr), wegnr(wnr)
         for ln in delen:
@@ -227,7 +236,7 @@ def tegels(bron, uit):
         with open(os.path.join(uit, 't', f'{ty}_{tx}.json'), 'w') as f:
             f.write(tekst)
         totaal += len(tekst)
-    meta = {'versie': versie, 'tegels': len(vakken), 'wegvakken': goed, 'gemaakt': time.strftime('%Y-%m-%d %H:%M'),
+    meta = {'diagnose': diag, 'tijdafhankelijk': tijd_n, 'versie': versie, 'tegels': len(vakken), 'wegvakken': goed, 'gemaakt': time.strftime('%Y-%m-%d %H:%M'),
             'vak': {'dLat': TILE_LAT, 'dLon': TILE_LON, 'padLat': PAD_LAT, 'padLon': PAD_LON},
             'bron': 'Rijkswaterstaat, Wegkenmerkendatabase: Maximum snelheden (' + BASIS + ')'}
     with open(os.path.join(uit, 'meta.json'), 'w') as f:
