@@ -882,6 +882,7 @@ details.set > * + * { margin-top: 10px; }
     S.hop = Math.min(1, .55 + str / 14); S.squash = 1;
     if (twin) { setEv('excited', 1.8, 'Dubbele boing! Dat was een drempel.'); burst(120, 120, 10); }
     else if (str >= 9) { S.dizzyUntil = T + 1.6; setEv('worried', 1.8, 'Au! Wat een gat.'); burst(120, 110, 14); }
+    else if (S.speed >= 70) { setEv('startled', 1.2, pick(['Hobbel!', 'Oei, een hobbel.', 'Wat een voeg!'])); burst(120, 120, 6); }  /* op de snelweg is het geen drempel maar een voeg of hobbel */
     else if (str >= 5) { setEv('startled', 1.2, 'Drempel! Boing!'); burst(120, 120, 8); }
     else setEv('startled', .9, 'Boing!');
     beep('startled');
@@ -1730,7 +1731,8 @@ details.set > * + * { margin-top: 10px; }
   S.live = false; S.liveSpeed = 0; S.liveT = 0;
   var watchId = null, lastPos = null, wakeLock = null, shownTag = 'GPS gesimuleerd', lastClk = 0, lastHr = -1;
   var LIVE_LOCKED = ['speed', 'bGo', 'bStop', 'bHard', 'bRocket', 'bLeft', 'bRight', 'bRound', 'bBump', 'bTunnel', 'bCam', 'bTraj', 'bDrive', 'clock'];
-  function setTag(t) { if (t !== shownTag) { shownTag = t; $('gpsTag').textContent = t; } }
+  var lastLiveTag = '';
+  function setTag(t) { if (/^GPS live/.test(t)) lastLiveTag = t; if (t !== shownTag) { shownTag = t; $('gpsTag').textContent = t; } }
   function hav(a, b, c, d) {
     var R = 6371000, r = Math.PI / 180, dLa = (c - a) * r, dLo = (d - b) * r;
     var x = Math.sin(dLa / 2) * Math.sin(dLa / 2) + Math.cos(a * r) * Math.cos(c * r) * Math.sin(dLo / 2) * Math.sin(dLo / 2);
@@ -2019,7 +2021,7 @@ details.set > * + * { margin-top: 10px; }
   }
   /* Eerst via je eigen Worker (/osm): die bewaart elk vak, dus geen wachten op de overvolle Overpass-servers.
      Lukt dat niet (oude Worker, geen adres, geen bereik), dan zoals vroeger rechtstreeks naar Overpass. */
-  var OSM_VAK = { wegen: { dLat: 0.03, dLon: 0.05, padLat: 0.006, padLon: 0.009 }, flits: { dLat: 0.10, dLon: 0.15, padLat: 0.11, padLon: 0.17 } };
+  var OSM_VAK = { wegen: { dLat: 0.03, dLon: 0.05, padLat: 0.006, padLon: 0.009 }, flits: { dLat: 0.10, dLon: 0.15, padLat: 0.11, padLon: 0.17 }, werk: { dLat: 0.10, dLon: 0.15, padLat: 0.13, padLon: 0.2 } };
   var osmWorkerUit = -9999;
   function osmVak(soort, lat, lon) {
     var v = OSM_VAK[soort], ty = Math.floor(lat / v.dLat), tx = Math.floor(lon / v.dLon);
@@ -2400,7 +2402,7 @@ details.set > * + * { margin-top: 10px; }
     if (wkLoading || T - wkFail < 180) return;
     if (works.t && Date.now() - works.t < 30 * 60e3 && gdist(lat, lon, works.lat, works.lon) < 6000) return;
     wkLoading = true; wkStat('Wegwerkzaamheden laden…');
-    fetchOverpass(wkQuery(lat, lon), 30000).then(function (j) {
+    fetchOsm('werk', lat, lon, wkQuery(lat, lon), 30000).then(function (j) {
       var out = [], seen = {};
       (j.elements || []).forEach(function (e) {
         var la = e.lat != null ? e.lat : e.center && e.center.lat, lo = e.lon != null ? e.lon : e.center && e.center.lon, tg = e.tags || {};
@@ -2835,7 +2837,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v42';
+  var VERSION = 'v43';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -2845,7 +2847,7 @@ details.set > * + * { margin-top: 10px; }
   window.addEventListener('error', function (e) { lg('FOUT ' + (e.message || '') + ' @' + (e.lineno || '')); var b = $('errBar'); if (b && errShown < 3) { errShown++; b.textContent = 'Foutje: ' + (e.message || '') + ' @' + (e.lineno || '') + ' (tik om te sluiten)'; b.hidden = false; } });
   function logText() {
     var f = function (t) { var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); };
-    var head = 'Buddy testlog\nApparaat: ' + navigator.userAgent + '\nGPS-tag: ' + shownTag + '\nFlitsdata: ' + $('camStat').textContent + '\nGemeld: ' + $('mobStat').textContent + '\nRitten: ' + mem.trips + ', km: ' + mem.km.toFixed(1) + ', beste 0-100: ' + (mem.best ? mem.best.toFixed(1) : '-') + '\n---\n';
+    var head = 'Buddy testlog\nApparaat: ' + navigator.userAgent + '\nGPS: ' + (S.live ? shownTag : 'nu uit' + (lastLiveTag ? ' (laatst: ' + lastLiveTag.replace('\u00B7', '-') + ')' : '')) + '\nFlitsdata: ' + $('camStat').textContent + '\nGemeld: ' + $('mobStat').textContent + '\nRitten: ' + mem.trips + ', km: ' + mem.km.toFixed(1) + ', beste 0-100: ' + (mem.best ? mem.best.toFixed(1) : '-') + '\n---\n';
     return head + logs.map(function (x) { return f(x.t) + ' ' + x.m; }).join('\n');
   }
   $('bLog').addEventListener('click', function () {
