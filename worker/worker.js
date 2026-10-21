@@ -1,6 +1,7 @@
 // Dashboardmaatje: eigen tussenstation voor flitsers.nl, de wegenkaart (PDOK), live verkeersinfo (NDW) en gedeelde flitsers.
 // /flitsers geeft de gemelde controles van flitsers.nl en de ANWB als JSON, met latitude en longitude erbij.
 // /verkeer geeft de actuele files en werkzaamheden van de ANWB als JSON (de app vult aan met NDW).
+// /zoek en /route zijn voor de navigatie: adres opzoeken en een route met afslagen.
 // Alleen voor persoonlijk gebruik. Vul hieronder het adres van je eigen GitHub Pages-site in.
 const TOEGESTAAN = 'https://toxicradium.github.io';   // jouw GitHub Pages-adres (al ingevuld)
 
@@ -27,6 +28,9 @@ export default {
     else if (url.pathname === '/brug') { target = 'https://opendata.ndw.nu/planningsfeed_brugopeningen.xml.gz'; ttl = 120; }
     else if (url.pathname === '/msi') { target = 'https://opendata.ndw.nu/Matrixsignaalinformatie.xml.gz'; ttl = 60; }
     else if (url.pathname.startsWith('/pdok/rws/nationaal-wegenbestand-wegen/')) { target = 'https://api.pdok.nl' + url.pathname.slice(5) + url.search; ttl = 604800; }
+    // Navigatie: adres zoeken (PDOK Locatieserver) en route met afslagen (OSRM)
+    else if (url.pathname === '/zoek') { target = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free' + url.search; ttl = 86400; }
+    else if (/^\/route\/[-\d.]+,[-\d.]+;[-\d.]+,[-\d.]+$/.test(url.pathname)) { target = 'https://router.project-osrm.org/route/v1/driving' + url.pathname.slice(6) + url.search; ttl = 60; }
     else return new Response('Onbekend adres', { status: 404, headers: cors });
 
     const cache = caches.default;

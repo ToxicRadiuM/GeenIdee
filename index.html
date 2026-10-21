@@ -83,6 +83,8 @@ body.car #carBack { display: block; }
 body.car #carRit { display: block; }
 #ritKaart { position: fixed; inset: 0; z-index: 62; background: rgba(0,0,0,.82); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
 #ritKaart[hidden] { display: none; }
+.navRes { display: grid; gap: 6px; }
+.navRes .btn { text-align: left; min-height: 44px; font-weight: 500; }
 #ritKaart .rkBox { width: min(100%, 640px); max-height: 100%; overflow-y: auto; background: #10151a; border: 2px solid #34c759; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 12px; color: #eef2f5; }
 #ritKaart .rkTitel { margin: 0; font: 700 clamp(22px, 4vw, 34px)/1.1 var(--f-display); text-align: center; }
 #ritKaartGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -328,6 +330,13 @@ details.set > * + * { margin-top: 10px; }
       <p class="chip" id="parkStat">Nog geen parkeerplek.</p>
       <button class="btn" id="vcKnop" type="button">🚦 Check files op mijn route</button>
       <p class="chip" id="vcStat">Buddy checkt dit vanzelf rond je gewone vertrektijd en als je wegrijdt.</p>
+      <p class="sub">Navigatie</p>
+      <div class="mobrow"><input type="text" id="navIn" autocomplete="off" placeholder="Waar gaan we heen? Adres, plaats of postcode"><button class="btn" id="navZoekKnop" type="button">Zoek</button></div>
+      <div id="navRes" class="navRes"></div>
+      <p class="chip" id="navStat">Geen route. Typ een bestemming om mee te rijden.</p>
+      <div class="switchrow"><input type="checkbox" id="navSpk"><label for="navSpk">Afslagen hardop zeggen</label></div>
+      <button class="btn" id="navStop" type="button" hidden>Route stoppen</button>
+      <p class="foot">Buddy rekent zelf een route uit en zegt de afslagen, bijvoorbeeld “over 400 meter rechtsaf”. Op zijn gezicht zie je een pijltje met de afstand, en hij kijkt alvast de kant van de afslag op. Rijd je anders, dan rekent hij opnieuw. Zoek je bestemming op vóór je wegrijdt. Adressen: PDOK, routes: OpenStreetMap (OSRM). Volg altijd de borden en je eigen navigatie als die iets anders zeggen.</p>
       <p class="sub">Laatste ritten</p>
       <ol id="ritLijst"></ol>
       <p class="chip" id="weekStat">Deze week nog geen ritten.</p>
@@ -744,6 +753,7 @@ details.set > * + * { margin-top: 10px; }
       return (S.cam.kind === 'traj' ? 'Trajectcontrole over ' : S.cam.mobile ? 'Gemelde controle over ' : 'Flitser over ') + Math.max(0, Math.round(S.cam.dist / 10) * 10) + ' m' + (S.cam.limit != null ? '. Limiet ' + S.cam.limit + '.' : '.');
     }
     if (S.traj) return ovr(trajAvg(), S.traj.limit) ? 'Gemiddeld te hoog. Even rustig aan.' : 'Trajectcontrole: ik bewaak het gemiddelde.';
+    var nb = navBericht(); if (nb) return nb;
     if (S.wxMsgUntil > T) return S.wxMsg;
     return null;
   }
@@ -1146,6 +1156,7 @@ details.set > * + * { margin-top: 10px; }
     /* leaning into bends: head tilts outward, eyes look where you are going */
     var Lc = clamp(S.latG / 0.35, -1, 1);
     if (!S.asleep && Math.abs(Lc) > .08) { frot += Lc * .3 * leanSign; fdx += Lc * 10 * leanSign; fdy += Math.abs(Lc) * 3; if (!g) dir(Lc * .9, .05); }
+    else if (!S.asleep && !g && S.navLook) dir(S.navLook * .85, 0);  /* afslag in zicht: hij kijkt alvast die kant op */
     if (curKey === 'angry' && !S.asleep) fdx += Math.sin(T * 55) * 1.6;
     var wk = wxFlags();
     if (!S.asleep) { if (wk.cold) fdx += Math.sin(T * 40) * 1.3; if (wk.wind) { frot += Math.sin(T * 3.1) * .02; fdx += Math.sin(T * 1.7) * 2; } }
@@ -1615,6 +1626,7 @@ details.set > * + * { margin-top: 10px; }
       ctx.fillText('\u00D8 ' + Math.round(avg) + ' / ' + (S.traj.limit != null ? S.traj.limit : '?'), 120, 210);
     }
     speedDraw();
+    navDraw();
     if (S.flash > 0) {
       ctx.fillStyle = '#FFFFFF'; ctx.globalAlpha = Math.min(1, S.flash) * (reduce || S.live ? 0.3 : 1);
       ctx.fillRect(0, 0, 240, 240); ctx.globalAlpha = 1;
@@ -1837,6 +1849,7 @@ details.set > * + * { margin-top: 10px; }
     if (v !== null && c.accuracy < 60) S.liveSpeed = v < 2 ? 0 : v;
     if (v !== null) { try { launchFix(pos.timestamp, v, c.accuracy); } catch (e) {} }
     camFix(c.latitude, c.longitude, c.accuracy, pos.timestamp / 1000);
+    try { navFix(c.latitude, c.longitude, c.accuracy); } catch (e) { lg('FOUT navigatie ' + e.message); }
     setTag('GPS live \u00B7 \u00B1' + Math.round(c.accuracy) + ' m');
   }
   function onPosErr(e) {
@@ -2948,6 +2961,187 @@ details.set > * + * { margin-top: 10px; }
   window.__road = function () { return S.roadLim; };
 
 
+  /* ---------- Navigatie: Buddy rijdt mee met een eigen route en zegt de afslagen ---------- */
+  /* Adres zoeken: PDOK Locatieserver (Nederland). Route: OSRM. Beide eerst via je Worker, anders rechtstreeks. */
+  var NAVKEY = 'dashboardmaatje-nav-v1', NAVSPKKEY = 'dashboardmaatje-navspk-v1';
+  var nav = null, navZoekRes = [], navBusy = false, navOff = 0, navLastRoute = -999, navSpk = true;
+  try { navSpk = localStorage.getItem(NAVSPKKEY) !== '0'; } catch (e) {}
+  function navGet(pad, direct) {
+    var viaWorker = pbase() ? fetch(pbase() + pad).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }) : Promise.reject(new Error('geen Worker'));
+    return viaWorker.catch(function () { return fetch(direct).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }); });
+  }
+  function navStat(t) { var el = $('navStat'); if (el) el.textContent = t; }
+  function navZoek(q) {
+    q = String(q || '').trim(); if (q.length < 3) { toast('Typ een adres, plaats of postcode.'); return; }
+    navStat('Zoeken…');
+    var qs = 'q=' + encodeURIComponent(q) + '&rows=5&fl=weergavenaam,centroide_ll,type';
+    navGet('/zoek?' + qs, 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?' + qs).then(function (j) {
+      var docs = (j && j.response && j.response.docs) || [];
+      navZoekRes = docs.map(function (d) {
+        var m = String(d.centroide_ll || '').match(/POINT\(([\d.]+) ([\d.]+)\)/);
+        return m ? { naam: d.weergavenaam, lat: +m[2], lon: +m[1] } : null;
+      }).filter(Boolean);
+      navLijst();
+      navStat(navZoekRes.length ? 'Kies je bestemming:' : 'Niets gevonden. Probeer het anders te schrijven.');
+    }).catch(function (e) { navStat('Zoeken mislukt (' + (e.message || e) + '). Heb je internet?'); });
+  }
+  function navLijst() {
+    var el = $('navRes'); while (el.firstChild) el.removeChild(el.firstChild);
+    navZoekRes.forEach(function (r) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = r.naam;
+      b.addEventListener('click', function () { navStart(r); });
+      el.appendChild(b);
+    });
+  }
+  /* OSRM-stappen omzetten naar Nederlandse aanwijzingen */
+  var NAVRICHT = { left: 'linksaf', right: 'rechtsaf', 'slight left': 'flauw links', 'slight right': 'flauw rechts', 'sharp left': 'scherp links', 'sharp right': 'scherp rechts', straight: 'rechtdoor', uturn: 'omkeren' };
+  function navTekst(st) {
+    var r = NAVRICHT[st.mod] || '', naar = st.ref || st.naam, mee = naar ? ' naar ' + naar : '';
+    switch (st.type) {
+      case 'arrive': return 'je bestemming';
+      case 'roundabout': case 'rotary': return 'neem op de rotonde de ' + (st.exit || 1) + 'e afslag' + mee;
+      case 'off ramp': return 'neem de afrit' + (st.mod && /left/.test(st.mod) ? ' links' : '') + mee;
+      case 'on ramp': return 'neem de oprit' + mee;
+      case 'fork': return 'houd ' + (/left/.test(st.mod || '') ? 'links' : 'rechts') + ' aan' + mee;
+      case 'merge': return 'voeg in' + mee;
+      case 'end of road': return 'aan het eind van de weg ' + (r || 'afslaan') + mee;
+      default: return (r || 'rechtdoor') + mee;
+    }
+  }
+  /* Rechtdoor of alleen een andere straatnaam: daar zeggen we niets over */
+  function navStil(st) { return (st.type === 'new name' || st.type === 'continue' || st.type === 'turn' || st.type === 'notification') && (!st.mod || st.mod === 'straight'); }
+  function navKijk(st) { var m = st.mod || ''; if (st.type === 'roundabout' || st.type === 'rotary') return 1; return /left/.test(m) ? -1 : /right/.test(m) ? 1 : 0; }
+  function navPijl(st) {
+    if (st.type === 'arrive') return '⚑';
+    if (st.type === 'roundabout' || st.type === 'rotary') return '↻';
+    var m = st.mod || '';
+    if (m === 'uturn') return '↶';
+    if (/slight left/.test(m)) return '↖'; if (/slight right/.test(m)) return '↗';
+    if (/left/.test(m)) return '←'; if (/right/.test(m)) return '→';
+    return '↑';
+  }
+  function navAfst(d) {
+    if (d >= 950) { var km = Math.round(d / 500) / 2; return (km === 1 ? '1 kilometer' : String(km).replace('.', ',') + ' kilometer'); }
+    if (d >= 200) return Math.round(d / 100) * 100 + ' meter';
+    return Math.max(50, Math.round(d / 50) * 50) + ' meter';
+  }
+  function navAfstKort(d) { return d >= 950 ? (Math.round(d / 100) / 10).toFixed(1).replace('.', ',') + ' km' : Math.round(d / 10) * 10 + ' m'; }
+  function navZeg(t) {
+    if (!navSpk || !('speechSynthesis' in window)) return;
+    try { var u = new SpeechSynthesisUtterance(t); u.lang = 'nl-NL'; u.rate = 1.0; u.volume = 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+  }
+  function navRoute(van, naar, opnieuw) {
+    if (navBusy) return; navBusy = true; navLastRoute = T;
+    var pad = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5);
+    var qs = '?overview=full&geometries=geojson&steps=true';
+    if (!opnieuw) navStat('Route berekenen…');
+    navGet('/route/' + pad + qs, 'https://router.project-osrm.org/route/v1/driving/' + pad + qs).then(function (j) {
+      var rt = j && j.routes && j.routes[0]; if (!rt) throw new Error('geen route gevonden');
+      var steps = [];
+      (rt.legs || []).forEach(function (lg0) { (lg0.steps || []).forEach(function (s) {
+        var m = s.maneuver || {}; if (!m.location) return;
+        steps.push({ lat: m.location[1], lon: m.location[0], type: m.type, mod: m.modifier, exit: m.exit, naam: s.name || '', ref: (s.ref || '').split(';')[0] });
+      }); });
+      var geom = (rt.geometry && rt.geometry.coordinates || []).map(function (c) { return { lat: c[1], lon: c[0] }; });
+      nav = { dest: naar, steps: steps, geom: geom, idx: 1, min: 1e9, said: {}, dist: rt.distance, dur: rt.duration, t: Date.now(), van: 0 };
+      try { localStorage.setItem(NAVKEY, JSON.stringify({ dest: naar, t: Date.now() })); } catch (e) {}
+      lg('route: ' + Math.round(rt.distance / 100) / 10 + ' km, ' + steps.length + ' stappen' + (opnieuw ? ' (opnieuw berekend)' : ''));
+      $('navStop').hidden = false;
+      if (opnieuw) { navZeg('Route opnieuw berekend.'); toast('Route opnieuw berekend.'); }
+      else {
+        var mins = Math.round(rt.duration / 60);
+        navZeg('Route naar ' + naar.naam.split(',')[0] + '. ' + Math.round(rt.distance / 1000) + ' kilometer, ongeveer ' + mins + ' minuten.');
+        setEv('happy', 3, 'Op naar ' + naar.naam.split(',')[0] + '!');
+        if (!S.live) toast('Route klaar. Zet de telefoon-GPS aan, dan rijd ik mee.');
+      }
+      navToon();
+    }).catch(function (e) { navStat('Route berekenen mislukt (' + (e.message || e) + ').'); lg('FOUT route ' + (e.message || e)); })
+      .then(function () { navBusy = false; });
+  }
+  function navStart(r) {
+    $('navRes').textContent = ''; navZoekRes = [];
+    if (!lastPos) { toast('Ik weet nog niet waar je bent. Zet eerst de telefoon-GPS aan.'); navStat('Zet eerst de telefoon-GPS aan, en kies dan opnieuw.'); return; }
+    navRoute({ lat: lastPos.lat, lon: lastPos.lon }, r, false);
+  }
+  function navStop(stil) {
+    nav = null; S.navLook = 0; $('navStop').hidden = true;
+    try { localStorage.removeItem(NAVKEY); } catch (e) {}
+    navStat('Geen route. Typ een bestemming om mee te rijden.');
+    if (!stil) toast('Route gestopt.');
+  }
+  /* Afstand van je positie tot de route (in meters, alleen de buurt van waar je bent) */
+  function navAfwijking(lat, lon) {
+    var g = nav.geom, best = 1e9, i, s0 = Math.max(1, nav.van - 30), s1 = Math.min(g.length, nav.van + 200);
+    for (i = s0; i < s1; i++) { var si = segInfo(lat, lon, g[i - 1], g[i]); if (si.d < best) { best = si.d; nav.vanNieuw = i; } }
+    if (best > 200) for (i = 1; i < g.length; i++) { var sj = segInfo(lat, lon, g[i - 1], g[i]); if (sj.d < best) { best = sj.d; nav.vanNieuw = i; } }
+    if (nav.vanNieuw != null) nav.van = nav.vanNieuw;
+    return best;
+  }
+  function navFix(lat, lon, acc) {
+    if (!nav || !S.live) return;
+    var st = nav.steps[nav.idx];
+    if (!st) return;
+    var d = gdist(lat, lon, st.lat, st.lon);
+    /* Afslag gehaald? Dichtbij geweest en nu weer verder weg, of er echt op */
+    if (d < nav.min) nav.min = d;
+    if (d < 20 || (nav.min < 60 && d > nav.min + 35)) {
+      if (st.type === 'arrive') { navZeg('Je bent er!'); setEv('excited', 4, 'We zijn er! 🏁'); beep('race'); lg('route: aangekomen'); navStop(true); return; }
+      nav.idx++; nav.min = 1e9; nav.said = {}; st = nav.steps[nav.idx]; if (!st) return;
+      d = gdist(lat, lon, st.lat, st.lon);
+    }
+    /* Van de route af? Na een paar metingen opnieuw rekenen (hooguit eens per 20 s) */
+    if (acc < 35) {
+      var af = navAfwijking(lat, lon);
+      if (af > 70) nav.off = (nav.off || 0) + 1; else nav.off = 0;
+      if (nav.off >= 4 && T - navLastRoute > 20) { nav.off = 0; lg('route: van de route af (' + Math.round(af) + ' m)'); navRoute({ lat: lat, lon: lon }, nav.dest, true); return; }
+    }
+    nav.d = d;
+    S.navLook = d < 250 && !navStil(st) ? navKijk(st) : 0;
+    if (navStil(st) && st.type !== 'arrive') { navToon(); return; }
+    var v = S.liveSpeed || 0, ver = v >= 80 ? 1500 : 500, dichtbij = Math.max(60, v / 3.6 * 7);
+    var wat = navTekst(st), Wat = wat.charAt(0).toUpperCase() + wat.slice(1);
+    if (st.type === 'arrive') {
+      if (!nav.said.n && d <= 300) { nav.said.n = 1; navZeg('Over ' + navAfst(d) + ' ben je er.'); }
+    } else if (!nav.said.v && d <= ver && d > dichtbij + 150) { nav.said.v = 1; navZeg('Over ' + navAfst(d) + ' ' + wat + '.'); }
+    else if (!nav.said.n && d <= dichtbij) {
+      nav.said.n = 1; nav.said.v = 1;
+      var volg = nav.steps[nav.idx + 1], en = '';
+      if (volg && !navStil(volg) && volg.type !== 'arrive' && gdist(st.lat, st.lon, volg.lat, volg.lon) < 150) en = ', en daarna ' + navTekst(volg);
+      navZeg(Wat + en + '.');
+      setEv('alert', 2.5, Wat + '!');
+    }
+    navToon();
+  }
+  function navToon() {
+    if (!nav) return;
+    var st = nav.steps[nav.idx]; if (!st) return;
+    var d = nav.d != null ? nav.d : null, txt = navPijl(st) + ' ' + (d != null ? navAfstKort(d) + ': ' : '') + navTekst(st);
+    navStat('Naar ' + nav.dest.naam.split(',')[0] + '. ' + txt + '.');
+  }
+  /* Voor op het gezicht en de tekst eronder */
+  function navBericht() {
+    if (!nav || !S.live || nav.d == null) return null;
+    var st = nav.steps[nav.idx]; if (!st || navStil(st) || nav.d > 1500) return null;
+    var w = navTekst(st); return navPijl(st) + ' ' + navAfstKort(nav.d) + ': ' + w;
+  }
+  function navDraw() {
+    if (!nav || !S.live || nav.d == null || (S.cam && S.cam.dist <= 600) || S.traj || S.asleep) return;
+    var st = nav.steps[nav.idx]; if (!st || navStil(st) || nav.d > 1500) return;
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = EYE;
+    ctx.font = '700 26px sans-serif'; ctx.fillText(navPijl(st), 120, 34);
+    ctx.font = '700 14px "Chakra Petch", sans-serif'; ctx.fillText(navAfstKort(nav.d), 120, 56);
+    ctx.restore();
+  }
+  $('navZoekKnop').addEventListener('click', function () { navZoek($('navIn').value); });
+  $('navIn').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); navZoek($('navIn').value); } });
+  $('navStop').addEventListener('click', function () { navStop(false); });
+  $('navSpk').checked = navSpk;
+  $('navSpk').addEventListener('change', function () { navSpk = $('navSpk').checked; try { localStorage.setItem(NAVSPKKEY, navSpk ? '1' : '0'); } catch (e) {} if (navSpk) navZeg('Ik zeg de afslagen hardop.'); });
+  /* Na herstarten binnen een uur: de laatste bestemming weer oppakken zodra de GPS er is */
+  var navHerstel = null;
+  try { var nv = JSON.parse(localStorage.getItem(NAVKEY) || 'null'); if (nv && nv.dest && Date.now() - nv.t < 3600e3) navHerstel = nv.dest; } catch (e) {}
+  setInterval(function () { if (navHerstel && S.live && lastPos && !nav && !navBusy) { var d0 = navHerstel; navHerstel = null; navRoute({ lat: lastPos.lat, lon: lastPos.lon }, d0, false); } }, 3000);
+
   /* ---------- Testlog (zonder locatie) ---------- */
   var LOGKEY = 'dashboardmaatje-log-v1', logs = [], logT = 0, logSave = 0;
   try { logs = JSON.parse(localStorage.getItem(LOGKEY)) || []; } catch (e) { logs = []; }
@@ -2956,7 +3150,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v44';
+  var VERSION = 'v45';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
