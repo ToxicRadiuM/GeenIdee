@@ -318,6 +318,7 @@ details.set > * + * { margin-top: 10px; }
     <p class="chip" id="limBron" hidden></p>
     <div class="btns">
       <button class="btn" id="bLive" type="button" aria-pressed="false" style="grid-column:1/-1">Telefoon-GPS: uit</button>
+      <div class="switchrow" style="grid-column:1/-1"><input type="checkbox" id="autoGps" checked><label for="autoGps">GPS vanzelf aan als ik Buddy open</label></div>
       <button class="btn primary" id="bCar" type="button" style="grid-column:1/-1">Autostand: alleen gezicht, groot</button>
       <button class="btn" id="bSound" type="button" aria-pressed="false" style="grid-column:1/-1">Geluid: uit</button>
     </div>
@@ -3150,7 +3151,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v45';
+  var VERSION = 'v46';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -3195,7 +3196,8 @@ details.set > * + * { margin-top: 10px; }
     if (typeof lv !== 'undefined' && T - lv.lastTouch < 1.5) return;
     if (dev > thr) bump(dev); else noiseEst += (dev - noiseEst) * .004;
   });
-  $('bLive').addEventListener('click', function () { if (S.live) stopLive(); else startLive(); });
+  var gpsUitGezet = false;
+  $('bLive').addEventListener('click', function () { if (S.live) { gpsUitGezet = true; stopLive(); } else { gpsUitGezet = false; startLive(); } });
   function liveTick() {
     if (!S.live) return;
     if (T - S.liveT > 3) S.turn = 0;
@@ -4041,6 +4043,25 @@ details.set > * + * { margin-top: 10px; }
   $('buurIn').checked = buurAan;
   $('buurIn').addEventListener('change', function () { buurAan = $('buurIn').checked; try { localStorage.setItem(BUURKEY, buurAan ? '1' : '0'); } catch (e) {} if (!buurAan) buurUit(); toast(buurAan ? 'Aan: Buddy zwaait als een collega vlakbij is.' : 'Uit.'); });
   parkToon(); ritToon(); badgeToon(); outfitKeuze(); routeOverzicht();
+  /* GPS vanzelf aan bij openen (instelbaar). Is de toestemming al gegeven, dan start hij zonder vragen. */
+  var AUTOGPSKEY = 'dashboardmaatje-autogps-v1', autoGps = true;
+  try { autoGps = localStorage.getItem(AUTOGPSKEY) !== '0'; } catch (e) {}
+  $('autoGps').checked = autoGps;
+  $('autoGps').addEventListener('change', function () { autoGps = $('autoGps').checked; try { localStorage.setItem(AUTOGPSKEY, autoGps ? '1' : '0'); } catch (e) {} toast(autoGps ? 'De GPS gaat voortaan vanzelf aan als je Buddy opent.' : 'De GPS gaat niet meer vanzelf aan.'); });
+  function autoGpsStart() {
+    if (!autoGps || S.live || !navigator.geolocation || window.isSecureContext === false) return;
+    var go = function () { if (!S.live) { lg('GPS automatisch aan'); startLive(); } };
+    try {
+      if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({ name: 'geolocation' }).then(function (p) { if (p.state !== 'denied') go(); else gpsHelp('Locatie staat geweigerd voor deze site, dus de GPS kan niet vanzelf aan. Zet in Chrome bij Site-instellingen, Locatie, deze site op Toestaan.'); }, go);
+      else go();
+    } catch (e) { go(); }
+  }
+  setTimeout(autoGpsStart, 900);
+  /* Kom je terug in Buddy en staat de GPS onverwacht uit (bijvoorbeeld na een foutje)? Dan weer aan. Het scherm-aan-slot opnieuw vragen. */
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible') return;
+    if (S.live) lockScreen(); else if (autoGps && !gpsUitGezet) autoGpsStart();
+  });
   setInterval(function () {
     try {
       badgeCheck(false); outfitCheck(); buurCheck(); weekoverzicht();
