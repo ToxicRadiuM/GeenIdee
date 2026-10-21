@@ -676,11 +676,13 @@ details.set > * + * { margin-top: 10px; }
     clearTimeout(noteTimer);
     noteTimer = setTimeout(function () { $('note').textContent = ''; }, 4500);
   }
-  function setEv(k, dur, msg) {
-    if (S.live && msg) lg('ev ' + k + ': ' + msg); if (msg) babble(k, msg); S.ev = k; S.evUntil = T + dur; S.evMsg = msg || null;
+  function setEv(k, dur, msg, force) {
     /* startvlag: niet onderbreken tijdens het aftellen (als je zelf op start drukte) en 2 seconden na GO */
     var g = S.gag, beschermd = g && typeof GAGS !== 'undefined' && GAGS[g.k] && GAGS[g.k].go && T - g.t0 < 5 && (g.zelf || T - g.t0 >= 3); /* zelf gestart: heel het aftellen */
-    if (!beschermd) S.gag = null;
+    /* Tijdens de vlag-show of de startvlag komt er niets tussendoor (geen traantjes, klok of boos gezicht er doorheen) */
+    if (!force && (beschermd || T < (S.evLock || 0))) { if (S.live && msg) lg('ev ' + k + ' overgeslagen (show bezig): ' + msg); return; }
+    if (S.live && msg) lg('ev ' + k + ': ' + msg); if (msg) babble(k, msg); S.ev = k; S.evUntil = T + dur; S.evMsg = msg || null; S.evT = T;
+    S.gag = null;
   }
   function ix() { return S.live ? 4 : 1; }
   function maxHours() { return Math.max.apply(null, mem.hours); }
@@ -1031,7 +1033,7 @@ details.set > * + * { margin-top: 10px; }
       } else lg('0-100 niet voor het leaderboard: limiet hier ' + (S.roadLim == null ? 'onbekend' : S.roadLim + (S.guessed ? ' (geraden)' : '')));
     }
     S.flagUntil = T + 9; S.starUntil = T + 7; S.flagMsg = fmt1(tt) + ' s'; S.flagRec = rec;
-    setEv('excited', 8, m); S.lastExc = T; S.love = Math.min(100, S.love + 10);
+    setEv('excited', 9, m, true); S.evLock = T + 9; S.lastExc = T; S.love = Math.min(100, S.love + 10);
     save(); beep('race');
   }
 
@@ -1189,7 +1191,11 @@ details.set > * + * { margin-top: 10px; }
   }
   function gagDraw() {
     var g = S.gag; if (!g) return;
+    /* Animaties komen zacht in beeld en gaan zacht weg */
+    var ga = reduce ? 1 : clamp(Math.min((T - g.t0) / .35, (g.end - T) / .35), 0, 1);
+    ctx.save(); ctx.globalAlpha = ga;
     GAGS[g.k].draw && GAGS[g.k].draw(g, T - g.t0);
+    ctx.restore();
     if (fxTongue) {
       ctx.fillStyle = BLUSH; ctx.beginPath(); ctx.ellipse(120, 182, 8, 11, 0, 0, Math.PI); ctx.fill();
       ctx.strokeStyle = SCREEN; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(120, 178); ctx.lineTo(120, 188); ctx.stroke();
@@ -1214,8 +1220,8 @@ details.set > * + * { margin-top: 10px; }
     }
     ctx.fillStyle = EYE; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = '700 15px "Chakra Petch", sans-serif';
-    ctx.fillText('0→100  ' + S.flagMsg, 120, 214);
-    if (S.flagRec) { ctx.fillStyle = HEART; ctx.font = '700 12px "Chakra Petch", sans-serif'; ctx.fillText('NIEUW RECORD', 120, 200); }
+    ctx.fillText('0→100  ' + S.flagMsg, 120, 203);
+    if (S.flagRec) { ctx.fillStyle = HEART; ctx.font = '700 12px "Chakra Petch", sans-serif'; ctx.fillText('NIEUW RECORD', 120, 189); }
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
@@ -1400,7 +1406,7 @@ details.set > * + * { margin-top: 10px; }
   var cv = $('face'), ctx = cv.getContext('2d'), SC = cv.width / 240;
   var gx = 0, gy = 0, tgx = 0, tgy = 0, nextGaze = 0, nextBlink = 2, blinkStart = -1, blink = 1;
   var parts = [], pTimer = 0;
-  var curKey = 'neutral', lastKey = '';
+  var curKey = 'neutral', lastKey = '', lastBeeld = 'gezicht', beeldT = -9;
 
   function newGaze(key) {
     if (key === 'startled' || key === 'focused' || key === 'excited' || key === 'love' || key === 'happy' || key === 'alert') { tgx = 0; tgy = -0.05; nextGaze = T + 0.6; }
@@ -1495,6 +1501,11 @@ details.set > * + * { margin-top: 10px; }
     var ox = gx * 9, oy = gy * 7;
     var isClock = curKey === 'clock' && !S.asleep;
     var geenGezicht = !!(S.gag && GAGS[S.gag.k] && GAGS[S.gag.k].noFace); /* bv. de startvlag-show: alleen de animatie */
+    /* Zachte overgang als het hele beeld wisselt (gezicht <-> klok <-> show), in plaats van in één keer omklappen */
+    var beeld = isClock ? 'klok' : geenGezicht ? 'show' : 'gezicht';
+    if (beeld !== lastBeeld) { lastBeeld = beeld; beeldT = T; }
+    var beeldA = reduce ? 1 : Math.min(1, (T - beeldT) / .3);
+    ctx.globalAlpha = beeldA;
     faceBegin();
     if (isClock) clockDraw(); else if (!geenGezicht) {
     if (fxSpiral) { spiral(73 + ox, 106 + oy, -1); spiral(167 + ox, 106 + oy, 1); }
@@ -1510,6 +1521,7 @@ details.set > * + * { margin-top: 10px; }
     outfitDraw(ox, oy);
     }
     faceEnd();
+    ctx.globalAlpha = 1;
     gagDraw();
     feestFx(dt);
 
@@ -1577,6 +1589,8 @@ details.set > * + * { margin-top: 10px; }
     if (!mode || S.asleep || S.flagUntil > T || curKey === 'clock' || (S.gag && GAGS[S.gag.k] && (GAGS[S.gag.k].noFace || (GAGS[S.gag.k].laag && S.speed < 3)))) return;
     var v = Math.round(S.speed), camOn = S.cam && S.cam.dist <= 600, lim = camOn && S.cam.limit != null ? S.cam.limit : S.roadLim;
     var est = !(camOn && S.cam.limit != null) && !!S.roadEst, bad = lim != null && !est && v > lim, col = bad ? HEART : EYE;
+    /* Weg- of stuuranimatie onderin? Dan stapt de snelheid even opzij (behalve als je te hard rijdt) */
+    if (!bad && !camOn && S.gag && GAGS[S.gag.k] && GAGS[S.gag.k].onder) return;
     ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     if (mode & 2) {
       var a0 = Math.PI * .75, sweep = Math.PI * 1.5, f = clamp(S.speed / 140, 0, 1);
@@ -3157,7 +3171,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v48';
+  var VERSION = 'v49';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -4598,16 +4612,19 @@ details.set > * + * { margin-top: 10px; }
     ctx.beginPath(); ctx.ellipse(x, y, 5 * sc, 3.6 * sc, -.4, 0, TAU); ctx.fill();
     ctx.lineWidth = 1.8 * sc; ctx.strokeStyle = EYE; ctx.beginPath(); ctx.moveTo(x + 4.4 * sc, y - 1 * sc); ctx.lineTo(x + 4.4 * sc, y - 15 * sc); ctx.lineTo(x + 10 * sc, y - 11 * sc); ctx.stroke();
   }
-  GAGS.cruise = { name: 'Cruisen', dur: 7, drive: 1, minV: 30, mood: 'content', msg: 'Lekker cruisen…',
+  GAGS.cruise = { name: 'Cruisen', dur: 7, drive: 1, minV: 30, onder: 1, mood: 'content', msg: 'Lekker cruisen…',
     upd: function (g, tt) { dir(0, .1); fdy = Math.sin(tt * 2) * 1.5; frot = Math.sin(tt * 1.2) * .012; if (tt > 5.2) g.msg = 'Alles gaat vanzelf.'; },
     draw: function (g, tt) {
       /* weg met stippellijn die naar je toe komt */
       ctx.save(); ctx.strokeStyle = EYE; ctx.globalAlpha = .7; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(40, 232); ctx.lineTo(95, 204); ctx.moveTo(200, 232); ctx.lineTo(145, 204); ctx.lineWidth = 2; ctx.stroke();
+      /* weg loopt van de horizon (y 182) naar je toe, helemaal binnen het ronde scherm */
+      ctx.beginPath(); ctx.moveTo(52, 220); ctx.lineTo(104, 182); ctx.moveTo(188, 220); ctx.lineTo(136, 182); ctx.lineWidth = 3; ctx.stroke();
       for (var i = 0; i < 4; i++) {
-        var k = ((tt * 1.1 + i / 4) % 1), y = 204 + k * 28, w = 1 + k * 3;
-        ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(120, y); ctx.lineTo(120, y + 3 + k * 6); ctx.stroke();
+        var k = ((tt * 1.1 + i / 4) % 1), y = 184 + k * k * 32, w = 1.5 + k * 3.5;
+        ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(120, y); ctx.lineTo(120, y + 2 + k * 7); ctx.stroke();
       }
+      /* kleine paaltjes langs de kant */
+      for (var j = 0; j < 3; j++) { var q = ((tt * 1.1 + j / 3) % 1), py = 184 + q * q * 34, px = 18 + q * 44; ctx.lineWidth = 1.5 + q * 2; ctx.beginPath(); ctx.moveTo(120 - px - 24, py); ctx.lineTo(120 - px - 24, py - 3 - q * 7); ctx.moveTo(120 + px + 24, py); ctx.lineTo(120 + px + 24, py - 3 - q * 7); ctx.stroke(); }
       ctx.restore();
     } };
   GAGS.radio = { name: 'Zingt mee met de radio', dur: 7, drive: 1, idle: 1, mood: 'happy', msg: 'Dit is mijn liedje!',
@@ -4630,13 +4647,15 @@ details.set > * + * { margin-top: 10px; }
       }
       ctx.restore();
     } };
-  GAGS.wheel = { name: 'Houdt het stuur vast', dur: 6, drive: 1, mood: 'focused', msg: 'Twee handen aan het stuur.',
+  GAGS.wheel = { name: 'Houdt het stuur vast', dur: 6, drive: 1, onder: 1, mood: 'focused', msg: 'Twee handen aan het stuur.',
     upd: function (g, tt) { dir(0, -.2); g.rot = Math.sin(tt * 1.7) * .5; if (tt > 4.4) g.msg = 'Veiligheid voorop!'; },
     draw: function (g) {
-      ctx.save(); ctx.translate(120, 250); ctx.rotate(g.rot || 0); ctx.strokeStyle = EYE; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.globalAlpha = .85;
-      ctx.beginPath(); ctx.arc(0, 0, 30, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
-      ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-18, -22); ctx.lineTo(0, -4); ctx.lineTo(18, -22); ctx.stroke();
-      ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(-31, -14, 6, 0, TAU); ctx.arc(31, -14, 6, 0, TAU); ctx.fill();
+      /* heel stuur, net onder de mond, zodat je het ook echt ziet */
+      ctx.save(); ctx.translate(120, 197); ctx.scale(.8, .8); ctx.rotate(g.rot || 0); ctx.strokeStyle = EYE; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.globalAlpha *= .9;
+      ctx.beginPath(); ctx.arc(0, 0, 30, 0, TAU); ctx.stroke();
+      ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(0, 0, 6, 0, TAU); ctx.fill();
+      ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-28, 4); ctx.lineTo(0, 0); ctx.lineTo(28, 4); ctx.moveTo(0, 0); ctx.lineTo(0, 28); ctx.stroke();
+      ctx.fillStyle = BLUSH; ctx.beginPath(); ctx.arc(-29, -10, 6, 0, TAU); ctx.arc(29, -10, 6, 0, TAU); ctx.fill();  /* zijn handjes */
       ctx.restore();
     } };
   GAGS.works = { name: 'Werk aan de weg', dur: 6, idle: 1, drive: 1, need: function () { return false; }, mood: 'alert', msg: 'Werk aan de weg!',
