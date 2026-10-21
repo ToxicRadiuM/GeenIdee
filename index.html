@@ -587,6 +587,7 @@ details.set > * + * { margin-top: 10px; }
     <p class="sub">Samen met collega’s</p>
     <div class="limitrow"><label>Mijn verjaardag</label><select id="bdDag"></select><select id="bdMaand"></select></div>
     <p class="foot">Je collega’s zien dan op je verjaardag een taartje bij je naam en kunnen je met één tik feliciteren. Alleen dag en maand, geen jaartal.</p>
+    <p class="chip" id="grBerStat">Groepsberichten: nog niet opgehaald.</p>
     <div class="switchrow"><input type="checkbox" id="grSignaalOn" checked><label for="grSignaalOn">Geluidje en trillen bij een groepsbericht (ook als het geluid van Buddy uit staat)</label></div>
     <div class="switchrow"><input type="checkbox" id="grGezienOn" checked><label for="grGezienOn">Laat collega’s zien dat ik hun bericht heb gezien (✓)</label></div>
     <p class="foot">Standaard zit iedereen in groep 123456, dus collega’s hoeven niets in te vullen. Wil je een eigen groep, vul dan op alle telefoons dezelfde andere code in (6 tot 32 letters of cijfers, houd hem geheim). Flitsers die iemand toevoegt komen dan bij iedereen, en jullie kunnen elkaar in de autostand met de knop “Groep” een zwaai, koffievraag, file, “ik sta stil”, hartjes of “bijna thuis” sturen. Er worden alleen plek en limiet gedeeld, en je plaatsnaam bij “ik sta stil” (geen precieze plek). Je hebt het Worker-adres hierboven nodig, met opslag gekoppeld.</p>
@@ -3641,7 +3642,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v58';
+  var VERSION = 'v59';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -4148,10 +4149,17 @@ details.set > * + * { margin-top: 10px; }
   function grHaal() {
     if (!grp || !pbase() || grBusy) return;
     grBusy = true; grT = T;
-    fetch(gUrl('/pings', '&sinds=' + grSinds)).then(function (r) { return r.json(); }).then(function (j) {
+    /* Altijd een ruime marge terug vragen (5 min) en zelf bijhouden wat al gezien is.
+       Vroeger vroeg Buddy "alles na de servertijd van de vorige keer": maar de opslag van de Worker loopt soms tot een minuut achter,
+       en dan viel een bericht dat net te laat binnenkwam er voorgoed tussenuit. Daardoor kwamen berichten soms nooit aan. */
+    var sinds = grMaxT ? Math.max(0, grMaxT - 5 * 60e3) : 0;
+    fetch(gUrl('/pings', '&sinds=' + sinds)).then(function (r) { return r.json(); }).then(function (j) {
       if (!j || !Array.isArray(j.pings)) throw new Error((j && j.error) || 'onverwacht antwoord');
+      var nieuw = 0;
       j.pings.forEach(function (b) {
-        if (!b || !b.s) return;
+        if (!b || !b.s || !b.id) return;
+        if (b.t > grMaxT) grMaxT = b.t;
+        if (grGezienIds[b.id]) return; grGezienIds[b.id] = Date.now(); nieuw++;
         if (b.s === 'file' && isFinite(b.lat) && isFinite(b.lon) && !grFiles.some(function (f) { return f.id === 'g:' + b.id; })) {
           grFiles.push({ id: 'g:' + b.id, k: 'jam', lim: null, ql: null, cs: '', br: null, pts: [[+b.lat, +b.lon]], src: 'groep', t: b.t, tx: 'File gemeld door ' + (b.n || 'een collega'), van: b.van });
         }
@@ -4160,8 +4168,17 @@ details.set > * + * { margin-top: 10px; }
         grRij.push(b);
       });
       grFiles = grFiles.filter(function (f) { return Date.now() - f.t < 60 * 60e3; });
+      for (var gid in grGezienIds) if (Date.now() - grGezienIds[gid] > 3 * 3600e3) delete grGezienIds[gid];
       if (isFinite(j.nu)) grSinds = j.nu; grEerste = false;
-    }).catch(function (e) { lg('FOUT groepsberichten: ' + ((e && e.message) || e)); }).then(function () { grBusy = false; });
+      grOk = Date.now(); grBerStat(j.pings.length, nieuw);
+    }).catch(function (e) { lg('FOUT groepsberichten: ' + ((e && e.message) || e)); grBerStat(-1, 0, (e && e.message) || String(e)); }).then(function () { grBusy = false; });
+  }
+  var grMaxT = 0, grGezienIds = {}, grOk = 0;
+  function grBerStat(n, nieuw, fout) {
+    var e = $('grBerStat'); if (!e) return;
+    if (!grp) { e.textContent = 'Geen groepscode ingevuld.'; return; }
+    if (n < 0) { e.textContent = 'Berichten ophalen mislukt: ' + fout + '. Ik probeer het steeds opnieuw.'; return; }
+    e.textContent = 'Groep “' + grp + '”: verbonden, laatst gekeken om ' + tijdStr(Date.now()) + ':' + ('0' + new Date().getSeconds()).slice(-2) + ' (' + n + ' bericht' + (n === 1 ? '' : 'en') + ' van de laatste uren).';
   }
   function wie(b, metAuto) { var n = b.n || 'Een collega'; return metAuto && b.a ? n + ' in de ' + b.a : n; }
   /* Eén bericht tegelijk laten zien, met een paar seconden ertussen */
@@ -4833,7 +4850,7 @@ details.set > * + * { margin-top: 10px; }
   $('grpSave').addEventListener('click', function () {
     var v = $('grpCode').value.trim().toLowerCase();
     if (v && !/^[a-z0-9]{6,32}$/.test(v)) { toast('Gebruik 6 tot 32 letters of cijfers, zonder spaties.'); return; }
-    grp = v; try { localStorage.setItem(GKEY, grp); } catch (e) {} gcams = []; applyCamData(); gPull();
+    grp = v; try { localStorage.setItem(GKEY, grp); } catch (e) {} grMaxT = 0; grGezienIds = {}; grEerste = true; gcams = []; applyCamData(); gPull();
   });
   var grpWegT = 0;
   $('grpWeg').addEventListener('click', function () {
