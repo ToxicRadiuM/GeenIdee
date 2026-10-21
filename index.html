@@ -153,6 +153,9 @@ body.car #carGroep { display: block; }
 #grPaneel .grGrid button { min-height: min(30vh, 150px); border-radius: 22px; border: 3px solid #5ac8fa; background: #0a1f2b; color: #e6f6ff; font: 700 clamp(16px, 2.6vw, 26px)/1.2 var(--f-body); }
 #grPaneel .grGrid button span { display: block; font-size: 1.9em; margin-bottom: 4px; }
 #grPaneel .grGrid button:active { background: #5ac8fa; color: #000; }
+#grPaneel .grGrid button.koel { opacity: .45; }
+#grPaneel .grGrid button .cd { display: block; font: 600 12px var(--f-body); margin-top: 4px; opacity: .9; }
+#grPaneel .grGrid button .cd:empty { display: none; }
 #grPaneel .grGrid button[data-soort="pech"] { border-color: #ffb02e; }
 #grPaneel .grGrid button[data-soort="hart"] { border-color: #ff6b8a; }
 #grSluit { min-height: 52px; padding: 0 28px; border-radius: 26px; border: 1px solid #666; background: #1b1b1b; color: #eee; font: 600 16px var(--f-display); }
@@ -3245,7 +3248,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v54';
+  var VERSION = 'v55';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -3712,7 +3715,8 @@ details.set > * + * { margin-top: 10px; }
   function grKnop(soort) {
     grPaneel(false);
     if (!grKan()) return;
-    if (grVerstuurd['_' + soort] && Date.now() - grVerstuurd['_' + soort] < 60e3) { toast('Net al verstuurd. Even wachten.'); grLog.push('geweigerd: ' + soort); return; }
+    var wachtNog = grWacht(soort);
+    if (wachtNog > 0) { toast('Dit bericht kan weer over ' + grTijd(wachtNog) + '.'); grLog.push('geweigerd: ' + soort); return; }
     var extra = '';
     if (soort === 'file') {
       if (!S.live || !lastPos) { toast('Zet eerst de telefoon-GPS aan.'); return; }
@@ -3729,12 +3733,23 @@ details.set > * + * { margin-top: 10px; }
     var bev = { zwaai: 'Ik zwaai naar de groep!', koffie: 'Koffievraag verstuurd.', file: 'File doorgegeven aan de groep.', pech: 'Ik laat de groep weten dat je stilstaat.', hart: 'Hartjes verstuurd!', thuis: 'Groep weet dat je bijna thuis bent.' }[soort];
     beep('wake'); setEv(soort === 'hart' ? 'love' : 'happy', 2.5, bev);
   }
+  /* Elk soort bericht hooguit één keer per 2 minuten, zodat niemand de groep volspamt */
+  var GR_KOEL = 120e3;
+  function grWacht(soort) { var t = grVerstuurd['_' + soort]; return t ? Math.max(0, GR_KOEL - (Date.now() - t)) : 0; }
+  function grTijd(ms) { var s0 = Math.ceil(ms / 1000), m = Math.floor(s0 / 60), r = s0 % 60; return m ? m + ':' + (r < 10 ? '0' : '') + r : r + ' s'; }
+  function grKnoppenToon() {
+    document.querySelectorAll('#grPaneel [data-soort]').forEach(function (b) {
+      var w = grWacht(b.dataset.soort), cd = b.querySelector('.cd');
+      if (!cd) { cd = document.createElement('small'); cd.className = 'cd'; b.appendChild(cd); }
+      b.classList.toggle('koel', w > 0); cd.textContent = w > 0 ? 'weer over ' + grTijd(w) : '';
+    });
+  }
   function grPaneel(aan) {
     var p = $('grPaneel'); if (!p) return;
-    p.hidden = !aan; clearTimeout(grPaneel.tm);
-    if (aan) grPaneel.tm = setTimeout(function () { p.hidden = true; }, 9000);
+    p.hidden = !aan; clearTimeout(grPaneel.tm); clearInterval(grPaneel.iv);
+    if (aan) { grKnoppenToon(); grPaneel.iv = setInterval(grKnoppenToon, 1000); grPaneel.tm = setTimeout(function () { p.hidden = true; clearInterval(grPaneel.iv); }, 9000); }
   }
-  /* Ontvangen: elke minuut nieuwe berichten ophalen (alleen als de app open is) */
+  /* Ontvangen: nieuwe berichten ophalen (in de auto elke 6 s, anders elke 20 s; alleen als de app open is) */
   function grHaal() {
     if (!grp || !pbase() || grBusy) return;
     grBusy = true; grT = T;
@@ -3884,7 +3899,8 @@ details.set > * + * { margin-top: 10px; }
   /* Elke paar seconden: berichten tonen, elke minuut ophalen, koffievraag laten verlopen, leaderboard bijwerken */
   setInterval(function () {
     try {
-      if (document.visibilityState === 'visible' && T - grT >= 60) grHaal();
+      /* Berichten bijna meteen binnen: in de auto elke 6 s kijken, anders elke 20 s (alleen als Buddy open staat) */
+      if (document.visibilityState === 'visible' && T - grT >= (S.live ? 6 : 20)) grHaal();
       grToon();
       if (grKoffieVan && Date.now() > grKoffieTot) { $('grKoffie').hidden = true; grKoffieVan = null; }
       grLid(false);

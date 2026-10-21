@@ -487,7 +487,7 @@ function puntOpLijn(c, t) {
 // Er wordt geen exacte plek gedeeld, behalve bij 'file' (die moet op de kaart om te waarschuwen).
 // ---------------------------------------------------------------------------
 const GR_SOORTEN = ['zwaai', 'koffie', 'koffieJa', 'koffieStraks', 'file', 'pech', 'hart', 'thuis', 'mijlpaal'];
-const GR_BEWAAR_MS = 2 * 3600e3, GR_MAX = 100, GR_LEDEN = 50, GR_PAUZE_MS = 20e3;
+const GR_BEWAAR_MS = 2 * 3600e3, GR_MAX = 100, GR_LEDEN = 50, GR_PAUZE_MS = 120e3; // elk soort bericht hooguit eens per 2 minuten
 
 async function groep(url, env, g, json) {
   const q = (k) => url.searchParams.get(k) || '';
@@ -510,8 +510,8 @@ async function groep(url, env, g, json) {
     if (!GR_SOORTEN.includes(s)) return json({ error: 'Onbekende soort bericht.' }, 400);
     if (!van || !id) return json({ error: 'Afzender of id ontbreekt.' }, 400);
     if (lijst.some((x) => x.id === id)) return json({ ok: true, dubbel: true, nu });
-    // Niet spammen: dezelfde soort van dezelfde afzender hooguit eens per 20 seconden
-    if (lijst.some((x) => x.van === van && x.s === s && nu - x.t < GR_PAUZE_MS)) return json({ ok: true, te_snel: true, nu });
+    // Niet spammen: dezelfde soort van dezelfde afzender hooguit eens per 2 minuten
+    if (s !== 'koffieJa' && s !== 'koffieStraks' && lijst.some((x) => x.van === van && x.s === s && nu - x.t < GR_PAUZE_MS)) return json({ ok: true, te_snel: true, nu }); // antwoorden op koffie mogen altijd
     const b = { id, van, s, t: nu, n: naam(q('n')), a: auto(q('a')), p: naam(q('p')) };
     const aan = idv(q('aan')); if (aan) b.aan = aan;
     if (s === 'file') {
