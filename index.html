@@ -83,6 +83,7 @@ body.car #carBack { display: block; }
 body.car #carRit { display: block; }
 #ritKaart { position: fixed; inset: 0; z-index: 62; background: rgba(0,0,0,.82); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
 #ritKaart[hidden] { display: none; }
+#updBar[hidden] { display: none !important; }
 .navRes { display: grid; gap: 6px; }
 .navRes .btn { text-align: left; min-height: 44px; font-weight: 500; }
 #ritKaart .rkBox { width: min(100%, 640px); max-height: 100%; overflow-y: auto; background: #10151a; border: 2px solid #34c759; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 12px; color: #eef2f5; }
@@ -289,6 +290,7 @@ details.set > * + * { margin-top: 10px; }
 </div>
 <div id="grKoffie" hidden role="alertdialog" aria-label="Koffie?"><p id="grKoffieTxt">Koffie?</p><button type="button" id="grKoffieJa">☕ Ja!</button><button type="button" id="grKoffieNee">Straks</button></div>
 <button id="carStart" type="button" aria-label="Start met startvlag"><svg class="vlag" viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="6" width="4" height="54" rx="2" fill="#8ff0a8"/><rect x="12" y="8" width="40" height="32" fill="#f4f4f4"/><g fill="#111"><rect x="12" y="8" width="8" height="8"/><rect x="28" y="8" width="8" height="8"/><rect x="44" y="8" width="8" height="8"/><rect x="20" y="16" width="8" height="8"/><rect x="36" y="16" width="8" height="8"/><rect x="12" y="24" width="8" height="8"/><rect x="28" y="24" width="8" height="8"/><rect x="44" y="24" width="8" height="8"/><rect x="20" y="32" width="8" height="8"/><rect x="36" y="32" width="8" height="8"/></g></svg></button>
+<div id="updBar" hidden style="position:fixed;left:8px;right:8px;bottom:8px;z-index:98;background:#0b2414;border:2px solid #34c759;color:#d9fbe3;padding:10px 12px;border-radius:14px;font:14px system-ui;display:flex;gap:10px;align-items:center"><span id="updTxt" style="flex:1"></span><button id="updKnop" type="button" style="min-height:40px;padding:0 14px;border-radius:20px;border:0;background:#34c759;color:#000;font:600 14px system-ui">Nu bijwerken</button></div>
 <div id="errBar" hidden onclick="this.hidden=true" style="position:fixed;left:8px;right:8px;top:8px;z-index:99;background:#b71c1c;color:#fff;padding:10px 12px;border-radius:10px;font:13px system-ui"></div>
 <main>
   <header>
@@ -3155,7 +3157,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v47';
+  var VERSION = 'v48';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -3184,7 +3186,46 @@ details.set > * + * { margin-top: 10px; }
     if (!deferredInstall) return;
     deferredInstall.prompt(); deferredInstall = null; $('bInstall').hidden = true;
   });
-  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) { navigator.serviceWorker.register('sw.js').catch(function () {}); }
+  /* ---------- Vanzelf bijwerken naar de nieuwste versie ----------
+     Buddy kijkt bij openen, bij terugkomen in de app en elke 10 minuten of er een nieuwere versie op GitHub staat.
+     Zo ja: meteen bijwerken als je niet midden in een rit zit, anders na de rit (of met de knop in de balk). */
+  var swReg = null, updNieuw = '', updBezig = false;
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (r) { swReg = r; }).catch(function () {});
+  }
+  function updBalk(t) { var b = $('updBar'); if (!b) return; if (!t) { b.hidden = true; return; } $('updTxt').textContent = t; b.hidden = false; }
+  function updMag() { return !S.live || !S.trip; }
+  function updNu() {
+    if (updBezig) return; updBezig = true;
+    try { sessionStorage.setItem('buddy-upd', updNieuw + '|' + Date.now()); } catch (e) {}
+    lg('bijwerken naar ' + updNieuw);
+    try { save(); lifeSave(); } catch (e) {}
+    updBalk('Bijwerken naar ' + updNieuw + '…');
+    var weg = ('caches' in window) ? caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return /^buddy-v/.test(k); }).map(function (k) { return caches.delete(k); })); }) : Promise.resolve();
+    var sw = swReg ? swReg.update().catch(function () {}) : Promise.resolve();
+    Promise.all([weg, sw]).then(function () { setTimeout(function () { location.reload(); }, 300); }, function () { location.reload(); });
+  }
+  function updCheck() {
+    if (!/^https?:$/.test(location.protocol) || updBezig || (navigator.onLine === false)) return;
+    if (swReg) swReg.update().catch(function () {});
+    fetch('index.html?v=' + Date.now(), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }).then(function (t) {
+      var m = t.match(/var VERSION = '(v\d+)'/); if (!m || m[1] === VERSION) { updBalk(''); return; }
+      var nr = function (v) { return +String(v).slice(1) || 0; };
+      if (nr(m[1]) <= nr(VERSION)) return;
+      updNieuw = m[1];
+      /* Net al geprobeerd en toch nog oud? Dan niet blijven herladen, maar het over 10 minuten nog eens proberen */
+      var vorig = ''; try { vorig = sessionStorage.getItem('buddy-upd') || ''; } catch (e) {}
+      var vp = vorig.split('|');
+      if (vp[0] === updNieuw && Date.now() - (+vp[1] || 0) < 10 * 60e3) { updBalk('Nieuwe versie ' + updNieuw + ' staat klaar, maar komt nog niet door. Ik probeer het straks opnieuw.'); return; }
+      if (updMag()) { toast('Nieuwe versie ' + updNieuw + '! Ik werk mezelf even bij.'); setTimeout(updNu, 1500); }
+      else updBalk('Nieuwe versie ' + updNieuw + ' staat klaar. Ik werk bij na je rit.');
+    }).catch(function () {});
+  }
+  setTimeout(updCheck, 3000);
+  setInterval(function () { if (document.visibilityState === 'visible') updCheck(); }, 10 * 60e3);
+  setInterval(function () { if (updNieuw && !updBezig && updMag()) updNu(); }, 15e3);  /* rit klaar: dan alsnog bijwerken */
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') updCheck(); });
+  $('updKnop').addEventListener('click', updNu);
 
   var gEst = { x: null, y: null, z: null }, noiseEst = .4;
   window.addEventListener('devicemotion', function (e) {
