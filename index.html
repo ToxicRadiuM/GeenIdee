@@ -1114,10 +1114,13 @@ details.set > * + * { margin-top: 10px; }
 
   /* ---------- Race start: 0 to 100 and the checkered flag ---------- */
   /* 0 naar 80: alleen voor het leaderboard (echte rit, op een weg waar 80 of harder mag) */
+  /* Telt een sprint voor het leaderboard? Ja, tenzij Buddy ZEKER weet dat je op een weg rijdt waar het langzamer moet.
+     (Onbekend of geschat telt dus wel. Een 0-100 op een weg waar zeker 50 geldt niet: dat zou te hard rijden belonen.) */
+  function sprintTelt(tot) { return !(S.roadLim != null && !S.guessed && !S.roadEst && S.roadLim < tot); }
   function tachtigDone(tt) {
     if (tt > 9 || tt < 2.5 || S.asleep || !S.live) return;
-    var magHier = S.roadLim != null && S.roadLim >= 80 && !S.guessed;
-    if (!magHier) { lg('0-80 niet voor het leaderboard: limiet hier ' + (S.roadLim == null ? 'onbekend' : S.roadLim + (S.guessed ? ' (geraden)' : ''))); return; }
+    var magHier = sprintTelt(80);
+    if (!magHier) { lg('0-80 niet voor het leaderboard: hier geldt zeker ' + S.roadLim); return; }
     if (!mem.best80Live || tt < mem.best80Live) {
       mem.best80Live = tt; save(); lg('nieuw 0-80 record: ' + tt.toFixed(1) + ' s');
       if (typeof grLid === 'function') setTimeout(function () { grLid(true); }, 1500);
@@ -1131,12 +1134,12 @@ details.set > * + * { margin-top: 10px; }
     var m = '0→100 in ' + fmt1(tt) + ' s' + (rec ? ' — nieuw record!' : '. Record: ' + fmt1(mem.best) + ' s.');
     /* Leaderboard: alleen echte ritten, en alleen op een weg waar 100 of harder mag (niet als de limiet uit je eigen snelheid is geraden) */
     if (S.live) {
-      var magHier = S.roadLim != null && S.roadLim >= 100 && !S.guessed;
-      if (S.ritStart && (!S.ritStart.nul || tt < S.ritStart.nul)) { S.ritStart.nul = tt; S.ritStart.nulTelt = magHier; S.ritStart.nulWaarom = magHier ? '' : (S.roadLim == null ? 'limiet onbekend' : S.guessed ? 'limiet geschat' : 'limiet hier ' + S.roadLim); }
+      var magHier = sprintTelt(100);
+      if (S.ritStart && (!S.ritStart.nul || tt < S.ritStart.nul)) { S.ritStart.nul = tt; S.ritStart.nulTelt = magHier; S.ritStart.nulWaarom = magHier ? '' : 'hier geldt ' + S.roadLim; }
       if (magHier) {
         mem.launchLive = (mem.launchLive || 0) + 1;
         if (!mem.best100Live || tt < mem.best100Live) { mem.best100Live = tt; if (typeof grLid === 'function') setTimeout(function () { grLid(true); }, 1500); }
-      } else lg('0-100 niet voor het leaderboard: limiet hier ' + (S.roadLim == null ? 'onbekend' : S.roadLim + (S.guessed ? ' (geraden)' : '')));
+      } else lg('0-100 niet voor het leaderboard: hier geldt zeker ' + S.roadLim);
     }
     S.flagUntil = T + 9; S.starUntil = T + 7; S.flagMsg = fmt1(tt) + ' s'; S.flagRec = rec;
     setEv('excited', 9, m, true); S.evLock = T + 9; S.lastExc = T; S.love = Math.min(100, S.love + 10);
@@ -1233,7 +1236,7 @@ details.set > * + * { margin-top: 10px; }
     var idle = S.speed < 1 && S.idle > 6 * (S.live ? 1.5 : 1);
     var keys = Object.keys(GAGS).filter(function (k) {
       if (forceKey) return k === forceKey;
-      var d0 = GAGS[k]; if (d0.need && !d0.need()) return false; if (d0.minV && !idle && S.speed < d0.minV) return false;
+      var d0 = GAGS[k]; if (d0.need && !d0.need()) return false; if (d0.minV && !idle && S.speed < d0.minV) return false; if (d0.maxV && S.speed > d0.maxV) return false;
       return (idle && d0.idle) || (driving && d0.drive);
     });
     keys = keys.filter(function (k) { return k !== S.lastGag || keys.length < 2; });
@@ -1244,7 +1247,7 @@ details.set > * + * { margin-top: 10px; }
     var d = GAGS[k];
     S.gag = { k: k, name: d.name, t0: T, end: T + d.dur, mood: d.mood, msg: d.msg, w: 0 };
     S.lastGag = k;
-    S.nextGag = T + d.dur + (idle ? rand(6, 12) * (S.live ? 1.4 : 1) : (S.live ? rand(18, 40) : rand(35, 70)));
+    S.nextGag = T + d.dur + (idle ? rand(6, 12) * (S.live ? 1.4 : 1) : (S.live ? rand(10, 24) : rand(20, 40)));  /* tijdens het rijden vaker iets (was 18 tot 40 s) */
     beep('gag');
   }
   function endGag(noDecay) {
@@ -1653,14 +1656,14 @@ details.set > * + * { margin-top: 10px; }
     overlay(dt);
   }
 
-  var BRONKORT = { kaart: 'KAART', type: 'WEGTYPE', matrix: 'MATRIX', gok: 'GESCHAT' };
-  var BRONLANG = { kaart: 'de kaart (OpenStreetMap, het bord dat daar staat)', type: 'het soort weg (geen bord op de kaart, dus een schatting)', matrix: 'het matrixbord boven de weg', gok: 'je eigen snelheid (geschat, geen wegdata)' };
+  var BRONKORT = { rws: 'RWS', kaart: 'KAART', type: 'WEGTYPE', matrix: 'MATRIX', gok: 'GESCHAT' };
+  var BRONLANG = { rws: 'Rijkswaterstaat (het officiële wegenbestand)', kaart: 'de kaart (OpenStreetMap, het bord dat daar staat)', type: 'het soort weg (geen bord op de kaart, dus een schatting)', matrix: 'het matrixbord boven de weg', gok: 'je eigen snelheid (geschat, geen wegdata)' };
   function limBronToon() {
     var el = $('limBron'); if (!el) return;
     if (!S.live) { el.hidden = true; return; }
     el.hidden = false;
-    if (S.roadLim == null) { el.textContent = 'Limiet: onbekend, ik heb hier nog geen wegdata. Een 0–100 telt nu niet voor het leaderboard.'; return; }
-    var telt100 = S.roadLim >= 100 && !S.guessed, telt80 = S.roadLim >= 80 && !S.guessed;
+    if (S.roadLim == null) { el.textContent = 'Limiet: nog even zoeken…'; return; }
+    var telt100 = sprintTelt(100), telt80 = sprintTelt(80);
     el.textContent = 'Limiet ' + S.roadLim + ' km/h, volgens ' + (BRONLANG[S.roadSrc] || 'onbekende bron') + '. Leaderboard: 0–100 telt hier ' + (telt100 ? 'wel' : 'niet') + ', 0–80 ' + (telt80 ? 'wel' : 'niet') + '.';
   }
   setInterval(limBronToon, 1000);
@@ -2309,7 +2312,7 @@ details.set > * + * { margin-top: 10px; }
   /* Zet de wegvakken van je routes klaar in het telefoongeheugen. Vanzelf hooguit eens per 12 uur, niet tijdens het rijden en niet op mobiele data. */
   function routeKlaarzetten(handmatig) {
     if (routeBezig) return;
-    if (!pbase() || !('caches' in window)) { if (handmatig) toast('Hiervoor heb ik het Worker-adres nodig (bij Flitsers).'); return; }
+    if (!('caches' in window)) { if (handmatig) toast('Deze browser kan niets bewaren voor onderweg.'); return; }
     if (S.live && S.speed >= 5) { if (handmatig) toast('Dat doe ik als je stilstaat.'); return; }
     var c = navigator.connection;
     if (!handmatig && c && (c.saveData || c.type === 'cellular')) return;
@@ -2328,11 +2331,13 @@ details.set > * + * { margin-top: 10px; }
         if (handmatig) toast(klaar);
         return;
       }
-      var p = keys[i++].split(':'), lat = (+p[0] + .5) * v.dLat, lon = (+p[1] + .5) * v.dLon, url = osmUrl('wegen', lat, lon);
+      var p = keys[i++].split(':');
       routeStat('Routes klaarzetten… ' + i + ' van ' + keys.length);
-      osmUitKast(url).then(function (tekst) {
-        if (tekst) { al++; return volgende(); }
-        return osmVanWorker('wegen', url, 60000).then(function () { nieuw++; fout = 0; }, function () { fout++; }).then(function () { setTimeout(volgende, 1500); });
+      /* De maximumsnelheden van Rijkswaterstaat (zelfde vakindeling) op de telefoon zetten */
+      rwsKlaarzetten(p[0] + '_' + p[1]).then(function (wat) {
+        if (wat === 'al') { al++; return volgende(); }
+        if (wat === 'nieuw') { nieuw++; fout = 0; } else fout++;
+        setTimeout(volgende, 400);
       });
     }
     volgende();
@@ -2633,10 +2638,15 @@ details.set > * + * { margin-top: 10px; }
     }
     var G = {};
     Object.keys(sg).forEach(function (u) {
-      var o = sg[u]; if (!o.k || !o.d || !loc[o.k]) return; var g = G[o.k] || (G[o.k] = { k: o.k, lat: loc[o.k][0], lon: loc[o.k][1], b: loc[o.k][2], s: null, x: 0, a: 0 });
-      if (o.d[0] === 's') { var v = +o.d.slice(1); if (g.s == null || v < g.s) g.s = v; } else if (o.d === 'x') g.x++; else if (o.d === 'a') g.a++;
+      var o = sg[u]; if (!o.k || !o.d || !loc[o.k]) return; var g = G[o.k] || (G[o.k] = { k: o.k, lat: loc[o.k][0], lon: loc[o.k][1], b: loc[o.k][2], s: null, x: 0, a: 0, n: {}, w: (o.k.split('|')[0].match(/\d+/) || [''])[0].replace(/^0+/, '') });
+      if (o.d[0] === 's') { var v = +o.d.slice(1); g.n[v] = (g.n[v] || 0) + 1; } else if (o.d === 'x') g.x++; else if (o.d === 'a') g.a++;
     });
-    return Object.keys(G).map(function (k) { return G[k]; });
+    /* Wat de meeste rijstroken tonen telt, niet de laagste (een afrit-strook met 50 moet je 100 niet overschrijven). Gelijkspel: de laagste. */
+    return Object.keys(G).map(function (k) {
+      var g = G[k], best = null, bn = 0;
+      Object.keys(g.n).forEach(function (v) { var c = g.n[v]; if (c > bn || (c === bn && +v < best)) { bn = c; best = +v; } });
+      g.s = best; delete g.n; return g;
+    });
   }
   function msLoad() {
     ms.busy = true;
@@ -2658,7 +2668,11 @@ details.set > * + * { margin-top: 10px; }
     ms.items.forEach(function (g) {
       var d = gdist(lat, lon, g.lat, g.lon), pv = ms.prev[g.k]; ms.prev[g.k] = d;
       if (d > 1500 || pv == null || d > pv - 3 || adiff(gbearing(lat, lon, g.lat, g.lon), hdg) > 50 || (g.b != null && adiff(g.b, hdg) > 75)) return;
-      if (d < 90 && g.s != null) msHold = { v: g.s, k: g.k, until: T + 150 };   /* je rijdt onder het bord door: limiet blijft staan */
+      /* Weet Buddy op welke weg je rijdt (wegnummer van Rijkswaterstaat)? Dan alleen borden boven die weg.
+         Op een verbindingsweg (geen wegnummer of ander nummer) tellen de borden van de hoofdweg ernaast dus niet mee. */
+      if (S.roadSrc && S.roadSrc !== 'gok' && T - S.roadSeen < 20 && g.w && S.roadWn !== g.w) return;
+      if (d < 90 && g.s != null) msHold = { v: g.s, k: g.k, w: g.w, lat: g.lat, lon: g.lon, until: T + 600 };
+      else if (d < 90 && g.s == null && msHold && msHold.k !== g.k) { msHold = null; lg('matrixlimiet losgelaten: leeg bord'); }  /* leeg bord = einde van de matrixlimiet */   /* je rijdt onder het bord door: geldt tot het volgende bord, hooguit ~1 km */
       var want = d <= 600 ? 2 : 1, sn = ms.seen[g.k];
       if (sn && Date.now() - sn.t < 10 * 60e3 && sn.st >= want) return;
       if (!best || d < best.d) best = { g: g, d: d, want: want };
@@ -3032,10 +3046,66 @@ details.set > * + * { margin-top: 10px; }
     var bb = (lat - dLa).toFixed(5) + ',' + (lon - dLo).toFixed(5) + ',' + (lat + dLa).toFixed(5) + ',' + (lon + dLo).toFixed(5);
     return '[out:json][timeout:15];way["highway"~"^(' + ROADCLS + ')$"](' + bb + ');out tags geom;';
   }
+  /* ---------- Maximumsnelheden van Rijkswaterstaat (alle wegen in het Nationaal Wegenbestand) ----------
+     Elke maand zet een automatische klus op GitHub ze om naar kleine tegels (branch "snelheden").
+     Dit is de eerste bron; OpenStreetMap is alleen nog reserve. Tegels worden 30 dagen op de telefoon bewaard. */
+  var RWSURL = 'https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/snelheden/t/', RWSKAST = 'buddy-rws-v1';
+  var rwsTegels = {}, rwsBezig = {}, rwsFoutT = {}, rwsGeen = false, RWS = { dLat: 0.03, dLon: 0.05, padLat: 0.006, padLon: 0.009 };
+  function rwsKey(lat, lon) { return Math.floor(lat / RWS.dLat) + '_' + Math.floor(lon / RWS.dLon); }
+  function rwsWays(arr) {
+    return arr.map(function (a) {
+      var g = [], k; for (k = 0; k < a[2].length; k += 2) g.push({ lat: a[2][k], lon: a[2][k + 1] });
+      return { lim: a[0], est: 0, g: g, c: a[3] ? { v: a[3][0], a: a[3][1], b: a[3][2] } : null, mw: 0, r: a[5] || 0, wn: a[6] || '', rws: 1 };
+    });
+  }
+  function rwsZet(key, tekst, bron) {
+    var j = null; try { j = JSON.parse(tekst); } catch (e) {}
+    if (!j || !Array.isArray(j.w)) return false;
+    rwsTegels[key] = { ws: rwsWays(j.w), t: Date.now(), v: j.v || '' }; roadDirty = true;
+    lg('rws tegel ' + key + ' (' + bron + '): ' + j.w.length + ' wegvakken' + (j.v ? ', versie ' + j.v : ''));
+    var ks = Object.keys(rwsTegels); if (ks.length > 12) { ks.sort(function (a, b) { return rwsTegels[a].t - rwsTegels[b].t; }); delete rwsTegels[ks[0]]; }
+    return true;
+  }
+  function rwsLaad(lat, lon) {
+    var key = rwsKey(lat, lon);
+    if (rwsTegels[key] || rwsBezig[key] || T - (rwsFoutT[key] || -999) < 60) return;
+    rwsBezig[key] = 1;
+    var url = RWSURL + key + '.json';
+    var kast = ('caches' in window) ? caches.open(RWSKAST).then(function (c) { return c.match(url); }).then(function (r) { if (!r || Date.now() - (+r.headers.get('X-Buddy-T') || 0) > 30 * 864e5) return null; return r.text(); }).catch(function () { return null; }) : Promise.resolve(null);
+    kast.then(function (tekst) {
+      if (tekst && rwsZet(key, tekst, 'telefoon')) return;
+      return fetch(url).then(function (r) {
+        if (r.status === 404) { rwsTegels[key] = { ws: [], t: Date.now(), leeg: 1 }; if (!Object.keys(rwsTegels).some(function (k) { return rwsTegels[k].ws.length; })) rwsGeen = true; return; }
+        if (!r.ok) throw new Error('http ' + r.status);
+        return r.text().then(function (t2) {
+          if (rwsZet(key, t2, 'internet')) { rwsGeen = false; if ('caches' in window) caches.open(RWSKAST).then(function (c) { return c.put(url, new Response(t2, { headers: { 'Content-Type': 'application/json', 'X-Buddy-T': String(Date.now()) } })); }).catch(function () {}); }
+        });
+      });
+    }).catch(function (e) { rwsFoutT[key] = T; lg('FOUT rws tegel ' + key + ': ' + ((e && e.message) || e)); })
+      .then(function () { delete rwsBezig[key]; });
+  }
+  /* Voor "routes klaarzetten": één tegel op de telefoon zetten. Geeft 'al', 'nieuw' of 'fout'. */
+  function rwsKlaarzetten(key) {
+    var url = RWSURL + key + '.json';
+    return caches.open(RWSKAST).then(function (c) {
+      return c.match(url).then(function (r) {
+        if (r && Date.now() - (+r.headers.get('X-Buddy-T') || 0) < 25 * 864e5) return 'al';
+        return fetch(url).then(function (res) {
+          if (res.status === 404) return 'al';  /* hier liggen geen wegen */
+          if (!res.ok) return 'fout';
+          return res.text().then(function (t) { return c.put(url, new Response(t, { headers: { 'Content-Type': 'application/json', 'X-Buddy-T': String(Date.now()) } })).then(function () { return 'nieuw'; }); });
+        });
+      });
+    }).catch(function () { return 'fout'; });
+  }
+  /* Heeft Rijkswaterstaat dit stuk al gedekt? Dan hoeft OpenStreetMap niet gevraagd te worden */
+  function rwsGedekt(lat, lon) { var t = rwsTegels[rwsKey(lat, lon)]; return !!(t && t.ws.length); }
   function loadRoads(lat, lon) {
-    if (roadBusy || T - roadFail < roadBack) return;
     var qa = lat, qo = lon;
     if (lastHdg != null && S.liveSpeed > 20) { qa = lat + Math.cos(lastHdg * RAD) * 700 / 111320; qo = lon + Math.sin(lastHdg * RAD) * 700 / (111320 * Math.cos(lat * RAD)); }
+    rwsLaad(lat, lon); rwsLaad(qa, qo);
+    if (rwsGedekt(lat, lon) && rwsGedekt(qa, qo)) return;
+    if (roadBusy || T - roadFail < roadBack) return;
     if (roadCovered(qa, qo)) return;
     roadBusy = true;
     var vk = pbase() && T - osmWorkerUit >= 600 ? osmVak('wegen', qa, qo) : null;
@@ -3063,6 +3133,7 @@ details.set > * + * { margin-top: 10px; }
   }
   function buildRoads(lat, lon) {
     roadWays = [];
+    for (var rk in rwsTegels) { var p = rk.split('_'), cy = (+p[0] + .5) * RWS.dLat, cx = (+p[1] + .5) * RWS.dLon; if (gdist(lat, lon, cy, cx) <= 3600) roadWays = roadWays.concat(rwsTegels[rk].ws); }
     roadTiles.forEach(function (t) { if (gdist(lat, lon, t.lat, t.lon) <= 3600) roadWays = roadWays.concat(t.ws); });
     roadBuild = { lat: lat, lon: lon }; roadDirty = false;
   }
@@ -3080,24 +3151,32 @@ details.set > * + * { margin-top: 10px; }
   }
   /* Geen weg meer gevonden onder je? Dan na 45 s de oude limiet weg (vroeger 150 s: dan bleef bv. 50 staan terwijl je al lang op de snelweg reed).
      Een geschatte limiet laten we met rust: die regelt roadGuess zelf (anders werd hij elke seconde gewist en opnieuw geschat). */
-  function roadHold() { if (S.roadLim != null && !S.guessed && T - S.roadSeen > 45) { S.roadLim = null; S.roadEst = false; roadCand = null; } }
-  var hiT = 0, loT = 0, hiLast = 0;
+  function roadHold() { if (S.roadLim != null && !S.guessed && S.roadSrc !== 'matrix' && T - S.roadSeen > 45) { S.roadLim = null; S.roadEst = false; roadCand = null; S.roadWn = ''; } }
+  /* Geen wegdata? Dan toch altijd een getal: een schatting uit je gemiddelde snelheid van de laatste halve minuut.
+     Een schatting krijgt een gestippelde rand, telt niet mee voor "te hard" en wordt meteen vervangen zodra er echte data is. */
+  var hiT = 0, loT = 0, hiLast = 0, gokV = null, gokBand = null, gokBandT = 0;
+  function gokVoor(v) { return v >= 88 ? (nightNL() ? 130 : 100) : v >= 62 ? 80 : v >= 38 ? 50 : 30; }
   function roadGuess() {
     var now = T, dt = hiLast ? Math.min(5, now - hiLast) : 0; hiLast = now;
-    if (S.liveSpeed >= 90) { hiT += dt; loT = 0; } else { hiT = 0; if (S.liveSpeed < 60) loT += dt; }
-    if (S.roadLim == null && hiT >= 45) { S.roadLim = nightNL() ? 130 : 100; S.roadEst = true; S.guessed = true; S.roadSrc = 'gok'; lg('limiet geschat uit je snelheid: ' + S.roadLim); }
-    else if (S.guessed && S.roadLim != null && loT >= 20) { S.roadLim = null; S.roadEst = false; S.guessed = false; }
-    else if (S.guessed && S.roadLim != null) { var g = nightNL() ? 130 : 100; if (g !== S.roadLim) S.roadLim = g; }
+    var v = S.liveSpeed || 0; gokV = gokV == null ? v : gokV + (v - gokV) * Math.min(1, dt / 30);
+    if (v < 3 && S.roadLim != null) return;  /* stilstaan: laatste waarde laten staan */
+    var g = gokVoor(gokV);
+    if (S.roadLim == null) { S.roadLim = g; S.roadEst = true; S.guessed = true; S.roadSrc = 'gok'; gokBand = g; gokBandT = T; lg('limiet geschat uit je snelheid: ' + g); return; }
+    if (!S.guessed) return;
+    if (g !== gokBand) { gokBand = g; gokBandT = T; }
+    else if (g !== S.roadLim && T - gokBandT > 12) { S.roadLim = g; lg('limiet geschat uit je snelheid: ' + g); }
   }
   function roadStep(lat, lon, acc) {
     if (!S.live) return;
     roadStep0(lat, lon, acc);
     if (msHold) {
       var cur = null; ms.items.forEach(function (g) { if (g.k === msHold.k) cur = g; });
-      if (T > msHold.until || !cur || cur.s !== msHold.v) msHold = null;
+      var msAf = lastPos ? gdist(lat, lon, msHold.lat, msHold.lon) : 0;
+      if (T > msHold.until || !cur || cur.s !== msHold.v || msAf > 1100 || (S.roadWn && msHold.w && S.roadWn !== msHold.w && T - S.roadSeen < 20)) { if (msAf > 1100) lg('matrixlimiet losgelaten na ' + Math.round(msAf) + ' m'); msHold = null; }
       else { S.roadLim = msHold.v; S.roadEst = false; S.guessed = false; S.roadSeen = T; S.roadSrc = 'matrix'; }
     }
     if (S.roadLim != null && !S.guessed) hiT = 0; else roadGuess();
+    if (S.roadLim == null) { S.roadLim = 50; S.roadEst = true; S.guessed = true; S.roadSrc = 'gok'; }  /* nooit een vraagteken */
   }
   function roadStep0(lat, lon, acc) {
     loadRoads(lat, lon);
@@ -3110,16 +3189,21 @@ details.set > * + * { margin-top: 10px; }
       for (j = 1; j < w.g.length; j++) {
         var si = segInfo(lat, lon, w.g[j - 1], w.g[j]);
         if (si.d > tol) continue;
-        if (lastHdg != null) { var df = adiff(si.brg, lastHdg); if (df > 35 && df < 145) continue; }
-        var sc = si.d + (w.est ? 8 : 0);
-        if (!best || sc < best.sc) best = { sc: sc, d: si.d, lim: wayLim(w), est: !!w.est };
+        if (lastHdg != null) {
+          var df = adiff(si.brg, lastHdg); if (df > 35 && df < 145) continue;
+          if (w.r === 1 && df >= 90) continue;   /* deze limiet geldt alleen de andere kant op */
+          if (w.r === -1 && df < 90) continue;
+        }
+        var sc = si.d + (w.est ? 8 : 0) - (w.rws ? 5 : 0);
+        if (!best || sc < best.sc) best = { sc: sc, d: si.d, lim: wayLim(w), est: !!w.est, src: w.rws ? 'rws' : (w.est ? 'type' : 'kaart'), wn: w.wn || '' };
       }
     }
     if (!best) { roadMiss++; roadHold(); return; }
-    roadMiss = 0; S.roadSeen = T;
+    roadMiss = 0; S.roadSeen = T; S.roadWn = best.wn;
     var key = best.lim + (best.est ? '~' : '');
-    if (best.lim === S.roadLim && best.est === !!S.roadEst) { roadCand = null; S.guessed = false; if (S.roadSrc !== 'matrix') S.roadSrc = best.est ? 'type' : 'kaart'; return; }
-    if (roadCand === key) { if (++roadCnt >= 2) { S.roadLim = best.lim; S.roadEst = best.est; S.roadSrc = best.est ? 'type' : 'kaart'; roadCand = null; S.guessed = false; } }
+    if (best.lim === S.roadLim && best.est === !!S.roadEst) { roadCand = null; S.guessed = false; if (S.roadSrc !== 'matrix') S.roadSrc = best.src; return; }
+    /* Was het een gok? Dan meteen de echte waarde, niet eerst twee keer bevestigen */
+    if (S.guessed || roadCand === key) { if (S.guessed || ++roadCnt >= 2) { S.roadLim = best.lim; S.roadEst = best.est; S.roadSrc = best.src; roadCand = null; S.guessed = false; } }
     else { roadCand = key; roadCnt = 1; }
   }
   window.__road = function () { return S.roadLim; };
@@ -3191,6 +3275,7 @@ details.set > * + * { margin-top: 10px; }
   }
   function navAfstKort(d) { return d >= 950 ? (Math.round(d / 100) / 10).toFixed(1).replace('.', ',') + ' km' : Math.round(d / 10) * 10 + ' m'; }
   function navZeg(t) {
+    lg('nav zegt: ' + t);
     if (!navSpk || !('speechSynthesis' in window)) return;
     try { var u = new SpeechSynthesisUtterance(t); u.lang = 'nl-NL'; u.rate = 1.0; u.volume = 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
   }
@@ -3207,6 +3292,8 @@ details.set > * + * { margin-top: 10px; }
         steps.push({ lat: m.location[1], lon: m.location[0], type: m.type, mod: m.modifier, exit: m.exit, naam: s.name || '', ref: (s.ref || '').split(';')[0] });
       }); });
       var geom = (rt.geometry && rt.geometry.coordinates || []).map(function (c) { return { lat: c[1], lon: c[0] }; });
+      /* Voor elke afslag: waar ligt hij op de routelijn? Zo weet Buddy straks of je er voorbij bent, ook als je er niet heel dichtbij kwam */
+      var gi = 0; steps.forEach(function (st0) { var bd = 1e9, bi = gi; for (var q = gi; q < geom.length; q++) { var dd = gdist(st0.lat, st0.lon, geom[q].lat, geom[q].lon); if (dd < bd) { bd = dd; bi = q; } if (bd < 5 && dd > 400) break; } st0.gi = bi; gi = bi; });
       nav = { dest: naar, steps: steps, geom: geom, idx: 1, min: 1e9, said: {}, dist: rt.distance, dur: rt.duration, t: Date.now(), van: 0 };
       try { localStorage.setItem(NAVKEY, JSON.stringify({ dest: naar, t: Date.now() })); } catch (e) {}
       lg('route: ' + Math.round(rt.distance / 100) / 10 + ' km, ' + steps.length + ' stappen' + (opnieuw ? ' (opnieuw berekend)' : ''));
@@ -3241,21 +3328,30 @@ details.set > * + * { margin-top: 10px; }
     if (nav.vanNieuw != null) nav.van = nav.vanNieuw;
     return best;
   }
+  function navAankomst() { navZeg('Je bent er!'); setEv('excited', 4, 'We zijn er! 🏁'); beep('race'); lg('route: aangekomen'); navStop(true); }
   function navFix(lat, lon, acc) {
     if (!nav || !S.live) return;
     var st = nav.steps[nav.idx];
     if (!st) return;
-    var d = gdist(lat, lon, st.lat, st.lon);
-    /* Afslag gehaald? Dichtbij geweest en nu weer verder weg, of er echt op */
+    /* Aangekomen: binnen 80 m van je bestemming, ongeacht bij welke afslag Buddy dacht te zijn */
+    if (gdist(lat, lon, nav.dest.lat, nav.dest.lon) < 80) { navAankomst(); return; }
+    /* Waar ben je op de routelijn? */
+    var af = acc < 50 ? navAfwijking(lat, lon) : 0;
+    var d = gdist(lat, lon, st.lat, st.lon), vms = (S.liveSpeed || 0) / 3.6, dicht = Math.max(60, vms * 3);
     if (d < nav.min) nav.min = d;
-    if (d < 20 || (nav.min < 60 && d > nav.min + 35)) {
-      if (st.type === 'arrive') { navZeg('Je bent er!'); setEv('excited', 4, 'We zijn er! 🏁'); beep('race'); lg('route: aangekomen'); navStop(true); return; }
-      nav.idx++; nav.min = 1e9; nav.said = {}; st = nav.steps[nav.idx]; if (!st) return;
+    /* Afslag gehaald? Je bent op de routelijn voorbij het punt van de afslag, of dichtbij geweest en weer verder weg */
+    var voorbij = acc < 50 && af < 60 && st.gi != null && nav.van > st.gi + 1 && d > 25;
+    var stappen = 0;
+    while (st && (d < 20 || voorbij || (nav.min < dicht && d > nav.min + 35)) && stappen < 8) {
+      if (st.type === 'arrive') { navAankomst(); return; }
+      lg('route: afslag ' + nav.idx + ' voorbij (' + navTekst(st) + ')' + (voorbij ? ' [voortgang]' : ''));
+      nav.idx++; nav.min = 1e9; nav.said = {}; st = nav.steps[nav.idx]; stappen++;
+      if (!st) return;
       d = gdist(lat, lon, st.lat, st.lon);
+      voorbij = acc < 50 && af < 60 && st.gi != null && nav.van > st.gi + 1 && d > 25;
     }
     /* Van de route af? Na een paar metingen opnieuw rekenen (hooguit eens per 20 s) */
     if (acc < 35) {
-      var af = navAfwijking(lat, lon);
       if (af > 70) nav.off = (nav.off || 0) + 1; else nav.off = 0;
       if (nav.off >= 4 && T - navLastRoute > 20) { nav.off = 0; lg('route: van de route af (' + Math.round(af) + ' m)'); navRoute({ lat: lat, lon: lon }, nav.dest, true); return; }
     }
@@ -3304,7 +3400,13 @@ details.set > * + * { margin-top: 10px; }
   /* Na herstarten binnen een uur: de laatste bestemming weer oppakken zodra de GPS er is */
   var navHerstel = null;
   try { var nv = JSON.parse(localStorage.getItem(NAVKEY) || 'null'); if (nv && nv.dest && Date.now() - nv.t < 3600e3) navHerstel = nv.dest; } catch (e) {}
-  setInterval(function () { if (navHerstel && S.live && lastPos && !nav && !navBusy) { var d0 = navHerstel; navHerstel = null; navRoute({ lat: lastPos.lat, lon: lastPos.lon }, d0, false); } }, 3000);
+  setInterval(function () {
+    if (navHerstel && S.live && lastPos && !nav && !navBusy) {
+      var d0 = navHerstel; navHerstel = null;
+      if (gdist(lastPos.lat, lastPos.lon, d0.lat, d0.lon) < 250) { lg('route: niet hervat, je bent al bij ' + d0.naam.split(',')[0]); try { localStorage.removeItem(NAVKEY); } catch (e) {} return; }
+      navRoute({ lat: lastPos.lat, lon: lastPos.lon }, d0, false);
+    }
+  }, 3000);
 
   /* ======================= v57: laadpauze, ritkaartje, levels, briefing, verjaardagen, spelletjes ======================= */
 
@@ -3642,7 +3744,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v59';
+  var VERSION = 'v60';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5321,6 +5423,83 @@ details.set > * + * { margin-top: 10px; }
     draw: function (g, tt) {
       var a = Math.sin(tt * 10) * .45 - .5, bx = 178, by = 188, hx = bx + Math.sin(a) * 0 + Math.sin(a + 1.2) * 0; ctx.strokeStyle = EYE; ctx.lineWidth = 6; ctx.lineCap = 'round';
       var ex = bx + Math.sin(a) * 26, ey = by - Math.cos(a) * 26; ctx.beginPath(); ctx.moveTo(bx, by + 14); ctx.lineTo(ex, ey); ctx.stroke(); ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(ex, ey - 3, 8, 0, TAU); ctx.fill();
+    } };
+  /* ---------- v60: meer leven tijdens het rijden ---------- */
+  GAGS.molen = { name: 'Ziet een molen', dur: 6, drive: 1, minV: 30, mood: 'alert', msg: 'Een molen! Echt Hollands.',
+    upd: function (g, tt) { g.x = 250 - tt / 6 * 300; dir(clamp((g.x - 120) / 110, -1, 1), .35); if (tt > 4) { g.mood = 'happy'; g.msg = 'Die draait lekker vandaag.'; } },
+    draw: function (g, tt) {
+      var x = g.x, y = 212, a = tt * 2.4;
+      ctx.fillStyle = EYE; ctx.globalAlpha *= .85;
+      ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x - 5, y - 30); ctx.lineTo(x + 5, y - 30); ctx.lineTo(x + 9, y); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y - 32, 6, Math.PI, 0); ctx.fill();
+      ctx.strokeStyle = EYE; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+      for (var i = 0; i < 4; i++) { var b = a + i * Math.PI / 2, ex = x + Math.cos(b) * 24, ey = y - 32 + Math.sin(b) * 24; ctx.beginPath(); ctx.moveTo(x, y - 32); ctx.lineTo(ex, ey); ctx.stroke();
+        ctx.save(); ctx.translate((x + ex) / 2, (y - 32 + ey) / 2); ctx.rotate(b); ctx.fillRect(-7, 1, 14, 5); ctx.restore(); }
+      ctx.fillStyle = SCREEN; ctx.fillRect(x - 2.5, y - 9, 5, 9);
+    } };
+  GAGS.koeien = { name: 'Ziet koeien', dur: 6, drive: 1, minV: 20, mood: 'happy', msg: 'Boe! Koeien in de wei.',
+    upd: function (g, tt) { g.x = 240 - tt / 6 * 280; dir(clamp((g.x - 120) / 110, -1, 1), .4); if (tt > 3.5) g.msg = 'Ik zwaai maar even. Boeeee.'; },
+    draw: function (g, tt) {
+      function koe(x, y, s) {
+        ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+        ctx.fillStyle = '#F5F5F5'; rr(-14, -12, 26, 13, 5); ctx.fill();
+        ctx.fillStyle = '#222'; ctx.beginPath(); ctx.ellipse(-6, -7, 4, 3, .3, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.ellipse(4, -9, 3, 2.5, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#F5F5F5'; rr(-20, -15, 9, 9, 3); ctx.fill(); ctx.fillStyle = BLUSH; rr(-21, -9, 6, 4, 2); ctx.fill();
+        ctx.fillStyle = '#F5F5F5'; var st = Math.sin(tt * 8) * 2; ctx.fillRect(-12, 0, 3, 6 + st); ctx.fillRect(-4, 0, 3, 6 - st); ctx.fillRect(4, 0, 3, 6 + st); ctx.fillRect(9, 0, 3, 6 - st);
+        ctx.restore();
+      }
+      ctx.globalAlpha *= .9; koe(g.x, 206, 1); koe(g.x + 46, 210, .85);
+      ctx.strokeStyle = '#66BB6A'; ctx.lineWidth = 2; ctx.globalAlpha *= .6; ctx.beginPath(); ctx.moveTo(30, 218); ctx.lineTo(210, 218); ctx.stroke();
+    } };
+  GAGS.vliegtuig = { name: 'Ziet een vliegtuig', dur: 5.6, drive: 1, idle: 1, mood: 'alert', msg: 'Een vliegtuig! Waar zou die heen gaan?',
+    upd: function (g, tt) { g.x = -20 + tt / 5.6 * 280; g.y = 46 - tt * 2; dir(clamp((g.x - 120) / 110, -1, 1), -.8); if (tt > 3.6) { g.mood = 'content'; g.msg = 'Op vakantie, denk ik.'; } },
+    draw: function (g, tt) {
+      var x = g.x, y = g.y;
+      ctx.strokeStyle = EYE; ctx.lineCap = 'round';
+      for (var i = 0; i < 2; i++) { var gr = ctx.createLinearGradient(x - 90, 0, x - 12, 0); gr.addColorStop(0, 'rgba(207,247,255,0)'); gr.addColorStop(1, 'rgba(207,247,255,.55)'); ctx.strokeStyle = gr; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 90, y + 2 + i * 4); ctx.lineTo(x - 12, y + 2 + i * 4); ctx.stroke(); }
+      ctx.fillStyle = EYE; ctx.beginPath(); ctx.ellipse(x, y + 4, 13, 3.5, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x - 2, y + 4); ctx.lineTo(x - 8, y - 6); ctx.lineTo(x - 4, y - 6); ctx.lineTo(x + 4, y + 4); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x - 10, y + 4); ctx.lineTo(x - 14, y - 2); ctx.lineTo(x - 11, y - 2); ctx.lineTo(x - 7, y + 4); ctx.fill();
+    } };
+  GAGS.fietser = { name: 'Ziet een fietser', dur: 5.4, drive: 1, minV: 15, maxV: 65, mood: 'happy', msg: 'Hoi fietser!',
+    upd: function (g, tt) { g.x = 250 - tt / 5.4 * 300; dir(clamp((g.x - 120) / 110, -1, 1), .4); if (tt > 3.2) g.msg = 'Netjes ruimte geven, hè.'; },
+    draw: function (g, tt) {
+      var x = g.x, y = 210, r = tt * 9;
+      ctx.strokeStyle = EYE; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha *= .9;
+      [[-10, 0], [10, 0]].forEach(function (w) { ctx.beginPath(); ctx.arc(x + w[0], y, 7, 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + w[0], y); ctx.lineTo(x + w[0] + Math.cos(r) * 7, y + Math.sin(r) * 7); ctx.stroke(); });
+      ctx.beginPath(); ctx.moveTo(x - 10, y); ctx.lineTo(x - 2, y - 10); ctx.lineTo(x + 7, y - 10); ctx.lineTo(x + 10, y); ctx.moveTo(x - 2, y - 10); ctx.lineTo(x, y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 1, y - 11); ctx.lineTo(x + 2, y - 22); ctx.lineTo(x + 8, y - 13); ctx.stroke();
+      ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(x + 3, y - 26, 4, 0, TAU); ctx.fill();
+    } };
+  GAGS.hmpaal = { name: 'Telt hectometerpaaltjes', dur: 6.4, drive: 1, minV: 60, mood: 'focused', msg: 'Paaltje… paaltje… paaltje…',
+    upd: function (g, tt) {
+      if (g.hm == null) g.hm = Math.floor(rand(100, 900)) / 10;
+      var n = Math.floor(tt / 1.1); g.n = n; g.kp = (tt % 1.1) / 1.1; dir(.75 - g.kp * .4, .45);  /* let op: g.k is de naam van de animatie, niet overschrijven */
+      g.msg = 'Hectometer ' + (g.hm + n / 10).toFixed(1).replace('.', ',') + (n >= 5 ? '. Weer een halve kilometer!' : '…');
+    },
+    draw: function (g) {
+      var k = g.kp || 0, x = 150 + k * 70, y = 196 + k * 18, s = .6 + k * .8;
+      ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.globalAlpha *= Math.min(1, (1 - k) * 4);
+      ctx.fillStyle = '#2e7d32'; rr(-6, -22, 12, 26, 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '700 6px "Chakra Petch", sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText((g.hm + (g.n || 0) / 10).toFixed(1).replace('.', ','), 0, -12); ctx.fillStyle = '#E53935'; ctx.fillRect(-6, -22, 12, 4); ctx.restore();
+    } };
+  GAGS.spiegels = { name: 'Checkt de spiegels', dur: 4.6, drive: 1, minV: 20, mood: 'focused', msg: 'Even in de spiegels kijken…',
+    upd: function (g, tt) { var f = tt < 1.4 ? 0 : tt < 2.8 ? 1 : tt < 4 ? 2 : 3; g.f = f; dir([-1, 0, 1, 0][f], [0, -1, 0, .1][f]); if (f === 3) g.msg = 'Alles veilig achter ons.'; },
+    draw: function (g) {
+      var f = g.f || 0;
+      function spiegel(x, y, aan, rond) { ctx.globalAlpha = aan ? .95 : .3; ctx.fillStyle = '#1d2a33'; ctx.strokeStyle = EYE; ctx.lineWidth = 2; if (rond) rr(x - 18, y - 6, 36, 12, 5); else rr(x - 10, y - 8, 20, 16, 5); ctx.fill(); ctx.stroke(); }
+      ctx.save(); spiegel(30, 96, f === 0, false); spiegel(120, 26, f === 1, true); spiegel(210, 96, f === 2, false); ctx.restore();
+    } };
+  GAGS.zonnebril = { name: 'Zet zijn zonnebril op', dur: 6, drive: 1, idle: 1, mood: 'content', msg: 'Zonnetje! Bril op.', need: function () { try { return wxFlags().sun; } catch (e) { return false; } },
+    upd: function (g, tt) { fxShades = tt > .6; dir(Math.sin(tt * 1.3) * .3, -.1); if (tt > 3.4) g.msg = 'Cool blijven achter het stuur.'; } };
+  GAGS.sterren = { name: 'Kijkt naar de sterren', dur: 6.4, drive: 1, idle: 1, mood: 'content', msg: 'Wat een sterrenhemel.', need: function () { try { var f = wxFlags(); return f.night && !f.cloudy && !f.rain; } catch (e) { return false; } },
+    upd: function (g, tt) { dir(Math.sin(tt * .6) * .5, -.85); if (tt > 4) g.msg = 'Daar! Een vallende ster.'; },
+    draw: function (g, tt) {
+      if (!g.st) { g.st = []; for (var i = 0; i < 14; i++) g.st.push([rand(40, 200), rand(22, 70), rand(0, 6)]); }
+      ctx.fillStyle = EYE;
+      g.st.forEach(function (p) { ctx.globalAlpha = .35 + .5 * Math.abs(Math.sin(tt * 2 + p[2])); ctx.beginPath(); ctx.arc(p[0], p[1], 1.3, 0, TAU); ctx.fill(); });
+      if (tt > 4 && tt < 5.2) { var k = (tt - 4) / 1.2; ctx.globalAlpha = 1 - k; ctx.strokeStyle = EYE; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(70 + k * 90, 30 + k * 30); ctx.lineTo(56 + k * 90, 24 + k * 30); ctx.stroke(); }
+      ctx.globalAlpha = 1;
     } };
   GAGS.fireworks = { name: 'Vuurwerk', dur: 5.6, idle: 1, mood: 'excited', msg: 'Vuurwerk! Ooooh.',
     upd: function (g, tt) { dir(Math.sin(tt) * .3, -.9); if (tt > 4.4) { g.mood = 'happy'; g.msg = 'Nog eentje!'; } },

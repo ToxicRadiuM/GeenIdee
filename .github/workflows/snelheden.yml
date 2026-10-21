@@ -1,0 +1,46 @@
+# Buddy: elke maand de maximumsnelheden van Rijkswaterstaat ophalen en omzetten naar tegels.
+# De tegels komen op een aparte branch "snelheden" (die elke keer helemaal vervangen wordt, dus je repo groeit niet).
+# Buddy haalt ze op via raw.githubusercontent.com. Handmatig starten kan ook: tab Actions, "Snelheden bijwerken", Run workflow.
+name: Snelheden bijwerken
+
+on:
+  schedule:
+    - cron: '17 5 9 * *'   # de 9e van elke maand (Rijkswaterstaat publiceert rond de 5e)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snelheden
+  cancel-in-progress: false
+
+jobs:
+  bouw:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Benodigdheden
+        run: pip install shapely pyproj
+
+      - name: Nieuwste maximumsnelheden downloaden
+        run: python tools/wkd_tiles.py download Snelheden.gpkg
+
+      - name: Tegels maken
+        run: python tools/wkd_tiles.py tegels Snelheden.gpkg uit
+
+      - name: Publiceren op branch snelheden
+        run: |
+          cd uit
+          git init -q
+          git checkout -q -b snelheden
+          git add -A
+          git -c user.name="Buddy-bot" -c user.email="buddy-bot@users.noreply.github.com" commit -q -m "Maximumsnelheden $(python -c "import json;print(json.load(open('meta.json'))['versie'])")"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" snelheden
+          echo "Klaar: $(python -c "import json;m=json.load(open('meta.json'));print(m['tegels'],'tegels,',m['wegvakken'],'wegvakken, versie',m['versie'])")"
