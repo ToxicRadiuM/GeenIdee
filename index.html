@@ -440,6 +440,7 @@ details.set > * + * { margin-top: 10px; }
     <p class="foot" id="micNote" hidden>Muziek horen meet alleen het volume om mee te bewegen. Er wordt niets opgenomen, opgeslagen of verstuurd.</p>
     <p class="sub">Gezichten en weer</p>
     <div class="limitrow"><label for="moodTest">Uitdrukking testen</label><select id="moodTest"><option value="">Kies een gezicht</option><option value="sad">Verdrietig met tranen</option><option value="angry">Boos met stoom</option><option value="laugh">Lachen</option><option value="think">Nadenken</option><option value="clock">Klok</option><option value="love">Hartjesogen</option><option value="stars">Sterogen</option><option value="nerv">Zweetdruppel</option><option value="snot">Slapen met bel</option></select></div>
+    <div class="limitrow"><label for="gagTest">Animatie testen</label><select id="gagTest"><option value="">Kies een animatie</option></select></div>
     <div class="limitrow"><label for="wxTest">Weer testen</label><select id="wxTest"><option value="">Echt weer</option><option value="sun">Zon</option><option value="cloud">Bewolkt</option><option value="rain">Regen</option><option value="heavy">Zware regen</option><option value="thunder">Onweer</option><option value="snow">Sneeuw</option><option value="fog">Mist</option><option value="wind">Storm</option><option value="cold">Vrieskou</option><option value="hot">Hitte</option><option value="night">Nacht</option></select></div>
     <p class="sub">Flitsers nabootsen</p>
     <div class="limitrow"><label for="limit">Limiet</label><select id="limit"><option>50</option><option>70</option><option>80</option><option selected>100</option><option>120</option></select><span class="unit">KM/H</span></div>
@@ -3171,7 +3172,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v49';
+  var VERSION = 'v50';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -4535,6 +4536,31 @@ details.set > * + * { margin-top: 10px; }
     if (angT > 6 && T > angCool && !S.asleep) { angT = 0; angCool = T + 45; setEv('angry', 3.5, 'Hé! Dat is veel te hard. Gas eraf!'); beep('angry'); }
     if (nervT > 5 && T > nervCool && !S.asleep) { nervT = 0; nervCool = T + 40; S.nervUntil = T + 4; setEv('worried', 3, 'Oei, we gaan net iets te hard.'); }
   }
+  /* Alle animaties testen. Rij-animaties krijgen een nep-snelheid, stilstaan-animaties zetten de snelheid op 0. Alleen met de GPS uit (of stilstaand). */
+  (function () {
+    var sel = $('gagTest'); if (!sel) return;
+    var extra = [['__vlag', '0→100 met vlag (de echte show)']];
+    /* pas vullen als alle animaties geladen zijn (sommige staan verderop in de code) */
+    setTimeout(function () {
+    var lijst = Object.keys(GAGS).map(function (k) { var d = GAGS[k]; return [k, d.name + (d.drive && !d.idle ? ' (rijden)' : !d.drive ? ' (stilstaan)' : '')]; })
+      .sort(function (a, b) { return a[1].localeCompare(b[1], 'nl'); });
+    extra.concat(lijst).forEach(function (x) { var o = document.createElement('option'); o.value = x[0]; o.textContent = x[1]; sel.appendChild(o); });
+    }, 0);
+    sel.addEventListener('change', function () {
+      var k = sel.value; sel.value = ''; if (!k) return;
+      if (S.live && S.liveSpeed >= 3) { toast('Animaties testen kan als je stilstaat of met de GPS uit.'); return; }
+      if (S.asleep) wake();
+      S.ev = null; S.evLock = 0; S.flagUntil = 0; endGag(true);
+      if (k === '__vlag') { if (!S.live) { S.speed = S.target = 100; speedEl.value = 100; } launchDone(5.8); return; }
+      var d = GAGS[k]; if (!d) return;
+      var rij = d.drive && !d.idle;
+      if (!S.live) { var v = rij ? Math.max(50, (d.minV || 0) + 10) : 0; S.speed = S.target = v; speedEl.value = v; S.maxDec = 12; }
+      else if (rij) { toast('Dit is een rij-animatie. Zet de GPS uit om hem te testen.'); return; }
+      S.idle = Math.max(S.idle, 7 * ix());
+      startGag(k);
+      if (S.gag && S.gag.k === k && k === 'startgrid') S.gag.zelf = false;
+    });
+  })();
   $('moodTest').addEventListener('change', function () {
     var v = $('moodTest').value; $('moodTest').value = ''; if (!v) return;
     if (S.asleep) wake();
