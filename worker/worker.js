@@ -486,7 +486,7 @@ function puntOpLijn(c, t) {
 // Alles in dezelfde KV-opslag FLITS: 'p:<groep>' voor berichten, 'l:<groep>' voor het leaderboard.
 // Er wordt geen exacte plek gedeeld, behalve bij 'file' (die moet op de kaart om te waarschuwen).
 // ---------------------------------------------------------------------------
-const GR_SOORTEN = ['zwaai', 'koffie', 'koffieJa', 'koffieStraks', 'file', 'pech', 'hart', 'thuis', 'mijlpaal', 'gezien', 'feli'];
+const GR_SOORTEN = ['zwaai', 'koffie', 'koffieJa', 'koffieStraks', 'file', 'pech', 'hart', 'thuis', 'mijlpaal', 'gezien', 'feli', 'test'];
 const GR_BEWAAR_MS = 2 * 3600e3, GR_MAX = 100, GR_LEDEN = 50, GR_PAUZE_MS = 120e3; // elk soort bericht hooguit eens per 2 minuten
 
 async function groep(url, env, g, json) {

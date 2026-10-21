@@ -325,6 +325,24 @@ input[type=range] { width: 100%; height: 44px; accent-color: var(--helmet); marg
 details.set { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
 details.set summary { cursor: pointer; font-weight: 600; }
 details.set > * + * { margin-top: 10px; }
+/* Indeling: zes inklapbare kopjes, er staat er steeds één open */
+.topKnoppen .btns { margin-top: 10px; }
+.koppen { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+details.kop { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); overflow: hidden; }
+details.kop > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 10px; padding: 14px 16px; min-height: 56px; box-sizing: border-box; }
+details.kop > summary::-webkit-details-marker { display: none; }
+details.kop > summary::after { content: '›'; grid-column: 2; grid-row: 1 / span 2; font: 600 22px/1 var(--f-display); color: var(--muted); transition: transform .2s; }
+details.kop[open] > summary::after { transform: rotate(90deg); }
+details.kop .kopT { font: 700 17px/1.2 var(--f-display); }
+details.kop .kopS { font-size: 13px; color: var(--muted); grid-column: 1; }
+details.kop[open] > summary { border-bottom: 1px solid var(--line); }
+details.kop .kopIn { padding: 6px 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+details.kop .kopIn > .sub:first-child { margin-top: 6px; }
+.grLijst { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.grLijst li { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+.grLijst li.uit { border-style: dashed; }
+.grLijst li .tm { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.grLijst li.leeg { display: block; color: var(--muted); border-style: dashed; }
 .set.big { margin: 14px 0; border: 1px solid var(--line); border-radius: 14px; padding: 0 14px; background: var(--panel); }
 .set.big > summary { min-height: 48px; display: flex; align-items: center; font: 600 16px var(--f-body); cursor: pointer; }
 .set.big[open] { padding-bottom: 14px; }
@@ -383,9 +401,9 @@ details.set > * + * { margin-top: 10px; }
 <div id="errBar" hidden onclick="this.hidden=true" style="position:fixed;left:8px;right:8px;top:8px;z-index:99;background:#b71c1c;color:#fff;padding:10px 12px;border-radius:10px;font:13px system-ui"></div>
 <main>
   <header>
-    <p class="eyebrow">Simulator · brein van je robotje</p>
+    <p class="eyebrow">Jouw maatje voor in de auto</p>
     <h1>Buddy</h1>
-    <p class="lede">Zo reageert je robotje straks op de weg. Zijn basis zijn vaste regels plus een geheugen dat bijhoudt hoe jij rijdt: vertrekuren, snelheden, remstijl, je 0→100. Dat past op de M5Dial zelf en werkt zonder internet. Praten kan ook: met een eigen minibrein zonder internet, of slimmer via Claude.</p>
+    <p class="lede">Buddy rijdt met je mee: hij kent de limiet, waarschuwt voor flitsers en files, navigeert, en houdt contact met je collega’s. Hieronder vind je alles per onderwerp.</p>
   </header>
 
   <section class="stage" aria-label="Robotje">
@@ -405,36 +423,24 @@ details.set > * + * { margin-top: 10px; }
     </form>
   </section>
 
-  <section aria-label="Rijden">
+  <section class="topKnoppen" aria-label="Rijden">
     <div class="readout">
-      <output class="num" id="spd" for="speed">0</output><span class="unit">KM/H</span>
-      <span class="tag" id="gpsTag">GPS gesimuleerd</span>
+    <output class="num" id="spd" for="speed">0</output><span class="unit">KM/H</span>
+    <span class="tag" id="gpsTag">GPS gesimuleerd</span>
     </div>
     <p class="chip" id="limBron" hidden></p>
     <div class="btns">
       <button class="btn" id="bLive" type="button" aria-pressed="false" style="grid-column:1/-1">Telefoon-GPS: uit</button>
-      <div class="switchrow" style="grid-column:1/-1"><input type="checkbox" id="autoGps" checked><label for="autoGps">GPS vanzelf aan als ik Buddy open</label></div>
-      <div class="limitrow" style="grid-column:1/-1"><label for="nachtMode">Nachtstand</label><select id="nachtMode"><option value="auto">Vanzelf (na zonsondergang)</option><option value="aan">Altijd aan</option><option value="uit">Uit</option></select></div>
       <button class="btn primary" id="bCar" type="button" style="grid-column:1/-1">Autostand: alleen gezicht, groot</button>
       <button class="btn" id="bSound" type="button" aria-pressed="false" style="grid-column:1/-1">Geluid: uit</button>
     </div>
     <p class="note" id="note" aria-live="polite"></p>
     <p class="warn" id="gpsHelp" role="status" hidden></p>
     <button class="btn" id="bInstall" type="button" hidden>Installeer als app</button>
-    <p class="foot">Telefoon-GPS werkt alleen als deze pagina via https is geopend en je locatie toestaat. Het scherm blijft dan aan. Bedien de pagina niet tijdens het rijden: zet je telefoon in een houder.</p>
-    <div class="extraBlok">
-      <button class="btn" id="parkKnop" type="button">🅿️ Waar sta ik geparkeerd?</button>
-      <p class="chip" id="parkStat">Nog geen parkeerplek.</p>
-      <button class="btn" id="vcKnop" type="button">🚦 Check files op mijn route</button>
-      <p class="chip" id="vcStat">Buddy checkt dit vanzelf rond je gewone vertrektijd en als je wegrijdt.</p>
-      <p class="sub">Buddy’s level</p>
-      <p class="chip" id="lvStat">⭐ Level 1</p>
-      <div class="lvBalk"><i id="lvBar"></i></div>
-      <p class="foot">Buddy groeit mee met elke km, elke nette flitserpassage, elke melding voor de groep en elke laadpauze. Je level staat ook op het leaderboard.</p>
-      <p class="sub">Spelletjes</p>
-      <div class="btns"><button class="btn" id="spQuiz" type="button">🧠 Quiz</button><button class="btn" id="spKenteken" type="button">🔍 Kentekenjacht</button><button class="btn" id="spIkzie" type="button" style="grid-column:1/-1">👀 Ik zie, ik zie</button></div>
-      <div class="switchrow"><input type="checkbox" id="passagierOn"><label for="passagierOn">Ik ben passagier (spelletjes ook tijdens het rijden)</label></div>
-      <p class="foot">Voor als je stilstaat, aan het laden bent, of als iemand naast je zit. De bestuurder speelt niet tijdens het rijden.</p>
+  </section>
+  <div class="koppen">
+  <details class="kop" id="kopOnderweg"><summary><span class="kopT">🚗 Onderweg</span><span class="kopS">navigatie, parkeren, files</span></summary>
+    <div class="kopIn">
       <p class="sub">Navigatie</p>
       <div class="mobrow"><input type="text" id="navIn" autocomplete="off" placeholder="Waar gaan we heen? Adres, plaats of postcode"><button class="btn" id="navZoekKnop" type="button">Zoek</button></div>
       <div id="navRes" class="navRes"></div>
@@ -442,83 +448,153 @@ details.set > * + * { margin-top: 10px; }
       <div class="switchrow"><input type="checkbox" id="navSpk"><label for="navSpk">Afslagen hardop zeggen</label></div>
       <button class="btn" id="navStop" type="button" hidden>Route stoppen</button>
       <p class="foot">Buddy rekent zelf een route uit en zegt de afslagen, bijvoorbeeld “over 400 meter rechtsaf”. Op zijn gezicht zie je een pijltje met de afstand, en hij kijkt alvast de kant van de afslag op. Rijd je anders, dan rekent hij opnieuw. Zoek je bestemming op vóór je wegrijdt. Adressen: PDOK, routes: OpenStreetMap (OSRM). Volg altijd de borden en je eigen navigatie als die iets anders zeggen.</p>
-      <p class="sub">Laatste ritten</p>
-      <ol id="ritLijst"></ol>
-      <p class="chip" id="weekStat">Deze week nog geen ritten.</p>
+      <p class="sub">Parkeren en files</p>
+      <button class="btn" id="parkKnop" type="button">🅿️ Waar sta ik geparkeerd?</button>
+      <p class="chip" id="parkStat">Nog geen parkeerplek.</p>
+      <button class="btn" id="vcKnop" type="button">🚦 Check files op mijn route</button>
+      <p class="chip" id="vcStat">Buddy checkt dit vanzelf rond je gewone vertrektijd en als je wegrijdt.</p>
       <p class="sub">Routes klaarzetten</p>
       <button class="btn" id="routeKnop" type="button">📶 Mijn routes nu klaarzetten</button>
       <p class="chip" id="routeStat">Nog geen routes onthouden.</p>
       <p class="foot">Buddy onthoudt over welke wegvakken je rijdt en zet de maximumsnelheden daarvan op je telefoon. Dan weet hij op je vaste routes meteen de limiet, ook met slecht bereik. Dit gebeurt vanzelf hooguit twee keer per dag, als de GPS uit staat en je niet op mobiele data zit. Met de knop gebeurt het meteen.</p>
+      <p class="foot">Telefoon-GPS werkt alleen als deze pagina via https is geopend en je locatie toestaat. Het scherm blijft dan aan. Bedien de pagina niet tijdens het rijden: zet je telefoon in een houder.</p>
     </div>
-  </section>
-
-  <section aria-label="Binnenkant">
-    <h2>Binnenkant</h2>
-    <div class="meters">
-      <div class="meter"><span>Energie</span><div class="bar"><i id="mEnergy" style="--c:var(--good)"></i></div><b id="vEnergy">0</b></div>
-      <div class="meter"><span>Verveling</span><div class="bar"><i id="mBored" style="--c:var(--muted)"></i></div><b id="vBored">0</b></div>
-      <div class="meter"><span>Genegenheid</span><div class="bar"><i id="mLove" style="--c:var(--helmet)"></i></div><b id="vLove">0</b></div>
-      <div class="meter"><span>Rijtijd</span><div class="bar"><i id="mDrive" style="--c:var(--muted)"></i></div><b id="vDrive">0u00</b></div>
-      <div class="meter"><span>Rijstijl</span><div class="bar"><i id="mStyle" style="--c:var(--good)"></i></div><b id="vStyle">100</b></div>
-    </div>
-  </section>
-
-  <section aria-label="Leaderboard">
-    <h2>Leaderboard</h2>
-    <p class="foot">Jouw groep, op basis van echte ritten met de GPS aan. De groepscode en je auto stel je in bij Instellingen, onder Flitsers. Elke week is er een nieuwe challenge; de winnaar hoort iedereen op maandag.</p>
-    <p class="sub">Jouw badges</p>
-    <div id="badgeLijst" aria-label="Jouw badges"></div>
-    <div id="bordTabs" role="group" aria-label="Soort ranglijst">
+  </details>
+  <details class="kop" id="kopGroep"><summary><span class="kopT">👥 Groep</span><span class="kopS">berichten, leaderboard, verjaardagen</span></summary>
+    <div class="kopIn">
+      <p class="chip" id="grBerStat">Groepsberichten: nog niet opgehaald.</p>
+      <button class="btn" id="grTestKnop" type="button">🧪 Test de groep</button>
+      <p class="chip" id="grTestStat" hidden></p>
+      <p class="sub">Laatste berichten</p>
+      <ol id="grLijst" class="grLijst"><li class="leeg">Nog geen berichten.</li></ol>
+      <p class="sub">Leaderboard</p>
+      <p class="foot">Jouw groep, op basis van echte ritten met de GPS aan. De groepscode en je auto stel je hieronder in, bij Groepsinstellingen. Elke week is er een nieuwe challenge; de winnaar hoort iedereen op maandag.</p>
+      <div id="bordTabs" role="group" aria-label="Soort ranglijst">
       <button type="button" class="btn" data-soort="week" aria-pressed="true">🏁 Week</button><button type="button" class="btn" data-soort="km" aria-pressed="false">Km</button><button type="button" class="btn" data-soort="netjes" aria-pressed="false">Netjes</button><button type="button" class="btn" data-soort="gemeld" aria-pressed="false">Meldingen</button><button type="button" class="btn" data-soort="tachtig" aria-pressed="false">0–80</button><button type="button" class="btn" data-soort="nul" aria-pressed="false">0–100</button><button type="button" class="btn" data-soort="stijl" aria-pressed="false">Rijstijl</button>
+      </div>
+      <ol id="bordLijst"></ol>
+      <p class="chip" id="bordStat">Nog niet geladen.</p>
+      <button class="btn" id="bordVervers" type="button">Leaderboard verversen</button>
+      <p class="sub">Jouw badges</p>
+      <div id="badgeLijst" aria-label="Jouw badges"></div>
+      <p class="sub">Groepsinstellingen</p>
+      <div class="switchrow"><input type="checkbox" id="grSignaalOn" checked><label for="grSignaalOn">Geluidje en trillen bij een groepsbericht (ook als het geluid van Buddy uit staat)</label></div>
+      <div class="switchrow"><input type="checkbox" id="grGezienOn" checked><label for="grGezienOn">Laat collega’s zien dat ik hun bericht heb gezien (✓)</label></div>
+      <div class="limitrow"><label>Mijn verjaardag</label><select id="bdDag"></select><select id="bdMaand"></select></div>
+      <p class="foot">Je collega’s zien dan op je verjaardag een taartje bij je naam en kunnen je met één tik feliciteren. Alleen dag en maand, geen jaartal.</p>
+      <p class="foot">Standaard zit iedereen in groep 123456, dus collega’s hoeven niets in te vullen. Wil je een eigen groep, vul dan op alle telefoons dezelfde andere code in (6 tot 32 letters of cijfers, houd hem geheim). Flitsers die iemand toevoegt komen dan bij iedereen, en jullie kunnen elkaar in de autostand met de knop “Groep” een zwaai, koffievraag, file, “ik sta stil”, hartjes of “bijna thuis” sturen. Er worden alleen plek en limiet gedeeld, en je plaatsnaam bij “ik sta stil” (geen precieze plek). Je hebt het Worker-adres hierboven nodig, met opslag gekoppeld.</p>
+      <div class="mobrow"><input type="text" id="grpCode" maxlength="32" autocomplete="off" autocapitalize="none" placeholder="Groepscode"><button class="btn" id="grpSave" type="button">Opslaan en verversen</button></div>
+      <p class="chip" id="grpStat">Geen groepscode ingevuld.</p>
+      <p class="foot">Je naam voor de groep is de naam die je hierboven bij “Jouw naam” bewaart. Je auto is optioneel, zo herkennen jullie elkaar op de weg (geen kenteken).</p>
+      <div class="mobrow"><input type="text" id="autoIn" maxlength="30" autocomplete="off" placeholder="Jouw auto, bijv. witte Model Y"><button class="btn" id="autoSave" type="button">Bewaar auto</button></div>
+      <button class="btn" id="grpWeg" type="button">Haal mij uit de groep</button>
+      <div class="switchrow"><input type="checkbox" id="buurIn"><label for="buurIn">Zwaai als een collega vlakbij rijdt (je positie wordt niet aan anderen gegeven, alleen dat je in de buurt bent)</label></div>
+      <button class="btn" id="grpDel" type="button">Mijn laatst toegevoegde flitser verwijderen</button>
     </div>
-    <ol id="bordLijst"></ol>
-    <p class="chip" id="bordStat">Nog niet geladen.</p>
-    <button class="btn" id="bordVervers" type="button">Leaderboard verversen</button>
-  </section>
-
-  <section aria-label="Praten">
-    <h2>Praten</h2>
-    <p class="foot"><b>Tijdens het rijden praat je met je stem.</b> Zet bij Instellingen “Luisteren naar hé Buddy” aan, dan hoef je niets aan te raken. Hij antwoordt hardop. Ideeën om te zeggen: “hé Buddy, vertel een grap”, “doe een dansje”, “hoe laat is het”, “wat is mijn snelste nul naar honderd”, “hoeveel ritten hebben we gereden”, “wat weet je over mij”, “onthoud dat ik om vijf uur moet bellen”, “als ik hoi zeg, zeg jij goedemorgen kapitein”, “welterusten”.</p>
-    <p class="foot" id="btNote" hidden>Tip: als de telefoon met de Tesla verbonden is, gaat de auto bij de microfoon denken dat je belt (belicoon en lopende tijd). Dat is normaal bij Bluetooth. Het stopt zodra de microfoon klaar is. Wil je dat nooit: zet in de Bluetooth-instellingen van je telefoon bij de Tesla “Telefoongesprekken” uit.</p><p class="foot" id="chatInfo">Praten kan alleen als de auto stilstaat. Hij snapt een hoop zonder internet. Hij leert ook van jou: zeg bijvoorbeeld "als ik hoi zeg, zeg jij goedemorgen kapitein".</p>
-    <div class="chat">
+  </details>
+  <details class="kop" id="kopRitten"><summary><span class="kopT">🏁 Mijn ritten</span><span class="kopS">ritten, level, records</span></summary>
+    <div class="kopIn">
+      <p class="sub">Laatste ritten</p>
+      <ol id="ritLijst"></ol>
+      <p class="chip" id="weekStat">Deze week nog geen ritten.</p>
+      <button class="btn" id="bReplay" type="button">Laatste rit afspelen (4x sneller)</button>
+      <p class="sub">Buddy’s level</p>
+      <p class="chip" id="lvStat">⭐ Level 1</p>
+      <div class="lvBalk"><i id="lvBar"></i></div>
+      <p class="foot">Buddy groeit mee met elke km, elke nette flitserpassage, elke melding voor de groep en elke laadpauze. Je level staat ook op het leaderboard.</p>
+    </div>
+  </details>
+  <details class="kop" id="kopPlezier"><summary><span class="kopT">🎲 Plezier</span><span class="kopS">spelletjes, praten, outfits</span></summary>
+    <div class="kopIn">
+      <p class="sub">Spelletjes</p>
+      <div class="btns"><button class="btn" id="spQuiz" type="button">🧠 Quiz</button><button class="btn" id="spKenteken" type="button">🔍 Kentekenjacht</button><button class="btn" id="spIkzie" type="button" style="grid-column:1/-1">👀 Ik zie, ik zie</button></div>
+      <div class="switchrow"><input type="checkbox" id="passagierOn"><label for="passagierOn">Ik ben passagier (spelletjes ook tijdens het rijden)</label></div>
+      <p class="foot">Voor als je stilstaat, aan het laden bent, of als iemand naast je zit. De bestuurder speelt niet tijdens het rijden.</p>
+      <p class="sub">Praten met Buddy</p>
+      <p class="foot"><b>Tijdens het rijden praat je met je stem.</b> Zet bij ⚙️ Instellingen “Luisteren naar hé Buddy” aan, dan hoef je niets aan te raken. Hij antwoordt hardop. Ideeën om te zeggen: “hé Buddy, vertel een grap”, “doe een dansje”, “hoe laat is het”, “wat is mijn snelste nul naar honderd”, “hoeveel ritten hebben we gereden”, “wat weet je over mij”, “onthoud dat ik om vijf uur moet bellen”, “als ik hoi zeg, zeg jij goedemorgen kapitein”, “welterusten”.</p>
+      <p class="foot" id="btNote" hidden>Tip: als de telefoon met de Tesla verbonden is, gaat de auto bij de microfoon denken dat je belt (belicoon en lopende tijd). Dat is normaal bij Bluetooth. Het stopt zodra de microfoon klaar is. Wil je dat nooit: zet in de Bluetooth-instellingen van je telefoon bij de Tesla “Telefoongesprekken” uit.</p><p class="foot" id="chatInfo">Praten kan alleen als de auto stilstaat. Hij snapt een hoop zonder internet. Hij leert ook van jou: zeg bijvoorbeeld "als ik hoi zeg, zeg jij goedemorgen kapitein".</p>
+      <div class="chat">
       <div class="log" id="log" role="log" aria-live="polite"></div>
       <form class="chatform" id="chatForm" autocomplete="off">
-        <input type="text" id="chatIn" aria-label="Typ een bericht" maxlength="200" placeholder="Zeg iets tegen hem">
-        <button class="btn" id="micBtn" type="button" style="min-height:44px" hidden aria-label="Praat met de microfoon">🎤</button><button class="btn primary" id="chatSend" type="submit" style="min-height:44px">Stuur</button>
+      <input type="text" id="chatIn" aria-label="Typ een bericht" maxlength="200" placeholder="Zeg iets tegen hem">
+      <button class="btn" id="micBtn" type="button" style="min-height:44px" hidden aria-label="Praat met de microfoon">🎤</button><button class="btn primary" id="chatSend" type="submit" style="min-height:44px">Stuur</button>
       </form>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div class="switchrow" id="claudeRow" hidden><input type="checkbox" id="claudeOn"><label for="claudeOn">Slimmer praten via Claude (kost een beetje van jouw Claude-gebruik)</label></div>
+      <p class="foot" id="claudeNote" hidden></p>
+      <p class="sub">Outfit</p>
+      <div class="limitrow"><label for="outfitIn">Outfit van Buddy</label><select id="outfitIn"></select></div>
+      <p class="chip" id="outfitStat"></p>
+      <div class="switchrow"><input type="checkbox" id="feestIn" checked><label for="feestIn">Feestdag-outfits (kerstmuts, Koningsdag, Sinterklaas, verjaardag…)</label></div>
+      <p class="sub">Animaties bekijken</p>
+      <div class="limitrow"><label for="moodTest">Uitdrukking testen</label><select id="moodTest"><option value="">Kies een gezicht</option><option value="sad">Verdrietig met tranen</option><option value="angry">Boos met stoom</option><option value="laugh">Lachen</option><option value="think">Nadenken</option><option value="clock">Klok</option><option value="love">Hartjesogen</option><option value="stars">Sterogen</option><option value="nerv">Zweetdruppel</option><option value="snot">Slapen met bel</option></select></div>
+      <div class="limitrow"><label for="gagTest">Animatie testen</label><select id="gagTest"><option value="">Kies een animatie</option></select></div>
     </div>
-    <div class="chips" id="chips"></div>
-    <div class="switchrow" id="claudeRow" hidden><input type="checkbox" id="claudeOn"><label for="claudeOn">Slimmer praten via Claude (kost een beetje van jouw Claude-gebruik)</label></div>
-    <p class="foot" id="claudeNote" hidden></p>
-  </section>
-
-  <section aria-label="Leren">
-    <h2>Wat hij onthoudt</h2>
-    <p class="insight" id="insight"></p>
-    <div class="hist" id="hist" role="img" aria-label="Vertrekken per uur van de dag"></div>
-    <div class="axis" aria-hidden="true"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
-    <p class="chip" id="chip"></p>
-    <h2>Wat hij van jou geleerd heeft</h2>
-    <ul class="facts" id="facts"></ul>
-    <div class="clock">
-      <label for="clock">Tijd van de dag</label>
-      <input type="range" id="clock" min="0" max="23.75" step="0.25" value="8">
-      <output id="clockOut" for="clock">08:00</output>
+  </details>
+  <details class="kop" id="kopInst"><summary><span class="kopT">⚙️ Instellingen</span><span class="kopS">flitsers, geluid, back-up, testlog</span></summary>
+    <div class="kopIn">
+      <p class="sub">Algemeen</p>
+      <div class="mobrow"><input type="text" id="meIn" maxlength="18" placeholder="Jouw naam"><button class="btn" id="meSave" type="button">Bewaar naam</button></div>
+      <div class="switchrow" style="grid-column:1/-1"><input type="checkbox" id="autoGps" checked><label for="autoGps">GPS vanzelf aan als ik Buddy open</label></div>
+      <div class="limitrow" style="grid-column:1/-1"><label for="nachtMode">Nachtstand</label><select id="nachtMode"><option value="auto">Vanzelf (na zonsondergang)</option><option value="aan">Altijd aan</option><option value="uit">Uit</option></select></div>
+      <p class="sub">Scherm</p>
+      <div class="limitrow"><label for="spdMode">Snelheid op zijn scherm</label><select id="spdMode"><option value="1">Cijfer</option><option value="2">Ring</option><option value="3">Cijfer en ring</option><option value="0">Uit</option></select></div>
+      <div class="limitrow"><label for="leanDir">Leunen in bochten</label><select id="leanDir"><option value="1">Naar de bocht toe</option><option value="-1">Van de bocht af</option></select></div>
+      <p class="sub">Geluid en spraak</p>
+      <div class="switchrow"><input type="checkbox" id="babOn" checked><label for="babOn">Schattige piepjes als hij iets zegt (met Geluid aan)</label></div>
+      <div class="switchrow"><input type="checkbox" id="wakeOn"><label for="wakeOn">Luisteren naar “hé Buddy” (handsfree, ook tijdens het rijden)</label></div>
+      <p class="chip" id="wakeStat">Luisteren staat uit.</p>
+      <p class="foot">Als de telefoon met de Tesla verbonden is, zie je bij luisteren steeds het belicoon. Dat is normaal bij Bluetooth. Zeg bijvoorbeeld: “hé Buddy, hoe heet ik?” Hij luistert alleen als de pagina open staat.</p>
+      <p class="sub">Flitsers</p>
+      <div class="switchrow"><input type="checkbox" id="camOn" checked><label for="camOn">Flitsmeldingen aan</label></div>
+      <div class="switchrow"><input type="checkbox" id="spkOn"><label for="spkOn">Flitsmeldingen hardop zeggen (Nederlands)</label></div>
+      <p class="chip" id="camStat">Flitsdata: nog niet geladen. Wordt opgehaald als de GPS aan staat.</p>
+      <div class="switchrow"><input type="checkbox" id="mobOn" checked><label for="mobOn">Gemelde controles van flitsers.nl erbij (alleen persoonlijk gebruik)</label></div>
+      <p class="chip" id="mobStat">Gemelde controles: nog niet opgehaald. Dit gebeurt elke 2 minuten als de GPS aan staat.</p>
+      <button class="btn" id="bUcam" type="button" style="grid-column:1/-1">Vaste flitser: onthoud deze plek</button>
+      <button class="btn" id="bUmob" type="button" style="grid-column:1/-1">Mobiele flitser: onthoud deze plek (3 uur)</button>
+      <p class="sub">Wegwerkzaamheden</p>
+      <div class="switchrow"><input type="checkbox" id="wkOn" checked><label for="wkOn">Waarschuwen voor wegwerkzaamheden</label></div>
+      <p class="chip" id="wkStat">Nog niet geladen.</p>
+      <p class="foot">Bron: eerst de ANWB (files met vertraging, ongelukken, werk en afgesloten op- en afritten). Daarna check ik de live data van NDW (de overheid): wat de ANWB niet heeft, zoals tijdelijke maximumsnelheden, komt erbij en dubbele meldingen laat ik weg. Werkt de ANWB niet, dan gebruik ik alleen NDW, en lukt dat ook niet, dan OpenStreetMap. Hiervoor heb je het Worker-adres nodig (⚙️ Instellingen, Koppelingen). ANWB-gegevens zijn alleen voor persoonlijk gebruik.</p>
+      <div class="switchrow"><input type="checkbox" id="msiOn" checked><label for="msiOn">Matrixborden boven de snelweg (snelheid, rood kruis)</label></div>
+      <p class="chip" id="msiStat">Matrixborden: nog niet geladen. Dat gebeurt vanzelf als je op de snelweg rijdt.</p>
+      <p class="sub">Weer</p>
+      <div class="switchrow"><input type="checkbox" id="wxOn" checked><label for="wxOn">Weer-animaties (weer op je locatie)</label></div>
+      <p class="chip" id="wxStat">Weer: nog niet opgehaald. Dit gebeurt als de GPS aan staat.</p>
+      <p class="sub">Back-up van Buddy</p>
+      <p class="foot">Na elke rit bewaart Buddy alles wat hij onthoudt in je Worker. Schrijf je herstelcode op: daarmee zet je hem terug op een nieuwe telefoon of straks op zijn eigen scherm.</p>
+      <p class="chip" id="bkStat">Herstelcode laden…</p>
+      <button class="btn" id="bkNu" type="button">Nu een back-up maken</button>
+      <div class="mobrow"><input type="text" id="bkIn" maxlength="16" autocomplete="off" autocapitalize="characters" placeholder="Herstelcode, bijv. ABCD-EFGH-JK23"><button class="btn" id="bkTerug" type="button">Terugzetten</button></div>
+      <p class="sub">Koppelingen</p>
+      <details class="set"><summary>Eigen koppeling instellen</summary>
+      <p class="foot">Een webpagina mag flitsers.nl meestal niet rechtstreeks uitlezen. Met een eigen gratis tussenstation (Cloudflare Worker, uitleg bij de app) werkt het wel. Plak hier het adres ervan. Laat leeg om rechtstreeks te proberen.</p>
+      <div class="mobrow"><input type="text" id="proxyUrl" inputmode="url" autocomplete="off" placeholder="https://jouw-naam.workers.dev"><button class="btn" id="proxySave" type="button">Bewaar adres</button></div>
+      </details>
+      <details class="set"><summary>Zelf een lijst plakken</summary>
+      <p class="foot">Open zelf de flitserspagina in je browser. Klap alleen de wegen open waar flitsers staan, kies alles selecteren en kopieer. Klap je ze liever één voor één open, dat kan ook: elke keer plakken voegt toe aan de lijst en er gaat niets verloren. Doe dit alleen als je stilstaat of als passagier. Ik haal alleen wegnummers en hectometerpalen eruit en zet ze 3 uur op de kaart. Er wordt niets automatisch bij die site opgehaald.</p>
+      <textarea id="pasteBox" rows="4" placeholder="Plak hier de tekst van de pagina" style="width:100%;font:13px sans-serif;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
+      <div class="mobrow"><button class="btn primary" id="pasteClip" type="button">Plakken van klembord</button><button class="btn" id="pasteGo" type="button">Lees lijst in</button><button class="btn" id="pasteClear" type="button">Wis geplakte flitsers</button></div>
+      <p class="chip" id="pasteStat"></p>
+      </details>
+      <p class="sub">Testlog</p>
+      <div class="btns">
+      <button class="btn" id="bLog" type="button">Kopieer testlog</button>
+      <button class="btn" id="bLogClear" type="button">Log wissen</button>
+      </div>
+      <p class="foot" id="logInfo">De testlog bewaart wat er onderweg gebeurt (snelheid, limiet, meldingen, fouten), zonder je locatie. Kopieer hem na de rit en stuur hem naar Claude.</p>
+      <textarea id="logBox" rows="6" hidden readonly style="width:100%;font:12px monospace;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
     </div>
-    <div class="row2">
-      <button class="btn" id="bDay" type="button">Voorbeeldwerkdag toevoegen</button>
-      <button class="btn" id="bWipe" type="button">Geheugen wissen</button>
-    </div>
-    <p class="foot">Laten leren: zet de schuif op een tijd, laat hem 8 seconden stilstaan en trek op. Dat vertrek wordt onthouden. Op een uur waarop je vaak vertrekt, kijkt hij verwachtingsvol.</p>
-  </section>
-
-  <h2 style="margin-top:28px">Hulpmiddelen</h2>
-  <details class="set big" id="animDet"><summary>Animaties en testen</summary>
-    <p class="foot">Hier probeer je alles uit zonder te rijden. Met telefoon-GPS aan gebruikt hij je echte rit en doen de rijknoppen niets.</p>
-    <p class="sub">Snelheid</p>
-    <input type="range" id="speed" min="0" max="130" step="1" value="0" aria-label="Snelheid in kilometer per uur">
-    <p class="sub">Rijden nabootsen</p>
-    <div class="btns">
+  </details>
+  <details class="kop" id="kopBouw"><summary><span class="kopT">🧪 Voor het bouwen</span><span class="kopS">simulator, geheugen, plan</span></summary>
+    <div class="kopIn">
+      <p class="foot">Hier probeer je alles uit zonder te rijden. Met telefoon-GPS aan gebruikt hij je echte rit en doen de rijknoppen niets.</p>
+      <p class="sub">Snelheid</p>
+      <input type="range" id="speed" min="0" max="130" step="1" value="0" aria-label="Snelheid in kilometer per uur">
+      <p class="sub">Rijden nabootsen</p>
+      <div class="btns">
       <button class="btn" id="bGo" type="button">Optrekken</button>
       <button class="btn" id="bStop" type="button">Stoppen</button>
       <button class="btn" id="bHard" type="button">Hard remmen</button>
@@ -533,102 +609,53 @@ details.set > * + * { margin-top: 10px; }
       <button class="btn" id="bStart" type="button">Startvlag-show 3-2-1</button>
       <button class="btn" id="bSleep" type="button">Laat slapen</button>
       <button class="btn" id="bMic" type="button" aria-pressed="false">Muziek horen: uit</button>
-      <button class="btn" id="bReplay" type="button" style="grid-column:1/-1">Laatste rit afspelen (4x sneller)</button>
-    </div>
-    <p class="foot" id="micNote" hidden>Muziek horen meet alleen het volume om mee te bewegen. Er wordt niets opgenomen, opgeslagen of verstuurd.</p>
-    <p class="sub">Gezichten en weer</p>
-    <div class="limitrow"><label for="moodTest">Uitdrukking testen</label><select id="moodTest"><option value="">Kies een gezicht</option><option value="sad">Verdrietig met tranen</option><option value="angry">Boos met stoom</option><option value="laugh">Lachen</option><option value="think">Nadenken</option><option value="clock">Klok</option><option value="love">Hartjesogen</option><option value="stars">Sterogen</option><option value="nerv">Zweetdruppel</option><option value="snot">Slapen met bel</option></select></div>
-    <div class="limitrow"><label for="gagTest">Animatie testen</label><select id="gagTest"><option value="">Kies een animatie</option></select></div>
-    <div class="limitrow"><label for="wxTest">Weer testen</label><select id="wxTest"><option value="">Echt weer</option><option value="sun">Zon</option><option value="cloud">Bewolkt</option><option value="rain">Regen</option><option value="heavy">Zware regen</option><option value="thunder">Onweer</option><option value="snow">Sneeuw</option><option value="fog">Mist</option><option value="wind">Storm</option><option value="cold">Vrieskou</option><option value="hot">Hitte</option><option value="night">Nacht</option></select></div>
-    <p class="sub">Flitsers nabootsen</p>
-    <div class="limitrow"><label for="limit">Limiet</label><select id="limit"><option>50</option><option>70</option><option>80</option><option selected>100</option><option>120</option></select><span class="unit">KM/H</span></div>
-    <div class="btns">
+      </div>
+      <p class="foot" id="micNote" hidden>Muziek horen meet alleen het volume om mee te bewegen. Er wordt niets opgenomen, opgeslagen of verstuurd.</p>
+      <div class="limitrow"><label for="wxTest">Weer testen</label><select id="wxTest"><option value="">Echt weer</option><option value="sun">Zon</option><option value="cloud">Bewolkt</option><option value="rain">Regen</option><option value="heavy">Zware regen</option><option value="thunder">Onweer</option><option value="snow">Sneeuw</option><option value="fog">Mist</option><option value="wind">Storm</option><option value="cold">Vrieskou</option><option value="hot">Hitte</option><option value="night">Nacht</option></select></div>
+      <p class="sub">Flitsers nabootsen</p>
+      <div class="limitrow"><label for="limit">Limiet</label><select id="limit"><option>50</option><option>70</option><option>80</option><option selected>100</option><option>120</option></select><span class="unit">KM/H</span></div>
+      <div class="btns">
       <button class="btn" id="bCam" type="button">Flitser vooruit</button>
       <button class="btn" id="bTraj" type="button">Trajectcontrole</button>
       <button class="btn" id="bDrive" type="button" style="grid-column:1/-1">+1 uur rijtijd (pauzeherinnering testen)</button>
-    </div>
-    <p class="foot">Gesimuleerd. Afstanden lopen ×10, zodat je het snel ziet: een flitser ligt 900 m verder, een traject is 3 km. Met telefoon-GPS aan gebruikt hij de echte flitsers uit OpenStreetMap en gelden deze testknoppen niet. In sommige landen, zoals Duitsland en Zwitserland, is een flitsmelding verboden: zet hem daar uit. Buiten Nederland kunnen andere regels gelden voor flitsmeldingen. Rijtijd loopt hier 60× sneller: 1 seconde is 1 minuut.</p>
-  </details>
-
-  <details class="set big" id="setDet"><summary>Instellingen</summary>
-    <p class="sub">Scherm</p>
-    <div class="limitrow"><label for="spdMode">Snelheid op zijn scherm</label><select id="spdMode"><option value="1">Cijfer</option><option value="2">Ring</option><option value="3">Cijfer en ring</option><option value="0">Uit</option></select></div>
-    <div class="limitrow"><label for="outfitIn">Outfit van Buddy</label><select id="outfitIn"></select></div>
-    <p class="chip" id="outfitStat"></p>
-    <p class="sub">Back-up van Buddy</p>
-    <p class="foot">Na elke rit bewaart Buddy alles wat hij onthoudt in je Worker. Schrijf je herstelcode op: daarmee zet je hem terug op een nieuwe telefoon of straks op zijn eigen scherm.</p>
-    <p class="chip" id="bkStat">Herstelcode laden…</p>
-    <button class="btn" id="bkNu" type="button">Nu een back-up maken</button>
-    <div class="mobrow"><input type="text" id="bkIn" maxlength="16" autocomplete="off" autocapitalize="characters" placeholder="Herstelcode, bijv. ABCD-EFGH-JK23"><button class="btn" id="bkTerug" type="button">Terugzetten</button></div>
-    <div class="switchrow"><input type="checkbox" id="feestIn" checked><label for="feestIn">Feestdag-outfits (kerstmuts, Koningsdag, Sinterklaas, verjaardag…)</label></div>
-    <div class="limitrow"><label for="leanDir">Leunen in bochten</label><select id="leanDir"><option value="1">Naar de bocht toe</option><option value="-1">Van de bocht af</option></select></div>
-    <div class="switchrow"><input type="checkbox" id="wxOn" checked><label for="wxOn">Weer-animaties (weer op je locatie)</label></div>
-    <p class="chip" id="wxStat">Weer: nog niet opgehaald. Dit gebeurt als de GPS aan staat.</p>
-    <p class="sub">Geluid en spraak</p>
-    <div class="switchrow"><input type="checkbox" id="babOn" checked><label for="babOn">Schattige piepjes als hij iets zegt (met Geluid aan)</label></div>
-    <div class="switchrow"><input type="checkbox" id="wakeOn"><label for="wakeOn">Luisteren naar “hé Buddy” (handsfree, ook tijdens het rijden)</label></div>
-    <p class="chip" id="wakeStat">Luisteren staat uit.</p>
-    <p class="foot">Als de telefoon met de Tesla verbonden is, zie je bij luisteren steeds het belicoon. Dat is normaal bij Bluetooth. Zeg bijvoorbeeld: “hé Buddy, hoe heet ik?” Hij luistert alleen als de pagina open staat.</p>
-    <div class="mobrow"><input type="text" id="meIn" maxlength="18" placeholder="Jouw naam"><button class="btn" id="meSave" type="button">Bewaar naam</button></div>
-    <p class="sub">Wegwerkzaamheden</p>
-    <div class="switchrow"><input type="checkbox" id="wkOn" checked><label for="wkOn">Waarschuwen voor wegwerkzaamheden</label></div>
-    <p class="chip" id="wkStat">Nog niet geladen.</p>
-    <p class="foot">Bron: eerst de ANWB (files met vertraging, ongelukken, werk en afgesloten op- en afritten). Daarna check ik de live data van NDW (de overheid): wat de ANWB niet heeft, zoals tijdelijke maximumsnelheden, komt erbij en dubbele meldingen laat ik weg. Werkt de ANWB niet, dan gebruik ik alleen NDW, en lukt dat ook niet, dan OpenStreetMap. Hiervoor heb je het Worker-adres nodig (bij Flitsers, tussenstation). ANWB-gegevens zijn alleen voor persoonlijk gebruik.</p>
-    <div class="switchrow"><input type="checkbox" id="msiOn" checked><label for="msiOn">Matrixborden boven de snelweg (snelheid, rood kruis)</label></div>
-    <p class="chip" id="msiStat">Matrixborden: nog niet geladen. Dat gebeurt vanzelf als je op de snelweg rijdt.</p>
-    <p class="sub">Flitsers</p>
-    <div class="switchrow"><input type="checkbox" id="camOn" checked><label for="camOn">Flitsmeldingen aan</label></div>
-    <div class="switchrow"><input type="checkbox" id="spkOn"><label for="spkOn">Flitsmeldingen hardop zeggen (Nederlands)</label></div>
-    <p class="chip" id="camStat">Flitsdata: nog niet geladen. Wordt opgehaald als de GPS aan staat.</p>
-    <div class="switchrow"><input type="checkbox" id="mobOn" checked><label for="mobOn">Gemelde controles van flitsers.nl erbij (alleen persoonlijk gebruik)</label></div>
-    <p class="chip" id="mobStat">Gemelde controles: nog niet opgehaald. Dit gebeurt elke 2 minuten als de GPS aan staat.</p>
-    <button class="btn" id="bUcam" type="button" style="grid-column:1/-1">Vaste flitser: onthoud deze plek</button>
-    <button class="btn" id="bUmob" type="button" style="grid-column:1/-1">Mobiele flitser: onthoud deze plek (3 uur)</button>
-    <p class="sub">Samen met collega’s</p>
-    <div class="limitrow"><label>Mijn verjaardag</label><select id="bdDag"></select><select id="bdMaand"></select></div>
-    <p class="foot">Je collega’s zien dan op je verjaardag een taartje bij je naam en kunnen je met één tik feliciteren. Alleen dag en maand, geen jaartal.</p>
-    <p class="chip" id="grBerStat">Groepsberichten: nog niet opgehaald.</p>
-    <div class="switchrow"><input type="checkbox" id="grSignaalOn" checked><label for="grSignaalOn">Geluidje en trillen bij een groepsbericht (ook als het geluid van Buddy uit staat)</label></div>
-    <div class="switchrow"><input type="checkbox" id="grGezienOn" checked><label for="grGezienOn">Laat collega’s zien dat ik hun bericht heb gezien (✓)</label></div>
-    <p class="foot">Standaard zit iedereen in groep 123456, dus collega’s hoeven niets in te vullen. Wil je een eigen groep, vul dan op alle telefoons dezelfde andere code in (6 tot 32 letters of cijfers, houd hem geheim). Flitsers die iemand toevoegt komen dan bij iedereen, en jullie kunnen elkaar in de autostand met de knop “Groep” een zwaai, koffievraag, file, “ik sta stil”, hartjes of “bijna thuis” sturen. Er worden alleen plek en limiet gedeeld, en je plaatsnaam bij “ik sta stil” (geen precieze plek). Je hebt het Worker-adres hierboven nodig, met opslag gekoppeld.</p>
-    <div class="mobrow"><input type="text" id="grpCode" maxlength="32" autocomplete="off" autocapitalize="none" placeholder="Groepscode"><button class="btn" id="grpSave" type="button">Opslaan en verversen</button></div>
-    <p class="chip" id="grpStat">Geen groepscode ingevuld.</p>
-    <p class="foot">Je naam voor de groep is de naam die je hierboven bij “Jouw naam” bewaart. Je auto is optioneel, zo herkennen jullie elkaar op de weg (geen kenteken).</p>
-    <div class="mobrow"><input type="text" id="autoIn" maxlength="30" autocomplete="off" placeholder="Jouw auto, bijv. witte Model Y"><button class="btn" id="autoSave" type="button">Bewaar auto</button></div>
-    <button class="btn" id="grpWeg" type="button">Haal mij uit de groep</button>
-    <div class="switchrow"><input type="checkbox" id="buurIn"><label for="buurIn">Zwaai als een collega vlakbij rijdt (je positie wordt niet aan anderen gegeven, alleen dat je in de buurt bent)</label></div>
-    <button class="btn" id="grpDel" type="button">Mijn laatst toegevoegde flitser verwijderen</button>
-    <details class="set"><summary>Eigen koppeling instellen</summary>
-      <p class="foot">Een webpagina mag flitsers.nl meestal niet rechtstreeks uitlezen. Met een eigen gratis tussenstation (Cloudflare Worker, uitleg bij de app) werkt het wel. Plak hier het adres ervan. Laat leeg om rechtstreeks te proberen.</p>
-      <div class="mobrow"><input type="text" id="proxyUrl" inputmode="url" autocomplete="off" placeholder="https://jouw-naam.workers.dev"><button class="btn" id="proxySave" type="button">Bewaar adres</button></div>
-    </details>
-    <details class="set"><summary>Zelf een lijst plakken</summary>
-      <p class="foot">Open zelf de flitserspagina in je browser. Klap alleen de wegen open waar flitsers staan, kies alles selecteren en kopieer. Klap je ze liever één voor één open, dat kan ook: elke keer plakken voegt toe aan de lijst en er gaat niets verloren. Doe dit alleen als je stilstaat of als passagier. Ik haal alleen wegnummers en hectometerpalen eruit en zet ze 3 uur op de kaart. Er wordt niets automatisch bij die site opgehaald.</p>
-      <textarea id="pasteBox" rows="4" placeholder="Plak hier de tekst van de pagina" style="width:100%;font:13px sans-serif;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
-      <div class="mobrow"><button class="btn primary" id="pasteClip" type="button">Plakken van klembord</button><button class="btn" id="pasteGo" type="button">Lees lijst in</button><button class="btn" id="pasteClear" type="button">Wis geplakte flitsers</button></div>
-      <p class="chip" id="pasteStat"></p>
-    </details>
-  </details>
-
-  <details class="set big" id="logDet"><summary>Testlog</summary>
-    <div class="btns">
-      <button class="btn" id="bLog" type="button">Kopieer testlog</button>
-      <button class="btn" id="bLogClear" type="button">Log wissen</button>
-    </div>
-    <p class="foot" id="logInfo">De testlog bewaart wat er onderweg gebeurt (snelheid, limiet, meldingen, fouten), zonder je locatie. Kopieer hem na de rit en stuur hem naar Claude.</p>
-    <textarea id="logBox" rows="6" hidden readonly style="width:100%;font:12px monospace;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
-  </details>
-
-  <section aria-label="Plan voor het dashboard">
-    <h2>Naar het dashboard</h2>
-    <ul class="foot" style="text-align:left;padding-left:18px;margin:0">
+      </div>
+      <p class="foot">Gesimuleerd. Afstanden lopen ×10, zodat je het snel ziet: een flitser ligt 900 m verder, een traject is 3 km. Met telefoon-GPS aan gebruikt hij de echte flitsers uit OpenStreetMap en gelden deze testknoppen niet. In sommige landen, zoals Duitsland en Zwitserland, is een flitsmelding verboden: zet hem daar uit. Buiten Nederland kunnen andere regels gelden voor flitsmeldingen. Rijtijd loopt hier 60× sneller: 1 seconde is 1 minuut.</p>
+      <p class="sub">Binnenkant</p>
+      <div class="meters">
+      <div class="meter"><span>Energie</span><div class="bar"><i id="mEnergy" style="--c:var(--good)"></i></div><b id="vEnergy">0</b></div>
+      <div class="meter"><span>Verveling</span><div class="bar"><i id="mBored" style="--c:var(--muted)"></i></div><b id="vBored">0</b></div>
+      <div class="meter"><span>Genegenheid</span><div class="bar"><i id="mLove" style="--c:var(--helmet)"></i></div><b id="vLove">0</b></div>
+      <div class="meter"><span>Rijtijd</span><div class="bar"><i id="mDrive" style="--c:var(--muted)"></i></div><b id="vDrive">0u00</b></div>
+      <div class="meter"><span>Rijstijl</span><div class="bar"><i id="mStyle" style="--c:var(--good)"></i></div><b id="vStyle">100</b></div>
+      </div>
+      <p class="sub">Wat hij onthoudt</p>
+      <p class="insight" id="insight"></p>
+      <div class="hist" id="hist" role="img" aria-label="Vertrekken per uur van de dag"></div>
+      <div class="axis" aria-hidden="true"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+      <p class="chip" id="chip"></p>
+      <h2>Wat hij van jou geleerd heeft</h2>
+      <ul class="facts" id="facts"></ul>
+      <div class="clock">
+      <label for="clock">Tijd van de dag</label>
+      <input type="range" id="clock" min="0" max="23.75" step="0.25" value="8">
+      <output id="clockOut" for="clock">08:00</output>
+      </div>
+      <div class="row2">
+      <button class="btn" id="bDay" type="button">Voorbeeldwerkdag toevoegen</button>
+      <button class="btn" id="bWipe" type="button">Geheugen wissen</button>
+      </div>
+      <p class="foot">Laten leren: zet de schuif op een tijd, laat hem 8 seconden stilstaan en trek op. Dat vertrek wordt onthouden. Op een uur waarop je vaak vertrekt, kijkt hij verwachtingsvol.</p>
+      <p class="sub">Naar het dashboard</p>
+      <ul class="foot" style="text-align:left;padding-left:18px;margin:0">
       <li>Buddy krijgt een eigen rond AMOLED-scherm: de Waveshare ESP32-S3 1,75 inch (466 × 466) met ingebouwde GPS, een eigen speakertje en microfoons.</li>
       <li>Hij werkt los van je telefoon: alleen de hotspot van je telefoon staat aan voor internet. Geluid komt uit zijn eigen speaker, dus je Tesla blijft gewoon aan je telefoon gekoppeld.</li>
       <li>Alles op deze pagina gaat mee: gezicht, klok, flitsers (flitsers.nl en ANWB), files en werk (ANWB en NDW), groepsberichten, leaderboard, badges en outfits. Je Worker blijft hetzelfde.</li>
       <li>Het gezicht wordt nu al getekend op 480 × 480, dus het scherpe scherm is meteen gedekt.</li>
       <li>Praten met Buddy komt later: het kleine bordje kan zelf geen Nederlands verstaan; dat loopt dan via internet.</li>
-    </ul>
-  </section>
+      </ul>
+    </div>
+  </details>
+  </div>
   <p class="foot" id="verTxt" style="text-align:center">Buddy</p>
 </main>
 
@@ -1007,13 +1034,25 @@ details.set > * + * { margin-top: 10px; }
     S.tunnelPrev = S.tunnel;
     if (S.cheerMsg && T > S.cheerAt) { var cm = S.cheerMsg; S.cheerMsg = ''; cheer(cm); }
     musicStep(dt);
-    if (S.speed > 8 && S.speed < 55 && Math.abs(S.turnS) > 8) {
-      if (S.raSum * S.turnS < 0) S.raSum = 0;
-      S.raSum += S.turnS * dt; S.raT = T;
-      if (Math.abs(S.raSum) >= 240 && !S.asleep) {
-        S.raSum = 0; S.dizzyUntil = T + 2.4; setEv('excited', 3, 'Rotonde! Wheee, ik word draaierig.'); beep('excited');
+    /* Rotonde (Nederland: linksom). Buddy telt hoeveel je linksom draait over de hele rotonde (tot ~15 s);
+       het insturen en uitrijden naar rechts telt niet als opnieuw beginnen. Vanaf 150° (rechtdoor) een vrolijk "Rondje!",
+       vanaf 300° (linksaf of helemaal rond) het echte draaierige gezicht. Staat de weg op de kaart als rotonde: al bij het oprijden. */
+    if (S.speed > 6 && S.speed < 55) {
+      if (S.turnS < -6) { S.raSum += -S.turnS * dt; S.raT = T; S.raRechts = 0; if (!S.raStart) S.raStart = T; }
+      else if (S.turnS > 6) { S.raRechts = (S.raRechts || 0) + S.turnS * dt; if (S.raRechts > 120) { S.raSum = 0; S.raStart = 0; S.raRechts = 0; } }
+      if (!S.raGedaan && !S.asleep) {
+        if (S.raSum >= 300) {
+          S.raGedaan = 1; S.dizzyUntil = T + 2.6; setEv('excited', 3.2, 'Helemaal rond! Wheee, ik word draaierig.'); beep('excited'); lg('rotonde: helemaal rond (' + Math.round(S.raSum) + '°)');
+        } else if (S.raSum >= 60 && T - (S.opRotondeT || -99) < 4 && !S.raKaart) {
+          S.raKaart = 1; S.hop = .6; setEv('excited', 2, 'Rotonde!'); beep('wake'); lg('rotonde: herkend op de kaart');
+        }
       }
-    } else if (T - S.raT > 4) S.raSum = 0;
+    }
+    /* Klaar met draaien? Dan afrekenen: een gewone rotonde (rechtdoor of rechtsaf) krijgt een kort "Rondje!" */
+    if (S.raSum && T - S.raT > 2.5) {
+      if (!S.raGedaan && !S.raKaart && S.raSum >= 150 && !S.asleep && T - S.raStart < 18) { S.hop = .7; S.dizzyUntil = T + .9; setEv('happy', 2.2, 'Rondje! Wheee.'); beep('wake'); lg('rotonde: rondje (' + Math.round(S.raSum) + '°)'); }
+      S.raSum = 0; S.raStart = 0; S.raGedaan = 0; S.raKaart = 0; S.raRechts = 0;
+    }
     if (Math.abs(S.latG) > 0.5 && S.speed > 25 && T - S.lastCorner > 6 && !S.asleep) {
       S.lastCorner = T; S.style = Math.max(0, S.style - 6); setEv('worried', 2.4, 'Rustig in de bocht!'); beep('startled');
     }
@@ -1870,7 +1909,7 @@ details.set > * + * { margin-top: 10px; }
   });
   $('bLeft').addEventListener('click', function () { simBend(-1, 'bend'); });
   $('bRight').addEventListener('click', function () { simBend(1, 'bend'); });
-  $('bRound').addEventListener('click', function () { simBend(1, 'round'); });
+  $('bRound').addEventListener('click', function () { simBend(-1, 'round'); });  /* Nederlandse rotonde: linksom */
   $('bBump').addEventListener('click', function () { bump(); });
   $('bStart').addEventListener('click', function () { if (S.asleep) wake(); if (S.speed < 3) { startGag('startgrid'); if (S.gag && S.gag.k === 'startgrid') S.gag.zelf = true; } else toast('Zet de snelheid eerst op 0.'); });
   $('bWorks').addEventListener('click', function () { worksAlert({ name: 'Test', d: 800 }); });
@@ -3015,7 +3054,7 @@ details.set > * + * { margin-top: 10px; }
   function tileWays(t) {
     return t.w.map(function (a) {
       var g = [], k; for (k = 0; k < a[2].length; k += 2) g.push({ lat: a[2][k], lon: a[2][k + 1] });
-      return { lim: a[0], est: a[1], g: g, c: a[3] || null, mw: a[4] || 0 };
+      return { lim: a[0], est: a[1], g: g, c: a[3] || null, mw: a[4] || 0, ra: a[7] || 0 };
     });
   }
   try { roadTiles = JSON.parse(localStorage.getItem(ROADKEY)) || []; roadTiles.forEach(function (t) { t.ws = tileWays(t); }); } catch (e) { roadTiles = []; }
@@ -3118,8 +3157,8 @@ details.set > * + * { margin-top: 10px; }
         var cm = String(tg['maxspeed:conditional'] || '').match(/^\s*(\d{2,3})\s*@\s*\(?\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*\)?\s*$/);
         if (cm) c = { v: +cm[1], a: +cm[2] * 60 + +cm[3], b: +cm[4] * 60 + +cm[5] };
         var flat = []; e.geometry.forEach(function (q) { flat.push(+q.lat.toFixed(5), +q.lon.toFixed(5)); });
-        var mw = (est && tg.highway === 'motorway') ? 1 : 0;
-        w.push(mw ? [lim, est, flat, c, 1] : (c ? [lim, est, flat, c] : [lim, est, flat]));
+        var mw = (est && tg.highway === 'motorway') ? 1 : 0, ra = tg.junction === 'roundabout' || tg.junction === 'circular' ? 1 : 0;
+        w.push(ra ? [lim, est, flat, c, mw, 0, '', 1] : mw ? [lim, est, flat, c, 1] : (c ? [lim, est, flat, c] : [lim, est, flat]));
       });
       /* Kwam het van de Worker? Dan is het een vast vak met randen. Rechtstreeks van Overpass: een cirkel rond qa/qo. */
       var viaWorker = vk && j._viaWorker;
@@ -3195,7 +3234,8 @@ details.set > * + * { margin-top: 10px; }
           if (w.r === -1 && df < 90) continue;
         }
         var sc = si.d + (w.est ? 8 : 0) - (w.rws ? 5 : 0);
-        if (!best || sc < best.sc) best = { sc: sc, d: si.d, lim: wayLim(w), est: !!w.est, src: w.rws ? 'rws' : (w.est ? 'type' : 'kaart'), wn: w.wn || '' };
+        if (!best || sc < best.sc) best = { sc: sc, d: si.d, lim: wayLim(w), est: !!w.est, src: w.rws ? 'rws' : (w.est ? 'type' : 'kaart'), wn: w.wn || '', ra: w.ra };
+        if (w.ra && si.d < 25) S.opRotondeT = T;
       }
     }
     if (!best) { roadMiss++; roadHold(); return; }
@@ -3744,7 +3784,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v60';
+  var VERSION = 'v61';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -4203,7 +4243,7 @@ details.set > * + * { margin-top: 10px; }
   var grLog = [], grWachtSinds = 0, grSinds = 0, grEerste = true, grT = -9999, grBusy = false, grVerstuurd = {}, grRij = [], grRijT = -99, grFiles = [], grKoffieVan = null, grKoffieTot = 0;
   function mijnAuto() { return String(mem.auto || '').replace(/[^A-Za-z0-9À-ſ '\-]/g, '').trim().slice(0, 30); }
   function grQ(extra) { return '&van=' + mijnId + '&n=' + encodeURIComponent(myWho()) + '&a=' + encodeURIComponent(mijnAuto()) + (extra || ''); }
-  function grKan() { if (!grp) { toast('Vul eerst een groepscode in (Instellingen, Flitsers).'); return false; } if (!pbase()) { toast('Vul eerst het Worker-adres in.'); return false; } return true; }
+  function grKan() { if (!grp) { toast('Vul eerst een groepscode in (👥 Groep, Groepsinstellingen).'); return false; } if (!pbase()) { toast('Vul eerst het Worker-adres in.'); return false; } return true; }
   function grStuur(soort, extra) {
     var id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     grVerstuurd[id] = 1; if (soort !== 'gezien') grMijn[id] = soort;
@@ -4224,6 +4264,7 @@ details.set > * + * { margin-top: 10px; }
     var plek = (soort === 'file' || soort === 'pech') && S.live && lastPos ? placeOf(lastPos.lat, lastPos.lon) : Promise.resolve('');
     plek.then(function (pl) { return grStuur(soort, extra + (pl ? '&p=' + encodeURIComponent(pl) : '')); }).then(function () {
       mem.grBerichten = (mem.grBerichten || 0) + 1;
+      grLijstAdd('uit', { zwaai: 'Jij zwaaide naar de groep', koffie: 'Jij vroeg om koffie', file: 'Jij meldde een file', pech: 'Jij meldde dat je stilstaat', hart: 'Jij stuurde hartjes', thuis: 'Jij bent bijna thuis' }[soort] || ('Jij stuurde: ' + soort));
       if (soort === 'file') { mem.gemeld = (mem.gemeld || 0) + 1; wk().gemeld++; grLid(true); }
       save();
       lg('groepsbericht verstuurd: ' + soort);
@@ -4265,17 +4306,41 @@ details.set > * + * { margin-top: 10px; }
         if (b.s === 'file' && isFinite(b.lat) && isFinite(b.lon) && !grFiles.some(function (f) { return f.id === 'g:' + b.id; })) {
           grFiles.push({ id: 'g:' + b.id, k: 'jam', lim: null, ql: null, cs: '', br: null, pts: [[+b.lat, +b.lon]], src: 'groep', t: b.t, tx: 'File gemeld door ' + (b.n || 'een collega'), van: b.van });
         }
-        if (grEerste || b.van === mijnId || grVerstuurd[b.id]) return; /* oude berichten bij openen en eigen berichten niet melden */
+        if (b.van === mijnId || grVerstuurd[b.id]) return; /* eigen berichten niet melden */
+        if (grEerste && Date.now() - b.t > 10 * 60e3) return; /* bij openen: alleen berichten van de laatste 10 minuten laten zien */
         if ((b.s === 'koffieJa' || b.s === 'koffieStraks' || b.s === 'gezien' || b.s === 'feli') && b.aan && b.aan !== mijnId) return;
         grRij.push(b);
       });
       grFiles = grFiles.filter(function (f) { return Date.now() - f.t < 60 * 60e3; });
       for (var gid in grGezienIds) if (Date.now() - grGezienIds[gid] > 3 * 3600e3) delete grGezienIds[gid];
+      if (nieuw) { try { localStorage.setItem(GRSEENKEY, JSON.stringify(grGezienIds)); } catch (e) {} }
       if (isFinite(j.nu)) grSinds = j.nu; grEerste = false;
       grOk = Date.now(); grBerStat(j.pings.length, nieuw);
     }).catch(function (e) { lg('FOUT groepsberichten: ' + ((e && e.message) || e)); grBerStat(-1, 0, (e && e.message) || String(e)); }).then(function () { grBusy = false; });
   }
-  var grMaxT = 0, grGezienIds = {}, grOk = 0;
+  /* Wat al getoond is, onthouden (ook na herstarten), zodat een bericht niet twee keer komt */
+  var GRSEENKEY = 'dashboardmaatje-grseen-v1', grMaxT = 0, grGezienIds = {}, grOk = 0;
+  try { grGezienIds = JSON.parse(localStorage.getItem(GRSEENKEY)) || {}; } catch (e) { grGezienIds = {}; }
+  /* Lijstje "Laatste berichten": wat jij stuurde en wat er binnenkwam */
+  var GRLIJSTKEY = 'dashboardmaatje-grlijst-v1', grLijst = [];
+  try { grLijst = JSON.parse(localStorage.getItem(GRLIJSTKEY)) || []; } catch (e) { grLijst = []; }
+  function grLijstAdd(richting, tekst) {
+    grLijst.unshift({ r: richting, t: Date.now(), x: String(tekst).slice(0, 120) }); if (grLijst.length > 15) grLijst.length = 15;
+    try { localStorage.setItem(GRLIJSTKEY, JSON.stringify(grLijst)); } catch (e) {} grLijstToon();
+  }
+  function grLijstToon() {
+    var ol = $('grLijst'); if (!ol) return; ol.textContent = '';
+    var nu = Date.now(), l = grLijst.filter(function (x) { return nu - x.t < 24 * 3600e3; });
+    if (!l.length) { var e0 = document.createElement('li'); e0.className = 'leeg'; e0.textContent = 'Nog geen berichten vandaag.'; ol.appendChild(e0); return; }
+    l.forEach(function (x) {
+      var li = document.createElement('li'); if (x.r === 'uit') li.className = 'uit';
+      var a = document.createElement('span'); a.textContent = x.r === 'uit' ? '↗' : '↘';
+      var b = document.createElement('span'); b.textContent = x.x;
+      var c = document.createElement('span'); c.className = 'tm'; c.textContent = tijdStr(x.t);
+      li.appendChild(a); li.appendChild(b); li.appendChild(c); ol.appendChild(li);
+    });
+  }
+  setTimeout(grLijstToon, 0);
   function grBerStat(n, nieuw, fout) {
     var e = $('grBerStat'); if (!e) return;
     if (!grp) { e.textContent = 'Geen groepscode ingevuld.'; return; }
@@ -4308,10 +4373,14 @@ details.set > * + * { margin-top: 10px; }
     else if (s === 'feli') { m = '🎉 ' + wie(b) + ' feliciteert je met je verjaardag!'; cheer(m); }
     else if (s === 'gezien') {
       var wat = GR_GEZIEN_VOOR[grMijn[b.r]] || 'bericht';
-      m = '✓ ' + wie(b) + ' heeft je ' + wat + ' gezien.'; toast(m); grSignaal(true); lg('groepsbericht gezien door ' + (b.n || '?'));
+      m = '✓ ' + wie(b) + ' heeft je ' + wat + (grMijn[b.r] === 'test' ? ' ontvangen.' : ' gezien.'); toast(m); grSignaal(true); lg('groepsbericht gezien door ' + (b.n || '?'));
+      grLijstAdd('in', m);
+      if (grMijn[b.r] === 'test') { grTestOk[b.van] = wie(b); grTestToon(); }
       return;
     }
+    else if (s === 'test') { m = '🧪 Testbericht van ' + wie(b) + ' ontvangen. De groep werkt!'; setEv('happy', 3, m); grSignaal(false); grStuur('gezien', '&aan=' + encodeURIComponent(b.van) + '&r=' + encodeURIComponent(b.id)).catch(function () {}); toast(m); grLijstAdd('in', m); lg('groepsbericht ontvangen: test van ' + (b.n || '?')); return; }
     if (!m) return;
+    grLijstAdd('in', m);
     grSignaal(false); grGezienSturen(b);
     toast(m); say(m, true); lg('groepsbericht ontvangen: ' + s + ' van ' + (b.n || '?')); grLog.push(m); if (grLog.length > 30) grLog.shift();
   }
@@ -4333,7 +4402,23 @@ details.set > * + * { margin-top: 10px; }
     } catch (e) {}
   }
   /* Gezien-vinkje: wie een bericht ziet, stuurt stil een "gezien" terug naar de afzender */
-  var grMijn = {}, GR_GEZIEN_VOOR = { koffie: 'koffievraag', zwaai: 'zwaai', pech: 'stilstaan-bericht', file: 'filemelding', hart: 'hartjes' };
+  var grMijn = {}, GR_GEZIEN_VOOR = { koffie: 'koffievraag', zwaai: 'zwaai', pech: 'stilstaan-bericht', file: 'filemelding', hart: 'hartjes', test: 'testbericht' };
+  /* "Test de groep": een testbericht dat je collega's vanzelf bevestigen */
+  var grTestOk = {}, grTestT = 0;
+  function grTestToon() {
+    var el = $('grTestStat'); if (!el) return; el.hidden = false;
+    var namen = Object.keys(grTestOk).map(function (k) { return grTestOk[k]; });
+    if (namen.length) el.textContent = '✓ Ontvangen door: ' + namen.join(', ') + '. De groep werkt.';
+    else if (Date.now() - grTestT > 90e3) el.textContent = 'Nog niemand heeft het testbericht ontvangen. Staat Buddy bij je collega open op het scherm, in dezelfde groep (“' + grp + '”), en heeft hij de nieuwste versie?';
+    else el.textContent = 'Testbericht verstuurd om ' + tijdStr(grTestT) + '. Wachten op je collega’s… (dit kan tot een minuut duren)';
+  }
+  $('grTestKnop').addEventListener('click', function () {
+    if (!grKan()) return;
+    var w = grWacht('test'); if (w > 0) { toast('Testen kan weer over ' + grTijd(w) + '.'); return; }
+    grVerstuurd['_test'] = Date.now(); grTestOk = {}; grTestT = Date.now(); grTestToon();
+    grStuur('test', '').then(function () { grLijstAdd('uit', 'Jij stuurde een testbericht'); lg('groepsbericht verstuurd: test'); }).catch(function (e) { delete grVerstuurd['_test']; $('grTestStat').textContent = 'Versturen mislukt: ' + ((e && e.message) || e) + '. Heb je de nieuwste Worker in Cloudflare geplakt?'; });
+    setTimeout(grTestToon, 91e3);
+  });
   function grGezienSturen(b) {
     if (!grGezienOn || !GR_GEZIEN_VOOR[b.s] || !b.id || !b.van || b.van === mijnId) return;
     grStuur('gezien', '&aan=' + encodeURIComponent(b.van) + '&r=' + encodeURIComponent(b.id)).catch(function () {});
@@ -4545,6 +4630,18 @@ details.set > * + * { margin-top: 10px; }
     el.hidden = false;
   }
   $('routeKnop').addEventListener('click', function () { routeKlaarzetten(true); });
+  /* Kopjes: er staat er steeds maar één open, en Buddy onthoudt welke */
+  (function () {
+    var KOPKEY = 'dashboardmaatje-kop-v1', koppen = document.querySelectorAll('details.kop'), laatste = '';
+    try { laatste = localStorage.getItem(KOPKEY) || ''; } catch (e) {}
+    koppen.forEach(function (d) {
+      if (d.id === laatste) d.open = true;
+      d.addEventListener('toggle', function () {
+        if (d.open) { koppen.forEach(function (o) { if (o !== d) o.open = false; }); try { localStorage.setItem(KOPKEY, d.id); } catch (e) {} setTimeout(function () { try { d.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) {} }, 60); }
+        else if (laatste === d.id) { try { localStorage.setItem(KOPKEY, ''); } catch (e) {} }
+      });
+    });
+  })();
   var ritKaartHuidig = null;
   $('ritKaartSluit').addEventListener('click', function () { $('ritKaart').hidden = true; });
   $('ritKaartDeel').addEventListener('click', function () { if (ritKaartHuidig) ritDelen(ritKaartHuidig); });
@@ -4714,7 +4811,7 @@ details.set > * + * { margin-top: 10px; }
   function outfitCheck() { /* nieuw outfit vrijgespeeld? */
     var n = 0; OUTFITS.forEach(function (o) { if (outfitVrij(o)) n++; });
     if (mem.outfitsVrij === undefined) { mem.outfitsVrij = n; save(); return; }
-    if (n > mem.outfitsVrij) { var o = OUTFITS[n - 1]; mem.outfitsVrij = n; save(); queueCheer('Nieuw outfit vrijgespeeld: ' + o.n + '! Kies hem bij Instellingen.'); outfitKeuze(); }
+    if (n > mem.outfitsVrij) { var o = OUTFITS[n - 1]; mem.outfitsVrij = n; save(); queueCheer('Nieuw outfit vrijgespeeld: ' + o.n + '! Kies hem bij 🎲 Plezier, Outfit.'); outfitKeuze(); }
   }
   function outfitKeuze() {
     var s = $('outfitIn'); if (!s) return;
