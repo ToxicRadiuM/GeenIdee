@@ -1624,12 +1624,18 @@ details.set > * + * { margin-top: 10px; }
   }
   /* ---------- Own speed on the round screen ---------- */
   var hudK = 0, hudT = 0;
-  function hudPil(x0, x1, sterk) {
-    ctx.save(); ctx.globalAlpha = sterk ? .92 : .78; ctx.fillStyle = SCREEN;
-    rr(x0, 180, x1 - x0, 50, 22); ctx.fill();
-    ctx.globalAlpha = sterk ? .22 : .12; ctx.strokeStyle = EYE; ctx.lineWidth = 1.5; rr(x0, 180, x1 - x0, 50, 22); ctx.stroke();
+  /* HUD-pilletje: altijd precies in het midden (x 120), even veel ruimte links en rechts, en ruim binnen de ronde rand.
+     De breedte groeit soepel mee met het aantal cijfers, zodat niets verspringt. */
+  var HUD_Y = 200, HUD_H = 40, HUD_P = 14, HUD_GAP = 7, hudW = 0;
+  /* w = totale breedte van het pilletje; het staat altijd gecentreerd op x 120 */
+  function hudPil(ww, a) {
+    var x0 = 120 - ww / 2, y0 = HUD_Y - HUD_H / 2;
+    ctx.save(); ctx.globalAlpha = .82 * a; ctx.fillStyle = SCREEN;
+    rr(x0, y0, ww, HUD_H, HUD_H / 2); ctx.fill();
+    ctx.globalAlpha = .14 * a; ctx.strokeStyle = EYE; ctx.lineWidth = 1.5; rr(x0 + .75, y0 + .75, ww - 1.5, HUD_H - 1.5, HUD_H / 2 - .75); ctx.stroke();
     ctx.restore();
   }
+  function hudBreedte(doel) { hudW = hudW ? hudW + (doel - hudW) * .25 : doel; if (Math.abs(hudW - doel) < .3) hudW = doel; return hudW; }
   function speedDraw() {
     var mode = S.spdMode | 0;
     if (!mode || S.asleep || S.flagUntil > T || curKey === 'clock' || (S.gag && GAGS[S.gag.k] && (GAGS[S.gag.k].noFace || (GAGS[S.gag.k].laag && S.speed < 3)))) return;
@@ -1655,18 +1661,27 @@ details.set > * + * { margin-top: 10px; }
     if (mode & 1) {
       ctx.fillStyle = col; ctx.globalAlpha = S.speed < 1 ? .55 : 1;
       if (S.traj) { ctx.font = '700 15px "Chakra Petch", sans-serif'; ctx.fillText(v + ' km/h', 120, 50); }
-      else if (camOn) { hudPil(126, 178, gagTekent); ctx.fillStyle = col; ctx.font = '700 24px "Chakra Petch", sans-serif'; ctx.fillText(String(v), 152, 210); }
+      else if (camOn) {
+        /* flitser in beeld: alleen je snelheid, gecentreerd in het pilletje */
+        ctx.font = '700 24px "Chakra Petch", sans-serif';
+        var wc = hudBreedte(ctx.measureText(String(v)).width + 2 * HUD_P); hudPil(wc, 1);
+        ctx.fillStyle = col; ctx.fillText(String(v), 120, HUD_Y + 1);
+      }
       else {
-        /* Snelheid en bordje op een eigen donker "pilletje": dat vervaagt terwijl ze naar de zijkanten schuiven */
-        if (hk < .98) { ctx.save(); ctx.globalAlpha = 1 - hk; hudPil(64, 178, false); ctx.restore(); }
-        ctx.fillStyle = col;
-        var stale = S.live && T - S.roadSeen > 25, lerp = function (a, b) { return a + (b - a) * hk; };
-        var sx = lerp(84, 33), sy = lerp(210, 128), sc = lerp(1, .82);
+        /* Bordje + snelheid als één groepje precies in het midden van het pilletje.
+           Tijdens een animatie schuiven ze vloeiend naar links en rechts en vervaagt het pilletje. */
+        var lerp = function (a, b) { return a + (b - a) * hk; }, stale = S.live && T - S.roadSeen > 25;
+        ctx.font = '700 24px "Chakra Petch", sans-serif';
+        /* Het bordje zit precies in de ronde linkerkant van het pilletje (zelfde middelpunt, rondom 3 px rand) */
+        var nw = ctx.measureText(String(v)).width, breed = hudBreedte(HUD_H + HUD_GAP + nw + HUD_P);
+        var px0 = 120 - breed / 2, sx0 = px0 + HUD_H / 2, nx0 = px0 + HUD_H + HUD_GAP + (breed - HUD_H - HUD_GAP - HUD_P) / 2;
+        if (hk < .98) hudPil(breed, 1 - hk);
+        var sx = lerp(sx0, 33), sy = lerp(HUD_Y, 128), sc = lerp(1, .82);
         ctx.save(); ctx.translate(sx, sy); ctx.scale(sc, sc); ctx.translate(-120, -210);
-        var sa = S.roadLim == null ? .35 : (stale ? .55 : 1); ctx.globalAlpha = sa; sign(S.roadLim, est);
-        if (S.live && S.roadLim != null && BRONKORT[S.roadSrc] && hk < .3) { ctx.globalAlpha = .7 * (1 - hk / .3); ctx.fillStyle = EYE; ctx.font = '600 9px "Chakra Petch", sans-serif'; ctx.fillText(BRONKORT[S.roadSrc], 120, 187); }
+        ctx.globalAlpha = S.roadLim == null ? .35 : (stale ? .55 : 1); sign(S.roadLim, est);
         ctx.restore();
-        ctx.fillStyle = col; ctx.font = '700 ' + Math.round(lerp(24, 20)) + 'px "Chakra Petch", sans-serif'; ctx.fillText(String(v), lerp(152, 205), lerp(210, 128));
+        if (S.live && S.roadLim != null && BRONKORT[S.roadSrc] && hk < .3) { ctx.save(); ctx.globalAlpha = .7 * (1 - hk / .3); ctx.fillStyle = EYE; ctx.font = '600 9px "Chakra Petch", sans-serif'; ctx.fillText(BRONKORT[S.roadSrc], sx0, HUD_Y - HUD_H / 2 - 7); ctx.restore(); }
+        ctx.fillStyle = col; ctx.font = '700 ' + Math.round(lerp(24, 20)) + 'px "Chakra Petch", sans-serif'; ctx.fillText(String(v), lerp(nx0, 205), lerp(HUD_Y + 1, 128));
         if (hk > .6) { ctx.globalAlpha = (hk - .6) / .4 * .6; ctx.font = '600 8px "Chakra Petch", sans-serif'; ctx.fillText('km/h', 205, 143); }
       }
     }
@@ -3230,7 +3245,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v53';
+  var VERSION = 'v54';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
