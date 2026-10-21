@@ -541,6 +541,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="sub">Algemeen</p>
       <div class="mobrow"><input type="text" id="meIn" maxlength="18" placeholder="Jouw naam"><button class="btn" id="meSave" type="button">Bewaar naam</button></div>
       <p class="foot">iPhone? Zet tijdens het rijden de energiebesparingsstand uit en tik één keer op het scherm na het opstarten, dan blijft het scherm aan. Eventueel: Instellingen → Scherm en helderheid → Automatische vergrendeling → Nooit.</p>
+      <p class="sub" style="grid-column:1/-1">Voelen (bewegingssensor)</p>
+      <p class="chip" id="voelStat" style="grid-column:1/-1">Bewegingssensor: even kijken…</p>
+      <button class="btn" id="voelKnop" type="button" hidden style="grid-column:1/-1">📱 Bewegingssensor toestaan</button>
+      <div class="switchrow" style="grid-column:1/-1"><input type="checkbox" id="gmIn"><label for="gmIn">G-meter: stipje bovenin dat de krachten in bochten en bij remmen laat zien</label></div>
+      <p class="foot" style="grid-column:1/-1">Buddy leert vanzelf hoe de telefoon in de houder zit. Draai je hem van staand naar liggend, dan draait hij mee. Hij voelt bochten, remmen, optrekken, kloppen op het dashboard, oppakken, schudden en zelfs een deur die dichtgaat.</p>
       <div class="switchrow" style="grid-column:1/-1"><input type="checkbox" id="autoGps" checked><label for="autoGps">GPS vanzelf aan als ik Buddy open</label></div>
       <div class="limitrow" style="grid-column:1/-1"><label for="nachtMode">Nachtstand</label><select id="nachtMode"><option value="auto">Vanzelf (na zonsondergang)</option><option value="aan">Altijd aan</option><option value="uit">Uit</option></select></div>
       <p class="sub">Scherm</p>
@@ -1033,7 +1038,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function leanStep(dt) {
     if (!S.live) S.turn = T < S.simTurnEnd ? S.simTurn : 0;
     S.turnS += (S.turn - S.turnS) * (1 - Math.exp(-dt * 3));
-    S.latG = S.speed / 3.6 * S.turnS * Math.PI / 180 / 9.81;
+    S.latG = voelOk() && S.speed > 5 ? V.lat / 9.81 : S.speed / 3.6 * S.turnS * Math.PI / 180 / 9.81;  /* v64: sensor voelt de bocht meteen, GPS pas een seconde later */
     S.hop = Math.max(0, S.hop - dt * 3); S.squash = Math.max(0, (S.squash || 0) - dt * 1.6);
     if (!S.live) S.tunnel = T < S.simTunEnd;
     if (S.tunnelPrev && !S.tunnel && !S.asleep && T - (S.tunnelT0 || T) > 12 && T - (S.lichtT || -999) > 60) { S.lichtT = T; setEv('happy', 2.5, 'Daar is het licht weer!'); beep('wake'); }
@@ -1325,6 +1330,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (!S.asleep) { if (wk.cold) fdx += Math.sin(T * 40) * 1.3; if (wk.wind) { frot += Math.sin(T * 3.1) * .02; fdx += Math.sin(T * 1.7) * 2; } }
     if (S.dizzyUntil > T) { fxSpiral = true; }
     if (!g && !S.asleep && S.live && S.speed >= 5 && laatNacht() && !(S.ev && T < S.evUntil)) { eyeL = eyeR = .72; }
+    try { voelGezicht(g); } catch (e) {}
     if (S.hop > 0) fdy -= Math.sin(S.hop * Math.PI) * 14 * S.hop;
     if (S.squash > 0) { fsc *= 1 + Math.sin(S.squash * Math.PI * 3) * .09 * S.squash; frot += Math.sin(S.squash * Math.PI * 4) * .05 * S.squash; }
     if (S.music && !S.asleep && !S.gag) { fdx += Math.sin(T * 4) * 4; frot += Math.sin(T * 4) * .05; fdy -= S.beat * 5; if (S.beat > .95) note(rand(60, 180), 70); }
@@ -1698,6 +1704,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     moodFx(dt);
     wxFront(dt);
     flagDraw();
+    gmeterDraw();
     ctx.restore();
     overlay(dt);
   }
@@ -2094,6 +2101,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     clearGpsHelp();
     if (v !== null && c.accuracy < 60) S.liveSpeed = v < 2 ? 0 : v;
     if (v !== null) { try { launchFix(pos.timestamp, v, c.accuracy); } catch (e) {} }
+    if (v !== null && c.accuracy < 60) { try { voelGps(v, pos.timestamp); } catch (e) {} }
     camFix(c.latitude, c.longitude, c.accuracy, pos.timestamp / 1000);
     try { navFix(c.latitude, c.longitude, c.accuracy); } catch (e) { lg('FOUT navigatie ' + e.message); }
     try { ritPunt(c.latitude, c.longitude, c.accuracy); } catch (e) {}
@@ -3845,7 +3853,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v63';
+  var VERSION = 'v64';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -3915,20 +3923,256 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') updCheck(); });
   $('updKnop').addEventListener('click', updNu);
 
-  var gEst = { x: null, y: null, z: null }, noiseEst = .4;
-  window.addEventListener('devicemotion', function (e) {
-    if (!S.live || S.speed < 8) return;
+  /* ---------- v64: Buddy voelt de auto (bewegingssensor) ----------
+     Hij leert zelf hoe de telefoon in de houder zit: waar "onder" is (de zwaartekracht) en waar "vooruit" is
+     (door wat de sensor voelt te vergelijken met de GPS: optrekken en remmen). Opzij volgt daaruit, de richting leert hij in bochten.
+     Draai je de telefoon in de MagSafe van staand naar liggend, dan draait hij wat hij geleerd heeft gewoon mee. */
+  var VOELKEY = 'dashboardmaatje-voel-v1', gEst = { x: null, y: null, z: null }, noiseEst = .4;
+  var V = { n: 0, t: 0, lastEv: -99, g: null, gS: null, calmT: 0, f: null, F: [0, 0, 0], Fw: 0, Fn: 0, ls: 1, L: 0, conf: 0, lon: 0, lat: 0, vert: 0, rot: 0,
+    hSum: [0, 0, 0], hT: 0, hRot: 0, vPrev: null, tPrev: 0, held: false, heldT0: 0, heldMsg: false, pakT: -99, terugT: -99, dn: null, tilt: 0,
+    spikes: [], spikeAan: false, spikeT0: 0, klopT: -99, deurT: -99, shakes: [], schudT: -99, schudN: 0, schudReset: 0, valT: -99, valAan: false, valImpact: false,
+    remT: 0, remCool: -99, bochtT: 0, bochtCool: -99, wisselA: 0, wisselT: -99, wisselCool: -99, harsh: 0, harshT: -99, gmax: 0, ritVoel: false,
+    wiegN: 0, wiegS: 0, wiegT: -99, wiegCool: -99, rockT: 0, instapCool: -99, ligT: 0, ligCool: -99, draaiCool: -99, scheefZei: false, opgeslagen: null, saveT: 0 };
+  try { V.opgeslagen = JSON.parse(localStorage.getItem(VOELKEY)); } catch (e) {}
+  var VPERM = typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function';
+  V.perm = VPERM ? 'nodig' : 'ok';
+  function vd(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+  function vx(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+  function vl(a) { return Math.sqrt(vd(a, a)); }
+  function vs(a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+  function vm(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+  function vn(a) { var l = vl(a); return l > 1e-9 ? vs(a, 1 / l) : [0, 0, 0]; }
+  function vhoek(a, b) { return Math.acos(clamp(vd(vn(a), vn(b)), -1, 1)) / RAD; }
+  function vvlak(v, u) { return vm(v, vs(u, vd(v, u))); }  /* v zonder het stuk in de richting u */
+  /* kleinste draaiing die a op b legt, toegepast op v (Rodrigues) */
+  function vdraai(a, b, v) {
+    a = vn(a); b = vn(b); var k = vx(a, b), s = vl(k), c = vd(a, b);
+    if (s < 1e-6) return v;
+    k = vs(k, 1 / s);
+    return [0, 1, 2].map(function (i) { return v[i] * c + vx(k, v)[i] * s + k[i] * vd(k, v) * (1 - c); });
+  }
+  function schermHoek() { try { if (screen.orientation && screen.orientation.angle != null) return screen.orientation.angle; } catch (e) {} return +window.orientation || 0; }
+  function naarScherm(v) { var a = schermHoek() * RAD; return [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)]; }  /* x rechts, y omhoog */
+  function voelOk() { return !!(V.f && V.conf >= .5 && !V.held && T - V.lastEv < 1); }
+  function accLon() { return voelOk() ? V.lon : lv.a; }
+  function voelVrij() { return freeEv() && !S.gag && !(S.cam && S.cam.dist <= 600); }
+
+  window.addEventListener('devicemotion', function (e) { try { voelStap(e); } catch (er) { if (V.n % 600 === 1) lg('FOUT voelen ' + er.message); } });
+  function voelStap(e) {
     var a = e.accelerationIncludingGravity;
     if (!a || a.x == null) return;
-    var al = .03;
-    if (gEst.x === null) { gEst.x = a.x; gEst.y = a.y; gEst.z = a.z; return; }
-    gEst.x += (a.x - gEst.x) * al; gEst.y += (a.y - gEst.y) * al; gEst.z += (a.z - gEst.z) * al;
-    var dx = a.x - gEst.x, dy = a.y - gEst.y, dz = a.z - gEst.z, dev = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    var sp = S.speed, floor = sp < 35 ? 2.2 : sp < 60 ? 3.6 : sp < 90 ? 5.2 : 7;
-    var thr = Math.max(floor, noiseEst * 3.2 + .8);
-    if (typeof lv !== 'undefined' && T - lv.lastTouch < 1.5) return;
-    if (dev > thr) bump(dev); else noiseEst += (dev - noiseEst) * .004;
-  });
+    var now = performance.now() / 1000, dt = V.t ? clamp(now - V.t, .005, .2) : .016; V.t = now; V.n++; V.lastEv = T;
+    var ag = [+a.x, +a.y, +a.z], la = e.acceleration, rr0 = e.rotationRate, lin, gNu;
+    V.rot = rr0 && rr0.alpha != null ? Math.sqrt(rr0.alpha * rr0.alpha + rr0.beta * rr0.beta + rr0.gamma * rr0.gamma) : 0;
+    V.wieg = rr0 && rr0.alpha != null ? (Math.abs(rr0.beta) > Math.abs(rr0.gamma) ? rr0.beta : rr0.gamma) : 0;
+    if (la && la.x != null && isFinite(la.x)) { lin = [+la.x, +la.y, +la.z]; gNu = vm(ag, lin); }
+    else { V.gL = V.gL ? vm(V.gL, vs(vm(V.gL, ag), 1 - Math.exp(-dt / .6))) : ag; gNu = V.gL; lin = vm(ag, gNu); }
+    V.g = V.g ? vm(V.g, vs(vm(V.g, gNu), 1 - Math.exp(-dt / .25))) : gNu;
+    var gu = vn(V.g), linL = vl(lin), agL = vl(ag);
+    /* --- hobbels (zoals vroeger) --- */
+    if (S.live && S.speed >= 8) {
+      var al = .03;
+      if (gEst.x === null) { gEst.x = a.x; gEst.y = a.y; gEst.z = a.z; }
+      else {
+        gEst.x += (a.x - gEst.x) * al; gEst.y += (a.y - gEst.y) * al; gEst.z += (a.z - gEst.z) * al;
+        var ddx = a.x - gEst.x, ddy = a.y - gEst.y, ddz = a.z - gEst.z, dev = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
+        var sp = S.speed, floor = sp < 35 ? 2.2 : sp < 60 ? 3.6 : sp < 90 ? 5.2 : 7, thr = Math.max(floor, noiseEst * 3.2 + .8);
+        if (!(T - lv.lastTouch < 1.5) && !V.held) { if (dev > thr) bump(dev); else noiseEst += (dev - noiseEst) * .004; }
+      }
+    }
+    /* --- vast in de houder of in je hand? --- */
+    if (V.rot < 18 && linL < 2.5) V.calmT += dt; else V.calmT = 0;
+    if (!V.gS) {
+      if (V.calmT > 1) {
+        V.gS = gu.slice(); var o = V.opgeslagen;
+        if (o && o.f && o.g) { V.f = vn(vvlak(vdraai(o.g, V.gS, o.f), V.gS)); V.ls = o.ls || 1; V.conf = .55; lg('voelen: geleerde richting van vorige keer ' + (vhoek(o.g, V.gS) > 20 ? 'meegedraaid' : 'overgenomen')); }
+        voelScheef();
+      }
+    } else {
+      var hk = vhoek(gu, V.gS);
+      if (!V.held && (V.rot > 70 || hk > 28)) { V.held = true; V.heldT0 = T; V.heldMsg = false; }
+      if (V.held) {
+        var duur = T - V.heldT0;
+        if (!V.heldMsg && duur > 2.5 && T - V.pakT > 40 && S.speed < 80 && !S.asleep) { V.heldMsg = true; V.pakT = T; setEv('startled', 2.4, pick(['Hé! Waar gaan we heen?', 'Wiee, ik zweef!', 'Zet je me straks terug in de houder?'])); beep('startled'); }
+        if (V.calmT > 1.2) {  /* weer stil: opnieuw vastgezet (misschien gedraaid) */
+          V.held = false;
+          var draai = vhoek(gu, V.gS);
+          if (draai > 20 && V.f) { V.f = vn(vvlak(vdraai(V.gS, gu, V.f), gu)); V.F = vdraai(V.gS, gu, V.F); V.conf *= .85; lg('voelen: telefoon gedraaid (' + Math.round(draai) + '°), richting meegedraaid'); }
+          V.gS = gu.slice(); voelScheef();
+          if (V.heldMsg && T - V.terugT > 30 && !S.asleep) { V.terugT = T; setEv('content', 2.2, pick(['Ah, weer lekker vast.', 'Klik! Ik zit weer.', 'Zo, mijn uitzicht is terug.'])); }
+        }
+      } else if (V.calmT > 2) { V.gS = vn(vm(V.gS, vs(vm(V.gS, gu), 1 - Math.exp(-dt / 6)))); }
+    }
+    /* ogen rollen naar de lage kant als je hem vasthoudt en kantelt */
+    if (V.held && V.gS) {
+      var sS = naarScherm(V.gS), sN = naarScherm(gu), sg = sS[1] > 0 ? -1 : 1;
+      V.dn = [(sN[0] - sS[0]) * sg, -(sN[1] - sS[1]) * sg];
+    } else V.dn = null;
+    /* --- auto-assen: vooruit, opzij, omhoog --- */
+    var vert = vd(lin, gu), h = vvlak(lin, gu);
+    V.hSum = [V.hSum[0] + h[0] * dt, V.hSum[1] + h[1] * dt, V.hSum[2] + h[2] * dt]; V.hT += dt; V.hRot = Math.max(V.hRot, V.rot);
+    var kk = 1 - Math.exp(-dt * 7);
+    V.vert += (vert - V.vert) * kk;
+    if (V.f) {
+      var fr = vn(vvlak(V.f, gu)), lr = vx(gu, fr);
+      V.lon += (vd(h, fr) - V.lon) * kk; V.lat += (vd(h, lr) * V.ls - V.lat) * kk;
+    }
+    voelReacties(dt, linL, agL, vert);
+  }
+  /* GPS-meting: vergelijk wat de sensor voelde met hoe je snelheid veranderde, zo leert hij waar vooruit is */
+  function voelGps(v, t) {
+    if (!V.g || !V.gS) { V.hSum = [0, 0, 0]; V.hT = 0; V.hRot = 0; V.vPrev = v; V.tPrev = t; return; }
+    var dtg = (t - V.tPrev) / 1000, vp = V.vPrev; V.vPrev = v; V.tPrev = t;
+    var hm = V.hT > .3 ? vs(V.hSum, 1 / V.hT) : null, rustig = V.hRot < 30 && !V.held; V.hSum = [0, 0, 0]; V.hT = 0; V.hRot = 0;
+    if (!hm || vp == null || !(dtg > .5 && dtg < 3) || !rustig) return;
+    var gu = vn(V.g), aG = (v - vp) / 3.6 / dtg;
+    if (Math.abs(aG) > .6 && Math.abs(S.turn) < 4 && v > 5) {
+      V.F = [0, 1, 2].map(function (i) { return V.F[i] * .96 + hm[i] * aG; });  /* sensor-gevoel × echte versnelling: wijst naar vooruit */
+      V.Fw = V.Fw * .96 + vl(hm) * Math.abs(aG); V.Fn++;
+      var Fp = vvlak(V.F, gu);
+      if (vl(Fp) > 1e-6) {
+        var oud = V.conf; V.f = vn(Fp); V.conf = clamp(vl(Fp) / Math.max(1e-6, V.Fw), 0, 1) * Math.min(1, V.Fn / 6);
+        if (oud < .5 && V.conf >= .5) lg('voelen: ik weet nu waar vooruit is (' + Math.round(V.conf * 100) + '%)');
+      }
+    }
+    var ac = v / 3.6 * S.turn * RAD;  /* zijwaartse versnelling volgens de GPS (rechts = plus) */
+    if (V.f && Math.abs(ac) > .8 && Math.abs(S.turn) > 1 && v > 20) {
+      var raw = vd(hm, vx(gu, vn(vvlak(V.f, gu))));
+      V.L = V.L * .95 + raw * ac; var ls = V.L >= 0 ? 1 : -1;
+      if (ls !== V.ls && Math.abs(V.L) > 3) { V.ls = ls; lg('voelen: links en rechts omgedraaid'); }
+    }
+    if (V.conf >= .5 && T - V.saveT > 30) { V.saveT = T; try { localStorage.setItem(VOELKEY, JSON.stringify({ f: V.f, g: V.gS, ls: V.ls, c: Math.round(V.conf * 100) / 100 })); } catch (e) {} }
+  }
+  /* hangt de telefoon een beetje scheef in de houder? Dan houdt Buddy zijn hoofd recht */
+  function voelScheef() {
+    V.tilt = 0; if (!V.gS) return;
+    var s0 = naarScherm(V.gS), m = Math.sqrt(s0[0] * s0[0] + s0[1] * s0[1]); if (m < .5) return;  /* plat: geen scheef */
+    var sg = s0[1] > 0 ? -1 : 1, dx = s0[0] * sg, dy = s0[1] * sg, phi = Math.atan2(-dx, -dy);
+    if (Math.abs(phi) > .06 && Math.abs(phi) < .45) V.tilt = phi;
+    if (V.tilt && !V.scheefZei && S.live) { V.scheefZei = true; setTimeout(function () { if (freeEv()) setEv('content', 3, 'Je hangt me een beetje scheef. Ik hou mijn hoofd wel recht 😉'); }, 6000); }
+  }
+  function voelReacties(dt, linL, agL, vert) {
+    /* vallen: bijna geen zwaartekracht = vrije val */
+    if (agL < 2.5) { if (!V.valAan && T - V.valT > 5) { V.valAan = true; V.valT = T; V.valImpact = false; setEv('startled', 2, 'AAAAH!', true); beep('startled'); } }
+    if (V.valAan) {
+      if (linL > 18) V.valImpact = true;
+      if (T - V.valT > 1.2) { V.valAan = false; setEv(V.valImpact ? 'sad' : 'happy', 2.6, V.valImpact ? 'Au! Voorzichtig met me 🤕' : 'Pfff, gevangen!', true); }
+      return;
+    }
+    /* schudden */
+    if (linL > 14) { if (!V.shakes.length || T - V.shakes[V.shakes.length - 1] > .09) V.shakes.push(T); }
+    V.shakes = V.shakes.filter(function (t) { return T - t < 1.5; });
+    if (V.shakes.length >= 4 && T - V.schudT > 6) {
+      V.schudT = T; V.shakes = []; if (T - V.schudReset > 600) V.schudN = 0; V.schudN++; V.schudReset = T;
+      S.dizzyUntil = T + 3; if (S.asleep) S.asleep = false;
+      setEv(V.schudN >= 3 ? 'angry' : 'startled', 2.6, V.schudN === 1 ? 'Wooo, niet schudden! Ik word duizelig 😵' : V.schudN === 2 ? 'Hé! Ik zei niet schudden!' : 'Grrr… ik ben geen sneeuwbol 😠', true); beep('startled');
+      return;
+    }
+    if (V.held) {
+      /* wiegen: rustig heen en weer in je hand */
+      if (Math.abs(V.wieg) > 15 && V.rot < 140) { var s1 = V.wieg > 0 ? 1 : -1; if (s1 !== V.wiegS) { V.wiegS = s1; V.wiegN++; V.wiegT = T; } }  /* heen en weer = draairichting wisselt steeds */
+      if (T - V.wiegT > 1.5) V.wiegN = 0;
+      if (V.wiegN >= 6 && T - V.wiegCool > 60 && S.speed < 3) { V.wiegCool = T; V.wiegN = 0; setEv('sleepy', 3, 'Ooh, wiegen… lekker 😴'); }
+      return;
+    }
+    /* kloppen op het dashboard of de houder: korte tikjes */
+    var stil = S.speed < 25;
+    if (stil && linL > 2.6 && linL < 14 && T - lv.lastTouch > .6) { if (!V.spikeAan) { V.spikeAan = true; V.spikeT0 = T; V.spikes.push({ t: T, m: linL }); } else V.spikes[V.spikes.length - 1].m = Math.max(V.spikes[V.spikes.length - 1].m, linL); }
+    else if (V.spikeAan && linL < 1.2) { V.spikeAan = false; if (T - V.spikeT0 > .12) V.spikes.pop(); /* te lang: geen tikje */ }
+    if (V.spikes.length && !V.spikeAan && T - V.spikes[V.spikes.length - 1].t > .8) {
+      var sp = V.spikes; V.spikes = [];
+      var n = sp.length, goed = true; for (var i = 1; i < n; i++) if (sp[i].t - sp[i - 1].t < .1 || sp[i].t - sp[i - 1].t > .7) goed = false;
+      if (goed && (n === 2 || n === 3) && T - V.klopT > 4) {
+        V.klopT = T; if (S.asleep) wake(); S.hop = .5; dir(0, 0);
+        if (n === 2) setEv('excited', 2.2, pick(['Ja? Ik ben er!', 'Klop klop… wie is daar? 😄', 'Hoi! Zin om te rijden?', 'Binnen!']), true);
+        else { setEv('happy', 2.4, pick(['Ja ja ja, ik hoor je wel!', 'Drie keer kloppen: feestje!']), true); if (S.speed < 1) setTimeout(function () { if (!S.gag) startGag('dance'); }, 2300); }
+        beep('pet'); lg('geklopt (' + n + '×)');
+      } else if (n === 1 && sp[0].m > 4.5 && S.speed < 1 && S.stoppedT > 20 && T - V.deurT > 600) {
+        V.deurT = T; if (S.asleep) wake();
+        setEv('alert', 2.4, pick(['Boem! Deur dicht. Gaan we weg?', 'Hoorde ik een deur? Daar ben je!']), true); lg('deur dicht gevoeld');
+      }
+    }
+    /* instappen: de auto wiebelt zachtjes terwijl Buddy slaapt */
+    if (S.asleep && S.speed < 1 && Math.abs(vert) > .35 && linL < 2.5) V.rockT += dt; else V.rockT = Math.max(0, V.rockT - dt * .5);
+    if (V.rockT > 1.2 && T - V.instapCool > 300) { V.instapCool = T; V.rockT = 0; wake(); setEv('excited', 2.6, pick(['Oh! Daar ben je! Gaan we rijden?', 'Hé, ik voel dat je instapt!']), true); }
+    /* plat neergelegd (op tafel) */
+    var g0 = V.g ? vn(V.g) : null;
+    if (g0 && Math.abs(g0[2]) > .95 && S.speed < 1 && V.calmT > 3) V.ligT += dt; else V.ligT = 0;
+    if (V.ligT > 5 && T - V.ligCool > 600 && !S.asleep && freeEv() && !S.gag) { V.ligCool = T; setEv('relaxed', 3, pick(['Lekker liggen…', 'Ah, even plat. Heerlijk.'])); }
+    /* rijden */
+    if (!voelOk() || S.speed < 12) { V.remT = 0; V.bochtT = 0; return; }
+    V.ritVoel = true;
+    var gtot = Math.sqrt(V.lon * V.lon + V.lat * V.lat) / 9.81; if (gtot > V.gmax && gtot < 1.3) V.gmax = gtot;
+    if ((Math.abs(V.lon) > 4 || Math.abs(V.lat) > 4) && T - V.harshT > 3) { V.harshT = T; V.harsh++; }
+    /* hard remmen */
+    if (V.lon < -5) V.remT += dt; else V.remT = 0;
+    if (V.remT > .25 && T - V.remCool > 20 && !S.asleep) {
+      V.remCool = T; S.lastStart = T; S.squash = .8; V.remT = 0;
+      if (V.lon < -8) setEv('startled', 3, 'Pfff… dat was op het randje. Alles goed?'); else setEv('startled', 2.2, pick(['Wow! Remmen!', 'Oei! Dat was stevig.', 'Hoppa, vol in de ankers!']));
+      beep('startled'); lg('stevig geremd (sensor ' + fmt1(-V.lon / 9.81) + ' G)');
+    }
+    /* lange bocht: klaverblad of lange oprit */
+    if (Math.abs(V.lat) > 2.5) V.bochtT += dt; else V.bochtT = Math.max(0, V.bochtT - dt * 2);
+    if (V.bochtT > 3.5 && T - V.bochtCool > 90 && voelVrij()) { V.bochtCool = T; setEv('excited', 2.2, pick(['Wieee, wat een bocht!', 'Hangen in de bocht!', 'Rondje! Wiee!'])); }
+    if (V.bochtT > 7 && S.dizzyUntil < T) { S.dizzyUntil = T + 2.5; if (freeEv()) setEv('startled', 2.4, 'Klaverblad! Ik word draaierig 😵'); }
+    /* van rijstrook wisselen: even opzij en meteen terug */
+    if (S.speed > 60 && Math.abs(S.turn) < 3) {
+      if (!V.wisselA && Math.abs(V.lat) > 1.2) { V.wisselA = Math.sign(V.lat); V.wisselT = T; }
+      else if (V.wisselA && Math.sign(V.lat) === -V.wisselA && Math.abs(V.lat) > 1 && T - V.wisselT > .5 && T - V.wisselT < 3) {
+        V.wisselA = 0;
+        if (T - V.wisselCool > 240 && Math.random() < .4 && voelVrij()) { V.wisselCool = T; setEv('content', 1.8, pick(['Zoef, andere baan.', 'Wissel! Netjes richting aangegeven?', 'Baantje erbij!'])); }
+      } else if (V.wisselA && T - V.wisselT > 3) V.wisselA = 0;
+    }
+  }
+  /* staand ↔ liggend gedraaid: even een rondje */
+  function voelDraai() { if (T - V.draaiCool < 20 || S.asleep) return; V.draaiCool = T; S.spinT = T; setTimeout(function () { if (freeEv()) setEv('happy', 1.8, pick(['Wiee, ander uitzicht!', 'Draaien! Hoei!', 'Zo zie ik het ook.'])); }, 450); }
+  try { if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', voelDraai); else window.addEventListener('orientationchange', voelDraai); } catch (e) {}
+  /* effecten op het gezicht, elke frame (vanuit gagTick) */
+  function voelGezicht(g) {
+    if (S.asleep) return;
+    if (V.tilt && !V.held) frot += V.tilt;
+    if (S.spinT && T - S.spinT < .7) { var q = (T - S.spinT) / .7; frot += (1 - Math.cos(q * Math.PI)) * Math.PI; fsc *= 1 - Math.sin(q * Math.PI) * .12; }
+    if (V.dn && !g && S.speed < 3) dir(clamp(V.dn[0] * 2.4, -1, 1), clamp(V.dn[1] * 2.4, -1, 1));
+    if (voelOk() && V.lon > 2.4 && S.speed > 3) {  /* optrekken: in de stoel gedrukt, wangetjes trillen */
+      var k = clamp((V.lon - 2.2) / 3, 0, 1); eyeL *= 1 - k * .22; eyeR *= 1 - k * .22; fsc *= 1 - k * .05; fdx += Math.sin(T * 55) * k * 1.3;
+    }
+  }
+  /* iPhone: toestemming vragen mag alleen na een tik */
+  function voelVraag(knop) {
+    if (!VPERM || V.perm === 'ok' || V.vraagBezig) return;
+    V.vraagBezig = true;
+    var pr; try { pr = DeviceMotionEvent.requestPermission(); } catch (e) { V.vraagBezig = false; return; }
+    Promise.resolve(pr).then(function (r) {
+      V.perm = r === 'granted' ? 'ok' : 'nee'; lg('bewegingssensor: ' + r);
+      if (V.perm === 'ok') { if (knop || !V.permZei) { V.permZei = true; setEv('excited', 2.6, 'Joepie! Nu voel ik elke bocht.'); } }
+      else toast('Geen toegang tot de bewegingssensor. Herlaad Buddy en tik op “Bewegingssensor toestaan” om het opnieuw te vragen.');
+      voelToon();
+    }).catch(function (e) { lg('FOUT bewegingssensor ' + ((e && e.message) || e)); }).then(function () { V.vraagBezig = false; });
+  }
+  ['click', 'touchend'].forEach(function (ev) { document.addEventListener(ev, function () { voelVraag(false); }, { passive: true }); });
+  if (VPERM) setTimeout(function () { if (V.perm === 'nodig') toast('Tik één keer op het scherm, dan kan Buddy je bochten en remmen voelen.'); }, 4500);
+  function voelToon() {
+    var el = $('voelStat'), b = $('voelKnop'); if (!el) return;
+    if (b) b.hidden = !(VPERM && V.perm !== 'ok');
+    if (V.perm === 'nodig') { el.textContent = 'Bewegingssensor: nog geen toestemming. Tik op de knop (iPhone vraagt het één keer).'; return; }
+    if (V.perm === 'nee') { el.textContent = 'Bewegingssensor: geweigerd. Herlaad Buddy en tik op de knop om het opnieuw te vragen.'; return; }
+    if (!V.n) { el.textContent = 'Bewegingssensor: nog niets gevoeld' + (T > 8 ? ' (deze telefoon of browser geeft misschien geen sensor door).' : '…'); return; }
+    var o = Math.abs(schermHoek()) % 180 === 90 ? 'liggend' : 'staand';
+    el.textContent = 'Bewegingssensor aan · telefoon ' + o + (V.held ? ' · je houdt me vast' : '') + ' · ' + (V.conf >= .5 ? 'ik weet waar vooruit is (' + Math.round(V.conf * 100) + '%)' : 'ik leer nog waar vooruit is: rij even, dan voel ik het bij optrekken en remmen') + '.';
+  }
+  setInterval(function () { voelToon(); if (V.gS && !V.held) voelScheef(); }, 2000);
+  /* G-meter: een stipje bovenin dat laat zien welke kant de krachten op gaan */
+  var GMKEY = 'dashboardmaatje-gmeter-v1', gmAan = false;
+  try { gmAan = localStorage.getItem(GMKEY) === '1'; } catch (e) {}
+  function gmeterDraw() {
+    if (!gmAan || !voelOk() || !S.live || S.speed < 3) return;
+    var cx = 120, cy = 32, R = 13, sc = R / (.5 * 9.81), x = clamp(-V.lat * sc, -R, R), y = clamp(V.lon * sc, -R, R);  /* wat je voelt: remmen = naar voren (boven), bocht rechts = naar links */
+    ctx.save(); ctx.globalAlpha = .7; ctx.strokeStyle = EYE; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke(); ctx.globalAlpha = .3; ctx.beginPath(); ctx.arc(cx, cy, R / 2, 0, TAU); ctx.stroke();
+    ctx.globalAlpha = .95; ctx.fillStyle = Math.sqrt(x * x + y * y) > R * .8 ? HEART : EYE; ctx.beginPath(); ctx.arc(cx + x, cy + y, 3, 0, TAU); ctx.fill();
+    ctx.restore();
+  }
+  window.__voel = { V: V, stap: voelStap, gps: voelGps, ok: voelOk };
   var gpsUitGezet = false;
   $('bLive').addEventListener('click', function () { if (S.live) { gpsUitGezet = true; stopLive(); } else { gpsUitGezet = false; startLive(); } });
   function liveTick() {
@@ -3972,7 +4216,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     var v = S.speed / 3.6, aNow = (v - lv.vPrev) / dt; lv.vPrev = v;
     lv.a += (clamp(aNow, -9, 6) - lv.a) * Math.min(1, dt * 3);
     /* A. voorover bij remmen, achterover bij optrekken */
-    if (!S.asleep && S.speed > 3) fdy += clamp(-lv.a * 1.8, -6, 8);
+    if (!S.asleep && S.speed > 3) fdy += clamp(-accLon() * 1.8, -6, 8);
     /* B. groen licht */
     if (S.speed < 1) lv.stopT += dt;
     else {
@@ -4647,7 +4891,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   /* ---------- 2. Ritten en weekoverzicht ---------- */
   var ritten = [];
   try { ritten = JSON.parse(localStorage.getItem(RITKEY)) || []; } catch (e) { ritten = []; }
-  function ritStart() { S.ritStart = { t: Date.now(), km: mem.kmLive || 0, netjes: mem.netjes || 0, h: new Date().getHours() + new Date().getMinutes() / 60, vmax: 0, nul: 0, nulTelt: false }; ritVakken = {}; }
+  function ritStart() { V.harsh = 0; V.gmax = 0; V.ritVoel = false; S.ritStart = { t: Date.now(), km: mem.kmLive || 0, netjes: mem.netjes || 0, h: new Date().getHours() + new Date().getMinutes() / 60, vmax: 0, nul: 0, nulTelt: false }; ritVakken = {}; }
   /* Wordt aangeroepen als een echte rit klaar is (8 min stilstaan of GPS uit) */
   function ritKlaar(sc) {
     var r0 = S.ritStart; S.ritStart = null;
@@ -4656,6 +4900,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (km < 0.5) return;
     var r = { t0: r0.t, t1: Date.now(), km: Math.round(km * 10) / 10, min: min, stijl: Math.round(sc), netjes: netjes, vmax: Math.round(r0.vmax || 0), sec: Math.round(S.tripT || 0) };
     if (r0.nul) { r.nul = Math.round(r0.nul * 10) / 10; r.nt = r0.nulTelt ? 1 : 0; if (!r0.nulTelt) r.nw = r0.nulWaarom; }
+    if (V.ritVoel) { r.g = Math.round(V.gmax * 100) / 100; r.sch = V.harsh; }
     try { ritPtsBewaar(r, r0); } catch (e) {}
     ritten.push(r); if (ritten.length > 80) ritten = ritten.slice(-80);
     try { localStorage.setItem(RITKEY, JSON.stringify(ritten)); } catch (e) {}
@@ -4668,6 +4913,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     var m = 'Rit klaar: ' + String(r.km).replace('.', ',') + ' km in ' + r.min + ' min, rijstijl ' + r.stijl + (r.netjes ? ', ' + r.netjes + '× netjes langs een flitser' : '') + '.';
     toast(m); lg('rit: ' + JSON.stringify(r)); ritToon(); ritKaart(r); routeOverzicht();
     if (typeof grLid === 'function') grLid(true);
+    if (V.ritVoel && r.min >= 10 && !V.harsh) queueCheer('Geen enkele schok deze rit. Wat een zen-rit 🧘');
     setTimeout(function () { maakBackup('rit'); }, 3000); /* na elke rit een back-up */
     return r;
   }
@@ -4691,7 +4937,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var l = document.createElement('small'); l.textContent = x[2];
       d.appendChild(i); d.appendChild(w); d.appendChild(l); g.appendChild(d);
     });
-    $('ritKaartStijl').textContent = 'Rijstijl ' + r.stijl + '/100 · ' + (r.stijl >= 90 ? 'superzacht gereden!' : r.stijl >= 75 ? 'netjes gereden.' : 'pittig gereden, rustiger mag ook.');
+    $('ritKaartStijl').textContent = 'Rijstijl ' + r.stijl + '/100 · ' + (r.stijl >= 90 ? 'superzacht gereden!' : r.stijl >= 75 ? 'netjes gereden.' : 'pittig gereden, rustiger mag ook.') + (r.g ? ' · max ' + fmt1(r.g) + ' G' : '');
     $('ritKaartStijl').className = r.stijl >= 75 ? 'goed' : 'pittig';
     try { ritKaartTeken($('ritKaartMap'), r); } catch (e) { $('ritKaartMap').hidden = true; }
     ritKaartHuidig = r; rkTitel('Rit klaar 🏁'); $('ritKaartDeel').hidden = false;
@@ -4948,7 +5194,6 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }
   function mijlpaalKm(km) {
     if (km % 1000 === 0) mijlpaalShow(km.toLocaleString('nl-NL') + ' km', 'Al ' + km.toLocaleString('nl-NL') + ' km samen gereden! Feestje!');
-    else if (freeEv() && !S.gag) setEv('happy', 3, 'Weer 100 km erbij: ' + km + ' km samen.');
   }
   /* Brug of viaduct (uit OpenStreetMap, alleen bruggen van 60 m of langer) */
   function brugStap(b) {
@@ -5018,7 +5263,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (T - lv.fileStart > 3600) { lv.file = false; lv.fileT = 0; }
     }
     /* inhalen: flink optrekken op de snelweg */
-    if (S.speed >= 70 && lv.a > 1.2) lv.inhT = (lv.inhT || 0) + dt; else lv.inhT = 0;
+    if (S.speed >= 70 && accLon() > 1.2) lv.inhT = (lv.inhT || 0) + dt; else lv.inhT = 0;
     if (lv.inhT > 2 && T - (lv.inhLast || -9999) > 300 && !S.gag && freeEv() && !(S.cam && S.cam.dist <= 600) && !S.traj) { lv.inhLast = T; lv.inhT = 0; startGag('inhalen'); }
     /* laat in de nacht: af en toe een gaap, en na 2 uur rijden een pauzetip */
     if (laatNacht() && S.speed >= 30) {
@@ -5097,6 +5342,9 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       .then(function () { thBezig = false; });
   }
   $('thuisKnop').addEventListener('click', function () { thuisHint('knop'); });
+  $('voelKnop').addEventListener('click', function () { voelVraag(true); });
+  $('gmIn').checked = gmAan;
+  $('gmIn').addEventListener('change', function () { gmAan = $('gmIn').checked; try { localStorage.setItem(GMKEY, gmAan ? '1' : '0'); } catch (e) {} toast(gmAan ? 'G-meter aan (zie je tijdens het rijden).' : 'G-meter uit.'); });
   $('thuisZet').addEventListener('click', function () {
     if (!lastPos) { toast('Zet eerst de GPS aan, dan weet ik waar je bent.'); return; }
     thuis = { lat: +lastPos.lat.toFixed(5), lon: +lastPos.lon.toFixed(5) };
