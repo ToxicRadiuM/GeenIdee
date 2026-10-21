@@ -107,6 +107,12 @@ h2 {
 
 /* Autostand */
 body.car { background: #000; --ink: #f3f4f6; --muted: #9aa3ad; }
+/* Nachtstand: gedimd gezicht, minder fel wit, knoppen rustiger. Fijn voor je ogen in het donker. */
+body.nacht .bezel canvas { filter: brightness(.62) saturate(.9); }
+body.nacht.car .helmet { filter: brightness(.7); }
+body.nacht.car #carAdd, body.nacht.car #carAddM, body.nacht.car #carGroep, body.nacht.car #carStart, body.nacht.car #carRit, body.nacht.car #carBack { opacity: .6; }
+body.nacht .thought, body.nacht .mood-name { opacity: .75; }
+body.nacht #ritKaart .rkBox, body.nacht #grPaneel { filter: brightness(.8); }
 body.car main > *:not(.stage) { display: none !important; }
 body.car main { padding: 0; gap: 0; max-width: none; width: 100%; }
 body.car, html:has(body.car) { overflow: hidden; height: 100vh; height: 100dvh; }
@@ -365,6 +371,7 @@ details.set > * + * { margin-top: 10px; }
     <div class="btns">
       <button class="btn" id="bLive" type="button" aria-pressed="false" style="grid-column:1/-1">Telefoon-GPS: uit</button>
       <div class="switchrow" style="grid-column:1/-1"><input type="checkbox" id="autoGps" checked><label for="autoGps">GPS vanzelf aan als ik Buddy open</label></div>
+      <div class="limitrow" style="grid-column:1/-1"><label for="nachtMode">Nachtstand</label><select id="nachtMode"><option value="auto">Vanzelf (na zonsondergang)</option><option value="aan">Altijd aan</option><option value="uit">Uit</option></select></div>
       <button class="btn primary" id="bCar" type="button" style="grid-column:1/-1">Autostand: alleen gezicht, groot</button>
       <button class="btn" id="bSound" type="button" aria-pressed="false" style="grid-column:1/-1">Geluid: uit</button>
     </div>
@@ -527,6 +534,8 @@ details.set > * + * { margin-top: 10px; }
     <button class="btn" id="bUcam" type="button" style="grid-column:1/-1">Vaste flitser: onthoud deze plek</button>
     <button class="btn" id="bUmob" type="button" style="grid-column:1/-1">Mobiele flitser: onthoud deze plek (3 uur)</button>
     <p class="sub">Samen met collega’s</p>
+    <div class="switchrow"><input type="checkbox" id="grSignaalOn" checked><label for="grSignaalOn">Geluidje en trillen bij een groepsbericht (ook als het geluid van Buddy uit staat)</label></div>
+    <div class="switchrow"><input type="checkbox" id="grGezienOn" checked><label for="grGezienOn">Laat collega’s zien dat ik hun bericht heb gezien (✓)</label></div>
     <p class="foot">Standaard zit iedereen in groep 123456, dus collega’s hoeven niets in te vullen. Wil je een eigen groep, vul dan op alle telefoons dezelfde andere code in (6 tot 32 letters of cijfers, houd hem geheim). Flitsers die iemand toevoegt komen dan bij iedereen, en jullie kunnen elkaar in de autostand met de knop “Groep” een zwaai, koffievraag, file, “ik sta stil”, hartjes of “bijna thuis” sturen. Er worden alleen plek en limiet gedeeld, en je plaatsnaam bij “ik sta stil” (geen precieze plek). Je hebt het Worker-adres hierboven nodig, met opslag gekoppeld.</p>
     <div class="mobrow"><input type="text" id="grpCode" maxlength="32" autocomplete="off" autocapitalize="none" placeholder="Groepscode"><button class="btn" id="grpSave" type="button">Opslaan en verversen</button></div>
     <p class="chip" id="grpStat">Geen groepscode ingevuld.</p>
@@ -3248,7 +3257,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v55';
+  var VERSION = 'v56';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -3708,7 +3717,7 @@ details.set > * + * { margin-top: 10px; }
   function grKan() { if (!grp) { toast('Vul eerst een groepscode in (Instellingen, Flitsers).'); return false; } if (!pbase()) { toast('Vul eerst het Worker-adres in.'); return false; } return true; }
   function grStuur(soort, extra) {
     var id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    grVerstuurd[id] = 1;
+    grVerstuurd[id] = 1; if (soort !== 'gezien') grMijn[id] = soort;
     return fetch(gUrl('/ping', '&s=' + soort + '&id=' + id + grQ(extra))).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status); return j; }); });
   }
   /* Een knop uit het groepspaneel */
@@ -3761,7 +3770,7 @@ details.set > * + * { margin-top: 10px; }
           grFiles.push({ id: 'g:' + b.id, k: 'jam', lim: null, ql: null, cs: '', br: null, pts: [[+b.lat, +b.lon]], src: 'groep', t: b.t, tx: 'File gemeld door ' + (b.n || 'een collega'), van: b.van });
         }
         if (grEerste || b.van === mijnId || grVerstuurd[b.id]) return; /* oude berichten bij openen en eigen berichten niet melden */
-        if ((b.s === 'koffieJa' || b.s === 'koffieStraks') && b.aan && b.aan !== mijnId) return;
+        if ((b.s === 'koffieJa' || b.s === 'koffieStraks' || b.s === 'gezien') && b.aan && b.aan !== mijnId) return;
         grRij.push(b);
       });
       grFiles = grFiles.filter(function (f) { return Date.now() - f.t < 60 * 60e3; });
@@ -3791,9 +3800,42 @@ details.set > * + * { margin-top: 10px; }
     else if (s === 'hart') { m = wie(b) + ' stuurt je hartjes!'; S.love = Math.min(100, S.love + 10); setEv('love', 4.5, m); beep('pet'); }
     else if (s === 'thuis') { m = wie(b) + ' is bijna thuis!'; cheer(m); }
     else if (s === 'mijlpaal') { m = wie(b) + ' heeft ' + (b.w || 0) + ' km met Buddy gereden!'; cheer(m); }
+    else if (s === 'gezien') {
+      var wat = GR_GEZIEN_VOOR[grMijn[b.r]] || 'bericht';
+      m = '✓ ' + wie(b) + ' heeft je ' + wat + ' gezien.'; toast(m); grSignaal(true); lg('groepsbericht gezien door ' + (b.n || '?'));
+      return;
+    }
     if (!m) return;
+    grSignaal(false); grGezienSturen(b);
     toast(m); say(m, true); lg('groepsbericht ontvangen: ' + s + ' van ' + (b.n || '?')); grLog.push(m); if (grLog.length > 30) grLog.shift();
   }
+  /* Signaal bij een groepsbericht: korte trilling en een eigen klein deuntje, los van het geluid van Buddy */
+  var GRSIGKEY = 'dashboardmaatje-grsignaal-v1', GRGEZKEY = 'dashboardmaatje-grgezien-v1', grSignaalOn = true, grGezienOn = true, gac = null;
+  try { grSignaalOn = localStorage.getItem(GRSIGKEY) !== '0'; grGezienOn = localStorage.getItem(GRGEZKEY) !== '0'; } catch (e) {}
+  document.addEventListener('pointerdown', function maakGac() { try { if (!gac) gac = new (window.AudioContext || window.webkitAudioContext)(); if (gac.state === 'suspended') gac.resume(); } catch (e) {} }, { passive: true });
+  function grSignaal(zacht) {
+    if (!grSignaalOn) return;
+    try { if (navigator.vibrate) navigator.vibrate(zacht ? 60 : [90, 70, 90]); } catch (e) {}
+    try {
+      var c = gac || ac; if (!c) return; if (c.state === 'suspended') c.resume();
+      var t0 = c.currentTime, tonen = zacht ? [1320] : [880, 1175, 1568];
+      tonen.forEach(function (f, i) {
+        var o = c.createOscillator(), g = c.createGain(), st = t0 + i * .11;
+        o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(.0001, st); g.gain.exponentialRampToValueAtTime(.16, st + .015); g.gain.exponentialRampToValueAtTime(.0001, st + .22);
+        o.connect(g); g.connect(c.destination); o.start(st); o.stop(st + .25);
+      });
+    } catch (e) {}
+  }
+  /* Gezien-vinkje: wie een bericht ziet, stuurt stil een "gezien" terug naar de afzender */
+  var grMijn = {}, GR_GEZIEN_VOOR = { koffie: 'koffievraag', zwaai: 'zwaai', pech: 'stilstaan-bericht', file: 'filemelding', hart: 'hartjes' };
+  function grGezienSturen(b) {
+    if (!grGezienOn || !GR_GEZIEN_VOOR[b.s] || !b.id || !b.van || b.van === mijnId) return;
+    grStuur('gezien', '&aan=' + encodeURIComponent(b.van) + '&r=' + encodeURIComponent(b.id)).catch(function () {});
+  }
+  $('grSignaalOn').checked = grSignaalOn;
+  $('grSignaalOn').addEventListener('change', function () { grSignaalOn = $('grSignaalOn').checked; try { localStorage.setItem(GRSIGKEY, grSignaalOn ? '1' : '0'); } catch (e) {} if (grSignaalOn) grSignaal(false); });
+  $('grGezienOn').checked = grGezienOn;
+  $('grGezienOn').addEventListener('change', function () { grGezienOn = $('grGezienOn').checked; try { localStorage.setItem(GRGEZKEY, grGezienOn ? '1' : '0'); } catch (e) {} });
   function grKoffieAntw(ja) {
     var b = grKoffieVan; $('grKoffie').hidden = true; grKoffieVan = null;
     if (!b || !grKan()) return;
@@ -4240,6 +4282,30 @@ details.set > * + * { margin-top: 10px; }
   $('buurIn').checked = buurAan;
   $('buurIn').addEventListener('change', function () { buurAan = $('buurIn').checked; try { localStorage.setItem(BUURKEY, buurAan ? '1' : '0'); } catch (e) {} if (!buurAan) buurUit(); toast(buurAan ? 'Aan: Buddy zwaait als een collega vlakbij is.' : 'Uit.'); });
   parkToon(); ritToon(); badgeToon(); outfitKeuze(); routeOverzicht();
+  /* Nachtstand: vanzelf tussen zonsondergang en zonsopkomst (uitgerekend voor waar je bent), of altijd aan/uit */
+  var NACHTKEY = 'dashboardmaatje-nacht-v1', nachtMode = 'auto';
+  try { nachtMode = localStorage.getItem(NACHTKEY) || 'auto'; } catch (e) {}
+  $('nachtMode').value = nachtMode;
+  function zonTijden(d, lat, lon) {
+    var R = Math.PI / 180, n = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5);
+    var g = 2 * Math.PI / 365 * (n - 1);
+    var vgl = 229.18 * (.000075 + .001868 * Math.cos(g) - .032077 * Math.sin(g) - .014615 * Math.cos(2 * g) - .040849 * Math.sin(2 * g));
+    var decl = .006918 - .399912 * Math.cos(g) + .070257 * Math.sin(g) - .006758 * Math.cos(2 * g) + .000907 * Math.sin(2 * g);
+    var ha = Math.acos(Math.cos(90.833 * R) / (Math.cos(lat * R) * Math.cos(decl)) - Math.tan(lat * R) * Math.tan(decl)) / R;
+    var op = 720 - 4 * (lon + ha) - vgl, onder = 720 - 4 * (lon - ha) - vgl; /* minuten UTC */
+    var off = -d.getTimezoneOffset();
+    return { op: op + off, onder: onder + off };
+  }
+  function nachtToon() {
+    var aan = nachtMode === 'aan';
+    if (nachtMode === 'auto') {
+      var d = new Date(), la = lastPos ? lastPos.lat : 52.1, lo = lastPos ? lastPos.lon : 5.1, z = zonTijden(d, la, lo), m = d.getHours() * 60 + d.getMinutes();
+      aan = !(m >= z.op + 20 && m < z.onder - 20);  /* 20 min marge: schemering telt al als donker */
+    }
+    if (document.body.classList.contains('nacht') !== aan) { document.body.classList.toggle('nacht', aan); lg('nachtstand ' + (aan ? 'aan' : 'uit')); }
+  }
+  $('nachtMode').addEventListener('change', function () { nachtMode = $('nachtMode').value; try { localStorage.setItem(NACHTKEY, nachtMode); } catch (e) {} nachtToon(); });
+  nachtToon(); setInterval(nachtToon, 60e3);
   /* GPS vanzelf aan bij openen (instelbaar). Is de toestemming al gegeven, dan start hij zonder vragen. */
   var AUTOGPSKEY = 'dashboardmaatje-autogps-v1', autoGps = true;
   try { autoGps = localStorage.getItem(AUTOGPSKEY) !== '0'; } catch (e) {}
