@@ -1585,6 +1585,12 @@ details.set > * + * { margin-top: 10px; }
     ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(120, 120, 112, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(p, 0, 1)); ctx.stroke();
   }
   /* ---------- Own speed on the round screen ---------- */
+  function hudPil(x0, x1, sterk) {
+    ctx.save(); ctx.globalAlpha = sterk ? .92 : .78; ctx.fillStyle = SCREEN;
+    rr(x0, 180, x1 - x0, 50, 22); ctx.fill();
+    ctx.globalAlpha = sterk ? .22 : .12; ctx.strokeStyle = EYE; ctx.lineWidth = 1.5; rr(x0, 180, x1 - x0, 50, 22); ctx.stroke();
+    ctx.restore();
+  }
   function speedDraw() {
     var mode = S.spdMode | 0;
     if (!mode || S.asleep || S.flagUntil > T || curKey === 'clock' || (S.gag && GAGS[S.gag.k] && (GAGS[S.gag.k].noFace || (GAGS[S.gag.k].laag && S.speed < 3)))) return;
@@ -1592,6 +1598,9 @@ details.set > * + * { margin-top: 10px; }
     var est = !(camOn && S.cam.limit != null) && !!S.roadEst, bad = lim != null && !est && v > lim, col = bad ? HEART : EYE;
     /* Weg- of stuuranimatie onderin? Dan stapt de snelheid even opzij (behalve als je te hard rijdt) */
     if (!bad && !camOn && S.gag && GAGS[S.gag.k] && GAGS[S.gag.k].onder) return;
+    /* Animatie bezig terwijl je stilstaat? Dan is "0 km/h" niet nodig: snelheid en bordje even weg, de animatie krijgt de ruimte */
+    var gagTekent = !!(S.gag && GAGS[S.gag.k] && GAGS[S.gag.k].draw);
+    if (gagTekent && v < 3 && !camOn && !bad) return;
     ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     if (mode & 2) {
       var a0 = Math.PI * .75, sweep = Math.PI * 1.5, f = clamp(S.speed / 140, 0, 1);
@@ -1603,8 +1612,10 @@ details.set > * + * { margin-top: 10px; }
     if (mode & 1) {
       ctx.fillStyle = col; ctx.globalAlpha = S.speed < 1 ? .55 : 1;
       if (S.traj) { ctx.font = '700 15px "Chakra Petch", sans-serif'; ctx.fillText(v + ' km/h', 120, 50); }
-      else if (camOn) { ctx.font = '700 24px "Chakra Petch", sans-serif'; ctx.fillText(String(v), 152, 210); }
+      else if (camOn) { hudPil(126, 178, gagTekent); ctx.fillStyle = col; ctx.font = '700 24px "Chakra Petch", sans-serif'; ctx.fillText(String(v), 152, 210); }
       else {
+        /* Snelheid en bordje op een eigen donker "pilletje": animaties lopen er netjes achterlangs in plaats van erdoorheen */
+        hudPil(64, 178, gagTekent); ctx.fillStyle = col;
         var stale = S.live && T - S.roadSeen > 25;
         ctx.save(); ctx.translate(-36, 0); ctx.globalAlpha = S.roadLim == null ? .35 : (stale ? .55 : 1); sign(S.roadLim, est);
         if (S.live && S.roadLim != null && BRONKORT[S.roadSrc]) { ctx.globalAlpha = .7; ctx.fillStyle = EYE; ctx.font = '600 9px "Chakra Petch", sans-serif'; ctx.fillText(BRONKORT[S.roadSrc], 120, 187); }
@@ -2459,7 +2470,7 @@ details.set > * + * { margin-top: 10px; }
     setEv('alert', 1, m); babble('alert', m); beep('wake'); startGag('bridge'); if (S.gag) S.gag.msg = m; S.nextGag = Math.max(S.nextGag, T + 20);
     lg('brug ' + Math.round(best.d) + ' m: ' + m);
   }
-  GAGS.bridge = { name: 'Brug gaat open', dur: 7, idle: 1, drive: 1, need: function () { return false; }, mood: 'alert', msg: 'Brug gaat open!',
+  GAGS.bridge = { name: 'Brug gaat open', dur: 7, idle: 1, drive: 1, onder: 1, need: function () { return false; }, mood: 'alert', msg: 'Brug gaat open!',
     upd: function (g, tt) { var u = Math.min(1, tt / 2); dir(0, -.3 + (tt > 2 ? Math.sin(tt) * .2 : 0)); if (tt > 5) { g.mood = 'happy'; g.msg = 'Boot is er doorheen!'; } },
     draw: function (g, tt) {
       var up = tt < 1.5 ? tt / 1.5 : tt < 5 ? 1 : Math.max(0, 1 - (tt - 5) / 1.5), an = up * 1.0, L = 62;
@@ -3172,7 +3183,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v50';
+  var VERSION = 'v51';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
