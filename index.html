@@ -127,6 +127,38 @@ body.car #carRit { display: block; }
 #ritKaart { position: fixed; inset: 0; z-index: 62; background: rgba(0,0,0,.82); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
 #ritKaart[hidden] { display: none; }
 #updBar[hidden] { display: none !important; }
+#carSpel { display: none; position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 50; min-height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #ffb02e; background: #2a1d05; color: #ffd27a; font: 600 14px var(--f-display); }
+body.car #carSpel.zichtbaar { display: block; }
+#spel { position: fixed; inset: 0; z-index: 63; background: rgba(0,0,0,.84); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+#spel[hidden] { display: none; }
+#spel .spBox { width: min(100%, 620px); max-height: 100%; overflow-y: auto; background: #10151a; border: 2px solid #ffb02e; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 12px; color: #eef2f5; }
+#spTitel { margin: 0; text-align: center; font: 700 clamp(20px, 3.6vw, 30px)/1.15 var(--f-display); }
+#spInhoud { text-align: center; font: 500 17px/1.4 var(--f-body); }
+#spInhoud .spNr { margin: 0 0 6px; color: #9aa3ad; font-size: 13px; }
+#spInhoud .spTekst { margin: 8px 0 0; font: 600 clamp(17px, 3vw, 22px)/1.35 var(--f-body); }
+#spKnoppen { display: grid; gap: 8px; }
+#spKnoppen .btn { min-height: 54px; font-size: 16px; background: #1a2129; color: #eef2f5; border-color: #2c3640; }
+#spKnoppen .btn.primary { background: #ffb02e; color: #000; border-color: transparent; }
+#spKnoppen .btn.goed { background: #1f6b32; border-color: #5ddc7c; }
+#spKnoppen .btn.fout { background: #6b1f1f; border-color: #ff6b6b; }
+#spSluit { align-self: center; min-height: 48px; padding: 0 28px; border-radius: 24px; border: 1px solid #666; background: #1b1b1b; color: #eee; font: 600 15px var(--f-display); }
+.ktBord { display: inline-flex; align-items: stretch; margin: 6px auto 0; border-radius: 8px; overflow: hidden; border: 3px solid #111; background: #F7D117; }
+.ktBord .ktNL { background: #1a3d9e; color: #fff; font: 700 13px var(--f-display); padding: 10px 6px; display: flex; align-items: flex-end; }
+.ktBord .ktTxt { color: #111; font: 700 40px/1 var(--f-display); padding: 8px 22px; letter-spacing: .08em; }
+.kleurStip { width: 72px; height: 72px; border-radius: 50%; margin: 6px auto 0; border: 3px solid #2c3640; }
+.laadKlok { margin: 0; font: 700 56px/1 var(--f-display); color: #8ff0a8; font-variant-numeric: tabular-nums; }
+#grJarig { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); z-index: 61; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 22px; background: #2a0d1d; border: 3px solid #ff6b8a; color: #ffd6e0; font: 700 17px var(--f-body); box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+#grJarig[hidden] { display: none; }
+#grJarig p { margin: 0 6px; }
+#grJarig button { min-height: 52px; min-width: 88px; border-radius: 18px; border: 2px solid #ff6b8a; background: #3d0f22; color: #fff; font: 700 16px var(--f-body); }
+#grJarig #grJarigJa { background: #ff6b8a; color: #000; }
+#ritKaartMap { width: 100%; height: auto; border-radius: 16px; background: #1a2129; }
+#ritKaartMap[hidden] { display: none; }
+#ritKaart .rkKnoppen { display: flex; justify-content: center; gap: 10px; }
+#ritKaartDeel { min-height: 52px; padding: 0 24px; border-radius: 26px; border: 1px solid #34c759; background: #0b2414; color: #8ff0a8; font: 600 16px var(--f-display); }
+.lvBalk { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+.lvBalk i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffb02e, #ffd27a); border-radius: 5px; transition: width .6s; }
+body.nacht #spel .spBox { filter: brightness(.8); }
 .navRes { display: grid; gap: 6px; }
 .navRes .btn { text-align: left; min-height: 44px; font-weight: 500; }
 #ritKaart .rkBox { width: min(100%, 640px); max-height: 100%; overflow-y: auto; background: #10151a; border: 2px solid #34c759; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 12px; color: #eef2f5; }
@@ -312,12 +344,23 @@ details.set > * + * { margin-top: 10px; }
 <body>
 <button id="carBack" type="button">Terug</button>
 <button id="carRit" type="button">🏁 Rit klaar</button>
+<button id="carSpel" type="button">🎲 Spel</button>
+<div id="spel" hidden role="dialog" aria-label="Spelletjes">
+  <div class="spBox">
+    <p id="spTitel"></p>
+    <div id="spInhoud"></div>
+    <div id="spKnoppen"></div>
+    <button id="spSluit" type="button">Sluiten</button>
+  </div>
+</div>
+<div id="grJarig" hidden><p id="grJarigTxt"></p><button id="grJarigJa" type="button">Feliciteer 🎉</button><button id="grJarigNee" type="button">Later</button></div>
 <div id="ritKaart" hidden role="dialog" aria-label="Ritoverzicht">
   <div class="rkBox">
     <p class="rkTitel">Rit klaar 🏁</p>
     <div id="ritKaartGrid"></div>
+    <canvas id="ritKaartMap" width="600" height="300" hidden></canvas>
     <p id="ritKaartStijl"></p>
-    <button id="ritKaartSluit" type="button">Sluiten</button>
+    <div class="rkKnoppen"><button id="ritKaartDeel" type="button">📤 Delen</button><button id="ritKaartSluit" type="button">Sluiten</button></div>
   </div>
 </div>
 <button id="carAdd" type="button">Vaste<br>flitser</button>
@@ -384,6 +427,14 @@ details.set > * + * { margin-top: 10px; }
       <p class="chip" id="parkStat">Nog geen parkeerplek.</p>
       <button class="btn" id="vcKnop" type="button">🚦 Check files op mijn route</button>
       <p class="chip" id="vcStat">Buddy checkt dit vanzelf rond je gewone vertrektijd en als je wegrijdt.</p>
+      <p class="sub">Buddy’s level</p>
+      <p class="chip" id="lvStat">⭐ Level 1</p>
+      <div class="lvBalk"><i id="lvBar"></i></div>
+      <p class="foot">Buddy groeit mee met elke km, elke nette flitserpassage, elke melding voor de groep en elke laadpauze. Je level staat ook op het leaderboard.</p>
+      <p class="sub">Spelletjes</p>
+      <div class="btns"><button class="btn" id="spQuiz" type="button">🧠 Quiz</button><button class="btn" id="spKenteken" type="button">🔍 Kentekenjacht</button><button class="btn" id="spIkzie" type="button" style="grid-column:1/-1">👀 Ik zie, ik zie</button></div>
+      <div class="switchrow"><input type="checkbox" id="passagierOn"><label for="passagierOn">Ik ben passagier (spelletjes ook tijdens het rijden)</label></div>
+      <p class="foot">Voor als je stilstaat, aan het laden bent, of als iemand naast je zit. De bestuurder speelt niet tijdens het rijden.</p>
       <p class="sub">Navigatie</p>
       <div class="mobrow"><input type="text" id="navIn" autocomplete="off" placeholder="Waar gaan we heen? Adres, plaats of postcode"><button class="btn" id="navZoekKnop" type="button">Zoek</button></div>
       <div id="navRes" class="navRes"></div>
@@ -534,6 +585,8 @@ details.set > * + * { margin-top: 10px; }
     <button class="btn" id="bUcam" type="button" style="grid-column:1/-1">Vaste flitser: onthoud deze plek</button>
     <button class="btn" id="bUmob" type="button" style="grid-column:1/-1">Mobiele flitser: onthoud deze plek (3 uur)</button>
     <p class="sub">Samen met collega’s</p>
+    <div class="limitrow"><label>Mijn verjaardag</label><select id="bdDag"></select><select id="bdMaand"></select></div>
+    <p class="foot">Je collega’s zien dan op je verjaardag een taartje bij je naam en kunnen je met één tik feliciteren. Alleen dag en maand, geen jaartal.</p>
     <div class="switchrow"><input type="checkbox" id="grSignaalOn" checked><label for="grSignaalOn">Geluidje en trillen bij een groepsbericht (ook als het geluid van Buddy uit staat)</label></div>
     <div class="switchrow"><input type="checkbox" id="grGezienOn" checked><label for="grGezienOn">Laat collega’s zien dat ik hun bericht heb gezien (✓)</label></div>
     <p class="foot">Standaard zit iedereen in groep 123456, dus collega’s hoeven niets in te vullen. Wil je een eigen groep, vul dan op alle telefoons dezelfde andere code in (6 tot 32 letters of cijfers, houd hem geheim). Flitsers die iemand toevoegt komen dan bij iedereen, en jullie kunnen elkaar in de autostand met de knop “Groep” een zwaai, koffievraag, file, “ik sta stil”, hartjes of “bijna thuis” sturen. Er worden alleen plek en limiet gedeeld, en je plaatsnaam bij “ik sta stil” (geen precieze plek). Je hebt het Worker-adres hierboven nodig, met opslag gekoppeld.</p>
@@ -813,6 +866,7 @@ details.set > * + * { margin-top: 10px; }
     }
     if (S.traj) return ovr(trajAvg(), S.traj.limit) ? 'Gemiddeld te hoog. Even rustig aan.' : 'Trajectcontrole: ik bewaak het gemiddelde.';
     var nb = navBericht(); if (nb) return nb;
+    var lc = laadContext(); if (lc) return lc;
     if (S.wxMsgUntil > T) return S.wxMsg;
     return null;
   }
@@ -1012,6 +1066,7 @@ details.set > * + * { margin-top: 10px; }
   }
   function hello() {
     if (S.helloDone) return; S.helloDone = true;
+    if (S.live && mem.briefDag !== new Date().toDateString()) return;  /* eerste rit van de dag: de briefing groet al */
     var sp = specialToday();
     if (sp) { mem.lastSpecial = sp.key; save(); cheer(sp.msg); return; }
     var h = new Date().getHours(), who = mem.me ? ' ' + mem.me : '';
@@ -1957,6 +2012,7 @@ details.set > * + * { margin-top: 10px; }
     if (v !== null) { try { launchFix(pos.timestamp, v, c.accuracy); } catch (e) {} }
     camFix(c.latitude, c.longitude, c.accuracy, pos.timestamp / 1000);
     try { navFix(c.latitude, c.longitude, c.accuracy); } catch (e) { lg('FOUT navigatie ' + e.message); }
+    try { ritPunt(c.latitude, c.longitude, c.accuracy); } catch (e) {}
     setTag('GPS live \u00B7 \u00B1' + Math.round(c.accuracy) + ' m');
   }
   function onPosErr(e) {
@@ -2182,7 +2238,7 @@ details.set > * + * { margin-top: 10px; }
   }
   /* Eerst via je eigen Worker (/osm): die bewaart elk vak, dus geen wachten op de overvolle Overpass-servers.
      Lukt dat niet (oude Worker, geen adres, geen bereik), dan zoals vroeger rechtstreeks naar Overpass. */
-  var OSM_VAK = { wegen: { dLat: 0.03, dLon: 0.05, padLat: 0.006, padLon: 0.009 }, flits: { dLat: 0.10, dLon: 0.15, padLat: 0.11, padLon: 0.17 }, werk: { dLat: 0.10, dLon: 0.15, padLat: 0.13, padLon: 0.2 } };
+  var OSM_VAK = { wegen: { dLat: 0.03, dLon: 0.05, padLat: 0.006, padLon: 0.009 }, flits: { dLat: 0.10, dLon: 0.15, padLat: 0.11, padLon: 0.17 }, werk: { dLat: 0.10, dLon: 0.15, padLat: 0.13, padLon: 0.2 }, laad: { dLat: 0.02, dLon: 0.03, padLat: 0.004, padLon: 0.006 } };
   var osmWorkerUit = -9999;
   function osmVak(soort, lat, lon) {
     var v = OSM_VAK[soort], ty = Math.floor(lat / v.dLat), tx = Math.floor(lon / v.dLon);
@@ -2678,7 +2734,7 @@ details.set > * + * { margin-top: 10px; }
     if (e.type === 'cam_pass') {
       if (e.limit == null) setEv('alert', 2.5, 'Flitser gepasseerd.');
       else if (e.over) { S.flash = 1; setEv('startled', 3.5, 'Flitser gepasseerd met ' + Math.round(e.v) + ' bij limiet ' + e.limit + '.'); beep('startled'); S.style = Math.max(0, S.style - 15); }
-      else { setEv('happy', 3, 'Netjes! Flitser gepasseerd.'); beep('wake'); S.love = Math.min(100, S.love + 6); mem.netjes = (mem.netjes || 0) + 1; wk().netjes++; save(); }
+      else { setEv('happy', 3, 'Netjes! Flitser gepasseerd.'); beep('wake'); S.love = Math.min(100, S.love + 6); mem.netjes = (mem.netjes || 0) + 1; wk().netjes++; save(); try { ritFlitsNetjes(); } catch (e) {} }
     } else if (e.type === 'traj_start') {
       setEv('alert', 2.5, 'Trajectcontrole begint. Ik bewaak het gemiddelde.');
     } else if (e.type === 'traj_end') {
@@ -3249,6 +3305,334 @@ details.set > * + * { margin-top: 10px; }
   try { var nv = JSON.parse(localStorage.getItem(NAVKEY) || 'null'); if (nv && nv.dest && Date.now() - nv.t < 3600e3) navHerstel = nv.dest; } catch (e) {}
   setInterval(function () { if (navHerstel && S.live && lastPos && !nav && !navBusy) { var d0 = navHerstel; navHerstel = null; navRoute({ lat: lastPos.lat, lon: lastPos.lon }, d0, false); } }, 3000);
 
+  /* ======================= v57: laadpauze, ritkaartje, levels, briefing, verjaardagen, spelletjes ======================= */
+
+  /* ---------- Gedeeld spelpaneel (quiz, kentekenjacht, ik zie ik zie, laadpauze) ---------- */
+  var spel = { k: null, score: 0, n: 0, t0: 0, q: null, doel: null, timer: 0 };
+  var passagier = false;
+  function spelMag() { return !S.live || S.liveSpeed < 3 || passagier || laad.aan; }
+  function spelOpen(titel) { $('spTitel').textContent = titel; $('spel').hidden = false; }
+  function spelDicht() { $('spel').hidden = true; clearInterval(spel.timer); spel.k = null; laadKnoppen(); }
+  function spelKnop(tekst, fn, klasse) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'btn' + (klasse ? ' ' + klasse : ''); b.textContent = tekst;
+    b.addEventListener('click', fn); $('spKnoppen').appendChild(b); return b;
+  }
+  function spelInhoud(html) { var el = $('spInhoud'); el.textContent = ''; if (typeof html === 'string') el.textContent = html; else el.appendChild(html); }
+  function spelLeeg() { $('spKnoppen').textContent = ''; }
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+
+  /* Quiz: verkeer, auto's, Nederland. Ook tijdens het laden. */
+  var QUIZ = [
+    ['Hoe hard mag je overdag op de meeste Nederlandse snelwegen?', ['100', '120', '130'], 0],
+    ['Wat betekent een rood kruis boven je rijstrook?', ['Rijstrook dicht', 'Langzaam rijden', 'Inhaalverbod'], 0],
+    ['Hoe heet het laadnetwerk van Tesla?', ['Supercharger', 'Megaplug', 'Voltstation'], 0],
+    ['Welke weg is de langste snelweg van Nederland?', ['A28', 'A2', 'A7'], 2],
+    ['Waar staat de afkorting "km/h" voor?', ['Kilometer per uur', 'Kilowatt per uur', 'Kilometer hoogte'], 0],
+    ['Hoe hard mag je meestal binnen de bebouwde kom?', ['30', '50', '60'], 1],
+    ['Wat is een trajectcontrole?', ['Gemiddelde snelheid meten', 'Een flitspaal', 'Een politieauto'], 0],
+    ['Welke kleur hebben borden met plaatsnamen op de snelweg?', ['Blauw', 'Groen', 'Wit'], 0],
+    ['Wanneer mag je in Nederland 130 rijden waar dat staat aangegeven?', ['Hele dag', '19:00 tot 06:00', 'Alleen in het weekend'], 1],
+    ['Hoeveel wielen heeft een Model Y?', ['3', '4', '6'], 1],
+    ['Wat is de hoofdstad van Nederland?', ['Den Haag', 'Amsterdam', 'Utrecht'], 1],
+    ['Welke provincie is het grootst (land)?', ['Gelderland', 'Friesland', 'Noord-Brabant'], 0],
+    ['Wat doe je bij een matrixbord met 70?', ['70 rijden', 'Negeren', 'Alleen vrachtwagens'], 0],
+    ['Wat is regeneratief remmen?', ['Energie terugwinnen', 'Noodrem', 'Handrem'], 0],
+    ['Hoeveel procent laden is meestal het snelst?', ['Van 10 tot 80', 'Van 80 tot 100', 'Maakt niet uit'], 0],
+    ['Welke kleur heeft het A-wegschild?', ['Rood', 'Geel', 'Groen'], 0],
+    ['Wat betekent een gele N-weg op het bord?', ['Provinciale weg', 'Snelweg', 'Fietspad'], 0],
+    ['Wie gaat voor op een rotonde (met haaientanden)?', ['Wie al op de rotonde rijdt', 'Wie van rechts komt', 'Wie het hardst toetert'], 0],
+    ['Hoe heet de stoplichtcamera die door rood rijden ziet?', ['Roodlichtcamera', 'Flitsfiets', 'Kleurenkijker'], 0],
+    ['In welk jaar kwam de eerste Tesla Model S?', ['2008', '2012', '2016'], 1],
+    ['Wat is de langste brug van Nederland?', ['Zeelandbrug', 'Erasmusbrug', 'Moerdijkbrug'], 0],
+    ['Hoeveel provincies heeft Nederland?', ['10', '12', '14'], 1],
+    ['Wat is de pechstrook officieel?', ['Vluchtstrook', 'Spitsstrook', 'Busbaan'], 0],
+    ['Hoe heet de wegbeheerder van de snelwegen?', ['Rijkswaterstaat', 'ANWB', 'NS'], 0],
+    ['Wanneer gebruik je je mistachterlicht?', ['Zicht onder 50 meter', 'Altijd in het donker', 'Bij regen'], 0],
+    ['Wat is een kWh?', ['Hoeveelheid energie', 'Snelheid', 'Afstand'], 0],
+    ['Welk dier staat op het logo van Lamborghini?', ['Stier', 'Paard', 'Leeuw'], 0],
+    ['Wat is de Afsluitdijk?', ['Dijk tussen Noord-Holland en Friesland', 'Een snelwegtunnel', 'Een sluis in Rotterdam'], 0],
+    ['Hoe heet de langste tunnel onder water in Nederland?', ['Westerscheldetunnel', 'Coentunnel', 'IJtunnel'], 0],
+    ['Wat geeft een blauw bord met een P aan?', ['Parkeren', 'Politie', 'Pechhulp'], 0]
+  ];
+  function quizStart(laadModus) {
+    if (!spelMag()) { toast('Spelletjes kan als je stilstaat, of zet “Ik ben passagier” aan.'); return; }
+    spel.k = 'quiz'; spel.score = 0; spel.n = 0; spel.lijst = QUIZ.slice().sort(function () { return Math.random() - .5; }).slice(0, 8);
+    spelOpen(laadModus ? '⚡ Laadquiz' : '🧠 Quiz'); quizVraag();
+  }
+  function quizVraag() {
+    spelLeeg();
+    if (spel.n >= spel.lijst.length) {
+      var goed = spel.score, tot = spel.lijst.length, best = mem.quizBest || 0;
+      if (goed > best) { mem.quizBest = goed; save(); }
+      spelInhoud('Klaar! ' + goed + ' van de ' + tot + ' goed.' + (goed > best ? ' Nieuw record!' : ' Je record: ' + best + '.'));
+      setEv(goed >= tot - 2 ? 'excited' : 'happy', 3, goed + ' van de ' + tot + ' goed!'); if (goed >= tot - 2) confetti();
+      spelKnop('Nog een keer', function () { quizStart(laad.aan); }); return;
+    }
+    var q = spel.lijst[spel.n], box = el('div', 'spVraag');
+    box.appendChild(el('p', 'spNr', 'Vraag ' + (spel.n + 1) + ' van ' + spel.lijst.length + ' · ' + spel.score + ' goed'));
+    box.appendChild(el('p', 'spTekst', q[0]));
+    spelInhoud(box);
+    var volg = q[1].map(function (t, i) { return { t: t, i: i }; }).sort(function () { return Math.random() - .5; });
+    volg.forEach(function (o) {
+      var b = spelKnop(o.t, function () {
+        var ok = o.i === q[2];
+        if (ok) { spel.score++; beep('pet'); setEv('happy', 1.5, 'Goed zo!'); } else { beep('startled'); setEv('worried', 1.5, 'Helaas, het was: ' + q[1][q[2]] + '.'); }
+        $('spKnoppen').querySelectorAll('button').forEach(function (x) { x.disabled = true; if (x.textContent === q[1][q[2]]) x.classList.add('goed'); else if (x === b) x.classList.add('fout'); });
+        spel.n++; setTimeout(function () { if (spel.k === 'quiz') quizVraag(); }, 1300);
+      }, 'spOptie');
+    });
+  }
+
+  /* Kentekenjacht: Buddy noemt een letter of cijfer, jullie zoeken een auto met dat teken op het kenteken */
+  var KT = 'BDFGHJKLNPRSTVXZ0123456789';
+  function kentekenStart() {
+    if (!spelMag()) { toast('Spelletjes kan als je stilstaat, of zet “Ik ben passagier” aan.'); return; }
+    spel.k = 'kt'; spel.score = 0; spel.t0 = Date.now(); spelOpen('🔍 Kentekenjacht'); kentekenNieuw();
+    clearInterval(spel.timer); spel.timer = setInterval(kentekenToon, 500);
+  }
+  function kentekenNieuw() { var a = KT[Math.floor(Math.random() * KT.length)], b = KT[Math.floor(Math.random() * 16)]; spel.doel = Math.random() < .4 ? a + b : a; spel.tDoel = Date.now(); kentekenToon(); setEv('alert', 2, 'Zoek een kenteken met ' + spel.doel + '!'); }
+  function kentekenToon() {
+    if (spel.k !== 'kt') return;
+    spelLeeg();
+    var box = el('div', 'spVraag');
+    box.appendChild(el('p', 'spNr', 'Gevonden: ' + spel.score + ' · ' + Math.floor((Date.now() - spel.tDoel) / 1000) + ' s voor deze'));
+    var bord = el('div', 'ktBord'); bord.appendChild(el('span', 'ktNL', 'NL')); bord.appendChild(el('span', 'ktTxt', spel.doel)); box.appendChild(bord);
+    box.appendChild(el('p', 'spTekst', 'Zie je een kenteken met ' + (spel.doel.length > 1 ? '“' + spel.doel + '” naast elkaar' : 'een ' + spel.doel) + '?'));
+    spelInhoud(box);
+    spelKnop('Gevonden! 🎉', function () { spel.score++; beep('pet'); setEv('excited', 1.5, 'Goed gezien!'); kentekenNieuw(); }, 'primary');
+    spelKnop('Andere', kentekenNieuw);
+  }
+
+  /* Ik zie, ik zie: Buddy noemt een kleur auto, wie hem het eerst ziet tikt */
+  var KLEUREN = [['rode', '#E53935'], ['blauwe', '#42A5F5'], ['witte', '#F5F5F5'], ['zwarte', '#222'], ['grijze', '#9E9E9E'], ['gele', '#FFC857'], ['groene', '#66BB6A'], ['oranje', '#FF7A00']];
+  function ikzieStart() {
+    if (!spelMag()) { toast('Spelletjes kan als je stilstaat, of zet “Ik ben passagier” aan.'); return; }
+    spel.k = 'ikzie'; spel.score = 0; spelOpen('👀 Ik zie, ik zie'); ikzieNieuw();
+  }
+  function ikzieNieuw() {
+    var k = KLEUREN[Math.floor(Math.random() * KLEUREN.length)]; spel.doel = k;
+    spelLeeg();
+    var box = el('div', 'spVraag'); box.appendChild(el('p', 'spNr', 'Gezien: ' + spel.score));
+    var stip = el('div', 'kleurStip'); stip.style.background = k[1]; box.appendChild(stip);
+    box.appendChild(el('p', 'spTekst', 'Ik zie, ik zie wat jij niet ziet… en het is een ' + k[0] + ' auto!'));
+    spelInhoud(box);
+    setEv('anticipate', 2.5, 'Ik zie een ' + k[0] + ' auto!');
+    spelKnop('Gezien! 👀', function () { spel.score++; beep('pet'); setEv('happy', 1.5, 'Jij ziet alles!'); ikzieNieuw(); }, 'primary');
+    spelKnop('Andere kleur', ikzieNieuw);
+  }
+
+  /* ---------- Laadpauze: stilstaan bij een laadpaal ---------- */
+  var laad = { aan: false, t0: 0, naam: '', checkPos: null, checkT: -999, nCheck: 0 };
+  function laadKnoppen() { var b = $('carSpel'); if (b) b.classList.toggle('zichtbaar', !!(laad.aan || (S.live ? S.liveSpeed < 3 : true))); if (b) b.textContent = laad.aan ? '⚡ Laadpauze' : '🎲 Spel'; }
+  function laadMin() { return Math.max(0, Math.floor((Date.now() - laad.t0) / 60e3)); }
+  function laadCheck() {
+    if (!S.live || !lastPos || laad.aan) return;
+    if (S.liveSpeed >= 1 || S.stoppedT < 150) return;
+    if (laad.checkPos && gdist(lastPos.lat, lastPos.lon, laad.checkPos.lat, laad.checkPos.lon) < 80 && T - laad.checkT < 1800) return;
+    laad.checkPos = { lat: lastPos.lat, lon: lastPos.lon }; laad.checkT = T;
+    var la = lastPos.lat, lo = lastPos.lon, d = .004, bb = (la - d).toFixed(5) + ',' + (lo - d * 1.6).toFixed(5) + ',' + (la + d).toFixed(5) + ',' + (lo + d * 1.6).toFixed(5);
+    var direct = '[out:json][timeout:20];(node["amenity"="charging_station"](' + bb + ');way["amenity"="charging_station"](' + bb + '););out center tags;';
+    fetchOsm('laad', la, lo, direct, 25000).then(function (j) {
+      var best = null;
+      (j.elements || []).forEach(function (e) {
+        var y = e.lat != null ? e.lat : e.center && e.center.lat, x = e.lon != null ? e.lon : e.center && e.center.lon; if (y == null) return;
+        var dd = gdist(la, lo, y, x); if (dd < 140 && (!best || dd < best.d)) best = { d: dd, t: e.tags || {} };
+      });
+      if (best && S.live && S.liveSpeed < 1) laadStart(best.t);
+      else lg('laadpaal: niet gevonden in de buurt');
+    }).catch(function () {});
+  }
+  function laadStart(tags) {
+    var tesla = /tesla|supercharger/i.test((tags.operator || '') + ' ' + (tags.brand || '') + ' ' + (tags.name || ''));
+    laad.aan = true; laad.t0 = Date.now() - S.stoppedT * 1000; laad.naam = tesla ? 'Supercharger' : (tags.operator || tags.brand || tags.name || 'laadpaal');
+    mem.laadPauzes = (mem.laadPauzes || 0) + 1; save();
+    lg('laadpauze begonnen bij ' + laad.naam);
+    setEv('excited', 4, (tesla ? 'Supercharger! ' : 'Laadpaal! ') + 'Laadpauze, ik hou de tijd bij.'); beep('wake');
+    laadKnoppen(); laadPaneel();
+  }
+  function laadStop() {
+    if (!laad.aan) return;
+    var m = laadMin(); laad.aan = false;
+    lg('laadpauze klaar na ' + m + ' min'); spelDicht();
+    setEv('happy', 4, 'Lekker opgeladen' + (m ? ' na ' + m + ' minuten' : '') + '. Rij voorzichtig!'); laadKnoppen();
+  }
+  function laadPaneel() {
+    spel.k = 'laad'; spelOpen('⚡ Laadpauze bij ' + laad.naam); laadToon();
+    clearInterval(spel.timer); spel.timer = setInterval(function () { if (spel.k === 'laad') laadToon(); }, 1000);
+  }
+  function laadToon() {
+    spelLeeg();
+    var s0 = Math.floor((Date.now() - laad.t0) / 1000), box = el('div', 'spVraag');
+    box.appendChild(el('p', 'laadKlok', Math.floor(s0 / 60) + ':' + ('0' + (s0 % 60)).slice(-2)));
+    box.appendChild(el('p', 'spTekst', 'Je staat aan het laden. Zin in een spelletje of koffie met de groep?'));
+    spelInhoud(box);
+    spelKnop('🧠 Laadquiz', function () { clearInterval(spel.timer); quizStart(true); });
+    spelKnop('🔍 Kentekenjacht', function () { clearInterval(spel.timer); kentekenStart(); });
+    spelKnop('☕ Koffie? naar de groep', function () { grKnop('koffie'); });
+  }
+  function laadContext() { return laad.aan ? '⚡ Laadpauze · ' + laadMin() + ' min' : null; }
+
+  /* ---------- Ritkaartje: je route als lijntje, met stippen waar je netjes langs een flitser ging ---------- */
+  var RITPTSKEY = 'dashboardmaatje-ritpts-v1', ritPts = {};
+  try { ritPts = JSON.parse(localStorage.getItem(RITPTSKEY)) || {}; } catch (e) { ritPts = {}; }
+  function ritPunt(lat, lon, acc) {
+    var r = S.ritStart; if (!r || acc > 40) return;
+    r.pts = r.pts || []; var p = r.pts, n = p.length;
+    if (n && gdist(lat, lon, p[n - 2], p[n - 1]) < 90) return;
+    p.push(+lat.toFixed(5), +lon.toFixed(5));
+    if (p.length > 800) { var h = []; for (var i = 0; i < p.length; i += 4) h.push(p[i], p[i + 1]); r.pts = h; }  /* te veel punten: om en om bewaren */
+  }
+  function ritFlitsNetjes() { if (S.ritStart && lastPos) { S.ritStart.fl = S.ritStart.fl || []; S.ritStart.fl.push(+lastPos.lat.toFixed(5), +lastPos.lon.toFixed(5)); } }
+  function ritPtsBewaar(r, r0) {
+    if (!r0 || !r0.pts || r0.pts.length < 4) return;
+    ritPts[r.t0] = { p: r0.pts, f: r0.fl || [] };
+    var ks = Object.keys(ritPts).sort(); while (ks.length > 12) delete ritPts[ks.shift()];
+    try { localStorage.setItem(RITPTSKEY, JSON.stringify(ritPts)); } catch (e) { ritPts = {}; ritPts[r.t0] = { p: r0.pts, f: r0.fl || [] }; try { localStorage.setItem(RITPTSKEY, JSON.stringify(ritPts)); } catch (e2) {} }
+  }
+  function ritKaartTeken(cv, r) {
+    var d = ritPts[r.t0], c = cv.getContext('2d'), W = cv.width, H = cv.height;
+    c.clearRect(0, 0, W, H);
+    if (!d || d.p.length < 4) { cv.hidden = true; return false; }
+    cv.hidden = false;
+    var p = d.p, mnA = 90, mxA = -90, mnO = 180, mxO = -180, i;
+    for (i = 0; i < p.length; i += 2) { mnA = Math.min(mnA, p[i]); mxA = Math.max(mxA, p[i]); mnO = Math.min(mnO, p[i + 1]); mxO = Math.max(mxO, p[i + 1]); }
+    var k = Math.cos((mnA + mxA) / 2 * Math.PI / 180), sx = (mxO - mnO) * k || 1e-4, sy = (mxA - mnA) || 1e-4, pad = 18;
+    var sc = Math.min((W - 2 * pad) / sx, (H - 2 * pad) / sy), ox = (W - sx * sc) / 2, oy = (H - sy * sc) / 2;
+    var X = function (lo) { return ox + (lo - mnO) * k * sc; }, Y = function (la) { return H - (oy + (la - mnA) * sc); };
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    c.strokeStyle = 'rgba(52,199,89,.25)'; c.lineWidth = 9; c.beginPath(); for (i = 0; i < p.length; i += 2) { if (i) c.lineTo(X(p[i + 1]), Y(p[i])); else c.moveTo(X(p[i + 1]), Y(p[i])); } c.stroke();
+    c.strokeStyle = '#8ff0a8'; c.lineWidth = 3.5; c.stroke();
+    (d.f || []).forEach(function (v, j) { if (j % 2) return; c.fillStyle = '#5ac8fa'; c.beginPath(); c.arc(X(d.f[j + 1]), Y(v), 5, 0, Math.PI * 2); c.fill(); c.fillStyle = '#10151a'; c.beginPath(); c.arc(X(d.f[j + 1]), Y(v), 2, 0, Math.PI * 2); c.fill(); });
+    c.fillStyle = '#34c759'; c.beginPath(); c.arc(X(p[1]), Y(p[0]), 6, 0, Math.PI * 2); c.fill();
+    var ex = X(p[p.length - 1]), ey = Y(p[p.length - 2]);
+    for (var a = 0; a < 3; a++) for (var b2 = 0; b2 < 3; b2++) { c.fillStyle = (a + b2) % 2 ? '#111' : '#fff'; c.fillRect(ex - 6 + a * 4, ey - 6 + b2 * 4, 4, 4); }
+    return true;
+  }
+  /* Ritkaartje als plaatje delen (bijvoorbeeld in de app-groep met collega's) */
+  function ritDelen(r) {
+    var W = 720, H = 900, cv = document.createElement('canvas'); cv.width = W; cv.height = H; var c = cv.getContext('2d');
+    c.fillStyle = '#10151a'; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#eef2f5'; c.font = '700 44px sans-serif'; c.textAlign = 'center'; c.fillText('Rit met Buddy 🏁', W / 2, 70);
+    c.fillStyle = '#9aa3ad'; c.font = '400 26px sans-serif'; c.fillText(dagStr(r.t0) + ' ' + tijdStr(r.t0) + (mem.me ? ' · ' + mem.me : ''), W / 2, 112);
+    var mc = document.createElement('canvas'); mc.width = 640; mc.height = 480;
+    if (ritKaartTeken(mc, r)) { c.fillStyle = '#1a2129'; c.fillRect(40, 140, 640, 480); c.drawImage(mc, 40, 140); }
+    var st = [[String(r.km).replace('.', ',') + ' km', 'afstand'], [r.min + ' min', 'rijtijd'], [(r.vmax || '-') + ' km/h', 'top'], [r.stijl + '/100', 'rijstijl']];
+    st.forEach(function (x, i) { var cx = 40 + 160 * i + 80; c.fillStyle = '#eef2f5'; c.font = '700 38px sans-serif'; c.fillText(x[0], cx, 700); c.fillStyle = '#9aa3ad'; c.font = '400 24px sans-serif'; c.fillText(x[1], cx, 736); });
+    if (r.nul) { c.fillStyle = '#8ff0a8'; c.font = '700 30px sans-serif'; c.fillText('0–100 in ' + fmt1(r.nul) + ' s', W / 2, 800); }
+    c.fillStyle = '#5ac8fa'; c.font = '600 24px sans-serif'; c.fillText((r.netjes || 0) + '× netjes langs een flitser', W / 2, 850);
+    cv.toBlob(function (blob) {
+      if (!blob) return;
+      var f = new File([blob], 'buddy-rit.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], title: 'Rit met Buddy' }).catch(function () {});
+      else { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'buddy-rit.png'; document.body.appendChild(a); a.click(); a.remove(); toast('Plaatje opgeslagen.'); }
+    }, 'image/png');
+  }
+
+  /* ---------- Levels: Buddy groeit mee ---------- */
+  var LVNAMEN = ['Nieuwkomer', 'Ritmaatje', 'Wegwijs', 'Vaste rijder', 'Flitserspotter', 'Snelwegheld', 'Routekoning', 'Weg-legende', 'Buddy-meester', 'Grootmeester'];
+  function lvXp() { return Math.round((mem.kmLive || 0) + (mem.netjes || 0) * 5 + (mem.gemeld || 0) * 10 + (mem.ritLive || 0) * 3 + (mem.laadPauzes || 0) * 2); }
+  function lvVan(xp) { return Math.floor(Math.sqrt(xp / 20)) + 1; }
+  function lvGrens(l) { return 20 * (l - 1) * (l - 1); }
+  function lvNaam(l) { return LVNAMEN[Math.min(l, LVNAMEN.length) - 1] + (l > LVNAMEN.length ? ' ' + (l - LVNAMEN.length + 1) : ''); }
+  function lvToon() {
+    var xp = lvXp(), l = lvVan(xp), a = lvGrens(l), b = lvGrens(l + 1), f = (xp - a) / Math.max(1, b - a);
+    var t = $('lvStat'); if (t) t.textContent = '⭐ Level ' + l + ' · ' + lvNaam(l) + ' — nog ' + (b - xp) + ' punten tot level ' + (l + 1) + '.';
+    var bar = $('lvBar'); if (bar) bar.style.width = Math.round(f * 100) + '%';
+    if (mem.level === undefined) { mem.level = l; save(); }
+    else if (l > mem.level) {
+      mem.level = l; save(); lg('level ' + l);
+      queueCheer('Level ' + l + '! Ik ben nu ' + lvNaam(l) + '.');
+      if (typeof grLid === 'function') setTimeout(function () { grLid(true); }, 2000);
+    }
+  }
+  setInterval(lvToon, 5000);
+
+  /* ---------- Goedemorgen-briefing: eerste rit van de dag ---------- */
+  function briefing() {
+    var d = new Date(), dag = d.toDateString();
+    if (mem.briefDag === dag || !S.live) return;
+    mem.briefDag = dag; save();
+    var h = d.getHours(), groet = h < 12 ? 'Goedemorgen' : h < 18 ? 'Goedemiddag' : 'Goedenavond', delen = [groet + (mem.me ? ' ' + mem.me : '') + '!'];
+    try { var w = wxCur(); if (w) delen.push('Het is ' + Math.round(w.temp) + ' graden' + (wxDesc(wxFlags()) ? ', ' + wxDesc(wxFlags()) : '') + '.'); } catch (e) {}
+    var jarig = vandaagJarig(); if (jarig.length) delen.push('Vandaag is ' + jarig.map(function (l) { return l.n; }).join(' en ') + ' jarig!');
+    var nu = Date.now(), weg = (bordData || []).filter(function (l) { return l.van !== mijnId && l.t && nu - l.t < 30 * 60e3; });
+    if (weg.length) delen.push(weg.slice(0, 2).map(function (l) { return l.n || 'een collega'; }).join(' en ') + (weg.length > 1 ? ' zijn' : ' is') + ' ook al onderweg.');
+    var klaar = function (route) {
+      if (route) delen.push(route);
+      var m = delen.join(' ');
+      setEv('happy', 6, m); toast(m); lg('briefing: ' + m);
+      if (spkOn || navSpk) sayNow(m);
+    };
+    if (pbase() && routeCellen() >= 15) {
+      getText(pbase() + '/verkeer').then(function (txt) {
+        var j = JSON.parse(txt), hit = (j.meldingen || []).filter(function (x) { return (x.k === 'jam' || x.k === 'accident' || x.k === 'closure') && Array.isArray(x.pts) && opMijnRoute(x.pts); });
+        klaar(hit.length ? 'Let op: ' + (hit[0].k === 'jam' ? 'file' : hit[0].k === 'accident' ? 'een ongeluk' : 'een afsluiting') + ' op de ' + hit[0].weg + ' op je gewone route.' : 'Geen files op je gewone route.');
+      }).catch(function () { klaar(''); });
+    } else klaar('');
+  }
+
+  /* ---------- Verjaardagen in de groep ---------- */
+  function mmdd(d) { return ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2); }
+  function mijnJr() { return mem.bday ? ('0' + mem.bday.m).slice(-2) + ('0' + mem.bday.d).slice(-2) : ''; }
+  function vandaagJarig() { var v = mmdd(new Date()); return (bordData || []).filter(function (l) { return l.jr === v && l.van !== mijnId; }); }
+  var jarigVraag = null;
+  function jarigCheck() {
+    var dag = new Date().toDateString(); mem.feli = mem.feli || {};
+    vandaagJarig().forEach(function (l) {
+      var key = dag + '|' + l.van; if (mem.feli[key] || jarigVraag) return;
+      mem.feli[key] = 1; var ks = Object.keys(mem.feli); if (ks.length > 40) delete mem.feli[ks[0]]; save();
+      jarigVraag = l; cheer('🎂 ' + (l.n || 'Een collega') + ' is vandaag jarig!');
+      $('grJarigTxt').textContent = '🎂 ' + (l.n || 'Een collega') + ' is jarig!'; $('grJarig').hidden = false;
+      setTimeout(function () { $('grJarig').hidden = true; jarigVraag = null; }, 30e3);
+    });
+  }
+  $('grJarigJa').addEventListener('click', function () {
+    var l = jarigVraag; $('grJarig').hidden = true; jarigVraag = null; if (!l || !grKan()) return;
+    grStuur('feli', '&aan=' + encodeURIComponent(l.van)).then(function () { toast('Felicitatie verstuurd naar ' + (l.n || 'je collega') + '!'); }).catch(function () { toast('Versturen mislukt.'); });
+    setEv('excited', 2.5, 'Hiep hiep hoera!'); confetti();
+  });
+  $('grJarigNee').addEventListener('click', function () { $('grJarig').hidden = true; jarigVraag = null; });
+  /* Verjaardag kiezen */
+  (function () {
+    var sd = $('bdDag'), sm = $('bdMaand'), MND = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+    var o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'Dag'; sd.appendChild(o0);
+    for (var i = 1; i <= 31; i++) { var o = document.createElement('option'); o.value = i; o.textContent = i; sd.appendChild(o); }
+    var m0 = document.createElement('option'); m0.value = ''; m0.textContent = 'Maand'; sm.appendChild(m0);
+    MND.forEach(function (n, j) { var o = document.createElement('option'); o.value = j + 1; o.textContent = n; sm.appendChild(o); });
+    if (mem.bday) { sd.value = mem.bday.d; sm.value = mem.bday.m; }
+    function bewaar() {
+      if (!sd.value || !sm.value) return;
+      mem.bday = { d: +sd.value, m: +sm.value }; save(); toast('Verjaardag bewaard: ' + sd.value + ' ' + MND[sm.value - 1] + '.');
+      if (typeof grLid === 'function') grLid(true);
+    }
+    sd.addEventListener('change', bewaar); sm.addEventListener('change', bewaar);
+  })();
+  setInterval(function () { try { jarigCheck(); } catch (e) {} }, 15e3);
+
+  /* ---------- Knoppen en lussen ---------- */
+  $('spSluit').addEventListener('click', spelDicht);
+  $('spQuiz').addEventListener('click', function () { quizStart(false); });
+  $('spKenteken').addEventListener('click', kentekenStart);
+  $('spIkzie').addEventListener('click', ikzieStart);
+  $('passagierOn').addEventListener('change', function () { passagier = $('passagierOn').checked; if (passagier) toast('Leuk! Spelletjes kunnen nu ook tijdens het rijden, voor de passagier.'); });
+  $('carSpel').addEventListener('click', function () {
+    if (laad.aan) { laadPaneel(); return; }
+    if (!spelMag()) { toast('Spelletjes kan als je stilstaat.'); return; }
+    spel.k = 'menu'; spelOpen('🎲 Spelletjes'); spelLeeg(); spelInhoud('Kies een spelletje.');
+    spelKnop('🧠 Quiz', function () { quizStart(false); }); spelKnop('🔍 Kentekenjacht', kentekenStart); spelKnop('👀 Ik zie, ik zie', ikzieStart);
+  });
+  setInterval(function () {
+    try {
+      laadKnoppen();
+      if (laad.aan && S.live && S.liveSpeed > 8) laadStop();
+      else laadCheck();
+      /* Rijden en niet als passagier? Dan spelletjes dicht, behalve de laadpauze-timer */
+      if (!$('spel').hidden && S.live && S.liveSpeed >= 8 && !passagier) spelDicht();
+      if (S.live && lastPos && mem.briefDag !== new Date().toDateString()) briefing();
+    } catch (e) { lg('FOUT extra57 ' + e.message); }
+  }, 2000);
+  lvToon();
+
   /* ---------- Testlog (zonder locatie) ---------- */
   var LOGKEY = 'dashboardmaatje-log-v1', logs = [], logT = 0, logSave = 0;
   try { logs = JSON.parse(localStorage.getItem(LOGKEY)) || []; } catch (e) { logs = []; }
@@ -3257,7 +3641,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v56';
+  var VERSION = 'v57';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -3770,7 +4154,7 @@ details.set > * + * { margin-top: 10px; }
           grFiles.push({ id: 'g:' + b.id, k: 'jam', lim: null, ql: null, cs: '', br: null, pts: [[+b.lat, +b.lon]], src: 'groep', t: b.t, tx: 'File gemeld door ' + (b.n || 'een collega'), van: b.van });
         }
         if (grEerste || b.van === mijnId || grVerstuurd[b.id]) return; /* oude berichten bij openen en eigen berichten niet melden */
-        if ((b.s === 'koffieJa' || b.s === 'koffieStraks' || b.s === 'gezien') && b.aan && b.aan !== mijnId) return;
+        if ((b.s === 'koffieJa' || b.s === 'koffieStraks' || b.s === 'gezien' || b.s === 'feli') && b.aan && b.aan !== mijnId) return;
         grRij.push(b);
       });
       grFiles = grFiles.filter(function (f) { return Date.now() - f.t < 60 * 60e3; });
@@ -3800,6 +4184,7 @@ details.set > * + * { margin-top: 10px; }
     else if (s === 'hart') { m = wie(b) + ' stuurt je hartjes!'; S.love = Math.min(100, S.love + 10); setEv('love', 4.5, m); beep('pet'); }
     else if (s === 'thuis') { m = wie(b) + ' is bijna thuis!'; cheer(m); }
     else if (s === 'mijlpaal') { m = wie(b) + ' heeft ' + (b.w || 0) + ' km met Buddy gereden!'; cheer(m); }
+    else if (s === 'feli') { m = '🎉 ' + wie(b) + ' feliciteert je met je verjaardag!'; cheer(m); }
     else if (s === 'gezien') {
       var wat = GR_GEZIEN_VOOR[grMijn[b.r]] || 'bericht';
       m = '✓ ' + wie(b) + ' heeft je ' + wat + ' gezien.'; toast(m); grSignaal(true); lg('groepsbericht gezien door ' + (b.n || '?'));
@@ -3849,7 +4234,7 @@ details.set > * + * { margin-top: 10px; }
   var grLidT = -9999, grLidLaatst = '', bordData = [], bordSoort = 'week';
   function grLid(nu) {
     if (!grp || !pbase()) return;
-    var st = 'km=' + Math.round(mem.kmLive || 0) + '&netjes=' + (mem.netjes || 0) + '&gemeld=' + (mem.gemeld || 0) + '&stijl=' + Math.round(mem.stijlLive || 0) + '&ritten=' + (mem.ritLive || 0) + '&nul=' + (mem.best100Live ? Math.round(mem.best100Live * 10) : 0) + '&tachtig=' + (mem.best80Live ? Math.round(mem.best80Live * 10) : 0) + '&ww=' + weekIdx() + '&wv=' + weekWaarde() + '&bd=' + badgeCodes();
+    var st = 'km=' + Math.round(mem.kmLive || 0) + '&netjes=' + (mem.netjes || 0) + '&gemeld=' + (mem.gemeld || 0) + '&stijl=' + Math.round(mem.stijlLive || 0) + '&ritten=' + (mem.ritLive || 0) + '&nul=' + (mem.best100Live ? Math.round(mem.best100Live * 10) : 0) + '&tachtig=' + (mem.best80Live ? Math.round(mem.best80Live * 10) : 0) + '&ww=' + weekIdx() + '&wv=' + weekWaarde() + '&bd=' + badgeCodes() + '&lv=' + lvVan(lvXp()) + '&jr=' + mijnJr();
     var sleutel = st + '|' + myWho() + '|' + mijnAuto();
     if (!nu && (T - grLidT < 900 || sleutel === grLidLaatst)) return;
     grLidT = T; grLidLaatst = sleutel;
@@ -3877,7 +4262,7 @@ details.set > * + * { margin-top: 10px; }
     lijst.forEach(function (l, i) {
       var li = document.createElement('li'); if (l.van === mijnId) li.className = 'ik';
       var a = document.createElement('span'); a.className = 'pl'; a.textContent = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
-      var n = document.createElement('span'); n.className = 'nm'; n.textContent = (l.n || 'Naamloos') + (l.van === mijnId ? ' (jij)' : '');
+      var n = document.createElement('span'); n.className = 'nm'; n.textContent = (l.n || 'Naamloos') + (l.van === mijnId ? ' (jij)' : '') + (l.lv ? ' · Lv ' + l.lv : '') + (l.jr && l.jr === mmdd(new Date()) ? ' 🎂' : '');
       var bds = String(l.bd || '').split('.').map(function (k) { return BADGEMAP[k] ? BADGEMAP[k].i : ''; }).join('');
       if (l.a || bds) { var au = document.createElement('small'); au.textContent = (l.a || '') + (bds ? (l.a ? '  ' : '') + bds : ''); n.appendChild(au); }
       var w = document.createElement('span'); w.className = 'wd'; w.textContent = B.f(l);
@@ -3997,6 +4382,7 @@ details.set > * + * { margin-top: 10px; }
     if (km < 0.5) return;
     var r = { t0: r0.t, t1: Date.now(), km: Math.round(km * 10) / 10, min: min, stijl: Math.round(sc), netjes: netjes, vmax: Math.round(r0.vmax || 0), sec: Math.round(S.tripT || 0) };
     if (r0.nul) { r.nul = Math.round(r0.nul * 10) / 10; r.nt = r0.nulTelt ? 1 : 0; if (!r0.nulTelt) r.nw = r0.nulWaarom; }
+    try { ritPtsBewaar(r, r0); } catch (e) {}
     ritten.push(r); if (ritten.length > 80) ritten = ritten.slice(-80);
     try { localStorage.setItem(RITKEY, JSON.stringify(ritten)); } catch (e) {}
     /* week en badges */
@@ -4033,10 +4419,14 @@ details.set > * + * { margin-top: 10px; }
     });
     $('ritKaartStijl').textContent = 'Rijstijl ' + r.stijl + '/100 · ' + (r.stijl >= 90 ? 'superzacht gereden!' : r.stijl >= 75 ? 'netjes gereden.' : 'pittig gereden, rustiger mag ook.');
     $('ritKaartStijl').className = r.stijl >= 75 ? 'goed' : 'pittig';
+    try { ritKaartTeken($('ritKaartMap'), r); } catch (e) { $('ritKaartMap').hidden = true; }
+    ritKaartHuidig = r;
     el.hidden = false;
   }
   $('routeKnop').addEventListener('click', function () { routeKlaarzetten(true); });
+  var ritKaartHuidig = null;
   $('ritKaartSluit').addEventListener('click', function () { $('ritKaart').hidden = true; });
+  $('ritKaartDeel').addEventListener('click', function () { if (ritKaartHuidig) ritDelen(ritKaartHuidig); });
   setInterval(function () { var el = $('ritKaart'); if (el && !el.hidden && S.live && S.speed > 10) el.hidden = true; }, 2000);
   function weekRitten(w) { return ritten.filter(function (r) { return weekIdx(new Date(r.t0)) === w; }); }
   function weekTekst(w) {
@@ -4054,6 +4444,8 @@ details.set > * + * { margin-top: 10px; }
       var a = document.createElement('span'); a.textContent = dagStr(r.t0) + ' ' + tijdStr(r.t0);
       var b = document.createElement('span'); b.className = 'wd'; b.textContent = String(r.km).replace('.', ',') + ' km · ' + r.min + ' min · stijl ' + r.stijl + (r.vmax ? ' · top ' + r.vmax : '') + (r.nul ? ' · 0–100 ' + fmt1(r.nul) + ' s' : '') + (r.netjes ? ' · ' + r.netjes + '× netjes' : '');
       li.appendChild(a); li.appendChild(b); el.appendChild(li);
+      li.tabIndex = 0; li.style.cursor = 'pointer'; li.title = 'Tik voor het ritkaartje';
+      li.addEventListener('click', function () { ritKaart(r); });
     });
     var wt = $('weekStat'); if (wt) wt.textContent = weekTekst(weekIdx()) || 'Deze week nog geen ritten.';
   }

@@ -486,7 +486,7 @@ function puntOpLijn(c, t) {
 // Alles in dezelfde KV-opslag FLITS: 'p:<groep>' voor berichten, 'l:<groep>' voor het leaderboard.
 // Er wordt geen exacte plek gedeeld, behalve bij 'file' (die moet op de kaart om te waarschuwen).
 // ---------------------------------------------------------------------------
-const GR_SOORTEN = ['zwaai', 'koffie', 'koffieJa', 'koffieStraks', 'file', 'pech', 'hart', 'thuis', 'mijlpaal', 'gezien'];
+const GR_SOORTEN = ['zwaai', 'koffie', 'koffieJa', 'koffieStraks', 'file', 'pech', 'hart', 'thuis', 'mijlpaal', 'gezien', 'feli'];
 const GR_BEWAAR_MS = 2 * 3600e3, GR_MAX = 100, GR_LEDEN = 50, GR_PAUZE_MS = 120e3; // elk soort bericht hooguit eens per 2 minuten
 
 async function groep(url, env, g, json) {
@@ -511,7 +511,7 @@ async function groep(url, env, g, json) {
     if (!van || !id) return json({ error: 'Afzender of id ontbreekt.' }, 400);
     if (lijst.some((x) => x.id === id)) return json({ ok: true, dubbel: true, nu });
     // Niet spammen: dezelfde soort van dezelfde afzender hooguit eens per 2 minuten
-    if (s !== 'koffieJa' && s !== 'koffieStraks' && s !== 'gezien' && lijst.some((x) => x.van === van && x.s === s && nu - x.t < GR_PAUZE_MS)) return json({ ok: true, te_snel: true, nu }); // antwoorden op koffie mogen altijd
+    if (s !== 'koffieJa' && s !== 'koffieStraks' && s !== 'gezien' && s !== 'feli' && lijst.some((x) => x.van === van && x.s === s && nu - x.t < GR_PAUZE_MS)) return json({ ok: true, te_snel: true, nu }); // antwoorden op koffie mogen altijd
     const b = { id, van, s, t: nu, n: naam(q('n')), a: auto(q('a')), p: naam(q('p')) };
     const aan = idv(q('aan')); if (aan) b.aan = aan;
     if (s === 'gezien') { const r = idv(q('r')); if (!aan || !r) return json({ error: 'Gezien zonder ontvanger of bericht.' }, 400); b.r = r; }
@@ -587,6 +587,8 @@ async function groep(url, env, g, json) {
     else if (oud && oud.vorige) lid.vorige = oud.vorige;
   } else if (oud) { if (oud.week) lid.week = oud.week; if (oud.vorige) lid.vorige = oud.vorige; }
   lid.bd = q('bd').replace(/[^a-z0-9.]/g, '').slice(0, 80);
+  lid.lv = getal(q('lv'), 999);
+  lid.jr = /^(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/.test(q('jr')) ? q('jr') : '';
   leden = leden.filter((x) => x && x.van !== van);
   leden.push(lid);
   if (leden.length > GR_LEDEN) leden = leden.sort((x, y) => y.t - x.t).slice(0, GR_LEDEN);
@@ -649,13 +651,14 @@ const OSM_VAK = {
   wegen: { dLat: 0.03, dLon: 0.05, padLat: 0.006, padLon: 0.009, versDagen: 30 },
   flits: { dLat: 0.10, dLon: 0.15, padLat: 0.11, padLon: 0.17, versDagen: 7 },
   werk:  { dLat: 0.10, dLon: 0.15, padLat: 0.13, padLon: 0.2, versDagen: 1 },   // wegwerkzaamheden: elke dag vers
+  laad:  { dLat: 0.02, dLon: 0.03, padLat: 0.004, padLon: 0.006, versDagen: 30 },  // laadpalen in de buurt (laadpauze)
 };
 
 async function osm(url, env, ctx, cors) {
   const soort = url.searchParams.get('soort');
   const vak = OSM_VAK[soort];
   const fout = (tekst, status) => new Response(JSON.stringify({ error: tekst }), { status, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
-  if (!vak) return fout('soort moet wegen, flits of werk zijn', 400);
+  if (!vak) return fout('soort moet wegen, flits, werk of laad zijn', 400);
   const lat = parseFloat(url.searchParams.get('lat')), lon = parseFloat(url.searchParams.get('lon'));
   if (!(lat > 49 && lat < 55.5 && lon > 1.5 && lon < 10)) return fout('lat/lon ontbreekt of ligt buiten het gebied', 400);
 
@@ -676,6 +679,8 @@ async function osm(url, env, ctx, cors) {
   const bb = s + ',' + w + ',' + n + ',' + e;
   const query = soort === 'wegen'
     ? '[out:json][timeout:25];way["highway"~"^(' + OSM_WEGTYPES + ')$"](' + bb + ');out tags geom;'
+    : soort === 'laad'
+    ? '[out:json][timeout:20];(node["amenity"="charging_station"](' + bb + ');way["amenity"="charging_station"](' + bb + '););out center tags;'
     : soort === 'werk'
     ? '[out:json][timeout:25];(way["highway"="construction"](' + bb + ');way["construction:highway"](' + bb + ');node["highway"="construction"](' + bb + ');way["highway"]["construction"](' + bb + '););out center tags 400;'
     : '[out:json][timeout:25];node["highway"="speed_camera"](' + bb + ')->.c;rel["type"="enforcement"]["enforcement"~"^(maxspeed|average_speed)$"](' + bb + ')->.r;node(r.r)->.m;(.c;.m;.r;);out body;';
