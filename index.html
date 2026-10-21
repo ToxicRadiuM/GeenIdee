@@ -81,6 +81,20 @@ body.car #carBack { display: block; }
 #carRit { display: none; position: fixed; top: 10px; left: 10px; z-index: 50; min-height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #34c759; background: #0b2414; color: #8ff0a8; font: 600 14px var(--f-display); }
 #carRit.arm { background: #34c759; color: #000; }
 body.car #carRit { display: block; }
+#ritKaart { position: fixed; inset: 0; z-index: 62; background: rgba(0,0,0,.82); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+#ritKaart[hidden] { display: none; }
+#ritKaart .rkBox { width: min(100%, 640px); max-height: 100%; overflow-y: auto; background: #10151a; border: 2px solid #34c759; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 12px; color: #eef2f5; }
+#ritKaart .rkTitel { margin: 0; font: 700 clamp(22px, 4vw, 34px)/1.1 var(--f-display); text-align: center; }
+#ritKaartGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-aspect-ratio: 1/1) { #ritKaartGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+#ritKaart .rk { background: #1a2129; border-radius: 16px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; min-width: 0; }
+#ritKaart .ri { font-size: 22px; }
+#ritKaart .rk b { font: 700 clamp(18px, 3.2vw, 26px)/1.15 var(--f-display); font-variant-numeric: tabular-nums; }
+#ritKaart .rk small { color: #9aa3ad; font-size: 12px; overflow-wrap: anywhere; }
+#ritKaartStijl { margin: 0; text-align: center; font: 600 16px var(--f-body); }
+#ritKaartStijl.goed { color: #8ff0a8; }
+#ritKaartStijl.pittig { color: #ffd27a; }
+#ritKaartSluit { align-self: center; min-height: 52px; padding: 0 32px; border-radius: 26px; border: 1px solid #666; background: #1b1b1b; color: #eee; font: 600 16px var(--f-display); }
 
 #carAdd, #carAddM { display: none; position: fixed; right: 2vw; transform: translateY(-50%); z-index: 50; width: min(19vw, 170px); min-height: min(24vh, 120px); border-radius: 22px; border: 3px solid #ffb02e; background: #2a1d05; color: #ffd27a; font: 700 clamp(15px, 2.4vw, 24px)/1.2 var(--f-body); text-align: center; }
 #carAdd { top: 33%; }
@@ -245,6 +259,14 @@ details.set > * + * { margin-top: 10px; }
 <body>
 <button id="carBack" type="button">Terug</button>
 <button id="carRit" type="button">🏁 Rit klaar</button>
+<div id="ritKaart" hidden role="dialog" aria-label="Ritoverzicht">
+  <div class="rkBox">
+    <p class="rkTitel">Rit klaar 🏁</p>
+    <div id="ritKaartGrid"></div>
+    <p id="ritKaartStijl"></p>
+    <button id="ritKaartSluit" type="button">Sluiten</button>
+  </div>
+</div>
 <button id="carAdd" type="button">Vaste<br>flitser</button>
 <button id="carAddM" type="button">Mobiele<br>flitser</button>
 <button id="carGroep" type="button" aria-label="Bericht naar de groep"><span class="gi">👋</span><span>Groep</span></button>
@@ -291,6 +313,7 @@ details.set > * + * { margin-top: 10px; }
       <output class="num" id="spd" for="speed">0</output><span class="unit">KM/H</span>
       <span class="tag" id="gpsTag">GPS gesimuleerd</span>
     </div>
+    <p class="chip" id="limBron" hidden></p>
     <div class="btns">
       <button class="btn" id="bLive" type="button" aria-pressed="false" style="grid-column:1/-1">Telefoon-GPS: uit</button>
       <button class="btn primary" id="bCar" type="button" style="grid-column:1/-1">Autostand: alleen gezicht, groot</button>
@@ -308,6 +331,10 @@ details.set > * + * { margin-top: 10px; }
       <p class="sub">Laatste ritten</p>
       <ol id="ritLijst"></ol>
       <p class="chip" id="weekStat">Deze week nog geen ritten.</p>
+      <p class="sub">Routes klaarzetten</p>
+      <button class="btn" id="routeKnop" type="button">📶 Mijn routes nu klaarzetten</button>
+      <p class="chip" id="routeStat">Nog geen routes onthouden.</p>
+      <p class="foot">Buddy onthoudt over welke wegvakken je rijdt en zet de maximumsnelheden daarvan op je telefoon. Dan weet hij op je vaste routes meteen de limiet, ook met slecht bereik. Dit gebeurt vanzelf hooguit twee keer per dag, als de GPS uit staat en je niet op mobiele data zit. Met de knop gebeurt het meteen.</p>
     </div>
   </section>
 
@@ -730,7 +757,7 @@ details.set > * + * { margin-top: 10px; }
       if (!S.asleep) { setEv('yawn', 4, 'Je rijdt al ' + Math.floor(S.driveT / 60) + ' uur. Zin in een pauze?'); beep('sleep'); say('Je rijdt al ' + Math.floor(S.driveT / 60) + ' uur. Zin in een pauze?', true); }
     }
     /* smooth-driving score per trip */
-    if (S.speed >= 5) { if (!S.trip && S.live) ritStart(); S.trip = true; S.tripT += dt; }
+    if (S.speed >= 5) { if (!S.trip && S.live) ritStart(); S.trip = true; S.tripT += dt; if (S.live && S.ritStart && S.liveSpeed > S.ritStart.vmax) S.ritStart.vmax = S.liveSpeed; }
     else if (S.trip && S.speed < 1 && S.stoppedT > (S.live ? 480 : 3)) {  /* live: pas een nieuwe rit na 8 min stilstaan, niet bij elk stoplicht */
       ritAfsluiten(S.live ? 120 : 15);
     }
@@ -980,6 +1007,7 @@ details.set > * + * { margin-top: 10px; }
     /* Leaderboard: alleen echte ritten, en alleen op een weg waar 100 of harder mag (niet als de limiet uit je eigen snelheid is geraden) */
     if (S.live) {
       var magHier = S.roadLim != null && S.roadLim >= 100 && !S.guessed;
+      if (S.ritStart && (!S.ritStart.nul || tt < S.ritStart.nul)) { S.ritStart.nul = tt; S.ritStart.nulTelt = magHier; S.ritStart.nulWaarom = magHier ? '' : (S.roadLim == null ? 'limiet onbekend' : S.guessed ? 'limiet geschat' : 'limiet hier ' + S.roadLim); }
       if (magHier) {
         mem.launchLive = (mem.launchLive || 0) + 1;
         if (!mem.best100Live || tt < mem.best100Live) { mem.best100Live = tt; if (typeof grLid === 'function') setTimeout(function () { grLid(true); }, 1500); }
@@ -1488,6 +1516,17 @@ details.set > * + * { margin-top: 10px; }
     overlay(dt);
   }
 
+  var BRONKORT = { kaart: 'KAART', type: 'WEGTYPE', matrix: 'MATRIX', gok: 'GESCHAT' };
+  var BRONLANG = { kaart: 'de kaart (OpenStreetMap, het bord dat daar staat)', type: 'het soort weg (geen bord op de kaart, dus een schatting)', matrix: 'het matrixbord boven de weg', gok: 'je eigen snelheid (geschat, geen wegdata)' };
+  function limBronToon() {
+    var el = $('limBron'); if (!el) return;
+    if (!S.live) { el.hidden = true; return; }
+    el.hidden = false;
+    if (S.roadLim == null) { el.textContent = 'Limiet: onbekend, ik heb hier nog geen wegdata. Een 0–100 telt nu niet voor het leaderboard.'; return; }
+    var telt100 = S.roadLim >= 100 && !S.guessed, telt80 = S.roadLim >= 80 && !S.guessed;
+    el.textContent = 'Limiet ' + S.roadLim + ' km/h, volgens ' + (BRONLANG[S.roadSrc] || 'onbekende bron') + '. Leaderboard: 0–100 telt hier ' + (telt100 ? 'wel' : 'niet') + ', 0–80 ' + (telt80 ? 'wel' : 'niet') + '.';
+  }
+  setInterval(limBronToon, 1000);
   function sign(v, est) {
     ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(120, 210, 17, 0, TAU); ctx.fill();
     ctx.strokeStyle = '#D7352B'; ctx.lineWidth = 4; if (est) ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(120, 210, 15, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
@@ -1534,7 +1573,9 @@ details.set > * + * { margin-top: 10px; }
       else if (camOn) { ctx.font = '700 24px "Chakra Petch", sans-serif'; ctx.fillText(String(v), 152, 210); }
       else {
         var stale = S.live && T - S.roadSeen > 25;
-        ctx.save(); ctx.translate(-36, 0); ctx.globalAlpha = S.roadLim == null ? .35 : (stale ? .55 : 1); sign(S.roadLim, est); ctx.restore();
+        ctx.save(); ctx.translate(-36, 0); ctx.globalAlpha = S.roadLim == null ? .35 : (stale ? .55 : 1); sign(S.roadLim, est);
+        if (S.live && S.roadLim != null && BRONKORT[S.roadSrc]) { ctx.globalAlpha = .7; ctx.fillStyle = EYE; ctx.font = '600 9px "Chakra Petch", sans-serif'; ctx.fillText(BRONKORT[S.roadSrc], 120, 187); }
+        ctx.restore();
         ctx.font = '700 24px "Chakra Petch", sans-serif'; ctx.fillText(String(v), 152, 210);
       }
     }
@@ -1823,7 +1864,7 @@ details.set > * + * { margin-top: 10px; }
     }
     if (T - (S.lastHello || -9999) > 1800) { S.helloDone = false; setTimeout(hello, 1200); }
     S.live = true; S.cam = null; S.traj = null; S.liveSpeed = 0; S.liveT = T; lastPos = null;
-    S.roadLim = null; S.roadEst = false; S.roadSeen = T; S.energy = Math.max(S.energy, 80); roadQ = null; roadWays = []; roadBuild = null; clearGpsHelp(); lastHdg = null; hdgRef = null; mon.cur = null; mon.traj = null; mon.handled = {};
+    S.roadLim = null; S.roadEst = false; S.roadSrc = ''; S.roadSeen = T; S.energy = Math.max(S.energy, 80); roadQ = null; roadWays = []; roadBuild = null; clearGpsHelp(); lastHdg = null; hdgRef = null; mon.cur = null; mon.traj = null; mon.handled = {};
     setLiveUI(true); setTag('GPS zoekt\u2026'); lockScreen();
     watchId = navigator.geolocation.watchPosition(onPos, onPosErr, { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 });
   }
@@ -2027,25 +2068,102 @@ details.set > * + * { margin-top: 10px; }
     var v = OSM_VAK[soort], ty = Math.floor(lat / v.dLat), tx = Math.floor(lon / v.dLon);
     return { lat: (ty + .5) * v.dLat, lon: (tx + .5) * v.dLon, s: ty * v.dLat - v.padLat, w: tx * v.dLon - v.padLon, n: (ty + 1) * v.dLat + v.padLat, e: (tx + 1) * v.dLon + v.padLon };
   }
+  /* Wegvakken worden ook op de telefoon zelf bewaard (30 dagen), zodat je op je vaste routes geen internet nodig hebt */
+  var OSMKAST = 'buddy-osm-v1', OSMVERS = 30 * 864e5;
+  function osmUrl(soort, lat, lon) { var vk = osmVak(soort, lat, lon); return pbase() + '/osm?soort=' + soort + '&lat=' + vk.lat.toFixed(5) + '&lon=' + vk.lon.toFixed(5); }
+  function osmUitKast(url) {
+    if (!('caches' in window)) return Promise.resolve(null);
+    return caches.open(OSMKAST).then(function (c) { return c.match(url); }).then(function (r) {
+      if (!r) return null;
+      var t = +(r.headers.get('X-Buddy-T') || 0);
+      return Date.now() - t < OSMVERS ? r.text() : null;
+    }).catch(function () { return null; });
+  }
+  function osmInKast(url, tekst) {
+    if (!('caches' in window)) return Promise.resolve();
+    return caches.open(OSMKAST).then(function (c) { return c.put(url, new Response(tekst, { headers: { 'Content-Type': 'application/json', 'X-Buddy-T': String(Date.now()) } })); }).catch(function () {});
+  }
+  function osmVanWorker(soort, url, ms) {
+    var ctl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, ms || 60000) : 0;
+    return fetch(url, { signal: ctl ? ctl.signal : undefined }).then(function (r) {
+      if (timer) clearTimeout(timer);
+      if (r.status === 404) { osmWorkerUit = T; throw new Error('Worker kent /osm nog niet'); }
+      if (!r.ok) throw new Error('http ' + r.status);
+      var bron = r.headers.get('X-Buddy-Bron') || '';
+      return r.text().then(function (tekst) {
+        var j = JSON.parse(tekst); if (!j || !j.elements) throw new Error('leeg antwoord');
+        if (soort === 'wegen') osmInKast(url, tekst);
+        return { j: j, bron: bron };
+      });
+    }, function (e) { if (timer) clearTimeout(timer); throw e; });
+  }
   function fetchOsm(soort, lat, lon, direct, ms) {
     if (!pbase() || T - osmWorkerUit < 600) return fetchOverpass(direct, ms);
-    var vk = osmVak(soort, lat, lon), ctl = ('AbortController' in window) ? new AbortController() : null;
-    var timer = ctl ? setTimeout(function () { ctl.abort(); }, 60000) : 0;
-    return fetch(pbase() + '/osm?soort=' + soort + '&lat=' + vk.lat.toFixed(5) + '&lon=' + vk.lon.toFixed(5), { signal: ctl ? ctl.signal : undefined })
-      .then(function (r) {
-        if (timer) clearTimeout(timer);
-        if (r.status === 404) { osmWorkerUit = T; throw new Error('Worker kent /osm nog niet'); }
-        if (!r.ok) throw new Error('http ' + r.status);
-        var bron = r.headers.get('X-Buddy-Bron') || '';
-        return r.json().then(function (j) { if (!j || !j.elements) throw new Error('leeg antwoord'); lg('osm ' + soort + ' via Worker' + (bron ? ' (' + bron + ')' : '') + ': ' + j.elements.length + ' stuks'); j._viaWorker = 1; return j; });
+    var url = osmUrl(soort, lat, lon);
+    return (soort === 'wegen' ? osmUitKast(url) : Promise.resolve(null))
+      .then(function (tekst) {
+        if (tekst) { var j0 = JSON.parse(tekst); lg('osm ' + soort + ' uit telefoongeheugen: ' + j0.elements.length + ' stuks'); j0._viaWorker = 1; return j0; }
+        return osmVanWorker(soort, url, 60000).then(function (x) { lg('osm ' + soort + ' via Worker' + (x.bron ? ' (' + x.bron + ')' : '') + ': ' + x.j.elements.length + ' stuks'); x.j._viaWorker = 1; return x.j; });
       })
       .catch(function (e) {
-        if (timer) clearTimeout(timer);
         opLast = 'Worker: ' + (e && e.name === 'AbortError' ? 'te traag' : (e && e.message) || 'fout');
         lg('osm ' + soort + ' ' + opLast + ', ik probeer Overpass rechtstreeks');
         return fetchOverpass(direct, ms);
       });
   }
+  /* Welke wegvakken rij je vaak? Per rit telt elk vak één keer. */
+  var ROUTEKEY = 'dashboardmaatje-routes-v1', ROUTEPREF = 'dashboardmaatje-routepref-v1', routes = {}, ritVakken = {}, routeBezig = false;
+  try { routes = JSON.parse(localStorage.getItem(ROUTEKEY)) || {}; } catch (e) { routes = {}; }
+  function routeVakKey(lat, lon) { var v = OSM_VAK.wegen; return Math.floor(lat / v.dLat) + ':' + Math.floor(lon / v.dLon); }
+  function routeTel(lat, lon) {
+    var k = routeVakKey(lat, lon); if (ritVakken[k]) return; ritVakken[k] = 1;
+    var o = routes[k] || [0, 0]; o[0]++; o[1] = Date.now(); routes[k] = o;
+    var keys = Object.keys(routes);
+    if (keys.length > 600) { keys.sort(function (a, b) { return routes[a][1] - routes[b][1]; }); keys.slice(0, keys.length - 600).forEach(function (x) { delete routes[x]; }); }
+    try { localStorage.setItem(ROUTEKEY, JSON.stringify(routes)); } catch (e) {}
+  }
+  function routeStat(t) { var el = $('routeStat'); if (el) el.textContent = t; }
+  function routeOverzicht() {
+    var n = Object.keys(routes).filter(function (k) { return Date.now() - routes[k][1] < 60 * 864e5; }).length, t = 0;
+    try { t = +localStorage.getItem(ROUTEPREF) || 0; } catch (e) {}
+    routeStat(n ? n + ' wegvakken onthouden van je ritten.' + (t ? ' Laatst klaargezet ' + dagStr(t) + ' om ' + tijdStr(t) + '.' : ' Nog niet klaargezet.') : 'Nog geen routes onthouden. Dat gebeurt vanzelf tijdens ritten met de GPS aan.');
+  }
+  /* Zet de wegvakken van je routes klaar in het telefoongeheugen. Vanzelf hooguit eens per 12 uur, niet tijdens het rijden en niet op mobiele data. */
+  function routeKlaarzetten(handmatig) {
+    if (routeBezig) return;
+    if (!pbase() || !('caches' in window)) { if (handmatig) toast('Hiervoor heb ik het Worker-adres nodig (bij Flitsers).'); return; }
+    if (S.live && S.speed >= 5) { if (handmatig) toast('Dat doe ik als je stilstaat.'); return; }
+    var c = navigator.connection;
+    if (!handmatig && c && (c.saveData || c.type === 'cellular')) return;
+    var keys = Object.keys(routes).filter(function (k) { return Date.now() - routes[k][1] < 60 * 864e5; })
+      .sort(function (a, b) { return routes[b][0] - routes[a][0] || routes[b][1] - routes[a][1]; }).slice(0, 80);
+    if (!keys.length) { if (handmatig) toast('Ik ken je routes nog niet. Rij eerst een paar ritten met de GPS aan.'); return; }
+    routeBezig = true;
+    try { localStorage.setItem(ROUTEPREF, String(Date.now())); } catch (e) {}
+    var i = 0, nieuw = 0, al = 0, fout = 0, v = OSM_VAK.wegen;
+    lg('route klaarzetten: ' + keys.length + ' wegvakken');
+    function volgende() {
+      if (i >= keys.length || fout >= 3 || (S.live && S.speed >= 5)) {
+        routeBezig = false;
+        var klaar = 'Klaar: ' + (al + nieuw) + ' van ' + keys.length + ' wegvakken staan op je telefoon' + (nieuw ? ' (' + nieuw + ' nieuw)' : '') + (fout >= 3 ? '. Gestopt door een fout, ik probeer het later opnieuw.' : '.');
+        routeStat(klaar); lg('route klaarzetten: ' + (al + nieuw) + '/' + keys.length + (fout ? ', ' + fout + ' fout' : ''));
+        if (handmatig) toast(klaar);
+        return;
+      }
+      var p = keys[i++].split(':'), lat = (+p[0] + .5) * v.dLat, lon = (+p[1] + .5) * v.dLon, url = osmUrl('wegen', lat, lon);
+      routeStat('Routes klaarzetten… ' + i + ' van ' + keys.length);
+      osmUitKast(url).then(function (tekst) {
+        if (tekst) { al++; return volgende(); }
+        return osmVanWorker('wegen', url, 60000).then(function () { nieuw++; fout = 0; }, function () { fout++; }).then(function () { setTimeout(volgende, 1500); });
+      });
+    }
+    volgende();
+  }
+  setInterval(function () {
+    var t = 0; try { t = +localStorage.getItem(ROUTEPREF) || 0; } catch (e) {}
+    if (!S.live && document.visibilityState === 'visible' && Date.now() - t > 12 * 36e5) routeKlaarzetten(false);
+  }, 5 * 60e3);
   function camRegions() {
     if (!camCache) return [];
     if (!camCache.regions) camCache.regions = [{ lat: camCache.lat, lon: camCache.lon, t: camCache.t }];
@@ -2790,7 +2908,7 @@ details.set > * + * { margin-top: 10px; }
   function roadGuess() {
     var now = T, dt = hiLast ? Math.min(5, now - hiLast) : 0; hiLast = now;
     if (S.liveSpeed >= 90) { hiT += dt; loT = 0; } else { hiT = 0; if (S.liveSpeed < 60) loT += dt; }
-    if (S.roadLim == null && hiT >= 45) { S.roadLim = nightNL() ? 130 : 100; S.roadEst = true; S.guessed = true; lg('limiet geschat uit je snelheid: ' + S.roadLim); }
+    if (S.roadLim == null && hiT >= 45) { S.roadLim = nightNL() ? 130 : 100; S.roadEst = true; S.guessed = true; S.roadSrc = 'gok'; lg('limiet geschat uit je snelheid: ' + S.roadLim); }
     else if (S.guessed && S.roadLim != null && loT >= 20) { S.roadLim = null; S.roadEst = false; S.guessed = false; }
     else if (S.guessed && S.roadLim != null) { var g = nightNL() ? 130 : 100; if (g !== S.roadLim) S.roadLim = g; }
   }
@@ -2800,12 +2918,13 @@ details.set > * + * { margin-top: 10px; }
     if (msHold) {
       var cur = null; ms.items.forEach(function (g) { if (g.k === msHold.k) cur = g; });
       if (T > msHold.until || !cur || cur.s !== msHold.v) msHold = null;
-      else { S.roadLim = msHold.v; S.roadEst = false; S.guessed = false; S.roadSeen = T; }
+      else { S.roadLim = msHold.v; S.roadEst = false; S.guessed = false; S.roadSeen = T; S.roadSrc = 'matrix'; }
     }
     if (S.roadLim != null && !S.guessed) hiT = 0; else roadGuess();
   }
   function roadStep0(lat, lon, acc) {
     loadRoads(lat, lon);
+    if (acc <= 45 && S.liveSpeed > 15) routeTel(lat, lon);
     if (acc > 45) { roadHold(); return; }
     if (!roadBuild || roadDirty || gdist(lat, lon, roadBuild.lat, roadBuild.lon) > 500) buildRoads(lat, lon);
     var best = null, i, j, tol = Math.max(22, Math.min(40, acc + 12));
@@ -2822,8 +2941,8 @@ details.set > * + * { margin-top: 10px; }
     if (!best) { roadMiss++; roadHold(); return; }
     roadMiss = 0; S.roadSeen = T;
     var key = best.lim + (best.est ? '~' : '');
-    if (best.lim === S.roadLim && best.est === !!S.roadEst) { roadCand = null; S.guessed = false; return; }
-    if (roadCand === key) { if (++roadCnt >= 2) { S.roadLim = best.lim; S.roadEst = best.est; roadCand = null; S.guessed = false; } }
+    if (best.lim === S.roadLim && best.est === !!S.roadEst) { roadCand = null; S.guessed = false; if (S.roadSrc !== 'matrix') S.roadSrc = best.est ? 'type' : 'kaart'; return; }
+    if (roadCand === key) { if (++roadCnt >= 2) { S.roadLim = best.lim; S.roadEst = best.est; S.roadSrc = best.est ? 'type' : 'kaart'; roadCand = null; S.guessed = false; } }
     else { roadCand = key; roadCnt = 1; }
   }
   window.__road = function () { return S.roadLim; };
@@ -2837,7 +2956,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v43';
+  var VERSION = 'v44';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -3434,14 +3553,15 @@ details.set > * + * { margin-top: 10px; }
   /* ---------- 2. Ritten en weekoverzicht ---------- */
   var ritten = [];
   try { ritten = JSON.parse(localStorage.getItem(RITKEY)) || []; } catch (e) { ritten = []; }
-  function ritStart() { S.ritStart = { t: Date.now(), km: mem.kmLive || 0, netjes: mem.netjes || 0, h: new Date().getHours() + new Date().getMinutes() / 60 }; }
+  function ritStart() { S.ritStart = { t: Date.now(), km: mem.kmLive || 0, netjes: mem.netjes || 0, h: new Date().getHours() + new Date().getMinutes() / 60, vmax: 0, nul: 0, nulTelt: false }; ritVakken = {}; }
   /* Wordt aangeroepen als een echte rit klaar is (8 min stilstaan of GPS uit) */
   function ritKlaar(sc) {
     var r0 = S.ritStart; S.ritStart = null;
     if (!r0) return;
     var km = Math.max(0, (mem.kmLive || 0) - r0.km), min = Math.max(1, Math.round((S.tripT || 0) / 60)), /* echte rijtijd, zonder het stilstaan aan het eind */ netjes = Math.max(0, (mem.netjes || 0) - r0.netjes);
     if (km < 0.5) return;
-    var r = { t0: r0.t, t1: Date.now(), km: Math.round(km * 10) / 10, min: min, stijl: Math.round(sc), netjes: netjes };
+    var r = { t0: r0.t, t1: Date.now(), km: Math.round(km * 10) / 10, min: min, stijl: Math.round(sc), netjes: netjes, vmax: Math.round(r0.vmax || 0), sec: Math.round(S.tripT || 0) };
+    if (r0.nul) { r.nul = Math.round(r0.nul * 10) / 10; r.nt = r0.nulTelt ? 1 : 0; if (!r0.nulTelt) r.nw = r0.nulWaarom; }
     ritten.push(r); if (ritten.length > 80) ritten = ritten.slice(-80);
     try { localStorage.setItem(RITKEY, JSON.stringify(ritten)); } catch (e) {}
     /* week en badges */
@@ -3451,11 +3571,38 @@ details.set > * + * { margin-top: 10px; }
     if (r0.h >= 5 && r0.h < 6.5) mem.vroegRit = 1;
     save();
     var m = 'Rit klaar: ' + String(r.km).replace('.', ',') + ' km in ' + r.min + ' min, rijstijl ' + r.stijl + (r.netjes ? ', ' + r.netjes + '× netjes langs een flitser' : '') + '.';
-    toast(m); lg('rit: ' + JSON.stringify(r)); ritToon();
+    toast(m); lg('rit: ' + JSON.stringify(r)); ritToon(); ritKaart(r); routeOverzicht();
     if (typeof grLid === 'function') grLid(true);
     setTimeout(function () { maakBackup('rit'); }, 3000); /* na elke rit een back-up */
     return r;
   }
+  /* Kaartje na een rit, groot genoeg voor de autostand. Verdwijnt vanzelf als je weer gaat rijden. */
+  function ritKaart(r) {
+    var el = $('ritKaart'); if (!el || !r) return;
+    var uren = (r.sec || r.min * 60) / 3600, gem = uren > 0 ? Math.round(r.km / uren) : 0;
+    var rij = [
+      ['🛣️', String(r.km).replace('.', ',') + ' km', 'afstand'],
+      ['⏱️', r.min + ' min', 'rijtijd'],
+      ['📈', (r.vmax || '-') + ' km/h', 'topsnelheid'],
+      ['〰️', gem ? gem + ' km/h' : '-', 'gemiddeld'],
+      ['🏁', r.nul ? fmt1(r.nul) + ' s' : 'geen', r.nul ? '0–100 ' + (r.nt ? '(telt mee)' : '(telt niet: ' + (r.nw || 'limiet onbekend') + ')') : '0–100'],
+      ['📸', String(r.netjes || 0) + '×', 'netjes langs flitser'],
+    ];
+    var g = $('ritKaartGrid'); while (g.firstChild) g.removeChild(g.firstChild);
+    rij.forEach(function (x) {
+      var d = document.createElement('div'); d.className = 'rk';
+      var i = document.createElement('span'); i.className = 'ri'; i.textContent = x[0];
+      var w = document.createElement('b'); w.textContent = x[1];
+      var l = document.createElement('small'); l.textContent = x[2];
+      d.appendChild(i); d.appendChild(w); d.appendChild(l); g.appendChild(d);
+    });
+    $('ritKaartStijl').textContent = 'Rijstijl ' + r.stijl + '/100 · ' + (r.stijl >= 90 ? 'superzacht gereden!' : r.stijl >= 75 ? 'netjes gereden.' : 'pittig gereden, rustiger mag ook.');
+    $('ritKaartStijl').className = r.stijl >= 75 ? 'goed' : 'pittig';
+    el.hidden = false;
+  }
+  $('routeKnop').addEventListener('click', function () { routeKlaarzetten(true); });
+  $('ritKaartSluit').addEventListener('click', function () { $('ritKaart').hidden = true; });
+  setInterval(function () { var el = $('ritKaart'); if (el && !el.hidden && S.live && S.speed > 10) el.hidden = true; }, 2000);
   function weekRitten(w) { return ritten.filter(function (r) { return weekIdx(new Date(r.t0)) === w; }); }
   function weekTekst(w) {
     var l = weekRitten(w); if (!l.length) return null;
@@ -3470,7 +3617,7 @@ details.set > * + * { margin-top: 10px; }
     l.forEach(function (r) {
       var li = document.createElement('li');
       var a = document.createElement('span'); a.textContent = dagStr(r.t0) + ' ' + tijdStr(r.t0);
-      var b = document.createElement('span'); b.className = 'wd'; b.textContent = String(r.km).replace('.', ',') + ' km · ' + r.min + ' min · stijl ' + r.stijl + (r.netjes ? ' · ' + r.netjes + '× netjes' : '');
+      var b = document.createElement('span'); b.className = 'wd'; b.textContent = String(r.km).replace('.', ',') + ' km · ' + r.min + ' min · stijl ' + r.stijl + (r.vmax ? ' · top ' + r.vmax : '') + (r.nul ? ' · 0–100 ' + fmt1(r.nul) + ' s' : '') + (r.netjes ? ' · ' + r.netjes + '× netjes' : '');
       li.appendChild(a); li.appendChild(b); el.appendChild(li);
     });
     var wt = $('weekStat'); if (wt) wt.textContent = weekTekst(weekIdx()) || 'Deze week nog geen ritten.';
@@ -3699,7 +3846,7 @@ details.set > * + * { margin-top: 10px; }
   $('feestIn').addEventListener('change', function () { mem.feestAan = $('feestIn').checked; save(); outfitKeuze(); });
   $('buurIn').checked = buurAan;
   $('buurIn').addEventListener('change', function () { buurAan = $('buurIn').checked; try { localStorage.setItem(BUURKEY, buurAan ? '1' : '0'); } catch (e) {} if (!buurAan) buurUit(); toast(buurAan ? 'Aan: Buddy zwaait als een collega vlakbij is.' : 'Uit.'); });
-  parkToon(); ritToon(); badgeToon(); outfitKeuze();
+  parkToon(); ritToon(); badgeToon(); outfitKeuze(); routeOverzicht();
   setInterval(function () {
     try {
       badgeCheck(false); outfitCheck(); buurCheck(); weekoverzicht();
