@@ -1704,7 +1704,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     moodFx(dt);
     wxFront(dt);
     flagDraw();
-    gmeterDraw();
+    if (!S.grNote) gmeterDraw();
+    grNoteDraw();
     ctx.restore();
     overlay(dt);
   }
@@ -3853,7 +3854,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v64';
+  var VERSION = 'v65';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -4659,6 +4660,27 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (n < 0) { e.textContent = 'Berichten ophalen mislukt: ' + fout + '. Ik probeer het steeds opnieuw.'; return; }
     e.textContent = 'Groep “' + grp + '”: verbonden, laatst gekeken om ' + tijdStr(Date.now()) + ':' + ('0' + new Date().getSeconds()).slice(-2) + ' (' + n + ' bericht' + (n === 1 ? '' : 'en') + ' van de laatste uren).';
   }
+  /* v65: een groepsbericht ook IN het rondje laten zien (icoon + naam), niet alleen in de tekst eronder */
+  var GRNOTE = { zwaai: ['👋', 'zwaait'], koffie: ['☕', 'koffie?'], koffieJa: ['☕', 'ja, koffie!'], koffieStraks: ['☕', 'straks'], file: ['🚗', 'meldt file'], pech: ['⚠️', 'staat stil'],
+    hart: ['❤️', 'hartjes'], thuis: ['🏁', 'bijna thuis'], mijlpaal: ['🏆', 'km'], feli: ['🎉', 'feliciteert je'], test: ['🧪', 'test'], buur: ['📍', 'vlakbij'] };
+  function grInRondje(b, sub) {
+    var d = GRNOTE[b.s] || ['💬', 'bericht'], t = sub || d[1];
+    if (b.s === 'mijlpaal') t = (b.w || 0) + ' km!';
+    if ((b.s === 'file' || b.s === 'pech') && b.p) t += ' · ' + b.p;
+    S.grNote = { i: d[0], n: String(b.n || 'Collega').slice(0, 14), t: t.slice(0, 26), t0: T, dur: b.s === 'pech' ? 8 : 6.5 };
+  }
+  function grNoteDraw() {
+    var q = S.grNote; if (!q) return;
+    var tt = T - q.t0; if (tt > q.dur) { S.grNote = null; return; }
+    var a = clamp(Math.min(tt / .25, (q.dur - tt) / .4), 0, 1), pop = tt < .45 ? 1 + Math.sin(tt / .45 * Math.PI) * .18 : 1;
+    ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '700 15px "Chakra Petch", sans-serif';
+    var regel = q.n + ' · ' + q.t, w = Math.min(176, ctx.measureText(regel).width + 26), bob = Math.sin(tt * 3) * 1.2;
+    ctx.fillStyle = SCREEN; ctx.globalAlpha = a * .88; rr(120 - w / 2, 47 + bob, w, 24, 12); ctx.fill(); ctx.globalAlpha = a;
+    ctx.fillStyle = EYE; ctx.fillText(regel, 120, 59.5 + bob, 160);
+    ctx.save(); ctx.translate(120, 30 + bob); ctx.scale(pop, pop); ctx.font = '24px sans-serif'; ctx.fillText(q.i, 0, 1); ctx.restore();
+    ctx.restore();
+  }
   function wie(b, metAuto) { var n = b.n || 'Een collega'; return metAuto && b.a ? n + ' in de ' + b.a : n; }
   /* Eén bericht tegelijk laten zien, met een paar seconden ertussen */
   function grToon() {
@@ -4690,8 +4712,9 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (grMijn[b.r] === 'test') { grTestOk[b.van] = wie(b); grTestToon(); }
       return;
     }
-    else if (s === 'test') { m = '🧪 Testbericht van ' + wie(b) + ' ontvangen. De groep werkt!'; setEv('happy', 3, m); grSignaal(false); grStuur('gezien', '&aan=' + encodeURIComponent(b.van) + '&r=' + encodeURIComponent(b.id)).catch(function () {}); toast(m); grLijstAdd('in', m); lg('groepsbericht ontvangen: test van ' + (b.n || '?')); return; }
+    else if (s === 'test') { m = '🧪 Testbericht van ' + wie(b) + ' ontvangen. De groep werkt!'; setEv('happy', 3, m); try { grInRondje(b); } catch (e) {} grSignaal(false); grStuur('gezien', '&aan=' + encodeURIComponent(b.van) + '&r=' + encodeURIComponent(b.id)).catch(function () {}); toast(m); grLijstAdd('in', m); lg('groepsbericht ontvangen: test van ' + (b.n || '?')); return; }
     if (!m) return;
+    try { grInRondje(b); } catch (e) {}
     grLijstAdd('in', m);
     grSignaal(false); grGezienSturen(b);
     toast(m); say(m, true); lg('groepsbericht ontvangen: ' + s + ' van ' + (b.n || '?')); grLog.push(m); if (grLog.length > 30) grLog.shift();
@@ -5095,11 +5118,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         if (b.d >= 1) {  /* v63: nieuwe Worker geeft ook collega's tot 5 km, afgerond op hele km (nooit een precieze plek) */
           var kv = b.van + ':ver'; if (buurGezien[kv] && Date.now() - buurGezien[kv] < 60 * 60e3) return; buurGezien[kv] = Date.now();
           var mv = (b.n || 'Een collega') + ' rijdt ook in de buurt, zo’n ' + b.d + ' km bij je vandaan!';
-          setEv('excited', 4, mv); beep('pet'); toast(mv); lg('collega op ' + b.d + ' km: ' + (b.n || '?')); return;
+          setEv('excited', 4, mv); beep('pet'); toast(mv); try { grInRondje({ s: 'buur', n: b.n }, b.d + ' km bij je'); } catch (e) {} lg('collega op ' + b.d + ' km: ' + (b.n || '?')); return;
         }
         buurGezien[b.van] = Date.now();
         var m = 'Kijk! ' + (b.n || 'Een collega') + (b.a ? ' in de ' + b.a : '') + ' is vlakbij!';
-        setEv('excited', 4.8, m); startGag('wave'); if (S.gag) S.gag.msg = m; beep('excited'); say(m, true); toast(m);
+        setEv('excited', 4.8, m); startGag('wave'); if (S.gag) S.gag.msg = m; beep('excited'); say(m, true); toast(m); try { grInRondje({ s: 'buur', n: b.n }); } catch (e) {}
         mem.ontmoet = (mem.ontmoet || 0) + 1; save(); lg('collega in de buurt: ' + (b.n || '?'));
       });
     }).catch(function () { lg('FOUT buurcheck'); });
