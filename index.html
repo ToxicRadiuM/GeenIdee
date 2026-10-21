@@ -137,6 +137,10 @@ body.car #carGroep { display: block; }
 #bordLijst .pl { font-weight: 700; text-align: center; }
 #bordLijst .nm small { display: block; color: var(--muted); font-size: 12px; }
 #bordLijst .wd { font-weight: 700; font-variant-numeric: tabular-nums; }
+#bordLijst li { grid-template-columns: 2.4em 1fr auto auto; }
+#bordLijst .lidMeer { min-width: 40px; min-height: 40px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: 700 18px/1 var(--f-body); cursor: pointer; }
+#bordLijst li.lidOpties { display: flex; flex-direction: column; gap: 8px; border-style: dashed; }
+#bordLijst li.lidOpties p { margin: 0; font-size: 14px; color: var(--muted); }
 #carStart { display: none; position: fixed; left: 2vw; top: 33%; transform: translateY(-50%); z-index: 50; width: min(19vw, 170px); min-height: min(24vh, 120px); border-radius: 22px; border: 3px solid #34c759; background: #0b2414; color: #8ff0a8; font: 700 clamp(15px, 2.4vw, 24px)/1.2 var(--f-body); text-align: center; }
 #carStart:active { background: #34c759; color: #000; }
 #carStart .vlag { width: min(70%, 84px); height: auto; display: block; margin: 0 auto; }
@@ -3151,7 +3155,7 @@ details.set > * + * { margin-top: 10px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v46';
+  var VERSION = 'v47';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -3687,8 +3691,52 @@ details.set > * + * { margin-top: 10px; }
       var bds = String(l.bd || '').split('.').map(function (k) { return BADGEMAP[k] ? BADGEMAP[k].i : ''; }).join('');
       if (l.a || bds) { var au = document.createElement('small'); au.textContent = (l.a || '') + (bds ? (l.a ? '  ' : '') + bds : ''); n.appendChild(au); }
       var w = document.createElement('span'); w.className = 'wd'; w.textContent = B.f(l);
-      li.appendChild(a); li.appendChild(n); li.appendChild(w); ol.appendChild(li);
+      li.appendChild(a); li.appendChild(n); li.appendChild(w);
+      if (l.van !== mijnId) {
+        var mk = document.createElement('button'); mk.type = 'button'; mk.className = 'lidMeer'; mk.textContent = '⋯';
+        mk.setAttribute('aria-label', 'Opties voor ' + (l.n || 'dit lid'));
+        mk.addEventListener('click', function () { bordOpen = bordOpen === l.van ? null : l.van; bordArm = null; bordToon(); });
+        li.appendChild(mk);
+      }
+      ol.appendChild(li);
+      if (bordOpen === l.van) {
+        var op = document.createElement('li'); op.className = 'lidOpties';
+        var zelfde = (l.n || '').toLowerCase() === (myWho() || '').toLowerCase();
+        var tx = document.createElement('p'); tx.textContent = zelfde ? 'Deze heeft dezelfde naam als jij. Ben jij dit op een ander toestel of van vóór het wissen? Kies dan samenvoegen.' : 'Wat wil je met ' + (l.n || 'dit lid') + ' doen?';
+        var b1 = document.createElement('button'); b1.type = 'button'; b1.className = 'btn'; b1.textContent = bordArm === 'samen' ? 'Zeker? Tik nog eens' : '🔗 Dit ben ik ook: samenvoegen';
+        b1.addEventListener('click', function () { if (bordArm !== 'samen') { bordArm = 'samen'; bordToon(); return; } lidSamenvoegen(l); });
+        var b2 = document.createElement('button'); b2.type = 'button'; b2.className = 'btn'; b2.textContent = bordArm === 'weg' ? 'Zeker? Tik nog eens' : '🗑️ Verwijder uit de groep';
+        b2.addEventListener('click', function () { if (bordArm !== 'weg') { bordArm = 'weg'; bordToon(); return; } lidWeg(l, 'verwijderd'); });
+        var b3 = document.createElement('button'); b3.type = 'button'; b3.className = 'btn'; b3.textContent = 'Annuleer';
+        b3.addEventListener('click', function () { bordOpen = null; bordArm = null; bordToon(); });
+        op.appendChild(tx); op.appendChild(b1); op.appendChild(b2); op.appendChild(b3); ol.appendChild(op);
+      }
     });
+  }
+  /* Leden beheren: dubbele "jij" samenvoegen, of iemand die er niet meer bij hoort weghalen */
+  var bordOpen = null, bordArm = null;
+  function lidWeg(l, wat) {
+    bordOpen = null; bordArm = null;
+    return fetch(gUrl('/weg', '&van=' + encodeURIComponent(l.van))).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); })
+      .then(function () { bordData = bordData.filter(function (x) { return x.van !== l.van; }); bordToon(); toast((l.n || 'Lid') + ' is ' + wat + '.'); lg('leaderboard: ' + (l.n || l.van) + ' ' + wat); grBord(); })
+      .catch(function (e) { bordToon(); toast('Dat lukte niet: ' + ((e && e.message) || e)); });
+  }
+  function lidSamenvoegen(l) {
+    mem.samengevoegd = mem.samengevoegd || [];
+    if (mem.samengevoegd.indexOf(l.van) < 0) {
+      /* Zijn tellers bij de jouwe optellen; snelste tijden: de beste van de twee */
+      var oudR = mem.ritLive || 0, hunR = l.ritten || 0;
+      mem.kmLive = (mem.kmLive || 0) + (l.km || 0);
+      mem.netjes = (mem.netjes || 0) + (l.netjes || 0);
+      mem.gemeld = (mem.gemeld || 0) + (l.gemeld || 0);
+      mem.ritLive = oudR + hunR;
+      if (hunR && l.stijl) mem.stijlLive = oudR ? Math.round(((mem.stijlLive || 0) * oudR + l.stijl * hunR) / (oudR + hunR)) : l.stijl;
+      if (l.nul && (!mem.best100Live || l.nul / 10 < mem.best100Live)) mem.best100Live = l.nul / 10;
+      if (l.tachtig && (!mem.best80Live || l.tachtig / 10 < mem.best80Live)) mem.best80Live = l.tachtig / 10;
+      mem.samengevoegd.push(l.van); if (mem.samengevoegd.length > 20) mem.samengevoegd.shift();
+      save();
+    }
+    lidWeg(l, 'samengevoegd met jou').then(function () { grLid(true); });
   }
   /* Knoppen koppelen */
   $('carGroep').addEventListener('click', function () { if (S.asleep) wake(); grPaneel($('grPaneel').hidden); });
@@ -4136,7 +4184,9 @@ details.set > * + * { margin-top: 10px; }
     var b = $('bkTerug');
     if (bkKlaar && bkKlaar.code === code && Date.now() - bkTerugT < 6000) {
       /* tweede tik: echt terugzetten */
-      var d = bkKlaar.data;
+      var d = bkKlaar.data, oudId = d[LIDKEY];
+      /* Haal de tijdelijke "jij" van deze telefoon van het leaderboard, anders sta je er straks dubbel in */
+      if (grp && pbase() && oudId && oudId !== mijnId) { try { fetch(gUrl('/weg', '&van=' + mijnId)); } catch (e) {} }
       Object.keys(d).forEach(function (k) { if (/^dashboardmaatje-[a-z0-9-]{1,40}$/.test(k) && typeof d[k] === 'string') { try { localStorage.setItem(k, d[k]); } catch (e) {} } });
       bk = { code: code, t: bkKlaar.t, h: '' }; bkBewaar();
       try { localStorage.removeItem('dashboardmaatje-flitsers-v1'); } catch (e) {}
