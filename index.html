@@ -2221,6 +2221,12 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       for (var j = 0; j < cams.length; j++) if (Math.abs(cams[j].lat - b[0]) < .001 && gdist(b[0], b[1], cams[j].lat, cams[j].lon) < 45) return;
       ba.push({ id: 'nl' + k, kind: 'cam', lat: b[0], lon: b[1], limit: b[2] || null });
     });
+    /* en de trajectcontroles van heel Nederland, behalve die de live kaart al heeft */
+    if (typeof flBasis !== 'undefined' && flBasis && Array.isArray(flBasis.tr)) flBasis.tr.forEach(function (t, k) {
+      for (var j = 0; j < trajs.length; j++) if (gdist(t[0], t[1], trajs[j].from.lat, trajs[j].from.lon) < 150) return;
+      var tr = { id: 'nlt' + k, from: { lat: t[0], lon: t[1] }, to: { lat: t[2], lon: t[3] }, limit: t[4] || null, len: gdist(t[0], t[1], t[2], t[3]), naam: t[5] || '' };
+      ba.push({ id: tr.id, kind: 'traj', lat: tr.from.lat, lon: tr.from.lon, limit: tr.limit, tr: tr });
+    });
     var vast = items.concat(ba);
     /* groepsflitsers die al op de kaart staan vallen samen (geen dubbele waarschuwing) */
     var uc = typeof allUcams === 'undefined' ? [] : allUcams().filter(function (u) {
@@ -2297,7 +2303,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   try { var rawC = JSON.parse(localStorage.getItem(CAMKEY)); if (rawC && rawC.cams && rawC.trajs) camCache = rawC; } catch (e) {}
   function showCamStat() {
     var el = $('camStat');
-    var nlTxt = typeof flBasis !== 'undefined' && flBasis && flBasis.c ? ' Plus ' + flBasis.c.length + ' vaste flitsers voor heel Nederland uit een vast bestand (© OpenStreetMap-bijdragers, versie ' + flBasis.versie + '), die werken ook zonder internet.' : '';
+    var nlTxt = typeof flBasis !== 'undefined' && flBasis && flBasis.c ? ' Plus ' + flBasis.c.length + ' vaste flitsers' + (flBasis.tr && flBasis.tr.length ? ' en ' + flBasis.tr.length + ' trajectcontroles' : '') + ' voor heel Nederland uit een vast bestand (© OpenStreetMap-bijdragers, versie ' + flBasis.versie + '), die werken ook zonder internet.' : '';
     if (!camCache) { el.textContent = 'Flitsdata: live kaart nog niet geladen. Wordt opgehaald als de GPS aan staat.' + nlTxt + (camErr ? ' ' + (nlTxt ? camErr.replace('Laden mislukt: je krijgt nu geen flitsmeldingen.', 'Live kaart laden mislukt, de vaste flitsers voor heel Nederland werken wel.') : camErr) : ''); return; }
     var days = Math.floor((Date.now() - camCache.t) / 864e5);
     el.textContent = 'Flitsdata: ' + camCache.cams.length + ' flitsers en ' + camCache.trajs.length + ' trajecten in de buurt (OpenStreetMap, ' + (days < 1 ? 'vandaag opgehaald' : days + ' dagen oud') + ').' + nlTxt + ' Onvolledig en soms verouderd, mobiele controles alleen via de gemelde lijst hieronder. Let altijd zelf op je snelheid.' + (camErr ? ' ' + camErr : '');
@@ -2311,9 +2317,9 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     var haal = function (u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }); };
     haal('https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/snelheden/flitsers.json').catch(function () { return haal('data/flitsers-nl.json'); }).then(function (j) {
       if (!j || !Array.isArray(j.c) || j.c.length < 100) throw new Error('leeg bestand');
-      flBasis = { t: Date.now(), versie: j.versie || '', bron: j.bron || '', c: j.c };
+      flBasis = { t: Date.now(), versie: j.versie || '', bron: j.bron || '', c: j.c, tr: Array.isArray(j.t) ? j.t : [] };
       try { localStorage.setItem(BASISKEY, JSON.stringify(flBasis)); } catch (e) {}
-      lg('vaste flitsers NL: ' + j.c.length + ' (versie ' + flBasis.versie + ')'); applyCamData();
+      lg('vaste flitsers NL: ' + j.c.length + ', trajectcontroles: ' + flBasis.tr.length + ' (versie ' + flBasis.versie + ')'); applyCamData();
     }).catch(function (e) { lg('FOUT vaste flitsers NL: ' + ((e && e.message) || e)); });
   }
   setTimeout(function () { flBasisLaad(); applyCamData(); }, 2500); setInterval(flBasisLaad, 6 * 3600e3);

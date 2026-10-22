@@ -33,23 +33,54 @@ def lees_csv(pad):
 
 
 def lees_osm():
-    q = ('[out:json][timeout:180];area["ISO3166-1"="NL"][admin_level=2]->.nl;'
-         'node["highway"="speed_camera"](area.nl);out body;')
+    """Flitspalen en trajectcontroles uit OpenStreetMap. Palen die bij een trajectcontrole horen (camera's boven de weg) zijn geen losse flitser."""
+    q = ('[out:json][timeout:240];area["ISO3166-1"="NL"][admin_level=2]->.nl;'
+         'node["highway"="speed_camera"](area.nl)->.c;'
+         'rel["type"="enforcement"]["enforcement"~"^(maxspeed|average_speed)$"](area.nl)->.r;'
+         'node(r.r)->.m;(.c;.m;.r;);out body;')
     for srv in ('https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'):
         try:
             req = urllib.request.Request(srv, data=urllib.parse.urlencode({'data': q}).encode(), headers={'User-Agent': 'Buddy-dashboardrobot/1.0'})
-            j = json.load(urllib.request.urlopen(req, timeout=240))
-            out = []
-            for e in j.get('elements', []):
-                tg = e.get('tags', {})
-                ms = (tg.get('maxspeed') or '').split()[0] if tg.get('maxspeed') else ''
-                rl = 1 if 'red' in (tg.get('enforcement') or tg.get('camera:type') or tg.get('speed_camera') or '') else 0
-                out.append((e['lat'], e['lon'], int(ms) if ms.isdigit() else 0, rl))
-            if len(out) > 300:
-                return out
+            j = json.load(urllib.request.urlopen(req, timeout=300))
         except Exception as ex:
             print('overpass', srv, ex, file=sys.stderr)
+            continue
+        nodes = {e['id']: e for e in j.get('elements', []) if e['type'] == 'node'}
+        rels = [e for e in j.get('elements', []) if e['type'] == 'relation']
+        gebruikt, trajecten, extra = set(), [], []
+        for r in rels:
+            tg = r.get('tags', {})
+            van = naar = None; devs = []
+            for m in r.get('members', []):
+                n = nodes.get(m.get('ref')) if m.get('type') == 'node' else None
+                if not n: continue
+                if m.get('role') == 'from': van = n
+                elif m.get('role') == 'to': naar = n
+                elif m.get('role') == 'device': devs.append(n)
+            lim = limiet(tg.get('maxspeed'))
+            if tg.get('enforcement') == 'average_speed':
+                for d in devs: gebruikt.add(d['id'])
+                if van and naar:
+                    gebruikt.add(van['id']); gebruikt.add(naar['id'])
+                    trajecten.append([round(van['lat'], 5), round(van['lon'], 5), round(naar['lat'], 5), round(naar['lon'], 5), lim or 0, (tg.get('name') or tg.get('description') or '')[:60]])
+            else:
+                for d in devs:
+                    gebruikt.add(d['id']); extra.append((d['lat'], d['lon'], lim or limiet((d.get('tags') or {}).get('maxspeed')) or 0, 0))
+        out = list(extra)
+        for e in nodes.values():
+            tg = e.get('tags') or {}
+            if e['id'] in gebruikt or tg.get('highway') != 'speed_camera': continue
+            rl = 1 if 'red' in ' '.join(str(tg.get(k, '')) for k in ('enforcement', 'camera:type', 'speed_camera', 'traffic_signals')) else 0
+            out.append((e['lat'], e['lon'], limiet(tg.get('maxspeed')) or 0, rl))
+        if len(out) > 300:
+            print(f'OpenStreetMap: {len(out)} palen, {len(trajecten)} trajectcontroles', file=sys.stderr)
+            return out, trajecten
     raise SystemExit('OpenStreetMap niet bereikbaar')
+
+
+def limiet(v):
+    s = str(v or '').strip().split()[0] if v else ''
+    return int(s) if s.isdigit() and 5 <= int(s) <= 130 else 0
 
 
 def samenvoegen(pt):
@@ -72,8 +103,13 @@ def samenvoegen(pt):
 
 if __name__ == '__main__':
     soort, bron, doel = sys.argv[1], sys.argv[2], sys.argv[3]
-    pt = lees_csv(bron) if soort == 'csv' else lees_osm()
+    if soort == 'csv':
+        pt, tr = lees_csv(bron), []
+    else:
+        pt, tr = lees_osm()
     c = samenvoegen(pt)
     json.dump({'versie': time.strftime('%d-%m-%Y'), 'bron': '© OpenStreetMap-bijdragers (ODbL)' + (' via speedcams.world' if soort == 'csv' else ''),
-               'n': len(c), 'c': c}, open(doel, 'w'), separators=(',', ':'))
-    print(f'{len(pt)} punten -> {len(c)} flitsers in {doel}')
+               'n': len(c), 'c': c, 't': tr}, open(doel, 'w'), separators=(',', ':'))
+    print(f'{len(pt)} punten -> {len(c)} flitsers, {len(tr)} trajectcontroles in {doel}')
+    for t in tr:
+        print('  traject', t)
