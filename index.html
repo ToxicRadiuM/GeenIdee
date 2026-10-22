@@ -2207,6 +2207,39 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     { id: 'b:n210-ijsselstein', lat: 52.009093, lon: 5.061531, limit: 80, name: 'N210 Lage Dijk, IJsselstein (beide richtingen)' }
   ];
   function newMonitor() { return { items: [], cur: null, traj: null, handled: {} }; }
+  /* v69: trajectcontroles van het OM (om.nl) die niet (helemaal) in OpenStreetMap staan.
+     TRAJ_EXTRA: echte begin- en eindpunten (A7 richting Hoorn, gespiegeld van de andere kant).
+     TRAJ_ZONES: alleen bekend als "weg tussen plaats A en B". Daar zegt Buddy bij binnenrijden dat er een trajectcontrole is. */
+  var TRAJ_EXTRA = [[52.54866, 4.95779, 52.62483, 5.00509, 100, 'Trajectcontrole A7 Purmerend–Hoorn']];
+  var TRAJ_ZONES = [
+    { w: '706', n: 'N706 Vogelweg (A27–Lelystad Airport)', a: [52.405, 5.300], b: [52.455, 5.520] },
+    { w: '351', n: 'N351 Wolvega–Oosterwolde', a: [52.876, 5.995], b: [52.990, 6.290] },
+    { w: '787', n: 'N787 Brummen–Eerbeek', a: [52.088, 6.150], b: [52.105, 6.060] },
+    { w: '275', n: 'N275 Blerick–Nederweert', a: [51.365, 6.130], b: [51.285, 5.760] },
+    { w: '564', n: 'N564 Weert–Belgische grens', a: [51.235, 5.680], b: [51.180, 5.610] },
+    { w: '277', n: 'N277 Ysselsteyn–Vredepeel', a: [51.490, 5.910], b: [51.540, 5.840] },
+    { w: '270', n: 'N270 Venray–Ysselsteyn', a: [51.520, 5.990], b: [51.490, 5.900] },
+    { w: '260', n: 'N260 Tilburg', a: [51.600, 5.070], b: [51.530, 5.090] },
+    { w: '639', n: 'N639 Chaam–Baarle-Nassau', a: [51.505, 4.860], b: [51.450, 4.930] },
+    { w: '230', n: 'N230 Zuilense Ring (Utrecht)', a: [52.110, 5.075], b: [52.115, 5.140] },
+    { w: '414', n: 'N414 Eembrugge–Bunschoten', a: [52.205, 5.330], b: [52.240, 5.370] }];
+  var trZone = null, trZoneT = -999, trZoneZei = {};
+  function trajZoneStap(lat, lon) {
+    var wn = S.roadWn && T - S.roadSeen < 20 ? String(S.roadWn).replace(/\D/g, '') : '', vond = null;
+    if (wn) TRAJ_ZONES.forEach(function (z) {
+      if (z.w !== wn) return;
+      var k = Math.cos(lat * RAD) * 111195, ax = (z.a[1] - lon) * k, ay = (z.a[0] - lat) * 111195, bx = (z.b[1] - lon) * k, by = (z.b[0] - lat) * 111195;
+      var dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy, t = L2 ? -(ax * dx + ay * dy) / L2 : 0, tc = Math.max(0, Math.min(1, t));
+      if (t > -.15 && t < 1.15 && Math.hypot(ax + tc * dx, ay + tc * dy) < 2000) vond = z;
+    });
+    if (vond) {
+      trZoneT = T;
+      if (trZone !== vond) {
+        trZone = vond; lg('trajectcontrole-gebied: ' + vond.n);
+        if (!trZoneZei[vond.w] || Date.now() - trZoneZei[vond.w] > 30 * 60e3) { trZoneZei[vond.w] = Date.now(); var m = 'Trajectcontrole op de ' + vond.n + '. Hou je gemiddelde netjes!'; setEv('alert', 4, m); beep('wake'); say(m, true); }
+      }
+    } else if (trZone && T - trZoneT > 30) { lg('trajectcontrole-gebied voorbij: ' + trZone.n); trZone = null; }
+  }
   function setMonitorData(M, cams, trajs) {
     var items = [], i;
     for (i = 0; i < cams.length; i++) items.push({ id: cams[i].id, kind: 'cam', lat: cams[i].lat, lon: cams[i].lon, limit: cams[i].limit });
@@ -2221,8 +2254,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       for (var j = 0; j < cams.length; j++) if (Math.abs(cams[j].lat - b[0]) < .001 && gdist(b[0], b[1], cams[j].lat, cams[j].lon) < 45) return;
       ba.push({ id: 'nl' + k, kind: 'cam', lat: b[0], lon: b[1], limit: b[2] || null });
     });
-    /* en de trajectcontroles van heel Nederland, behalve die de live kaart al heeft */
-    if (typeof flBasis !== 'undefined' && flBasis && Array.isArray(flBasis.tr)) flBasis.tr.forEach(function (t, k) {
+    /* en de trajectcontroles van heel Nederland, behalve die de live kaart al heeft (plus wat in OpenStreetMap ontbreekt, zie TRAJ_EXTRA) */
+    var trLijst = (typeof flBasis !== 'undefined' && flBasis && Array.isArray(flBasis.tr) ? flBasis.tr : []).slice();
+    TRAJ_EXTRA.forEach(function (t) { for (var q = 0; q < trLijst.length; q++) if (gdist(t[0], t[1], trLijst[q][0], trLijst[q][1]) < 300 && gdist(t[2], t[3], trLijst[q][2], trLijst[q][3]) < 300) return; trLijst.push(t); });
+    trLijst.forEach(function (t, k) {
       for (var j = 0; j < trajs.length; j++) if (gdist(t[0], t[1], trajs[j].from.lat, trajs[j].from.lon) < 150) return;
       var tr = { id: 'nlt' + k, from: { lat: t[0], lon: t[1] }, to: { lat: t[2], lon: t[3] }, limit: t[4] || null, len: gdist(t[0], t[1], t[2], t[3]), naam: t[5] || '' };
       ba.push({ id: tr.id, kind: 'traj', lat: tr.from.lat, lon: tr.from.lon, limit: tr.limit, tr: tr });
@@ -3317,6 +3352,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (!S.live) return;
     roadStep0(lat, lon, acc);
     try { werkLimStap(lat, lon); } catch (e) {}
+    try { trajZoneStap(lat, lon); } catch (e) {}
     if (msHold) {
       var cur = null; ms.items.forEach(function (g) { if (g.k === msHold.k) cur = g; });
       var msAf = lastPos ? gdist(lat, lon, msHold.lat, msHold.lon) : 0;
