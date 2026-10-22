@@ -35,6 +35,9 @@ jobs:
       - name: Tegels maken
         run: python tools/wkd_tiles.py tegels Snelheden.gpkg uit
 
+      - name: Vaste flitsers voor heel Nederland (OpenStreetMap)
+        run: python tools/flitsers_nl.py osm - uit/flitsers.json || python tools/flitsers_nl.py csv data/flitsers-nl.csv uit/flitsers.json
+
       - name: Publiceren op branch snelheden
         run: |
           cd uit

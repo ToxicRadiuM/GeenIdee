@@ -2215,8 +2215,20 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       for (var j = 0; j < cams.length; j++) if (gdist(b.lat, b.lon, cams[j].lat, cams[j].lon) < 70) return false;
       return true;
     }).map(function (b) { return { id: b.id, kind: 'cam', lat: b.lat, lon: b.lon, limit: b.limit, user: true }; });
-    var uc = typeof allUcams === 'undefined' ? [] : allUcams().map(function (u) { return { id: u.id, kind: 'cam', lat: u.lat, lon: u.lon, limit: u.limit, user: true, mobile: u.mobile }; });
-    M.items = items.concat(typeof mobItems === 'undefined' || !mobItems ? [] : mobItems, uc, bi);
+    /* v69: vaste flitsers voor heel Nederland (OpenStreetMap-bestand), behalve waar de live kaart er al een heeft */
+    var ba = [];
+    if (typeof flBasis !== 'undefined' && flBasis && Array.isArray(flBasis.c)) flBasis.c.forEach(function (b, k) {
+      for (var j = 0; j < cams.length; j++) if (Math.abs(cams[j].lat - b[0]) < .001 && gdist(b[0], b[1], cams[j].lat, cams[j].lon) < 45) return;
+      ba.push({ id: 'nl' + k, kind: 'cam', lat: b[0], lon: b[1], limit: b[2] || null });
+    });
+    var vast = items.concat(ba);
+    /* groepsflitsers die al op de kaart staan vallen samen (geen dubbele waarschuwing) */
+    var uc = typeof allUcams === 'undefined' ? [] : allUcams().filter(function (u) {
+      if (u.mobile) return true;
+      for (var j = 0; j < vast.length; j++) if (vast[j].kind === 'cam' && Math.abs(vast[j].lat - u.lat) < .002 && gdist(u.lat, u.lon, vast[j].lat, vast[j].lon) < 70) return false;
+      return true;
+    }).map(function (u) { return { id: u.id, kind: 'cam', lat: u.lat, lon: u.lon, limit: u.limit, user: true, mobile: u.mobile }; });
+    M.items = vast.concat(typeof mobItems === 'undefined' || !mobItems ? [] : mobItems, uc, bi);
   }
   function aheadInfo(lat, lon, hdg, it) {
     if (hdg == null) return null;
@@ -2285,11 +2297,26 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   try { var rawC = JSON.parse(localStorage.getItem(CAMKEY)); if (rawC && rawC.cams && rawC.trajs) camCache = rawC; } catch (e) {}
   function showCamStat() {
     var el = $('camStat');
-    if (!camCache) { el.textContent = 'Flitsdata: nog niet geladen. Wordt opgehaald als de GPS aan staat.' + (camErr ? ' ' + camErr : ''); return; }
+    var nlTxt = typeof flBasis !== 'undefined' && flBasis && flBasis.c ? ' Plus ' + flBasis.c.length + ' vaste flitsers voor heel Nederland uit een vast bestand (© OpenStreetMap-bijdragers, versie ' + flBasis.versie + '), die werken ook zonder internet.' : '';
+    if (!camCache) { el.textContent = 'Flitsdata: live kaart nog niet geladen. Wordt opgehaald als de GPS aan staat.' + nlTxt + (camErr ? ' ' + (nlTxt ? camErr.replace('Laden mislukt: je krijgt nu geen flitsmeldingen.', 'Live kaart laden mislukt, de vaste flitsers voor heel Nederland werken wel.') : camErr) : ''); return; }
     var days = Math.floor((Date.now() - camCache.t) / 864e5);
-    el.textContent = 'Flitsdata: ' + camCache.cams.length + ' flitsers en ' + camCache.trajs.length + ' trajecten in de buurt (OpenStreetMap, ' + (days < 1 ? 'vandaag opgehaald' : days + ' dagen oud') + '). Onvolledig en soms verouderd, mobiele controles alleen via de gemelde lijst hieronder. Let altijd zelf op je snelheid.' + (camErr ? ' ' + camErr : '');
+    el.textContent = 'Flitsdata: ' + camCache.cams.length + ' flitsers en ' + camCache.trajs.length + ' trajecten in de buurt (OpenStreetMap, ' + (days < 1 ? 'vandaag opgehaald' : days + ' dagen oud') + ').' + nlTxt + ' Onvolledig en soms verouderd, mobiele controles alleen via de gemelde lijst hieronder. Let altijd zelf op je snelheid.' + (camErr ? ' ' + camErr : '');
   }
-  function applyCamData() { if (camCache) setMonitorData(mon, camCache.cams, camCache.trajs); showCamStat(); }
+  function applyCamData() { setMonitorData(mon, camCache ? camCache.cams : [], camCache ? camCache.trajs : []); showCamStat(); }
+  /* v69: vaste flitsers voor heel Nederland in één klein bestand (© OpenStreetMap-bijdragers, ODbL). Werkt ook als OpenStreetMap live niet bereikbaar is. */
+  var BASISKEY = 'dashboardmaatje-flitsbasis-v1', flBasis = null;
+  try { flBasis = JSON.parse(localStorage.getItem(BASISKEY)); } catch (e) { flBasis = null; }
+  function flBasisLaad() {
+    if (flBasis && Date.now() - (flBasis.t || 0) < 7 * 864e5) return;
+    var haal = function (u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }); };
+    haal('https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/snelheden/flitsers.json').catch(function () { return haal('data/flitsers-nl.json'); }).then(function (j) {
+      if (!j || !Array.isArray(j.c) || j.c.length < 100) throw new Error('leeg bestand');
+      flBasis = { t: Date.now(), versie: j.versie || '', bron: j.bron || '', c: j.c };
+      try { localStorage.setItem(BASISKEY, JSON.stringify(flBasis)); } catch (e) {}
+      lg('vaste flitsers NL: ' + j.c.length + ' (versie ' + flBasis.versie + ')'); applyCamData();
+    }).catch(function (e) { lg('FOUT vaste flitsers NL: ' + ((e && e.message) || e)); });
+  }
+  setTimeout(function () { flBasisLaad(); applyCamData(); }, 2500); setInterval(flBasisLaad, 6 * 3600e3);
   function gpsHelp(msg) { var el = $('gpsHelp'); el.textContent = msg; el.hidden = false; }
   function clearGpsHelp() { var el = $('gpsHelp'); el.hidden = true; el.textContent = ''; }
 
@@ -2474,7 +2501,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }).catch(function () {
       camTry++; camBack = Math.min(300, 15 * Math.pow(2, camTry - 1)); camFailT = T;
       lg('FOUT flitsdata laden mislukt (' + opLast + ') volgende poging over ' + camBack + ' s');
-      camErr = (camCache ? 'Verversen mislukt, de oude data blijft in gebruik.' : 'Laden mislukt: je krijgt nu geen flitsmeldingen.') + ' Laatste fout: ' + opLast + '. Ik probeer het steeds opnieuw.';
+      camErr = (camCache ? 'Verversen mislukt, de oude data blijft in gebruik.' : flBasis && flBasis.c ? 'Live kaart laden mislukt, de vaste flitsers voor heel Nederland werken wel.' : 'Laden mislukt: je krijgt nu geen flitsmeldingen.') + ' Laatste fout: ' + opLast + '. Ik probeer het steeds opnieuw.';
       showCamStat();
     }).then(function () { camLoading = false; });
   }
@@ -3878,7 +3905,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v68';
+  var VERSION = 'v69';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
