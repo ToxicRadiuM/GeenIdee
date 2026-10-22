@@ -2099,7 +2099,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (!hdgRef || gdist(hdgRef.lat, hdgRef.lon, c.latitude, c.longitude) >= 8) hdgRef = { lat: c.latitude, lon: c.longitude };
     if (S.liveT && T - S.liveT > 5) {  /* v66: Buddy was even weg (scherm uit, andere app): niet schrikken van de sprong in snelheid en richting */
       if (v !== null) { S.speed = v < 2 ? 0 : v; S.accel = 0; }
-      S.lastExc = S.lastStart = S.lastCorner = T; S.turn = 0; S.turnS = 0; prevHdgT = null; lastHdg = null; V.pakT = T; V.okNa = T + 3;
+      S.lastExc = S.lastStart = S.lastCorner = T; S.turn = 0; S.turnS = 0; prevHdgT = null; lastHdg = null; V.pakT = T; V.okNa = T + 3; gokV = null; hiLast = 0;
       lg('terug na ' + Math.round(T - S.liveT) + ' s zonder GPS');
     }
     lastPos = { t: pos.timestamp, lat: c.latitude, lon: c.longitude };
@@ -3236,6 +3236,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function wayLim(w) {
     if (w.c) { var d = new Date(), m = d.getHours() * 60 + d.getMinutes(), inn = w.c.a <= w.c.b ? (m >= w.c.a && m < w.c.b) : (m >= w.c.a || m < w.c.b); if (inn) return w.c.v; }
     if (w.mw && nightNL()) return 130;
+    /* v68: in Nederland geldt op snelwegen overdag (6–19 uur) overal 100. In de data staan stukken met 130 zonder tijden; die zijn overdag dus 100. */
+    if (w.lim >= 120 && !nightNL() && (!(gz && gz.land) || gz.land === 'NL')) return 100;
     return w.lim;
   }
   function nightNL() { var h = new Date().getHours(); return h >= 19 || h < 6; }
@@ -3247,7 +3249,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }
   /* Geen weg meer gevonden onder je? Dan na 45 s de oude limiet weg (vroeger 150 s: dan bleef bv. 50 staan terwijl je al lang op de snelweg reed).
      Een geschatte limiet laten we met rust: die regelt roadGuess zelf (anders werd hij elke seconde gewist en opnieuw geschat). */
-  function roadHold() { if (S.roadLim != null && !S.guessed && S.roadSrc !== 'matrix' && T - S.roadSeen > 45) { S.roadLim = null; S.roadEst = false; roadCand = null; S.roadWn = ''; } }
+  function roadHold() { if (S.roadLim != null && !S.guessed && S.roadSrc !== 'matrix' && T - S.roadSeen > 45 && S.speed > 5) { S.roadLim = null; S.roadEst = false; roadCand = null; S.roadWn = ''; } }
   /* Geen wegdata? Dan toch altijd een getal: een schatting uit je gemiddelde snelheid van de laatste halve minuut.
      Een schatting krijgt een gestippelde rand, telt niet mee voor "te hard" en wordt meteen vervangen zodra er echte data is. */
   var hiT = 0, loT = 0, hiLast = 0, gokV = null, gokBand = null, gokBandT = 0;
@@ -3876,7 +3878,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v67';
+  var VERSION = 'v68';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -3988,7 +3990,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     var ag = [+a.x, +a.y, +a.z], la = e.acceleration, rr0 = e.rotationRate, lin, gNu;
     V.rot = rr0 && rr0.alpha != null ? Math.sqrt(rr0.alpha * rr0.alpha + rr0.beta * rr0.beta + rr0.gamma * rr0.gamma) : 0;
     V.wieg = rr0 && rr0.alpha != null ? (Math.abs(rr0.beta) > Math.abs(rr0.gamma) ? rr0.beta : rr0.gamma) : 0;
-    if (la && la.x != null && isFinite(la.x)) { lin = [+la.x, +la.y, +la.z]; gNu = vm(ag, lin); }
+    if (la && la.x != null && isFinite(la.x)) {
+      var l0 = [+la.x, +la.y, +la.z], l0L = vl(l0);
+      /* Niet elke telefoon gebruikt hetzelfde plus/min-teken voor "versnelling" en "versnelling met zwaartekracht".
+         Welke combinatie klopt, zie je aan de zwaartekracht: die moet altijd ongeveer 9,8 zijn. */
+      if (l0L > .8 && (V.sgnN || 0) < 400) { V.sgnSom = (V.sgnSom || 0) + (Math.abs(vl([ag[0] + l0[0], ag[1] + l0[1], ag[2] + l0[2]]) - 9.81) - Math.abs(vl(vm(ag, l0)) - 9.81)); V.sgnN = (V.sgnN || 0) + 1; if (V.sgnN === 60) lg('voelen: sensor-teken ' + (V.sgnSom >= 0 ? 'gewoon' : 'omgekeerd')); }
+      var sgn = V.sgnN >= 60 && V.sgnSom < 0 ? -1 : 1;
+      lin = vs(l0, sgn); gNu = vm(ag, lin);
+    }
     else { V.gL = V.gL ? vm(V.gL, vs(vm(V.gL, ag), 1 - Math.exp(-dt / .6))) : ag; gNu = V.gL; lin = vm(ag, gNu); }
     V.g = V.g ? vm(V.g, vs(vm(V.g, gNu), 1 - Math.exp(-dt / .25))) : gNu;
     var gu = vn(V.g), linL = vl(lin), agL = vl(ag);
@@ -4004,7 +4013,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       }
     }
     /* --- vast in de houder of in je hand? --- */
-    if (V.rot < 18 && linL < 2.5) V.calmT += dt; else V.calmT = 0;
+    var rijdt = S.speed > 5;
+    if (V.rot < (rijdt ? 30 : 18) && linL < (rijdt ? 4 : 2.5)) V.calmT += dt; else V.calmT = 0;
     if (!V.gS) {
       if (V.calmT > 1) {
         V.gS = gu.slice(); var o = V.opgeslagen;
@@ -4013,10 +4023,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       }
     } else {
       var hk = vhoek(gu, V.gS);
-      if (!V.held && (V.rot > 70 || hk > 28)) { V.held = true; V.heldT0 = T; V.heldMsg = false; }
+      if (!V.held && ((V.rot > (rijdt ? 160 : 70) && hk > 12) || hk > 30)) { V.held = true; V.heldT0 = T; V.heldMsg = false; }
       if (V.held) {
         var duur = T - V.heldT0;
-        if (!V.heldMsg && duur > 2.5 && T - V.pakT > 40 && T - V.heldT0 < 20 && S.speed < 80 && !S.asleep) { V.heldMsg = true; V.pakT = T; setEv('startled', 2.4, pick(['Hé! Waar gaan we heen?', 'Wiee, ik zweef!', 'Zet je me straks terug in de houder?'])); beep('startled'); }
+        if (!V.heldMsg && duur > 2.5 && T - V.pakT > 40 && T - V.heldT0 < 20 && S.speed < 15 && !S.asleep) { V.heldMsg = true; V.pakT = T; setEv('startled', 2.4, pick(['Hé! Waar gaan we heen?', 'Wiee, ik zweef!', 'Zet je me straks terug in de houder?'])); beep('startled'); }
         if (V.calmT > 1.2) {  /* weer stil: opnieuw vastgezet (misschien gedraaid) */
           V.held = false; V.okNa = T + 2.5; V.lon = 0; V.lat = 0;
           var draai = vhoek(gu, V.gS);
@@ -4076,7 +4086,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }
   function voelReacties(dt, linL, agL, vert) {
     /* vallen: bijna geen zwaartekracht = vrije val */
-    if (agL < 2.5) { if (!V.valAan && T - V.valT > 5) { V.valAan = true; V.valT = T; V.valImpact = false; setEv('startled', 2, 'AAAAH!', true); beep('startled'); } }
+    if (agL < 2.5 && S.speed < 10) V.valDuur = (V.valDuur || 0) + dt; else V.valDuur = 0;
+    if (V.valDuur > .12) { if (!V.valAan && T - V.valT > 5) { V.valAan = true; V.valT = T; V.valImpact = false; setEv('startled', 2, 'AAAAH!', true); beep('startled'); } }
     if (V.valAan) {
       if (linL > 18) V.valImpact = true;
       if (T - V.valT > 1.2) { V.valAan = false; setEv(V.valImpact ? 'sad' : 'happy', 2.6, V.valImpact ? 'Au! Voorzichtig met me 🤕' : 'Pfff, gevangen!', true); }
@@ -4143,7 +4154,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     /* lange bocht: klaverblad of lange oprit */
     if (Math.abs(V.lat) > 2.5) V.bochtT += dt; else V.bochtT = Math.max(0, V.bochtT - dt * 2);
     if (V.bochtT > 3.5 && T - V.bochtCool > 90 && voelVrij()) { V.bochtCool = T; setEv('excited', 2.2, pick(['Wieee, wat een bocht!', 'Hangen in de bocht!', 'Rondje! Wiee!'])); }
-    if (V.bochtT > 7 && S.dizzyUntil < T) { S.dizzyUntil = T + 2.5; if (freeEv()) setEv('startled', 2.4, 'Klaverblad! Ik word draaierig 😵'); }
+    if (V.bochtT > 7 && S.dizzyUntil < T && T - (V.klaverT || -999) > 120) { V.klaverT = T; S.dizzyUntil = T + 2.5; if (freeEv()) setEv('startled', 2.4, 'Klaverblad! Ik word draaierig 😵'); }
     /* van rijstrook wisselen: even opzij en meteen terug */
     if (S.speed > 60 && Math.abs(S.turn) < 3) {
       if (!V.wisselA && Math.abs(V.lat) > 1.2) { V.wisselA = Math.sign(V.lat); V.wisselT = T; }

@@ -202,6 +202,8 @@ def tegels(bron, uit):
         a_lim = snelheid(alt)
         tb, te = minuten(bt), minuten(et)
         c = [lim, tb, te] if (a_lim and tb is not None and te is not None and tb != te) else None
+        if not c and lim >= 120:  # NL: op snelwegen overdag (6-19 uur) altijd 100, ook als de tijden in de data ontbreken
+            c = [100, 360, 1140]; a_lim = lim; lim = 100
         if c: tijd_n += 1
         basis = a_lim if c else lim
         rr, wn = richting(kr), wegnr(wnr)
