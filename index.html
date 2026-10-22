@@ -918,7 +918,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (!S.asleep) { setEv('yawn', 4, 'Je rijdt al ' + Math.floor(S.driveT / 60) + ' uur. Zin in een pauze?'); beep('sleep'); say('Je rijdt al ' + Math.floor(S.driveT / 60) + ' uur. Zin in een pauze?', true); }
     }
     /* smooth-driving score per trip */
-    if (S.speed >= 5) { if (!S.trip && S.live) ritStart(); S.trip = true; S.tripT += dt; if (S.live && S.ritStart && S.liveSpeed > S.ritStart.vmax) S.ritStart.vmax = S.liveSpeed; }
+    if (S.speed >= 5) { S.laatstRij = Date.now(); if (!S.trip && S.live) ritStart(); S.trip = true; S.tripT += dt; if (S.live && S.ritStart && S.liveSpeed > S.ritStart.vmax) S.ritStart.vmax = S.liveSpeed; }
     else if (S.trip && S.speed < 1 && S.stoppedT > (S.live ? 480 : 3)) {  /* live: pas een nieuwe rit na 8 min stilstaan, niet bij elk stoplicht */
       ritAfsluiten(S.live ? 120 : 15);
     }
@@ -1710,8 +1710,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     overlay(dt);
   }
 
-  var BRONKORT = { rws: 'RWS', kaart: 'KAART', type: 'WEGTYPE', matrix: 'MATRIX', gok: 'GESCHAT' };
-  var BRONLANG = { rws: 'Rijkswaterstaat (het officiële wegenbestand)', kaart: 'de kaart (OpenStreetMap, het bord dat daar staat)', type: 'het soort weg (geen bord op de kaart, dus een schatting)', matrix: 'het matrixbord boven de weg', gok: 'je eigen snelheid (geschat, geen wegdata)' };
+  var BRONKORT = { rws: 'RWS', kaart: 'KAART', type: 'WEGTYPE', matrix: 'MATRIX', gok: 'GESCHAT', werk: 'WERK' };
+  var BRONLANG = { rws: 'Rijkswaterstaat (het officiële wegenbestand)', kaart: 'de kaart (OpenStreetMap, het bord dat daar staat)', type: 'het soort weg (geen bord op de kaart, dus een schatting)', matrix: 'het matrixbord boven de weg', werk: 'een tijdelijke maximumsnelheid (werk aan de weg, NDW)', gok: 'je eigen snelheid (geschat, geen wegdata)' };
   function limBronToon() {
     var el = $('limBron'); if (!el) return;
     if (!S.live) { el.hidden = true; return; }
@@ -2097,8 +2097,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       prevHdgT = pos.timestamp; lastHdg = hdg;
     }
     if (!hdgRef || gdist(hdgRef.lat, hdgRef.lon, c.latitude, c.longitude) >= 8) hdgRef = { lat: c.latitude, lon: c.longitude };
+    if (S.liveT && T - S.liveT > 5) {  /* v66: Buddy was even weg (scherm uit, andere app): niet schrikken van de sprong in snelheid en richting */
+      if (v !== null) { S.speed = v < 2 ? 0 : v; S.accel = 0; }
+      S.lastExc = S.lastStart = S.lastCorner = T; S.turn = 0; S.turnS = 0; prevHdgT = null; lastHdg = null; V.pakT = T; V.okNa = T + 3;
+      lg('terug na ' + Math.round(T - S.liveT) + ' s zonder GPS');
+    }
     lastPos = { t: pos.timestamp, lat: c.latitude, lon: c.longitude };
-    S.liveT = T;
+    S.liveT = T; S.gpsWeg = false;
     clearGpsHelp();
     if (v !== null && c.accuracy < 60) S.liveSpeed = v < 2 ? 0 : v;
     if (v !== null) { try { launchFix(pos.timestamp, v, c.accuracy); } catch (e) {} }
@@ -3257,9 +3262,26 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (g !== gokBand) { gokBand = g; gokBandT = T; }
     else if (g !== S.roadLim && T - gokBandT > 12) { S.roadLim = g; lg('limiet geschat uit je snelheid: ' + g); }
   }
+  /* v66: rij je in een vak met een tijdelijke maximumsnelheid (NDW, bv. werk aan de weg)? Dan staat die ook op het bordje */
+  function werkLimStap(lat, lon) {
+    if (msHold || ndwHdg == null || typeof verkeerItems !== 'function') { if (S.roadSrc === 'werk' && msHold) S.werkT = 0; return; }
+    var cosl = Math.cos(lat * RAD), vond = null;
+    verkeerItems().forEach(function (it) {
+      if (it.k !== 'speed' || !it.lim || !it.pts || it.pts.length < 2) return;
+      for (var j = 0; j + 1 < it.pts.length; j++) {
+        var p = it.pts, ax = (p[j][1] - lon) * cosl * 111195, ay = (p[j][0] - lat) * 111195, bx = (p[j + 1][1] - lon) * cosl * 111195, by = (p[j + 1][0] - lat) * 111195, dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L)) : 0;
+        if (Math.hypot(ax + t * dx, ay + t * dy) < 30 && adiff((Math.atan2(dx, dy) / RAD + 360) % 360, ndwHdg) < 40) { if (!vond || it.lim < vond) vond = it.lim; break; }
+      }
+    });
+    if (vond) {
+      if (S.roadSrc !== 'werk' || S.roadLim !== vond) lg('tijdelijke limiet ' + vond + ' (NDW)');
+      S.werkT = T; S.roadLim = vond; S.roadEst = false; S.guessed = false; S.roadSrc = 'werk'; S.roadSeen = T;
+    } else if (S.roadSrc === 'werk' && T - (S.werkT || 0) > 5) { S.roadSrc = 'kaart'; roadCand = null; lg('tijdelijke limiet voorbij'); }
+  }
   function roadStep(lat, lon, acc) {
     if (!S.live) return;
     roadStep0(lat, lon, acc);
+    try { werkLimStap(lat, lon); } catch (e) {}
     if (msHold) {
       var cur = null; ms.items.forEach(function (g) { if (g.k === msHold.k) cur = g; });
       var msAf = lastPos ? gdist(lat, lon, msHold.lat, msHold.lon) : 0;
@@ -3854,7 +3876,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v65';
+  var VERSION = 'v66';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -3954,7 +3976,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }
   function schermHoek() { try { if (screen.orientation && screen.orientation.angle != null) return screen.orientation.angle; } catch (e) {} return +window.orientation || 0; }
   function naarScherm(v) { var a = schermHoek() * RAD; return [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)]; }  /* x rechts, y omhoog */
-  function voelOk() { return !!(V.f && V.conf >= .5 && !V.held && T - V.lastEv < 1); }
+  function voelOk() { return !!(V.f && V.conf >= .5 && !V.held && T - V.lastEv < 1 && T > (V.okNa || 0)); }
   function accLon() { return voelOk() ? V.lon : lv.a; }
   function voelVrij() { return freeEv() && !S.gag && !(S.cam && S.cam.dist <= 600); }
 
@@ -3994,9 +4016,9 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (!V.held && (V.rot > 70 || hk > 28)) { V.held = true; V.heldT0 = T; V.heldMsg = false; }
       if (V.held) {
         var duur = T - V.heldT0;
-        if (!V.heldMsg && duur > 2.5 && T - V.pakT > 40 && S.speed < 80 && !S.asleep) { V.heldMsg = true; V.pakT = T; setEv('startled', 2.4, pick(['Hé! Waar gaan we heen?', 'Wiee, ik zweef!', 'Zet je me straks terug in de houder?'])); beep('startled'); }
+        if (!V.heldMsg && duur > 2.5 && T - V.pakT > 40 && T - V.heldT0 < 20 && S.speed < 80 && !S.asleep) { V.heldMsg = true; V.pakT = T; setEv('startled', 2.4, pick(['Hé! Waar gaan we heen?', 'Wiee, ik zweef!', 'Zet je me straks terug in de houder?'])); beep('startled'); }
         if (V.calmT > 1.2) {  /* weer stil: opnieuw vastgezet (misschien gedraaid) */
-          V.held = false;
+          V.held = false; V.okNa = T + 2.5; V.lon = 0; V.lat = 0;
           var draai = vhoek(gu, V.gS);
           if (draai > 20 && V.f) { V.f = vn(vvlak(vdraai(V.gS, gu, V.f), gu)); V.F = vdraai(V.gS, gu, V.F); V.conf *= .85; lg('voelen: telefoon gedraaid (' + Math.round(draai) + '°), richting meegedraaid'); }
           V.gS = gu.slice(); voelScheef();
@@ -4071,13 +4093,19 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     if (V.held) {
       /* wiegen: rustig heen en weer in je hand */
-      if (Math.abs(V.wieg) > 15 && V.rot < 140) { var s1 = V.wieg > 0 ? 1 : -1; if (s1 !== V.wiegS) { V.wiegS = s1; V.wiegN++; V.wiegT = T; } }  /* heen en weer = draairichting wisselt steeds */
-      if (T - V.wiegT > 1.5) V.wiegN = 0;
-      if (V.wiegN >= 6 && T - V.wiegCool > 60 && S.speed < 3) { V.wiegCool = T; V.wiegN = 0; setEv('sleepy', 3, 'Ooh, wiegen… lekker 😴'); }
+      if (Math.abs(V.wieg) > 25 && V.rot < 140) {
+        var s1 = V.wieg > 0 ? 1 : -1;
+        if (s1 !== V.wiegS) {  /* heen en weer = draairichting wisselt steeds, en in een vast ritme */
+          var iv = T - V.wiegT; V.wiegS = s1; V.wiegT = T;
+          if (iv > .25 && iv < 1.1 && (!V.wiegIv || Math.abs(iv - V.wiegIv) < V.wiegIv * .35)) { V.wiegN++; V.wiegIv = V.wiegIv ? V.wiegIv * .7 + iv * .3 : iv; } else { V.wiegN = 0; V.wiegIv = iv > .25 && iv < 1.1 ? iv : 0; }
+        }
+      }
+      if (T - V.wiegT > 1.5) { V.wiegN = 0; V.wiegIv = 0; }
+      if (V.wiegN >= 8 && T - V.heldT0 > 3 && T - V.pakT > 10 && T - V.wiegCool > 60 && S.speed < 3) { V.wiegCool = T; V.wiegN = 0; setEv('sleepy', 3, 'Ooh, wiegen… lekker 😴'); }
       return;
     }
     /* kloppen op het dashboard of de houder: korte tikjes */
-    var stil = S.speed < 25;
+    var stil = S.speed < 3 && T > (V.okNa || 0);
     if (stil && linL > 2.6 && linL < 14 && T - lv.lastTouch > .6) { if (!V.spikeAan) { V.spikeAan = true; V.spikeT0 = T; V.spikes.push({ t: T, m: linL }); } else V.spikes[V.spikes.length - 1].m = Math.max(V.spikes[V.spikes.length - 1].m, linL); }
     else if (V.spikeAan && linL < 1.2) { V.spikeAan = false; if (T - V.spikeT0 > .12) V.spikes.pop(); /* te lang: geen tikje */ }
     if (V.spikes.length && !V.spikeAan && T - V.spikes[V.spikes.length - 1].t > .8) {
@@ -4183,7 +4211,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     var wasTunnel = S.tunnel;
     S.tunnel = S.speed > 40 && T - S.liveT > 10 && T - S.liveT < 90;
     if (S.tunnel && !wasTunnel) S.tunnelT0 = T;
-    if (T - S.liveT > (S.tunnel ? 90 : 10)) { S.liveSpeed = 0; setTag('GPS geen signaal'); }
+    if (T - S.liveT > (S.tunnel ? 90 : 10)) { S.liveSpeed = 0; setTag('GPS geen signaal'); if (!S.gpsWeg) { S.gpsWeg = true; S.speed = 0; S.accel = 0; S.lastStart = S.lastExc = T; } }  /* geen signaal is geen noodstop */
     if (T - lastClk > 1) {
       lastClk = T;
       var d = new Date();
@@ -4221,7 +4249,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     /* B. groen licht */
     if (S.speed < 1) lv.stopT += dt;
     else {
-      if (S.speed > 4 && lv.stopT >= 8 && lv.stopT < 180 && T - lv.lastGreen > 60 && freeEv()) { lv.lastGreen = T; setEv('excited', 2, 'Groen! Daar gaan we.'); }
+      if (S.speed > 4 && lv.stopT >= 8 && lv.stopT < 180 && T - lv.lastGreen > 60 && !lv.file && freeEv()) { lv.lastGreen = T; setEv('excited', 2, 'Groen! Daar gaan we.'); }
       if (S.speed > 4) lv.stopT = 0;
     }
     /* C. dag, rit en routes: alleen met echte GPS */
@@ -4264,7 +4292,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     /* F. batterij */
     if (lv.bat && S.live && T - lv.batT > 30) {
       lv.batT = T;
-      if (lv.batCh === false && lv.bat.charging && freeEv()) setEv('happy', 3, 'Lekker, stroom!');
+      if (lv.batCh === false && lv.bat.charging && freeEv() && T - (lv.stroomT || -9999) > 900) { lv.stroomT = T; setEv('happy', 3, S.speed > 5 ? 'Ah, de telefoon laadt weer.' : 'Lekker, stroom!'); }
       lv.batCh = lv.bat.charging;
       if (!lv.bat.charging && lv.bat.level <= .2 && T - lv.batWarn > 900 && freeEv()) { lv.batWarn = T; setEv('sleepy', 4, 'Ik ben moe… mijn telefoon heeft stroom nodig.'); }
     }
@@ -4921,7 +4949,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (!r0) return;
     var km = Math.max(0, (mem.kmLive || 0) - r0.km), min = Math.max(1, Math.round((S.tripT || 0) / 60)), /* echte rijtijd, zonder het stilstaan aan het eind */ netjes = Math.max(0, (mem.netjes || 0) - r0.netjes);
     if (km < 0.5) return;
-    var r = { t0: r0.t, t1: Date.now(), km: Math.round(km * 10) / 10, min: min, stijl: Math.round(sc), netjes: netjes, vmax: Math.round(r0.vmax || 0), sec: Math.round(S.tripT || 0) };
+    var r = { t0: r0.t, t1: Math.min(Date.now(), (S.laatstRij || Date.now()) + 60e3), km: Math.round(km * 10) / 10, min: min, stijl: Math.round(sc), netjes: netjes, vmax: Math.round(r0.vmax || 0), sec: Math.round(S.tripT || 0) };
     if (r0.nul) { r.nul = Math.round(r0.nul * 10) / 10; r.nt = r0.nulTelt ? 1 : 0; if (!r0.nulTelt) r.nw = r0.nulWaarom; }
     if (V.ritVoel) { r.g = Math.round(V.gmax * 100) / 100; r.sch = V.harsh; }
     try { ritPtsBewaar(r, r0); } catch (e) {}
@@ -5524,6 +5552,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   /* Kom je terug in Buddy en staat de GPS onverwacht uit (bijvoorbeeld na een foutje)? Dan weer aan. Het scherm-aan-slot opnieuw vragen. */
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible') return;
+    V.pakT = T; V.okNa = T + 3; V.wiegN = 0;  /* net terug in Buddy: hij weet nog niet of je hem vasthoudt */
     if (S.live) lockScreen(); else if (autoGps && !gpsUitGezet) autoGpsStart();
   });
   setInterval(function () {
@@ -5667,7 +5696,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 
 
   /* ---------- Gezichtsuitdrukkingen (zoals een Dasai Mochi) ---------- */
-  var eyeCol = EYE, tapT = [], sadDone = false, nextClock = 0, mxT = 0, angT = 0, nervT = 0, angCool = 0, nervCool = 0;
+  var eyeCol = EYE, tapT = [], sadDone = false, nextClock = 0, mxT = 0, angT = 0, nervT = 0, angCool = 0, nervCool = 0, nervOver = 0, netjesT = 0;
   P.sad = { open: .8, lid: .3, tilt: -.9, squint: 0, scale: 1, mouth: -.9, mo: 0, blush: 0 };
   P.angry = { open: .85, lid: .3, tilt: 1, squint: 0, scale: 1.02, mouth: -.8, mo: 0, blush: .25 };
   P.laugh = { open: .3, lid: 0, tilt: 0, squint: .9, scale: 1, mouth: 1, mo: .8, blush: .7 };
@@ -5894,8 +5923,9 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     var cam = S.cam && S.cam.dist <= 600 && S.cam.limit != null, lim = cam ? S.cam.limit : (S.roadEst ? null : S.roadLim), over = lim != null ? S.speed - lim : 0;
     if (over >= 15) { angT += dtx; nervT = 0; } else if (over >= 5) { nervT += dtx; angT = Math.max(0, angT - dtx); } else { angT = 0; nervT = 0; }
-    if (angT > 6 && T > angCool && !S.asleep) { angT = 0; angCool = T + 45; setEv('angry', 3.5, 'Hé! Dat is veel te hard. Gas eraf!'); beep('angry'); }
-    if (nervT > 5 && T > nervCool && !S.asleep) { nervT = 0; nervCool = T + 40; S.nervUntil = T + 4; setEv('worried', 3, 'Oei, we gaan net iets te hard.'); }
+    if (over < 3) { netjesT += dtx; if (netjesT > 30 && nervCool > T + 30) nervCool = T + 30; } else netjesT = 0;  /* weer netjes gereden: een nieuwe keer mag sneller gemeld worden */
+    if (angT > 6 && T > angCool && !S.asleep) { angT = 0; angCool = T + 120; setEv('angry', 3.5, 'Hé! Dat is veel te hard. Gas eraf!'); beep('angry'); }
+    if (nervT > 5 && (T > nervCool || (over >= nervOver + 5 && T > nervCool - 150)) && !S.asleep) { nervT = 0; nervCool = T + 180; nervOver = over; S.nervUntil = T + 4; setEv('worried', 3, pick(['Oei, we gaan net iets te hard.', 'Iets te snel, hè.', 'Voetje van het gas?'])); }
   }
   /* Alle animaties testen. Rij-animaties krijgen een nep-snelheid, stilstaan-animaties zetten de snelheid op 0. Alleen met de GPS uit (of stilstaand). */
   (function () {
