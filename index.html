@@ -1166,7 +1166,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   /* 0 naar 80: alleen voor het leaderboard (echte rit, op een weg waar 80 of harder mag) */
   /* Telt een sprint voor het leaderboard? Ja, tenzij Buddy ZEKER weet dat je op een weg rijdt waar het langzamer moet.
      (Onbekend of geschat telt dus wel. Een 0-100 op een weg waar zeker 50 geldt niet: dat zou te hard rijden belonen.) */
-  function sprintTelt(tot) { return !(S.roadLim != null && !S.guessed && !S.roadEst && S.roadLim < tot); }
+  function sprintTelt(tot) { return true; }  /* v67: elke sprint vanaf stilstand telt mee (op verzoek), ook waar de limiet lager is */
   function tachtigDone(tt) {
     if (tt > 9 || tt < 2.5 || S.asleep || !S.live) return;
     var magHier = sprintTelt(80);
@@ -1718,7 +1718,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     el.hidden = false;
     if (S.roadLim == null) { el.textContent = 'Limiet: nog even zoeken…'; return; }
     var telt100 = sprintTelt(100), telt80 = sprintTelt(80);
-    el.textContent = 'Limiet ' + S.roadLim + ' km/h, volgens ' + (BRONLANG[S.roadSrc] || 'onbekende bron') + '. Leaderboard: 0–100 telt hier ' + (telt100 ? 'wel' : 'niet') + ', 0–80 ' + (telt80 ? 'wel' : 'niet') + '.';
+    el.textContent = 'Limiet ' + S.roadLim + ' km/h, volgens ' + (BRONLANG[S.roadSrc] || 'onbekende bron') + '. Sprints vanaf stilstand (0–80 en 0–100) tellen altijd mee voor het leaderboard.';
   }
   setInterval(limBronToon, 1000);
   function sign(v, est) {
@@ -3876,7 +3876,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v66';
+  var VERSION = 'v67';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -4521,8 +4521,16 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       .then(function (r) { return r.json(); }).then(function (j) { var d = j && j.response && j.response.docs && j.response.docs[0]; return d && d.woonplaatsnaam ? String(d.woonplaatsnaam).slice(0, 30) : ''; })
       .catch(function () { return ''; });
   }
+  function gMeldTekst(c) { return (c.n || 'Een collega') + ' meldde ' + (c.k === 'mobile' ? 'een mobiele flitser' : 'een vaste flitser') + (c.p ? ' bij ' + c.p : ''); }
   function gAnnounce() {
     var first = gFirst, fresh = null; gFirst = false;
+    /* v67: alle flitsers die collega's de laatste 24 uur meldden komen in "Laatste berichten" */
+    gcams.forEach(function (c) {
+      if (!c.t || Date.now() - c.t > 24 * 3600e3 || !c.n) return;
+      for (var i = 0; i < ucams.length; i++) if (ucams[i].id === c.id) return;
+      if (c.n === myWho()) return;
+      grLijstAdd('in', '📸 ' + gMeldTekst(c), c.t, 'cam:' + c.id);
+    });
     gcams.forEach(function (c) {
       if (gSeen[c.id]) return; gSeen[c.id] = 1;
       if (first) return;
@@ -4534,6 +4542,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     var c = fresh, who = c.n || 'Een collega', what = c.k === 'mobile' ? 'een mobiele flitser' : 'een vaste flitser';
     var m = who + ' heeft ' + what + ' gemeld' + (c.p ? ' bij ' + c.p : '') + '!';
     beep('excited'); setEv('excited', 5, m); toast(m); lg('groepsmelding: ' + m);
+    try { grInRondje({ s: 'flits', n: c.n, p: c.p }); } catch (e) {}
   }
   function addUcam(kind, fromCar) {
     if (!S.live || !lastPos) { toast('Zet eerst de telefoon-GPS aan en rij erlangs.'); return false; }
@@ -4544,6 +4553,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (grp && pbase()) {
       gSeen[u.id] = 1; mem.gemeld = (mem.gemeld || 0) + 1; wk().gemeld++; save();
       placeOf(u.lat, u.lon).then(function (pl) {
+        try { grLijstAdd('uit', '📸 Jij meldde ' + (kind === 'mobile' ? 'een mobiele flitser' : 'een vaste flitser') + (pl ? ' bij ' + pl : ''), u.t, 'cam:' + u.id); } catch (e) {}
         return fetch(gUrl('/add', '&id=' + u.id + '&lat=' + u.lat.toFixed(6) + '&lon=' + u.lon.toFixed(6) + '&k=' + kind + (u.limit != null ? '&lim=' + u.limit : '') + '&n=' + encodeURIComponent(myWho()) + '&p=' + encodeURIComponent(pl)));
       }).then(function () { gPull(); }).catch(function () { lg('FOUT groep delen'); });
     }
@@ -4665,8 +4675,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   /* Lijstje "Laatste berichten": wat jij stuurde en wat er binnenkwam */
   var GRLIJSTKEY = 'dashboardmaatje-grlijst-v1', grLijst = [];
   try { grLijst = JSON.parse(localStorage.getItem(GRLIJSTKEY)) || []; } catch (e) { grLijst = []; }
-  function grLijstAdd(richting, tekst) {
-    grLijst.unshift({ r: richting, t: Date.now(), x: String(tekst).slice(0, 120) }); if (grLijst.length > 15) grLijst.length = 15;
+  function grLijstAdd(richting, tekst, t, id) {
+    if (id && grLijst.some(function (x) { return x.id === id; })) return;
+    var it = { r: richting, t: t || Date.now(), x: String(tekst).slice(0, 120) }; if (id) it.id = id;
+    grLijst.push(it); grLijst.sort(function (a, b) { return b.t - a.t; }); if (grLijst.length > 30) grLijst.length = 30;
     try { localStorage.setItem(GRLIJSTKEY, JSON.stringify(grLijst)); } catch (e) {} grLijstToon();
   }
   function grLijstToon() {
@@ -4690,11 +4702,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }
   /* v65: een groepsbericht ook IN het rondje laten zien (icoon + naam), niet alleen in de tekst eronder */
   var GRNOTE = { zwaai: ['👋', 'zwaait'], koffie: ['☕', 'koffie?'], koffieJa: ['☕', 'ja, koffie!'], koffieStraks: ['☕', 'straks'], file: ['🚗', 'meldt file'], pech: ['⚠️', 'staat stil'],
-    hart: ['❤️', 'hartjes'], thuis: ['🏁', 'bijna thuis'], mijlpaal: ['🏆', 'km'], feli: ['🎉', 'feliciteert je'], test: ['🧪', 'test'], buur: ['📍', 'vlakbij'] };
+    hart: ['❤️', 'hartjes'], flits: ['📸', 'meldt flitser'], thuis: ['🏁', 'bijna thuis'], mijlpaal: ['🏆', 'km'], feli: ['🎉', 'feliciteert je'], test: ['🧪', 'test'], buur: ['📍', 'vlakbij'] };
   function grInRondje(b, sub) {
     var d = GRNOTE[b.s] || ['💬', 'bericht'], t = sub || d[1];
     if (b.s === 'mijlpaal') t = (b.w || 0) + ' km!';
-    if ((b.s === 'file' || b.s === 'pech') && b.p) t += ' · ' + b.p;
+    if ((b.s === 'file' || b.s === 'pech' || b.s === 'flits') && b.p) t += ' · ' + b.p;
     S.grNote = { i: d[0], n: String(b.n || 'Collega').slice(0, 14), t: t.slice(0, 26), t0: T, dur: b.s === 'pech' ? 8 : 6.5 };
   }
   function grNoteDraw() {
@@ -4817,8 +4829,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     km: { naam: 'Km met Buddy', w: function (l) { return l.km || 0; }, f: function (l) { return (l.km || 0) + ' km'; } },
     netjes: { naam: 'Netjes langs flitsers', w: function (l) { return l.netjes || 0; }, f: function (l) { return (l.netjes || 0) + '×'; } },
     gemeld: { naam: 'Meldingen voor de groep', w: function (l) { return l.gemeld || 0; }, f: function (l) { return (l.gemeld || 0) + '×'; } },
-    tachtig: { naam: '0–80 (alleen op wegen waar 80 of harder mag)', w: function (l) { return l.tachtig ? -l.tachtig : -1e9; }, f: function (l) { return l.tachtig ? (l.tachtig / 10).toFixed(1).replace('.', ',') + ' s' : 'nog geen tijd'; } },
-    nul: { naam: '0–100 (alleen op wegen waar 100 of harder mag)', w: function (l) { return l.nul ? -l.nul : -1e9; }, f: function (l) { return l.nul ? (l.nul / 10).toFixed(1).replace('.', ',') + ' s' : 'nog geen tijd'; } },
+    tachtig: { naam: '0–80 (vanaf stilstand)', w: function (l) { return l.tachtig ? -l.tachtig : -1e9; }, f: function (l) { return l.tachtig ? (l.tachtig / 10).toFixed(1).replace('.', ',') + ' s' : 'nog geen tijd'; } },
+    nul: { naam: '0–100 (vanaf stilstand)', w: function (l) { return l.nul ? -l.nul : -1e9; }, f: function (l) { return l.nul ? (l.nul / 10).toFixed(1).replace('.', ',') + ' s' : 'nog geen tijd'; } },
     stijl: { naam: 'Rijstijl', w: function (l) { return (l.ritten || 0) >= 3 ? l.stijl || 0 : -1; }, f: function (l) { return (l.ritten || 0) >= 3 ? (l.stijl || 0) + '/100' : 'nog te weinig ritten'; } } };
   function bordToon(fout) {
     var ol = $('bordLijst'), st = $('bordStat'); if (!ol) return;
