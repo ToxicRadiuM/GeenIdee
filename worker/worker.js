@@ -252,7 +252,8 @@ function leesAnwbVerkeer(j, nu) {
           let k = null;
           // Alleen voor vrachtverkeer/bussen? Dan niet relevant voor een personenauto.
           if (/vrachtwagen|vrachtverkeer|zware voertuigen|autobussen/.test(alles) && !/ongeluk|stilstaand|langzaam/.test(alles)) continue;
-          if (/ongeluk/.test(alles)) k = 'accident';
+          if (/spookrijder/.test(alles)) k = 'spook';
+          else if (/ongeluk/.test(alles)) k = 'accident';
           else if (type === 'road-closed') k = /op- en afrit|oprit|afrit|verbindingsweg/.test(alles) ? 'ramp' : 'closure';
           else if (type === 'stationary-traffic' || type === 'slow-traffic' || type === 'queuing-traffic') k = 'jam';
           else if (type === 'roadworks' || cat === 'roadworks') k = 'lane';
@@ -581,6 +582,9 @@ async function groep(url, env, g, json) {
   const tachtig = getal(q('tachtig'), 1000); lid.tachtig = tachtig >= 25 && tachtig <= 90 ? tachtig : 0; // 0-80, idem
   // Weekchallenge: waarde van deze week; bij een nieuwe week schuift de oude door naar 'vorige' (voor de winnaar)
   const oud = leden.find((x) => x && x.van === van);
+  // Soepelste rijder van de week (0-100, gemeten met de bewegingssensor)
+  const zw = getal(q('zw'), 1e5), zv = getal(q('zv'), 100);
+  if (zw && zv) lid.zacht = { w: zw, v: zv }; else if (oud && oud.zacht) lid.zacht = oud.zacht;
   const ww = getal(q('ww'), 1e5), wv = getal(q('wv'), 1e6);
   if (ww) {
     lid.week = { w: ww, v: wv };
@@ -664,7 +668,7 @@ async function osm(url, env, ctx, cors) {
   if (!(lat > 49 && lat < 55.5 && lon > 1.5 && lon < 10)) return fout('lat/lon ontbreekt of ligt buiten het gebied', 400);
 
   const ty = Math.floor(lat / vak.dLat), tx = Math.floor(lon / vak.dLon);
-  const sleutel = 'osm:v1:' + soort + ':' + ty + ':' + tx;
+  const sleutel = 'osm:v2:' + soort + ':' + ty + ':' + tx; // v2: ook losse punten met enforcement=maxspeed
   const klaar = (tekst, bron) => new Response(tekst, { headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Buddy-Bron': bron, 'Access-Control-Expose-Headers': 'X-Buddy-Bron' } });
 
   // 1. Al bewaard en nog vers?
@@ -684,7 +688,7 @@ async function osm(url, env, ctx, cors) {
     ? '[out:json][timeout:20];(node["amenity"="charging_station"](' + bb + ');way["amenity"="charging_station"](' + bb + '););out center tags;'
     : soort === 'werk'
     ? '[out:json][timeout:25];(way["highway"="construction"](' + bb + ');way["construction:highway"](' + bb + ');node["highway"="construction"](' + bb + ');way["highway"]["construction"](' + bb + '););out center tags 400;'
-    : '[out:json][timeout:25];node["highway"="speed_camera"](' + bb + ')->.c;rel["type"="enforcement"]["enforcement"~"^(maxspeed|average_speed)$"](' + bb + ')->.r;node(r.r)->.m;(.c;.m;.r;);out body;';
+    : '[out:json][timeout:25];node["highway"="speed_camera"](' + bb + ')->.c;node["enforcement"="maxspeed"](' + bb + ')->.e;rel["type"="enforcement"]["enforcement"~"^(maxspeed|average_speed)$"](' + bb + ')->.r;node(r.r)->.m;(.c;.e;.m;.r;);out body;';
   try {
     const tekst = await osmVraag(query);
     if (env.FLITS) ctx.waitUntil(env.FLITS.put(sleutel, tekst, { metadata: { t: Date.now() } }).catch(() => {}));

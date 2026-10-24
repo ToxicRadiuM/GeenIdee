@@ -35,9 +35,9 @@ def lees_csv(pad):
 def lees_osm():
     """Flitspalen en trajectcontroles uit OpenStreetMap. Palen die bij een trajectcontrole horen (camera's boven de weg) zijn geen losse flitser."""
     q = ('[out:json][timeout:240];area["ISO3166-1"="NL"][admin_level=2]->.nl;'
-         'node["highway"="speed_camera"](area.nl)->.c;'
+         'node["highway"="speed_camera"](area.nl)->.c;node["enforcement"="maxspeed"](area.nl)->.e;'
          'rel["type"="enforcement"]["enforcement"~"^(maxspeed|average_speed)$"](area.nl)->.r;'
-         'node(r.r)->.m;(.c;.m;.r;);out body;')
+         'node(r.r)->.m;(.c;.e;.m;.r;);out body;')
     for srv in ('https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'):
         try:
             req = urllib.request.Request(srv, data=urllib.parse.urlencode({'data': q}).encode(), headers={'User-Agent': 'Buddy-dashboardrobot/1.0'})
@@ -69,13 +69,34 @@ def lees_osm():
         out = list(extra)
         for e in nodes.values():
             tg = e.get('tags') or {}
-            if e['id'] in gebruikt or tg.get('highway') != 'speed_camera': continue
+            if e['id'] in gebruikt or (tg.get('highway') != 'speed_camera' and tg.get('enforcement') != 'maxspeed'): continue
             rl = 1 if 'red' in ' '.join(str(tg.get(k, '')) for k in ('enforcement', 'camera:type', 'speed_camera', 'traffic_signals')) else 0
             out.append((e['lat'], e['lon'], limiet(tg.get('maxspeed')) or 0, rl))
         if len(out) > 300:
             print(f'OpenStreetMap: {len(out)} palen, {len(trajecten)} trajectcontroles', file=sys.stderr)
             return out, trajecten
     raise SystemExit('OpenStreetMap niet bereikbaar')
+
+
+def lees_pauze():
+    """Verzorgingsplaatsen en parkeerplaatsen langs de snelweg (voor de pauzetip). Mag mislukken."""
+    q = ('[out:json][timeout:120];area["ISO3166-1"="NL"][admin_level=2]->.nl;'
+         'nwr["highway"~"^(services|rest_area)$"](area.nl);out center tags;')
+    for srv in ('https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'):
+        try:
+            req = urllib.request.Request(srv, data=urllib.parse.urlencode({'data': q}).encode(), headers={'User-Agent': 'Buddy-dashboardrobot/1.0'})
+            j = json.load(urllib.request.urlopen(req, timeout=180))
+            out = []
+            for e in j.get('elements', []):
+                la = e.get('lat') or (e.get('center') or {}).get('lat'); lo = e.get('lon') or (e.get('center') or {}).get('lon')
+                if la is None or lo is None: continue
+                tg = e.get('tags') or {}
+                out.append([round(la, 5), round(lo, 5), (tg.get('name') or '')[:40], 0 if tg.get('highway') == 'services' else 1])
+            if len(out) > 50:
+                return out
+        except Exception as ex:
+            print('overpass pauze', srv, ex, file=sys.stderr)
+    return []
 
 
 def limiet(v):
@@ -109,7 +130,7 @@ if __name__ == '__main__':
         pt, tr = lees_osm()
     c = samenvoegen(pt)
     json.dump({'versie': time.strftime('%d-%m-%Y'), 'bron': '© OpenStreetMap-bijdragers (ODbL)' + (' via speedcams.world' if soort == 'csv' else ''),
-               'n': len(c), 'c': c, 't': tr}, open(doel, 'w'), separators=(',', ':'))
+               'n': len(c), 'c': c, 't': tr, 'p': lees_pauze() if soort == 'osm' else []}, open(doel, 'w'), separators=(',', ':'))
     print(f'{len(pt)} punten -> {len(c)} flitsers, {len(tr)} trajectcontroles in {doel}')
     for t in tr:
         print('  traject', t)
