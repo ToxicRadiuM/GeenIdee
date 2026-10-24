@@ -1,0 +1,245 @@
+{
+ "diagnose": {
+  "laag": "Snelheden",
+  "kolommen": [
+   "id",
+   "geom",
+   "WVK_ID",
+   "WVK_BEGDAT",
+   "NWB_VERSIE",
+   "PVE_CODE",
+   "GME_ID",
+   "GME_NAAM",
+   "WPSNAAM",
+   "STT_NAAM",
+   "WEGNUMMER",
+   "WEGBEHSRT",
+   "WEGBEHCODE",
+   "WEGBEHNAAM",
+   "LENGTE",
+   "BST_CODE",
+   "MAXSHD",
+   "DAT_MAXSHD",
+   "BEGINTIJD",
+   "EINDTIJD",
+   "MAXSHD_ALT",
+   "VAN",
+   "NAAR",
+   "MAXSHD_STR",
+   "MAXSHD_ADV",
+   "KENM_RICHT",
+   "FK_VELD1",
+   "BETRWBHEID"
+  ],
+  "MAXSHD": [
+   [
+    "30",
+    790966
+   ],
+   [
+    "NVT",
+    367069
+   ],
+   [
+    "50",
+    241305
+   ],
+   [
+    "60",
+    164513
+   ],
+   [
+    "80",
+    56545
+   ],
+   [
+    "15",
+    34866
+   ],
+   [
+    "100",
+    14204
+   ],
+   [
+    "NOA",
+    10431
+   ],
+   [
+    "70",
+    6551
+   ],
+   [
+    "130",
+    2755
+   ],
+   [
+    "5",
+    506
+   ],
+   [
+    "90",
+    234
+   ]
+  ],
+  "MAXSHD_ALT": [
+   [
+    "None",
+    1683596
+   ],
+   [
+    "130",
+    4625
+   ],
+   [
+    "120",
+    1947
+   ]
+  ],
+  "BEGINTIJD": [
+   [
+    "None",
+    1683596
+   ],
+   [
+    "6",
+    6572
+   ]
+  ],
+  "EINDTIJD": [
+   [
+    "None",
+    1683596
+   ],
+   [
+    "19",
+    6572
+   ]
+  ],
+  "KENM_RICHT": [
+   [
+    "B",
+    1520448
+   ],
+   [
+    "H",
+    169448
+   ],
+   [
+    "T",
+    272
+   ]
+  ],
+  "VAN": [
+   [
+    "0",
+    1667201
+   ],
+   [
+    "12",
+    252
+   ],
+   [
+    "14",
+    238
+   ],
+   [
+    "13",
+    233
+   ],
+   [
+    "16",
+    230
+   ],
+   [
+    "15",
+    230
+   ],
+   [
+    "10",
+    229
+   ],
+   [
+    "11",
+    226
+   ],
+   [
+    "9",
+    226
+   ],
+   [
+    "17",
+    206
+   ],
+   [
+    "20",
+    198
+   ],
+   [
+    "19",
+    195
+   ]
+  ],
+  "NAAR": [
+   [
+    "9",
+    33874
+   ],
+   [
+    "8",
+    31952
+   ],
+   [
+    "10",
+    31148
+   ],
+   [
+    "7",
+    29020
+   ],
+   [
+    "11",
+    26881
+   ],
+   [
+    "12",
+    24618
+   ],
+   [
+    "6",
+    23136
+   ],
+   [
+    "13",
+    22535
+   ],
+   [
+    "14",
+    21991
+   ],
+   [
+    "15",
+    21761
+   ],
+   [
+    "16",
+    20987
+   ],
+   [
+    "17",
+    19450
+   ]
+  ]
+ },
+ "tijdafhankelijk": 9327,
+ "versie": "01-10-2026",
+ "tegels": 3600,
+ "wegvakken": 1312656,
+ "gemaakt": "2026-10-24 03:54",
+ "vak": {
+  "dLat": 0.03,
+  "dLon": 0.05,
+  "padLat": 0.006,
+  "padLon": 0.009
+ },
+ "bron": "Rijkswaterstaat, Wegkenmerkendatabase: Maximum snelheden (https://downloads.rijkswaterstaatdata.nl/wkd/geogegevens/Geopackage/Maximum%20Snelheden/)"
+}
