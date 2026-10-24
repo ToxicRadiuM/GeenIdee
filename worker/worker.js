@@ -16,6 +16,7 @@ export default {
     if (origin && origin !== TOEGESTAAN) return new Response('Niet toegestaan', { status: 403, headers: cors });
 
     const url = new URL(request.url);
+    if (url.pathname === '/log' || url.pathname === '/logs') return logboek(request, url, env, cors);
     if (request.method !== 'GET' && url.pathname !== '/backup') return new Response('Alleen GET', { status: 405, headers: cors });
     if (url.pathname.startsWith('/cams')) return cams(url, env, cors);
     if (url.pathname === '/flitsers') return flitsers(env, ctx, cors);
@@ -738,4 +739,43 @@ function osmVraag(query) {
     };
     volgende();
   });
+}
+
+
+// ---------------------------------------------------------------------------
+// /log  (POST, vanuit Buddy): nieuwe logregels van één telefoon, per dag bewaard (14 dagen), in de KV-opslag FLITS.
+// /logs (GET, alleen met de geheime sleutel LOG_KEY): alle logs van vandaag en gisteren, voor de privé GitHub-repo buddy-logs.
+// LOG_KEY zet je in Cloudflare bij de Worker: Settings > Variables and Secrets > Add > type Secret, naam LOG_KEY.
+// ---------------------------------------------------------------------------
+async function logboek(request, url, env, cors) {
+  const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
+  if (!env.FLITS) return json({ error: 'KV-opslag FLITS ontbreekt.' }, 501);
+  const dagVan = (t) => new Date(t + 2 * 3600e3).toISOString().slice(0, 10); // ongeveer Nederlandse datum
+  if (url.pathname === '/log') {
+    if (request.method !== 'POST') return json({ error: 'Alleen POST' }, 405);
+    const id = (url.searchParams.get('id') || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
+    const naam = (url.searchParams.get('n') || '').replace(/[^A-Za-zÀ-ſ \-]/g, '').trim().slice(0, 20) || 'onbekend';
+    if (!id) return json({ error: 'id ontbreekt' }, 400);
+    let tekst = (await request.text()).slice(0, 60000);
+    if (!tekst.trim()) return json({ ok: true, leeg: true });
+    const key = 'log:' + dagVan(Date.now()) + ':' + id;
+    let oud = '';
+    try { oud = (await env.FLITS.get(key)) || ''; } catch (e) {}
+    let nieuw = oud + (oud && !oud.endsWith('\n') ? '\n' : '') + tekst;
+    if (nieuw.length > 400000) nieuw = nieuw.slice(-400000); // hooguit ~400 kB per telefoon per dag
+    await env.FLITS.put(key, nieuw, { expirationTtl: 14 * 86400, metadata: { n: naam, t: Date.now() } });
+    return json({ ok: true, bytes: nieuw.length });
+  }
+  // /logs
+  if (!env.LOG_KEY || url.searchParams.get('key') !== env.LOG_KEY) return json({ error: 'Geen toegang' }, 403);
+  const dagen = [dagVan(Date.now()), dagVan(Date.now() - 864e5)];
+  const uit = [];
+  for (const d of dagen) {
+    const lijst = await env.FLITS.list({ prefix: 'log:' + d + ':' });
+    for (const k of lijst.keys) {
+      const tekst = await env.FLITS.get(k.name);
+      if (tekst) uit.push({ datum: d, id: k.name.split(':')[2], naam: (k.metadata && k.metadata.n) || 'onbekend', tekst });
+    }
+  }
+  return json({ ok: true, logs: uit });
 }

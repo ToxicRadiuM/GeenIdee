@@ -617,6 +617,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="sub">Testlog</p>
       <div class="btns">
       <button class="btn" id="bLog" type="button">Kopieer testlog</button>
+      <div class="switchrow" style="grid-column:1/-1"><input type="checkbox" id="logUpIn" checked><label for="logUpIn">Mijn logboek automatisch naar Ricardo sturen (privé, alleen om fouten op te lossen; geen precieze locaties)</label></div>
       <button class="btn" id="bLogClear" type="button">Log wissen</button>
       </div>
       <p class="foot" id="logInfo">De testlog bewaart wat er onderweg gebeurt (snelheid, limiet, meldingen, fouten), zonder je locatie. Kopieer hem na de rit en stuur hem naar Claude.</p>
@@ -3981,7 +3982,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v71';
+  var VERSION = 'v72';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5099,7 +5100,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     toast(m); lg('rit: ' + JSON.stringify(r)); ritToon(); ritKaart(r); routeOverzicht();
     if (typeof grLid === 'function') grLid(true);
     if (V.ritVoel && r.min >= 10 && !V.harsh) queueCheer('Geen enkele schok deze rit. Wat een zen-rit 🧘');
-    setTimeout(function () { maakBackup('rit'); }, 3000); /* na elke rit een back-up */
+    setTimeout(function () { maakBackup('rit'); try { logStuur(false); } catch (e) {} }, 3000); /* na elke rit een back-up */
     return r;
   }
   /* Kaartje na een rit, groot genoeg voor de autostand. Verdwijnt vanzelf als je weer gaat rijden. */
@@ -5832,6 +5833,31 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     for (var i = 0; i < 3; i++) { ctx.fillStyle = EYE; ctx.globalAlpha = i === rond.pagina ? .9 : .25; ctx.beginPath(); ctx.arc(108 + i * 12, 232, 2.6, 0, TAU); ctx.fill(); }
     ctx.globalAlpha = 1;
   }
+
+  /* ---------- v72: logboek automatisch naar Ricardo (privé), voor foutzoeken ---------- */
+  var LOGUPKEY = 'dashboardmaatje-logup-v1', logUp = { aan: true, tot: 0, gemeld: false };
+  try { var lu0 = JSON.parse(localStorage.getItem(LOGUPKEY)); if (lu0) { logUp.aan = lu0.aan !== false; logUp.tot = +lu0.tot || 0; logUp.gemeld = !!lu0.gemeld; } } catch (e) {}
+  function logUpBewaar() { try { localStorage.setItem(LOGUPKEY, JSON.stringify(logUp)); } catch (e) {} }
+  function logUpTekst() {
+    var nieuw = logs.filter(function (x) { return x.t > logUp.tot; }); if (!nieuw.length) return null;
+    var f = function (t) { var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); };
+    var kop = '--- ' + VERSION + ' · ' + ((navigator.userAgent.match(/\(([^)]+)\)/) || ['', ''])[1]).slice(0, 60) + ' ---';
+    return { tot: nieuw[nieuw.length - 1].t, tekst: kop + '\n' + nieuw.map(function (x) { return f(x.t) + ' ' + x.m; }).join('\n') };
+  }
+  function logStuur(beacon) {
+    if (!logUp.aan || !pbase()) return; var x = logUpTekst(); if (!x) return;
+    var u = pbase() + '/log?id=' + encodeURIComponent(mijnId) + '&n=' + encodeURIComponent(myWho() || '');
+    if (beacon && navigator.sendBeacon) { try { if (navigator.sendBeacon(u, new Blob([x.tekst], { type: 'text/plain' }))) { logUp.tot = x.tot; logUpBewaar(); } } catch (e) {} return; }
+    fetch(u, { method: 'POST', body: x.tekst, headers: { 'Content-Type': 'text/plain' } }).then(function (r) { if (r.ok) { logUp.tot = x.tot; logUpBewaar(); } }).catch(function () {});
+  }
+  $('logUpIn').checked = logUp.aan;
+  $('logUpIn').addEventListener('change', function () { logUp.aan = $('logUpIn').checked; logUpBewaar(); toast(logUp.aan ? 'Je logboek gaat weer automatisch naar Ricardo.' : 'Je logboek blijft nu alleen op je telefoon.'); });
+  setInterval(function () { if (document.visibilityState === 'visible') logStuur(false); }, 10 * 60e3);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') logStuur(true); });
+  setTimeout(function () {
+    if (logUp.aan && !logUp.gemeld) { logUp.gemeld = true; logUpBewaar(); toast('Buddy stuurt zijn logboek voortaan naar Ricardo, zodat hij fouten kan oplossen. Uitzetten kan bij Instellingen.'); }
+    logStuur(false);
+  }, 20000);
 
   /* ---------- 7. Outfits en feestdagen ---------- */
 
