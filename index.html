@@ -162,6 +162,26 @@ body.nacht #spel .spBox { filter: brightness(.8); }
 .navRes { display: grid; gap: 6px; }
 .navRes .btn { text-align: left; min-height: 44px; font-weight: 500; }
 #ritKaart .rkBox { width: min(100%, 640px); max-height: 100%; overflow-y: auto; background: #10151a; border: 2px solid #34c759; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 12px; color: #eef2f5; }
+
+/* v71: rond-scherm-modus, precies zoals het echte schermpje (Waveshare 1,75" AMOLED, 466×466): alleen het rondje, alles via aanraken */
+body.rond { background: #000; overflow: hidden; height: 100vh; height: 100dvh; }
+html:has(body.rond) { overflow: hidden; }
+body.rond main > *:not(.stage) { display: none !important; }
+body.rond main { padding: 0; gap: 0; max-width: none; width: 100%; }
+body.rond .stage { min-height: 100vh; min-height: 100dvh; justify-content: center; align-items: center; gap: 0; padding: 0 !important; }
+body.rond .stage > *:not(.helmet) { display: none !important; }
+body.rond .helmet { --hs: min(96vw, 96vh); padding: 0; background: none; box-shadow: none; }
+body.rond .helmet::after { display: none; }
+body.rond .bezel { box-shadow: none; }
+body.rond #carBack, body.rond #carRit, body.rond #carSpel, body.rond #carAdd, body.rond #carAddM, body.rond #carGroep, body.rond #carStart { display: none !important; }
+#rondRing { position: fixed; inset: 0; z-index: 70; display: none; }
+#rondRing.open { display: block; }
+#rondRing .rrVlak { position: absolute; border-radius: 50%; background: radial-gradient(circle, rgba(0,0,0,.55) 0 30%, rgba(0,0,0,.8) 70%); }
+#rondRing button { position: absolute; border: 0; border-radius: 50%; background: #1d2a33; color: #eef2f5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0; font: 600 11px/1.1 var(--f-display, sans-serif); box-shadow: 0 4px 14px rgba(0,0,0,.5); touch-action: manipulation; }
+#rondRing button .ri { font-size: 1.9em; line-height: 1; }
+#rondRing button.arm { background: #b3261e; }
+#rondRing button:active { transform: scale(.94); }
+#rondRing .rrMidden { background: #10151a; color: #9aa3ad; }
 #ritKaart .rkVerhaal { grid-column: 1 / -1; margin: 0; font: 500 clamp(17px, 3vw, 22px)/1.45 var(--f-body, sans-serif); text-align: left; }
 #ritKaart .rkTitel { margin: 0; font: 700 clamp(22px, 4vw, 34px)/1.1 var(--f-display); text-align: center; }
 #ritKaartGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -361,6 +381,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 
 </head>
 <body>
+<div id="rondRing" aria-label="Menu"><div class="rrVlak"></div></div>
 <button id="carBack" type="button">Terug</button>
 <button id="carRit" type="button">🏁 Rit klaar</button>
 <button id="carSpel" type="button">🎲 Spel</button>
@@ -433,6 +454,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     <div class="btns">
       <button class="btn" id="bLive" type="button" aria-pressed="false" style="grid-column:1/-1">Telefoon-GPS: uit</button>
       <button class="btn primary" id="bCar" type="button" style="grid-column:1/-1">Autostand: alleen gezicht, groot</button>
+      <button class="btn" id="bRond" type="button" style="grid-column:1/-1">⭕ Rond scherm (zoals het echte schermpje)</button>
+      <p class="foot" style="grid-column:1/-1">Rond scherm: alleen Buddy, precies zoals hij straks op het schermpje staat. Lang drukken op zijn gezicht opent het menu (flitser melden, groep, rit klaar, geluid, terug). Vegen naar links of rechts wisselt tussen gezicht, grote snelheid en je rit.</p>
       <button class="btn" id="bSound" type="button" aria-pressed="false" style="grid-column:1/-1">Geluid: uit</button>
     </div>
     <p class="note" id="note" aria-live="polite"></p>
@@ -1712,6 +1735,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     grNoteDraw();
     ctx.restore();
     overlay(dt);
+    if (rond.aan) { try { rondDraw(dt); } catch (e) {} }
   }
 
   var BRONKORT = { rws: 'RWS', kaart: 'KAART', type: 'WEGTYPE', matrix: 'MATRIX', gok: 'GESCHAT', werk: 'WERK' };
@@ -3957,7 +3981,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v70';
+  var VERSION = 'v71';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5695,6 +5719,119 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 
   /* Elke GPS-meting: plekken, sporen en de zon */
   function v70Fix(lat, lon) { try { plekStap(lat, lon); spoorStap(lat, lon); zonStap(lat, lon); } catch (e) { lg('FOUT v70 ' + e.message); } }
+
+  /* ---------- v71: rond-scherm-modus ---------- */
+  var RONDKEY = 'dashboardmaatje-rond-v1', rond = { aan: false, pagina: 0, tekst: '', tekstT: 0, ring: null, ritArm: 0 };
+  function rondZet(aan) {
+    rond.aan = aan; document.body.classList.toggle('rond', aan); rond.pagina = 0; rondRingDicht();
+    if (aan && document.body.classList.contains('car')) document.body.classList.remove('car');
+    try { localStorage.setItem(RONDKEY, aan ? '1' : '0'); } catch (e) {}
+    try { if (aan && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {}); else if (!aan && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {}); } catch (e) {}
+    scrollTo(0, 0); lg('rond scherm ' + (aan ? 'aan' : 'uit'));
+    if (aan) toast('Lang drukken op Buddy opent het menu. Vegen wisselt van scherm.');
+  }
+  $('bRond').addEventListener('click', function () { rondZet(true); });
+  try { if (localStorage.getItem(RONDKEY) === '1') setTimeout(function () { rondZet(true); }, 300); } catch (e) {}
+
+  /* Menu: een ring met knoppen langs de rand van het rondje */
+  var RING_HOOFD = [
+    { i: '📸', t: 'Vaste flitser', f: function () { $('carAdd').click(); } },
+    { i: '🚓', t: 'Mobiel', f: function () { $('carAddM').click(); } },
+    { i: '👋', t: 'Groep', f: function () { rondRingOpen('groep'); return true; } },
+    { i: '🏁', t: 'Rit klaar', f: function (b) { if (Date.now() - rond.ritArm > 4000) { rond.ritArm = Date.now(); b.classList.add('arm'); b.lastChild.textContent = 'Zeker?'; return true; } rond.ritArm = 0; $('carRit').click(); $('carRit').click(); } },
+    { i: function () { return sound ? '🔊' : '🔇'; }, t: function () { return sound ? 'Geluid aan' : 'Geluid uit'; }, f: function () { $('bSound').click(); rondRingOpen('hoofd'); return true; } },
+    { i: '🎲', t: 'Spel', f: function () { if (S.live && S.speed >= 3) { toast('Spelletjes alleen als je stilstaat.'); return; } $('carSpel').click(); } },
+    { i: '🚦', t: 'Startvlag', f: function () { $('carStart').click(); } },
+    { i: '↩️', t: 'Gewone app', f: function () { rondZet(false); } }];
+  var RING_GROEP = [
+    { i: '👋', t: 'Zwaai', f: function () { grKnop('zwaai'); } }, { i: '☕', t: 'Koffie?', f: function () { grKnop('koffie'); } },
+    { i: '🚗', t: 'File', f: function () { grKnop('file'); } }, { i: '⚠️', t: 'Sta stil', f: function () { grKnop('pech'); } },
+    { i: '❤️', t: 'Hartjes', f: function () { grKnop('hart'); } }, { i: '🏁', t: 'Bijna thuis', f: function () { grKnop('thuis'); } },
+    { i: '⬅️', t: 'Terug', f: function () { rondRingOpen('hoofd'); return true; } }];
+  function rondRingOpen(welke) {
+    var el = $('rondRing'), r = $('face').getBoundingClientRect(), lijst = welke === 'groep' ? RING_GROEP : RING_HOOFD;
+    while (el.childNodes.length > 1) el.removeChild(el.lastChild);
+    var vl = el.firstChild; vl.style.left = r.left + 'px'; vl.style.top = r.top + 'px'; vl.style.width = r.width + 'px'; vl.style.height = r.height + 'px';
+    var cx = r.left + r.width / 2, cy = r.top + r.height / 2, R = r.width * .335, k = r.width * .2;
+    lijst.forEach(function (it, n) {
+      var a = -Math.PI / 2 + n / lijst.length * Math.PI * 2, b = document.createElement('button');
+      b.type = 'button'; b.style.width = b.style.height = k + 'px'; b.style.left = (cx + Math.cos(a) * R - k / 2) + 'px'; b.style.top = (cy + Math.sin(a) * R - k / 2) + 'px';
+      b.style.fontSize = Math.max(9, k * .14) + 'px';
+      var i = document.createElement('span'); i.className = 'ri'; i.textContent = typeof it.i === 'function' ? it.i() : it.i;
+      var t = document.createElement('span'); t.textContent = typeof it.t === 'function' ? it.t() : it.t;
+      b.appendChild(i); b.appendChild(t);
+      b.addEventListener('click', function (e) { e.stopPropagation(); var blijf = it.f(b); if (!blijf) rondRingDicht(); });
+      el.appendChild(b);
+    });
+    var m = document.createElement('button'); m.type = 'button'; m.className = 'rrMidden'; m.style.width = m.style.height = k * .9 + 'px'; m.style.left = (cx - k * .45) + 'px'; m.style.top = (cy - k * .45) + 'px';
+    m.textContent = '✕'; m.style.fontSize = k * .3 + 'px'; m.setAttribute('aria-label', 'Menu sluiten');
+    m.addEventListener('click', function (e) { e.stopPropagation(); rondRingDicht(); }); el.appendChild(m);
+    el.classList.add('open'); rond.ring = welke; rond.ringT = Date.now();
+  }
+  function rondRingDicht() { var el = $('rondRing'); if (el) el.classList.remove('open'); rond.ring = null; rond.ritArm = 0; }
+  $('rondRing').addEventListener('click', function (e) { if (e.target === this || e.target.className === 'rrVlak') rondRingDicht(); });
+  setInterval(function () { if (rond.ring && Date.now() - rond.ringT > 12000) rondRingDicht(); }, 2000);  /* vanzelf dicht na 12 s */
+
+  /* Lang drukken = menu, vegen = ander scherm */
+  (function () {
+    var face = $('face'), d = null, tm = 0;
+    face.addEventListener('pointerdown', function (e) {
+      if (!rond.aan) return;
+      d = { x: e.clientX, y: e.clientY, t: Date.now(), weg: false };
+      clearTimeout(tm); tm = setTimeout(function () { if (d && !d.weg) { d.weg = true; rondRingOpen('hoofd'); try { if (navigator.vibrate) navigator.vibrate(30); } catch (e2) {} } }, 550);
+    });
+    face.addEventListener('pointermove', function (e) { if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 14) { clearTimeout(tm); } });
+    window.addEventListener('pointerup', function (e) {
+      clearTimeout(tm); if (!d || !rond.aan) { d = null; return; }
+      var dx = e.clientX - d.x, dy = e.clientY - d.y, dt = Date.now() - d.t;
+      if (!d.weg && Math.abs(dx) > 50 && Math.abs(dy) < 60 && dt < 700) { rond.pagina = (rond.pagina + (dx < 0 ? 1 : 2)) % 3; rond.pagT = T; beep('pet'); }
+      d = null;
+    });
+  })();
+
+  /* Tekenen bovenop het gezicht: tekstwolkje in het rondje, en de extra schermen */
+  function rondPil(tekst, y, a) {
+    ctx.save(); ctx.globalAlpha = a; ctx.font = '600 12px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    var woorden = String(tekst).split(' '), regels = [], r = '';
+    woorden.forEach(function (w) { var t = r ? r + ' ' + w : w; if (ctx.measureText(t).width > 150 && r) { regels.push(r); r = w; } else r = t; });
+    if (r) regels.push(r); if (regels.length > 2) { regels = regels.slice(0, 2); regels[1] = regels[1].replace(/\s*\S*$/, '') + '…'; }
+    var w = 0; regels.forEach(function (x) { w = Math.max(w, ctx.measureText(x).width); });
+    var h = regels.length * 15 + 9; ctx.fillStyle = SCREEN; ctx.globalAlpha = a * .85; rr(120 - w / 2 - 12, y - h / 2, w + 24, h, h / 2); ctx.fill();
+    ctx.globalAlpha = a; ctx.fillStyle = EYE; regels.forEach(function (x, n) { ctx.fillText(x, 120, y - (regels.length - 1) * 7.5 + n * 15); });
+    ctx.restore();
+  }
+  function rondDraw(dt) {
+    ctx.setTransform(SC, 0, 0, SC, 0, 0);
+    /* waarschuwing (flitser, traject)? Dan altijd terug naar het gezicht */
+    if (rond.pagina && ((S.cam && S.cam.dist <= 600) || S.traj)) rond.pagina = 0;
+    if (rond.pagina === 0) {
+      var t = ($('thought') && $('thought').textContent) || '';
+      if (t !== rond.tekst) { rond.tekst = t; rond.tekstT = T; }
+      if (t && !S.grNote && T - rond.tekstT < 7) rondPil(t, 40, Math.min(1, (T - rond.tekstT) * 4, (7 - (T - rond.tekstT)) * 2));
+    } else {
+      ctx.save(); ctx.beginPath(); ctx.arc(120, 120, 120, 0, TAU); ctx.clip(); ctx.fillStyle = SCREEN; ctx.fillRect(0, 0, 240, 240);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = EYE;
+      if (rond.pagina === 1) {
+        var v = Math.round(S.speed), lim = S.roadLim, bad = lim != null && !S.roadEst && v > lim;
+        ctx.font = '700 84px "Chakra Petch", sans-serif'; ctx.fillStyle = bad ? HEART : EYE; ctx.fillText(String(v), 120, 112);
+        ctx.font = '600 14px "Chakra Petch", sans-serif'; ctx.fillStyle = EYE; ctx.globalAlpha = .7; ctx.fillText('km/h', 120, 160); ctx.globalAlpha = 1;
+        if (lim != null) { ctx.save(); ctx.translate(120, 52); ctx.scale(1.25, 1.25); ctx.translate(-120, -210); sign(lim, S.roadEst); ctx.restore(); }
+        var wn = S.roadWn ? String(S.roadWn).toUpperCase() : '';
+        if (/^[AN]\d{1,3}$/.test(wn)) { ctx.save(); ctx.translate(0, -20); wegBord(wn); ctx.restore(); }
+      } else {
+        var r0 = S.ritStart, km = r0 ? Math.max(0, (mem.kmLive || 0) - r0.km) : 0, min = Math.round((S.tripT || 0) / 60), w = wk();
+        ctx.font = '600 13px "Chakra Petch", sans-serif'; ctx.globalAlpha = .7; ctx.fillText(r0 ? 'DEZE RIT' : 'NOG GEEN RIT', 120, 52); ctx.globalAlpha = 1;
+        ctx.font = '700 40px "Chakra Petch", sans-serif'; ctx.fillText(String(Math.round(km * 10) / 10).replace('.', ',') + ' km', 120, 86);
+        ctx.font = '600 16px "Chakra Petch", sans-serif'; ctx.fillText(min + ' min' + (r0 && r0.vmax ? ' · top ' + Math.round(r0.vmax) : ''), 120, 116);
+        ctx.font = '600 13px "Chakra Petch", sans-serif'; ctx.globalAlpha = .7; ctx.fillText('DEZE WEEK', 120, 148); ctx.globalAlpha = 1;
+        ctx.font = '700 22px "Chakra Petch", sans-serif'; ctx.fillText(Math.round(w.km || 0) + ' km · ' + (w.ritten || 0) + (w.ritten === 1 ? ' rit' : ' ritten'), 120, 172);
+      }
+      ctx.restore();
+    }
+    /* stipjes: welk scherm */
+    for (var i = 0; i < 3; i++) { ctx.fillStyle = EYE; ctx.globalAlpha = i === rond.pagina ? .9 : .25; ctx.beginPath(); ctx.arc(108 + i * 12, 232, 2.6, 0, TAU); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  }
 
   /* ---------- 7. Outfits en feestdagen ---------- */
 
