@@ -3982,7 +3982,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v72';
+  var VERSION = 'v73';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5049,7 +5049,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   var PARKKEY = 'dashboardmaatje-park-v1', RITKEY = 'dashboardmaatje-ritten-v1';
   function weekIdx(d) { d = d || new Date(); var a = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()), b = Date.UTC(2024, 0, 1); return Math.floor((a - b) / (7 * 864e5)); } /* 2024-01-01 was een maandag */
   function tijdStr(t) { var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
-  function dagStr(t) { var d = new Date(t), nu = new Date(); if (d.toDateString() === nu.toDateString()) return 'vandaag'; var g = new Date(nu); g.setDate(nu.getDate() - 1); if (d.toDateString() === g.toDateString()) return 'gisteren'; return DAGEN[d.getDay()] + ' ' + d.getDate() + ' ' + MAANDEN[d.getMonth()]; }
+  function dagStr(t) { var d = new Date(t), nu = new Date(); if (d.toDateString() === nu.toDateString()) return 'vandaag'; var g = new Date(nu); g.setDate(nu.getDate() - 1); if (d.toDateString() === g.toDateString()) return 'gisteren'; return ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'][d.getDay()] + ' ' + d.getDate() + ' ' + ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'][d.getMonth()]; }  /* v73: eigen lijstjes, want dit draait al tijdens het opstarten */
   function wk() { /* tellers voor de lopende week (reset elke maandag) */
     var w = weekIdx();
     if (!mem.wk || mem.wk.w !== w) { if (mem.wk) mem.wkVorig = mem.wk; mem.wk = { w: w, km: 0, netjes: 0, gemeld: 0, stijlSom: 0, ritten: 0, rijT: 0, hardT: 0 }; }
