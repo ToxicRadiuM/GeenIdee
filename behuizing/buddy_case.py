@@ -84,7 +84,11 @@ achter -= cyl(R_HOL - r_plug_in + 0.1, r_plug_in - 0.05, R_HOL + 0.05).translate
 achter -= cyl(z_back - ACHTER - (Z0 + L_PLUG + R_HOL - r_plug_in) + 0.2, R_HOL).translate([0, 0, Z0 + L_PLUG + R_HOL - r_plug_in - 0.2])
 # paaltjes op de busjes, met een pinnetje dat in het M2-gaatje valt (centreert het bord)
 for (x, y) in MOUNTS:
-    achter += cyl(z_back - ACHTER - Z0 + 0.01, 2.6).translate([x, y, Z0])
+    achter += cyl(z_back - ACHTER - Z0 + 0.01, 3.0).translate([x, y, Z0])
+    # v7c: ribbetje van paaltje naar de wand -> geen losse eilandjes meer (die werden pap: draadjes en klodders)
+    ang = math.degrees(math.atan2(y, x)); rp = math.hypot(x, y)
+    rib = box(R_HOL - rp + 0.6, 1.8, z_back - ACHTER - (Z0 + L_PLUG + R_HOL - r_plug_in) + 0.01)
+    achter += rib.translate([(rp + R_HOL + 0.6) / 2, 0, (Z0 + L_PLUG + R_HOL - r_plug_in) + (z_back - ACHTER - (Z0 + L_PLUG + R_HOL - r_plug_in)) / 2]).rotate([0, 0, ang])
     achter += cyl(1.45, 0.7, 0.85).translate([x, y, Z0 - 1.4])   # tapse pin, punt naar het bord
 # speakerrooster: grotere gaatjes (2,6 mm), recht omhoog geprint = strak
 for i in range(-6, 7):
