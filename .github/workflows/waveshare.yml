@@ -56,3 +56,12 @@ jobs:
           git init -q && git checkout -q -b firmware && git add -A
           git -c user.name="Buddy-bot" -c user.email="buddy-bot@users.noreply.github.com" commit -q -m "Buddy-scherm v$(cat versie.txt)"
           git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" firmware
+
+      - name: Bouwlog bewaren (ook als het mislukt)
+        if: always()
+        run: |
+          mkdir -p logpub && cp compile.log logpub/ 2>/dev/null || echo "geen compile.log" > logpub/compile.log
+          echo "${{ github.ref }} ${{ github.sha }} ${{ job.status }}" > logpub/status.txt
+          cd logpub && git init -q && git checkout -q -b bouwlog && git add -A
+          git -c user.name="Buddy-bot" -c user.email="buddy-bot@users.noreply.github.com" commit -q -m "bouwlog"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" bouwlog

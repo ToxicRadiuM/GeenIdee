@@ -595,6 +595,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="sub">Buddy-scherm (Waveshare)</p>
       <button class="btn" id="bleKnop" type="button">📡 Verbind met het Buddy-scherm</button>
       <button class="btn" id="bleLog" type="button">📥 Logboek van het schermpje ophalen</button>
+      <p class="sub">Wifi voor het schermpje (hotspot van je telefoon)</p>
+      <div class="mobrow"><input type="text" id="wfNaam" autocomplete="off" placeholder="Naam van je hotspot"></div>
+      <div class="mobrow"><input type="password" id="wfPass" autocomplete="off" placeholder="Wachtwoord van je hotspot"></div>
+      <button class="btn" id="wfStuur" type="button">📶 Wifi naar het schermpje sturen</button>
+      <p class="foot">Met wifi haalt het schermpje zelf de maximumsnelheden, alle vaste flitsers en trajectcontroles op, zet hij de klok goed en installeert hij nieuwe versies vanzelf (alleen als hij stilstaat). Hij onthoudt de wegen waar je rijdt, dus daar werkt het daarna ook zonder internet. Het wachtwoord gaat alleen via Bluetooth naar het schermpje.</p>
       <p class="chip" id="bleStat">Niet verbonden. Werkt met Chrome op Android. Het schermpje krijgt dan de limiet, flitsers, files, wegwerk en Buddy’s stemming van je telefoon. Lang drukken op het schermpje → FLITSER meldt via je telefoon.</p>
       <p class="sub">Algemeen</p>
       <div class="mobrow"><input type="text" id="meIn" maxlength="18" placeholder="Jouw naam"><button class="btn" id="meSave" type="button">Bewaar naam</button></div>
@@ -6193,6 +6198,20 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     function vraagLog() { if (!rx) { toast('Verbind eerst met het Buddy-scherm.'); return; } var d = new TextEncoder().encode('LOG?\n'); (rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(d) : rx.writeValue(d)).catch(function () {}); stat('Logboek van het schermpje wordt opgehaald…'); }
     $('bleLog').addEventListener('click', vraagLog);
+    /* v76: wifi-gegevens naar het schermpje */
+    try { $('wfNaam').value = localStorage.getItem('dashboardmaatje-wfnaam-v1') || ''; } catch (e) {}
+    $('wfStuur').addEventListener('click', function () {
+      var n = $('wfNaam').value.trim(), w = $('wfPass').value;
+      if (!rx) { toast('Verbind eerst met het Buddy-scherm.'); return; }
+      if (!n) { toast('Vul de naam van je hotspot in.'); return; }
+      try { localStorage.setItem('dashboardmaatje-wfnaam-v1', n); } catch (e) {}
+      var d = new TextEncoder().encode('WIFI:' + n + '\t' + w + '\n'), st = [];
+      for (var i = 0; i < d.length; i += 20) st.push(d.slice(i, i + 20));
+      bezig = true;
+      st.reduce(function (pr, x) { return pr.then(function () { return rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(x) : rx.writeValue(x); }); }, Promise.resolve())
+        .then(function () { stat('📶 Wifi gestuurd. Het schermpje verbindt nu met "' + n + '" (zet je hotspot aan).'); lg('wifi naar scherm gestuurd: ' + n); })
+        .catch(function () { toast('Versturen lukte niet, probeer opnieuw.'); }).then(function () { bezig = false; });
+    });
     function stuur() {
       if (!rx || bezig) return;
       var c = S.cam || null, f = S.fileVoor && T - S.fileVoor.t < 4 ? S.fileVoor : null, w = S.werkVoor && T - S.werkVoor.t < 4;
