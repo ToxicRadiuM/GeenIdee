@@ -76,7 +76,7 @@ OVERG = BUIT_D / 2 - plug_r   # v3: 45 graden schuine overgang, dan is er geen s
 achter = cyl(L_PLUG, plug_r).translate([0, 0, Z0]) + cyl(OVERG, plug_r, BUIT_D / 2).translate([0, 0, Z0 + L_PLUG]) + cyl(L_ACHT - OVERG, BUIT_D / 2).translate([0, 0, Z0 + L_PLUG + OVERG])
 # holte (achter de tussenplaat)
 achter -= cyl(L_PLUG - PLAAT + L_ACHT - ACHTER, plug_r - 1.6).translate([0, 0, Z0 + PLAAT])
-achter -= cyl(L_ACHT - ACHTER, BUIT_D / 2 - WAND).translate([0, 0, Z0 + L_PLUG])
+achter -= cyl(L_ACHT - ACHTER - OVERG, BUIT_D / 2 - WAND).translate([0, 0, Z0 + L_PLUG + OVERG])   # v5: pas na de schuine overgang wijder (anders zat er een spleet)
 # vlakke 'plank' bovenin voor de GPS-antenne (antenne plakken, keramiek naar boven)
 plank_y = 17.5
 # v3: plank weggehaald (die had support nodig). De GPS-antenne gaat plat op de tussenplaat, keramiek naar achteren.
@@ -134,6 +134,31 @@ def save(m, naam):
     b = t.bounds; print(naam, 'maat', np.round(b[1] - b[0], 1), 'watertight', t.is_watertight, 'vol', round(t.volume / 1000, 1), 'cm3')
     return t
 
+# =================== v5: alles in elkaar klikken, zonder schroefjes ===================
+# 3 klikarmpjes aan de voorkant grijpen in 3 venstertjes in de achterkant. Het bord zit geklemd tussen het schermrandje
+# en de tussenplaat (de schroefgaatjes mogen blijven, maar zijn niet meer nodig).
+R_UIT = BUIT_D / 2
+ARM_DIK, ARM_BR, ARM_LEN = 1.3, 8.0, 7.2
+HAAK_Z0, HAAK_H, HAAK_IN = 5.2, 1.6, 0.75     # haakje: vanaf ARM-basis, hoogte, hoe ver naar binnen
+SPEL_K = 0.2
+HOEKEN = (90, 210, 330)                          # niet bij USB-C (0) en de knopjes (146/214 zitten alleen in de voorkant)
+def ringstuk(r_in, r_uit, breed, z0, h, hoek):
+    b = box(r_uit - r_in, breed, h).translate([(r_in + r_uit) / 2, 0, z0 + h / 2])
+    return b.rotate([0, 0, hoek])
+for hk in HOEKEN:
+    arm = ringstuk(R_UIT - ARM_DIK, R_UIT, ARM_BR, L1 - 0.01, ARM_LEN + 0.01, hk)
+    # haakje naar binnen, met een schuin aanloopje aan de bovenkant (print zonder support, klikt makkelijk)
+    haak = Manifold.hull(ringstuk(R_UIT - ARM_DIK - HAAK_IN, R_UIT - ARM_DIK + 0.01, ARM_BR, L1 + HAAK_Z0, HAAK_H * .55, hk)
+                         + ringstuk(R_UIT - ARM_DIK - 0.05, R_UIT - ARM_DIK + 0.01, ARM_BR, L1 + HAAK_Z0, HAAK_H + HAAK_IN, hk))
+    voor += arm + haak
+    # achterkant: inkeping waar het armpje in valt (blijft mooi gelijk met de buitenkant) + venster voor het haakje
+    achter -= ringstuk(R_UIT - ARM_DIK - SPEL_K, R_UIT + 1, ARM_BR + 2 * SPEL_K, Z0 + L_PLUG - 0.01, ARM_LEN + 0.3, hk)
+    achter -= ringstuk(R_UIT - ARM_DIK - 3, R_UIT, ARM_BR + 2 * SPEL_K, Z0 + L_PLUG + HAAK_Z0 - 0.1, HAAK_H + 0.3, hk)
+# dekseltje klikt ook: rilletje rond de ring + gleufje in de achterkant (beide met schuine kanten)
+RIB = 0.35
+rib = (cyl(0.5, BUIT_D / 2 - WAND - SP, BUIT_D / 2 - WAND - SP + RIB) + cyl(0.5, BUIT_D / 2 - WAND - SP + RIB, BUIT_D / 2 - WAND - SP).translate([0, 0, 0.5])).translate([0, 0, -1.7])
+deksel += rib - cyl(3, BUIT_D / 2 - WAND - SP - 0.5).translate([0, 0, -2.5])   # alleen een ringetje, binnenkant blijft vrij
+achter -= (cyl(0.6, BUIT_D / 2 - WAND, BUIT_D / 2 - WAND + RIB + .15) + cyl(0.6, BUIT_D / 2 - WAND + RIB + .15, BUIT_D / 2 - WAND).translate([0, 0, 0.6])).translate([0, 0, z_back - 1.85])
 t1 = save(voor, 'buddy_1_voorkant')
 # achterkant geprint met de achterwand op het bed: omdraaien
 t2 = save(achter.translate([0, 0, -Z0]), 'buddy_2_achterkant')          # tussenplaat op het bed
