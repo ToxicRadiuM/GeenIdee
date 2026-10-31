@@ -20,6 +20,7 @@ export default {
     if (request.method !== 'GET' && url.pathname !== '/backup') return new Response('Alleen GET', { status: 405, headers: cors });
     if (url.pathname.startsWith('/cams')) return cams(url, env, cors);
     if (url.pathname === '/flitsers') return flitsers(env, ctx, cors);
+    if (url.pathname === '/scherm') return scherm(url, env, ctx, cors);   // v78: klein pakketje voor het Buddy-schermpje
     if (url.pathname === '/verkeer') return verkeer(ctx, cors);
     if (url.pathname === '/backup') return backup(request, url, env, cors);
     if (url.pathname === '/osm') return osm(url, env, ctx, cors);
@@ -787,4 +788,67 @@ async function logboek(request, url, env, cors) {
     }
   }
   return json({ ok: true, logs: uit });
+}
+
+
+// ---------------------------------------------------------------------------
+// v78 /scherm?lat=&lon=&g=&van=&sinds= : alles wat het Buddy-schermpje (ESP32) nodig heeft, als simpele tekstregels.
+//   T|servertijd
+//   M|lat|lon                       mobiele controle (flitsers.nl/ANWB), binnen 30 km
+//   G|lat|lon|limiet|f of m        flitser van de groep, binnen 30 km
+//   J|soort|vertraging_s|lengte_m|weg|lat,lon;lat,lon;...   file/werk/afgesloten binnen 25 km
+//   B|tijd|soort|naam               groepsberichten sinds 'sinds' (niet die van jezelf)
+// Het zware werk (bronnen lezen) wordt 60 s bewaard; per aanvraag wordt alleen gefilterd op afstand.
+// ---------------------------------------------------------------------------
+async function scherm(url, env, ctx, cors) {
+  const tekst = (body, status = 200) => new Response(body, { status, headers: { ...cors, 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
+  const lat = parseFloat(url.searchParams.get('lat')), lon = parseFloat(url.searchParams.get('lon'));
+  const nu = Date.now(), regels = ['T|' + nu];
+  const heeftPlek = lat > 50.6 && lat < 53.7 && lon > 3.0 && lon < 7.4;
+  const afst = (a, b, c, d) => Math.hypot((a - c) * 111195, (b - d) * 111195 * Math.cos(a * Math.PI / 180));
+  const cache = caches.default, sleutel = new Request('https://dashboardmaatje.intern/scherm-basis-v1');
+  let basis = null;
+  try { const b = await cache.match(sleutel); if (b) basis = await b.json(); } catch (e) { basis = null; }
+  if (!basis) {
+    basis = { m: [], j: [] };
+    try {
+      const r = await flitsers(env, ctx, cors); const j = await r.json();
+      for (const f of (j && j.flitsers) || []) if (isFinite(+f.latitude) && isFinite(+f.longitude)) basis.m.push([+(+f.latitude).toFixed(5), +(+f.longitude).toFixed(5)]);
+    } catch (e) {}
+    if (FL_ANWB_AAN) {
+      try {
+        const v = leesAnwbVerkeer(await haalAnwb(ctx), nu);
+        for (const m of v.meldingen) {
+          let pts = m.pts; if (pts.length > 14) { const st = Math.ceil(pts.length / 14), h = []; for (let i = 0; i < pts.length; i += st) h.push(pts[i]); h.push(pts[pts.length - 1]); pts = h; }
+          basis.j.push({ k: m.k, d: m.vertraging || 0, l: m.lengte || 0, w: m.weg || '', p: pts });
+        }
+      } catch (e) {}
+    }
+    try { ctx.waitUntil(cache.put(sleutel, new Response(JSON.stringify(basis), { headers: { 'Cache-Control': 'public, max-age=60' } }))); } catch (e) {}
+  }
+  if (heeftPlek) {
+    for (const m of basis.m) if (afst(lat, lon, m[0], m[1]) < 30000) regels.push('M|' + m[0] + '|' + m[1]);
+    for (const j of basis.j) {
+      if (!j.p.some((p) => afst(lat, lon, p[0], p[1]) < 25000)) continue;
+      regels.push('J|' + j.k + '|' + j.d + '|' + j.l + '|' + j.w + '|' + j.p.map((p) => p[0] + ',' + p[1]).join(';'));
+    }
+  }
+  const g = (url.searchParams.get('g') || '').toLowerCase(), van = (url.searchParams.get('van') || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
+  if (env.FLITS && /^[a-z0-9]{6,32}$/.test(g)) {
+    if (heeftPlek) {
+      try {
+        const lijst = (await env.FLITS.get('g:' + g, 'json')) || [];
+        for (const c of lijst) {
+          if (c.k === 'mobile' && nu - c.t > MOBIEL_UREN * 3600e3) continue;
+          if (afst(lat, lon, c.lat, c.lon) < 30000) regels.push('G|' + c.lat + '|' + c.lon + '|' + (c.lim || 0) + '|' + (c.k === 'mobile' ? 'm' : 'f'));
+        }
+      } catch (e) {}
+    }
+    try {
+      const sinds = Number(url.searchParams.get('sinds')) || nu - 10 * 60e3;
+      const pings = ((await env.FLITS.get('p:' + g, 'json')) || []).filter((x) => x && x.t > sinds && x.van !== van && x.s !== 'gezien' && (!x.aan || x.aan === van));
+      for (const x of pings.slice(-5)) regels.push('B|' + x.t + '|' + x.s + '|' + String(x.n || 'Collega').replace(/\|/g, ' '));
+    } catch (e) {}
+  }
+  return tekst(regels.join('\n') + '\n');
 }

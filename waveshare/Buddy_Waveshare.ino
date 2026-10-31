@@ -23,7 +23,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 27;
+static const int FW_VERSIE = 28;
 static volatile int otaPct = -1;   // voortgang van een update via wifi (-1 = geen)   // ophogen bij elke nieuwe versie (de update via wifi kijkt hiernaar)
 #define FW_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/firmware/"
 #define DATA_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/snelheden/"
@@ -799,7 +799,7 @@ void gazeTarget(){
 }
 void eye(float cx,float cy,int side){
  float w=44*cur.scale, h=fmaxf(3,62*cur.open*cur.scale*blink*(side<0?eyeL:eyeR));
- boxAdd(cx-w/2-4,cy-h/2-4,cx+w/2+4,cy+h*1.65f);
+ boxAdd(cx-w*.9f-4,cy-h/2-4,cx+w*.9f+4,cy+h*1.65f);   // v28: breed genoeg voor de knijp-ellips (gaf 'dode pixels')
  // Solid cyan eye, rounded exactly like the original Buddy canvas design.
  roundRect(cx-w/2,cy-h/2,w,h,fminf(w,h)*.42f,EYE);
  if(cur.lid>.01f || fabsf(cur.tilt)>.01f){
@@ -888,13 +888,18 @@ float cameraDistanceM(float a1,float o1,float a2,float o2) {
 // v25: actuele lijst vaste flitsers (heel NL, OpenStreetMap) via wifi; de ingebouwde lijst is reserve
 struct NetCam { float lat, lon; int16_t lim; uint8_t type; };
 static NetCam *netCams = nullptr; static volatile int netCamN = 0;
+static NetCam *extraCams = nullptr; static volatile int extraCamN = 0;   // v28: mobiele controles + flitsers van de groep (Worker)
 void checkBuddyCameras() {
   if(!gpsFix) return; int best=99999, lim=0; float bLat = 0, bLon = 0;
   int nn = netCamN; NetCam *nc = netCams;
   if (nn > 0 && nc) {
     for (int i = 0; i < nn; i++) { if (fabsf(nc[i].lat-gpsLat)>.012f || fabsf(nc[i].lon-gpsLon)>.018f) continue;
       int dist=(int)cameraDistanceM(gpsLat,gpsLon,nc[i].lat,nc[i].lon); if(dist<best){best=dist;lim=nc[i].lim;bLat=nc[i].lat;bLon=nc[i].lon;} }
-  } else for(size_t i=0;i<BUDDY_CAMERA_COUNT;i++){ BuddyCamera c; memcpy_P(&c,&buddyCameras[i],sizeof(c));
+  }
+  { int en = extraCamN; NetCam *ec = extraCams;
+    if (en > 0 && ec) for (int i = 0; i < en; i++) { if (fabsf(ec[i].lat-gpsLat)>.012f || fabsf(ec[i].lon-gpsLon)>.018f) continue;
+      int dist=(int)cameraDistanceM(gpsLat,gpsLon,ec[i].lat,ec[i].lon); if(dist<best){best=dist;lim=ec[i].lim;bLat=ec[i].lat;bLon=ec[i].lon;} } }
+  if (nn > 0 && nc) {} else for(size_t i=0;i<BUDDY_CAMERA_COUNT;i++){ BuddyCamera c; memcpy_P(&c,&buddyCameras[i],sizeof(c));
     if(fabsf(c.lat-gpsLat)>.012f || fabsf(c.lon-gpsLon)>.018f) continue;
     int dist=(int)cameraDistanceM(gpsLat,gpsLon,c.lat,c.lon); if(dist<best){best=dist;lim=c.limit;bLat=c.lat;bLon=c.lon;}
   }
@@ -1038,6 +1043,9 @@ void drawVolumeUi(){
 #define NUS_SVC "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
 #define NUS_RX  "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 #define NUS_TX  "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
+struct WerkerCfg { char url[96]; char grp[33]; char van[25]; char naam[21]; };
+static WerkerCfg wCfg = {"", "", "", ""}, wNieuw = {"", "", "", ""}; static volatile bool netNieuw = false, zwaaiVraag = false;
+static char grpTekst[40] = ""; static volatile uint32_t grpTot = 0;
 static volatile int setLicht = -1, setVol = -1; static volatile float animFactor = 1.0f; static char outfitK[16] = ""; static volatile uint32_t outfitT = 0;
 static char wifiNaam[33] = "", wifiPass[65] = "", wifiNaamNieuw[33] = "", wifiPassNieuw[65] = ""; static volatile bool wifiNieuw = false, wifiHerstart = false;
 struct PhoneData { int v, lim, camD, camLim, fileD, fileMin; bool werk; int mood; char txt[64]; uint32_t ms; };
@@ -1049,6 +1057,11 @@ static const char *moodKeys[MOOD_COUNT] = {"neutral","content","relaxed","happy"
 static bool phoneFresh() { return phone.ms && millis() - phone.ms < 3500; }
 static void parsePhone(char *line) {
   if (strcmp(line, "LOG?") == 0) { logVraag = true; return; }
+  if (!strncmp(line, "NET:", 4)) {   // v28: NET:<worker-url>\t<groepscode>\t<mijn id>\t<naam>
+    char *f[4] = {line + 4, nullptr, nullptr, nullptr}; int n = 1; for (char *q = line + 4; *q && n < 4; q++) if (*q == '\t') { *q = 0; f[n++] = q + 1; }
+    if (n == 4) { strncpy(wNieuw.url, f[0], sizeof wNieuw.url - 1); strncpy(wNieuw.grp, f[1], sizeof wNieuw.grp - 1); strncpy(wNieuw.van, f[2], sizeof wNieuw.van - 1); strncpy(wNieuw.naam, f[3], sizeof wNieuw.naam - 1); netNieuw = true; }
+    return;
+  }
   if (!strncmp(line, "SET:", 4)) {   // v27: instellingen uit de app, bv. SET:l=65;v=80;a=1;o=pet
     for (char *tok = strtok(line + 4, ";"); tok; tok = strtok(nullptr, ";")) {
       if (tok[0] == 'l' && tok[1] == '=') setLicht = atoi(tok + 2);
@@ -1152,14 +1165,14 @@ static void imuStep(float dt) {
 // ===================== v19: rond menu (lang drukken) =====================
 static bool menuOpen = false; static uint32_t menuTot = 0, infoTot = 0, aaiTot = 0;
 static uint8_t helderheid = 160;
-static const char *menuTxt[4] = {"VOLUME", "HELDER", "FLITSER", "INFO"};
+static const char *menuTxt[5] = {"VOLUME", "HELDER", "FLITSER", "INFO", "ZWAAI"};   // v28: zwaaien naar de groep
 static void drawMenu() {
   boxAdd(0, 0, 240, 240);
   frame->fillCircle(X(120), Y(120), S(118), 0x0841);
-  for (int i = 0; i < 4; i++) {
-    float a = -PI2 / 4 + i * PI2 / 4; float cx = 120 + cosf(a) * 74, cy = 120 + sinf(a) * 74;
-    frame->fillCircle(X(cx), Y(cy), S(34), i == 2 ? 0x8000 : 0x18E3);
-    frame->drawCircle(X(cx), Y(cy), S(34), EYE);
+  for (int i = 0; i < 5; i++) {
+    float a = -PI2 / 4 + i * PI2 / 5; float cx = 120 + cosf(a) * 76, cy = 120 + sinf(a) * 76;
+    frame->fillCircle(X(cx), Y(cy), S(31), i == 2 ? 0x8000 : (i == 4 ? 0x0451 : 0x18E3));
+    frame->drawCircle(X(cx), Y(cy), S(31), EYE);
     frame->setTextColor(0xFFFF); frame->setTextSize(2);
     int tw = strlen(menuTxt[i]) * 12; frame->setCursor(X(cx) - tw / 2, Y(cy) - 7); frame->print(menuTxt[i]);
   }
@@ -1186,12 +1199,13 @@ static void drawInfo() {
 static void menuKies(float x, float y) {
   float dx = x - 120, dy = y - 120, r = sqrtf(dx * dx + dy * dy);
   if (r < 34) { menuOpen = false; return; }
-  float a = atan2f(dy, dx); int i = (int)lroundf((a + PI2 / 4) / (PI2 / 4)); i = ((i % 4) + 4) % 4;
+  float a = atan2f(dy, dx); int i = (int)lroundf((a + PI2 / 4) / (PI2 / 5)); i = ((i % 5) + 5) % 5;
   menuOpen = false;
   if (i == 0) volumeUiUntil = millis() + 8000;
   else if (i == 1) { helderheid = helderheid >= 230 ? 40 : (helderheid < 100 ? 120 : (helderheid < 170 ? 180 : 255)); buddyPrefs.putUChar("licht", helderheid); infoTot = millis() + 2500; }
   else if (i == 2) { bleSend("MELD:cam"); mood = bleConnected ? ALERT : WORRIED; lastMood = -1; idleMoodUntilMs = millis() + 2500; Serial.println(bleConnected ? "Flitser gemeld via telefoon" : "Flitser melden: telefoon niet verbonden"); }
-  else infoTot = millis() + 8000;
+  else if (i == 3) infoTot = millis() + 8000;
+  else { zwaaiVraag = true; if (bleConnected) bleSend("MELD:zwaai"); startGag(22); gagMsg = "Zwaai naar de groep!"; }
 }
 
 // ===================== v21: animaties (overgezet uit de app) =====================
@@ -1226,6 +1240,15 @@ static const GagDef GAGS[] = {
   {4.0f, G_IDLE | G_DRIVE, LOVE, "Jij bent mijn favoriet."},// 25 verlegen
   {4.2f, G_IDLE, EXCITED, "Boing boing!"},                  // 26 stuiteren
   {5.6f, G_IDLE, FOCUSED, "Hmm... even nadenken."},         // 27 nadenken
+  // v28: nieuwe animaties
+  {6.0f, G_IDLE | G_DRIVE, LOVE, "Ooh, een regenboog!"},      // 28 regenboog
+  {5.0f, G_IDLE, EXCITED, "3, 2, 1... lancering!"},          // 29 raket
+  {6.0f, G_IDLE, HAPPY, "Een ballonnetje!"},                 // 30 ballon
+  {6.4f, G_IDLE, RELAXED, "Vuurvliegjes..."},                // 31 vuurvliegjes
+  {6.0f, G_IDLE, ALERT, "Wat is DAT?!"},                     // 32 ufo
+  {7.0f, G_STOP | G_IDLE, BORED, "Die slak is sneller..."},  // 33 slak (vooral in de file)
+  {5.4f, G_IDLE | G_DRIVE, ALERT, "Hè? Wat zweeft daar..."}, // 34 spookje (Halloween)
+  {5.0f, G_IDLE | G_DRIVE, EXCITED, "Snoep of je leven!"},   // 35 pompoen (Halloween)
 };
 static constexpr int GAG_N = sizeof(GAGS) / sizeof(GAGS[0]);
 static inline void gdir(float x, float y) { tgx = x; tgy = y; nextGaze = t + .3f; }
@@ -1293,12 +1316,17 @@ static void gagStep(float dt) {
     if (t < nextGagT || menuOpen || millis() < flagTot || mood == ALERT || mood == WORRIED || mood == SLEEPING) return;
     bool rijdt = v >= 15, stil = v < 1;
     int kies[GAG_N]; int n = 0;
+    const char *fo = feestOutfit(); bool halloween = fo && !strcmp(fo, "heksenhoed");
     for (int k = 0; k < GAG_N; k++) {
       uint8_t f = GAGS[k].flags;
+      if ((k == 34 || k == 35) && !halloween) continue;
+      if (k == 31 && klokOk()) { int hh, mm; lokaleTijd(hh, mm); if (hh >= 7 && hh < 18) continue; }   // vuurvliegjes alleen 's avonds
       if ((stil && (f & G_IDLE)) || (rijdt && (f & G_DRIVE)) || (stil && tripActief && (f & G_STOP))) kies[n++] = k;
     }
     if (!n) { nextGagT = t + 3; return; }
-    int k = kies[random(n)]; startGag(k);
+    int k = kies[random(n)];
+    if (halloween && random(3) == 0) k = random(2) ? 34 : 35;   // op Halloween vaker het spookje en de pompoen
+    startGag(k);
     nextGagT = t + GAGS[k].dur + (stil ? frand(8, 16) : frand(15, 30)) * animFactor;
     return;
   }
@@ -1335,6 +1363,14 @@ static void gagStep(float dt) {
     case 25: gdir(-.6f, .4f); if (tt > 2.8f) { gagMsg = "Oeps, zei ik dat hardop?"; gdir(.5f, .5f); } break;
     case 26: { float h = fabsf(sinf(tt * 5)) * fmaxf(0, 1 - tt / 4.2f); fdy = -h * 22; gdir(0, -h * .5f); } break;
     case 27: gdir(.7f, -.7f); if (tt > 4.4f) { gagMood = HAPPY; gagMsg = "Ik weet het! ...kwijt."; gdir(0, 0); } break;
+    case 28: gdir(0, -.8f); if (tt > 4.5f) gagMsg = "Zo mooi..."; break;
+    case 29: gdir(.4f, -.6f + fminf(0, -(tt - 2.6f) * .3f)); if (tt < 2.6f) gagMsg = tt < .9f ? "3..." : (tt < 1.8f ? "2..." : "1..."); else { gagMsg = "Lancering!"; if (!g_b) { g_b = true; burstAt(176, 190, 12); } } break;
+    case 30: g_fy = 230 - tt * 40; gdir(.5f, (g_fy - 120) / 120); if (g_fy < 60 && !g_b) { g_b = true; burstAt(176, g_fy, 14); gagMood = STARTLED; gagMsg = "Pang! Oei..."; } break;
+    case 31: gdir(sinf(tt * 1.3f) * .7f, cosf(tt * 1.1f) * .4f - .2f); break;
+    case 32: g_fx = -30 + tt / 6.f * 300; gdir((g_fx - 120) / 110, -.9f); if (tt > 2.2f && tt < 3.8f) { gagMood = STARTLED; gagMsg = "Ze nemen me mee!"; fdy = -4; } else if (tt >= 3.8f) { gagMood = HAPPY; gagMsg = "Pfiew. Ze waren vriendelijk."; } break;
+    case 33: g_fx = 260 - tt * 16; gdir((g_fx - 120) / 120, .8f); if (tt > 4.5f) gagMsg = "Sneller dan de file, haha."; break;
+    case 34: g_fx = 250 - tt * 55; gdir((g_fx - 120) / 100, -.4f); if (tt > 2.4f && tt < 3.4f) { gagMood = STARTLED; gagMsg = "BOE! Aaah!"; if (!g_b) { g_b = true; burstAt(120, 110, 10); } fdy = -6; } else if (tt >= 3.4f) { gagMood = HAPPY; gagMsg = "Haha, een lief spookje."; } break;
+    case 35: gdir(.6f, .3f); g_d = fminf(1, tt * 2); break;
   }
 }
 static void gagDraw() {
@@ -1361,6 +1397,18 @@ static void gagDraw() {
       for (int i = -1; i <= 1; i++) line(hx + i * 5, hy - 8, hx + i * 5 + sinf(a) * 8, hy - 8 - cosf(a) * 8, EYE, 2); } break;
     case 23: { float x = g_fx, y = 30 + sinf(tt) * 3; line(x - 70, y + 1, x - 12, y + 1, 0x632C, 1); roundRect(x - 12, y - 3, 26, 7, 3, EYE);
       triF(x - 2, y, x - 8, y + 11, x + 3, y + 1, EYE); triF(x - 8, y, x - 13, y - 8, x - 6, y - 1, EYE); } break;
+    case 28: { float k = fminf(1, tt / 1.2f); static const uint16_t kl[6] = {0xF800, 0xFC00, 0xFFE0, 0x07E0, 0x041F, 0x801F};
+      for (int b = 0; b < 6; b++) { float r = 64 - b * 6; int n = (int)(18 * k); for (int i = 0; i < n; i++) { float a1 = PI2 / 2 + i * PI2 / 36, a2 = a1 + PI2 / 36; line(120 + cosf(a1) * r, 96 + sinf(a1) * r, 120 + cosf(a2) * r, 96 + sinf(a2) * r, kl[b], 3); } } } break;
+    case 29: { float y = tt < 2.6f ? 190 : 190 - (tt - 2.6f) * (tt - 2.6f) * 60; if (y > -30) { roundRect(170, y - 18, 12, 30, 5, 0xFFFF); triF(170, y - 16, 182, y - 16, 176, y - 30, RED); triF(170, y + 4, 164, y + 14, 170, y + 12, RED); triF(182, y + 4, 188, y + 14, 182, y + 12, RED); circle(176, y - 6, 3, 0x7E5F); if (tt >= 2.6f) { circle(176, y + 18, 4 + sinf(t * 40) * 1.5f, GOLD); circle(176, y + 24, 3, 0xFC00); } } } break;
+    case 30: if (!g_b) { float x = 176 + sinf(tt * 2) * 6; line(x, g_fy + 16, x + sinf(tt * 3) * 4, g_fy + 44, 0xC618, 1); ellipseF(x, g_fy, 13, 16, 0xF8B2); triF(x - 3, g_fy + 16, x + 3, g_fy + 16, x, g_fy + 20, 0xF8B2); circle(x - 5, g_fy - 6, 3, 0xFE9F); } break;
+    case 31: for (int i = 0; i < 7; i++) { float x = 120 + sinf(tt * (.7f + i * .13f) + i * 2) * 90, y = 100 + cosf(tt * (.5f + i * .11f) + i) * 70; float hl = .5f + .5f * sinf(tt * 5 + i * 1.7f); if (hl > .35f) circle(x, y, 1.5f + hl * 2.5f, hl > .7f ? 0xFFF0 : 0xAFE0); } break;
+    case 32: { float x = g_fx, y = 34 + sinf(tt * 2) * 4; ellipseF(x, y, 24, 7, 0x9CF3); ellipseF(x, y - 6, 10, 7, 0x7E5F); for (int i = -2; i <= 2; i++) circle(x + i * 9, y + 2, 1.8f, (int)(tt * 6 + i) % 2 ? GOLD : RED);
+      if (tt > 2.2f && tt < 3.8f) { triF(x - 6, y + 7, x + 6, y + 7, x + 30, y + 150, 0x3A7F); triF(x - 6, y + 7, x - 30, y + 150, x + 30, y + 150, 0x3A7F); } } break;
+    case 33: { float x = g_fx, y = 196; ellipseF(x, y + 6, 16, 4, 0xC5E0); circle(x + 2, y - 2, 9, 0xBB24); circle(x + 2, y - 2, 5, 0xDD89); circle(x + 2, y - 2, 2, 0xBB24); line(x - 12, y + 2, x - 16, y - 8, 0xC5E0, 2); line(x - 14, y + 2, x - 20, y - 6, 0xC5E0, 2); circle(x - 16, y - 8, 1.5f, 0x0000); } break;
+    case 34: { float x = g_fx, y = 70 + sinf(tt * 3) * 6; circle(x, y, 18, 0xF7BF); roundRect(x - 18, y, 36, 20, 2, 0xF7BF); for (int i = 0; i < 4; i++) circle(x - 13.5f + i * 9, y + 20, 4.5f, 0xF7BF); circle(x - 6, y - 2, 3, 0x0000); circle(x + 6, y - 2, 3, 0x0000); ellipseF(x, y + 8, 3, 4, 0x0000); } break;
+    case 35: { float x = 190, y = 168, r = 20 * g_d; if (r < 1) break; ellipseF(x - r * .35f, y, r * .55f, r * .8f, 0xFBC0); ellipseF(x + r * .35f, y, r * .55f, r * .8f, 0xFBC0); ellipseF(x, y, r * .6f, r * .85f, 0xFBC0); roundRect(x - 2, y - r * .95f, 4, r * .3f, 1, 0x3BE5);
+      uint16_t vl = sinf(t * 9) > -.3f ? 0xFF10 : 0xFDA0; triF(x - 9 * g_d, y - 3 * g_d, x - 4 * g_d, y - 9 * g_d, x - 1 * g_d, y - 3 * g_d, vl); triF(x + 9 * g_d, y - 3 * g_d, x + 4 * g_d, y - 9 * g_d, x + 1 * g_d, y - 3 * g_d, vl);
+      triF(x - 11 * g_d, y + 4 * g_d, x + 11 * g_d, y + 4 * g_d, x, y + 12 * g_d, vl); } break;
     case 27: if (tt <= 4.4f) { if (tt > 0) circle(178, 64, 3, EYE); if (tt > .4f) circle(188, 50, 4.5f, EYE); if (tt > .8f) circle(200, 32, 8, EYE); } break;
   }
 }
@@ -1662,6 +1710,68 @@ static void checkOta() {
   t_httpUpdate_return r = httpUpdate.update(cl, FW_BASIS "firmware.bin");
   logRegel("update mislukt (%d): %s", (int)r, httpUpdate.getLastErrorString().c_str()); otaPct = -1;
 }
+// v28: files/werk uit het Worker-pakketje
+struct Jam { char k; int16_t d; int32_t l; char w[6]; uint16_t p0; uint8_t n; };
+static Jam *jams = nullptr; static float *jamPt = nullptr; static volatile int jamN = 0;
+static volatile int lokFileD = -1, lokFileMin = 0; static volatile bool lokWerk = false; static volatile uint32_t lokT = 0;
+static uint32_t pakketSinds = 0;
+static const char *grpZin(const char *s) {
+  if (!strcmp(s, "zwaai")) return "zwaait!"; if (!strcmp(s, "koffie")) return ": koffie?"; if (!strcmp(s, "koffieJa")) return ": ja, koffie!";
+  if (!strcmp(s, "koffieStraks")) return ": straks koffie"; if (!strcmp(s, "file")) return "staat in de file"; if (!strcmp(s, "pech")) return "heeft pech!";
+  if (!strcmp(s, "hart")) return "stuurt een hartje"; if (!strcmp(s, "thuis")) return "is thuis"; if (!strcmp(s, "mijlpaal")) return ": mijlpaal!"; if (!strcmp(s, "feli")) return "feliciteert!";
+  return "test de groep";
+}
+static void haalPakket() {
+  if (!wCfg.url[0]) return;
+  char url[256]; snprintf(url, sizeof url, "%s/scherm?lat=%.5f&lon=%.5f&g=%s&van=%s&sinds=%lu", wCfg.url, (double)gpsLat, (double)gpsLon, wCfg.grp, wCfg.van, (unsigned long)pakketSinds);
+  size_t n; uint8_t *b = haalUrl(url, n); if (!b) return;
+  int maxC = 300, maxJ = 60, maxP = 1200;
+  NetCam *nc = (NetCam *)heap_caps_malloc(sizeof(NetCam) * maxC, MALLOC_CAP_SPIRAM); Jam *nj = (Jam *)heap_caps_malloc(sizeof(Jam) * maxJ, MALLOC_CAP_SPIRAM); float *np = (float *)heap_caps_malloc(sizeof(float) * maxP, MALLOC_CAP_SPIRAM);
+  if (!nc || !nj || !np) { free(nc); free(nj); free(np); free(b); return; }
+  int c = 0, j = 0, pc = 0;
+  for (char *r = strtok((char *)b, "\n"); r; r = strtok(nullptr, "\n")) {
+    if (r[0] == 'T' && r[1] == '|') { if (!pakketSinds) pakketSinds = strtoul(r + 2, nullptr, 10); }
+    else if (r[0] == 'M' && r[1] == '|' && c < maxC) { char *q; NetCam x; x.lat = strtof(r + 2, &q); x.lon = strtof(q + 1, nullptr); x.lim = 0; x.type = 1; nc[c++] = x; }
+    else if (r[0] == 'G' && r[1] == '|' && c < maxC) { char *q; NetCam x; x.lat = strtof(r + 2, &q); x.lon = strtof(q + 1, &q); x.lim = (int16_t)strtol(q + 1, &q, 10); x.type = (q[1] == 'm') ? 3 : 2; nc[c++] = x; }
+    else if (r[0] == 'J' && r[1] == '|' && j < maxJ) {
+      char *f[6] = {0}; int k = 0; f[k++] = r + 2; for (char *q = r + 2; *q && k < 6; q++) if (*q == '|') { *q = 0; f[k++] = q + 1; }
+      if (k < 6) continue;
+      Jam x{}; x.k = !strcmp(f[0], "jam") ? 'j' : (!strcmp(f[0], "lane") ? 'w' : (!strcmp(f[0], "closure") || !strcmp(f[0], "ramp") ? 'a' : (!strcmp(f[0], "accident") ? 'o' : 's')));
+      x.d = atoi(f[1]); x.l = atol(f[2]); strncpy(x.w, f[3], 5); x.p0 = pc; x.n = 0;
+      for (char *q = f[4]; *q && pc + 2 < maxP && x.n < 20;) { char *e; float la = strtof(q, &e); if (*e != ',') break; float lo = strtof(e + 1, &e); np[pc++] = la; np[pc++] = lo; x.n++; if (*e == ';') q = e + 1; else break; }
+      if (x.n) nj[j++] = x;
+    }
+    else if (r[0] == 'B' && r[1] == '|') {
+      char *f[3] = {0}; int k = 0; f[k++] = r + 2; for (char *q = r + 2; *q && k < 3; q++) if (*q == '|') { *q = 0; f[k++] = q + 1; }
+      if (k < 3) continue; uint32_t tt = strtoul(f[0], nullptr, 10); if (tt > pakketSinds) pakketSinds = tt;
+      if (!phoneFresh()) { snprintf(grpTekst, sizeof grpTekst, "%s %s", f[2], grpZin(f[1])); grpTot = millis() + 7000; logRegel("groep: %s", grpTekst); }
+    }
+  }
+  NetCam *oc = extraCams; extraCamN = 0; extraCams = nc; extraCamN = c; free(oc);
+  Jam *oj = jams; float *op = jamPt; jamN = 0; jams = nj; jamPt = np; jamN = j; free(oj); free(op);
+  free(b);
+}
+static void fileVoorStap() {   // ligt er een file of werk voor je (binnen 3 km, in je rijrichting)?
+  if (!gpsFix || !jamN || !jams) { if (millis() - lokT > 4000) { lokFileD = -1; lokWerk = false; } return; }
+  float lat = gpsLat, lon = gpsLon, hd = gpsKoers; int bestF = -1, bestMin = 0; bool werk = false;
+  for (int i = 0; i < jamN; i++) {
+    const Jam &x = jams[i]; float dmin = 1e9; int pi = -1;
+    for (int k = 0; k < x.n; k++) { float d = afstandM(lat, lon, jamPt[(x.p0 + k) * 2], jamPt[(x.p0 + k) * 2 + 1]); if (d < dmin) { dmin = d; pi = k; } }
+    if (pi < 0 || dmin > 3000) continue;
+    float la = jamPt[(x.p0 + pi) * 2], lo = jamPt[(x.p0 + pi) * 2 + 1];
+    float br = atan2f((lo - lon) * cosf(lat * 0.0174533f), la - lat) * 57.2958f, df = fabsf(fmodf(fabsf(br - hd), 360.f)); if (df > 180) df = 360 - df;
+    if (dmin > 80 && df > 60) continue;   // achter je of opzij
+    if (x.k == 'j') { if (bestF < 0 || dmin < bestF) { bestF = (int)dmin; bestMin = x.d / 60; } }
+    else if ((x.k == 'w' || x.k == 'a') && dmin < 900) werk = true;
+  }
+  lokFileD = bestF; lokFileMin = bestMin; lokWerk = werk; lokT = millis();
+}
+static void stuurZwaai() {
+  if (!wCfg.url[0] || !wCfg.grp[0]) return;
+  char url[256]; snprintf(url, sizeof url, "%s/cams/ping?g=%s&s=zwaai&van=%s&id=s%08lx&n=%s", wCfg.url, wCfg.grp, wCfg.van, (unsigned long)esp_random(), wCfg.naam);
+  for (char *q = url; *q; q++) if (*q == ' ') *q = '+';
+  size_t n; uint8_t *b = haalUrl(url, n); logRegel("zwaai naar de groep %s", b ? "verstuurd" : "mislukt"); free(b);
+}
 static void netTaak(void *) {
   uint32_t flitsT = 0, otaT = 0, beginT = 0, stapT = millis(); bool ntpAan = false, flitsOud = false;
   laadFlitsers(false); flitsOud = true;   // eerst uit het geheugen
@@ -1670,7 +1780,7 @@ static void netTaak(void *) {
     // 1. tegel voor de huidige plek (uit het geheugen of van internet)
     bool online = WiFi.status() == WL_CONNECTED;
     if (gpsFix) { char key[16]; tegelKey(gpsLat, gpsLon, key, sizeof key); if (strcmp(key, tegelNu)) laadTegel(key, online); }
-    bepaalWeg(); trajectStap(dt);
+    bepaalWeg(); trajectStap(dt); fileVoorStap();
     // 2. wifi
     if (wifiHerstart) { wifiHerstart = false; WiFi.disconnect(true); vTaskDelay(pdMS_TO_TICKS(300)); beginT = 0; }
     if (!wifiNaam[0]) { netStatus = "wifi uit"; vTaskDelay(pdMS_TO_TICKS(1000)); continue; }
@@ -1682,6 +1792,8 @@ static void netTaak(void *) {
     netStatus = "wifi OK";
     if (!ntpAan) { ntpAan = true; configTzTime("CET-1CEST,M3.5.0,M10.5.0/3", "pool.ntp.org", "time.google.com"); logRegel("wifi verbonden (%s), IP %s", wifiNaam, WiFi.localIP().toString().c_str()); }
     if (!flitsT || millis() - flitsT > 24UL * 3600000 || flitsOud) { flitsOud = false; flitsT = millis(); laadFlitsers(true); }
+    { static uint32_t pakT = 0; uint32_t elk = (gpsFix && gpsSpeedKmh > 5) ? 45000 : 120000; if (wCfg.url[0] && (!pakT || millis() - pakT > elk)) { pakT = millis(); haalPakket(); } }
+    if (zwaaiVraag && !bleConnected) { zwaaiVraag = false; stuurZwaai(); } else if (zwaaiVraag) zwaaiVraag = false;
     if (gpsFix && tegelNu[0] == 0) { char key[16]; tegelKey(gpsLat, gpsLon, key, sizeof key); laadTegel(key, true); }
     bool stil = !gpsFix || gpsSpeedKmh < 1;
     if (stil && (!otaT || millis() - otaT > 3UL * 3600000) && millis() > 60000) { otaT = millis(); checkOta(); }
@@ -1735,12 +1847,17 @@ void drawFace(){
    char ct[24]; snprintf(ct, sizeof ct, "FLITSER %dm", (camM / 10) * 10);
    boxAdd(40, 26, 200, 50); roundRect(44, 28, 152, 20, 10, 0x8000);
    frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - strlen(ct) * 6, Y(32)); frame->print(ct);
- } else if (tel && phone.fileD >= 0) {
-   char ft[32]; if (phone.fileD < 950) snprintf(ft, sizeof ft, "FILE %dm", (phone.fileD / 50) * 50); else snprintf(ft, sizeof ft, "FILE %d,%dkm", phone.fileD / 1000, (phone.fileD % 1000) / 100);
-   if (phone.fileMin > 0) { size_t l = strlen(ft); snprintf(ft + l, sizeof ft - l, " +%dm", phone.fileMin); }
+ } else if ((tel && phone.fileD >= 0) || (!tel && lokFileD >= 0)) {
+   int fD = tel ? phone.fileD : lokFileD, fM = tel ? phone.fileMin : lokFileMin;
+   char ft[32]; if (fD < 950) snprintf(ft, sizeof ft, "FILE %dm", (fD / 50) * 50); else snprintf(ft, sizeof ft, "FILE %d,%dkm", fD / 1000, (fD % 1000) / 100);
+   if (fM > 0) { size_t l = strlen(ft); snprintf(ft + l, sizeof ft - l, " +%dm", fM); }
    boxAdd(50, 26, 190, 50); roundRect(52, 28, 136, 20, 10, 0x3082);
    bool aan = (millis() / 400) % 2; circle(64, 38, 3, aan ? 0xF8A6 : 0x7800); circle(73, 38, 3, aan ? 0x7800 : 0xF8A6);
    frame->setTextColor(0xFEDB); frame->setTextSize(2); frame->setCursor(X(82), Y(31)); frame->print(ft);
+ } else if ((int32_t)(grpTot - millis()) > 0 && grpTekst[0]) {   // v28: groepsbericht
+   char tx[27]; strncpy(tx, grpTekst, 26); tx[26] = 0; int tw = strlen(tx) * 12;
+   boxAdd(18, 26, 222, 50); roundRect(120 - tw / 2.f / 1.94f - 8, 28, tw / 1.94f + 16, 20, 10, 0x0451);
+   frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - tw / 2, Y(32)); frame->print(tx);
  } else if (gagAct >= 0 && gagMsg && gagMsg[0] && (int32_t)(flagTot - millis()) <= 0 && (int32_t)(ritKlaarTot - millis()) <= 0) {
    char tx[27]; strncpy(tx, gagMsg, 26); tx[26] = 0; int tw = strlen(tx) * 12;
    boxAdd(20, 30, 220, 46); frame->setTextColor(0xBDF7); frame->setTextSize(2); frame->setCursor(X(120) - tw / 2, Y(34)); frame->print(tx);
@@ -1748,7 +1865,7 @@ void drawFace(){
    char tx[27]; strncpy(tx, phone.txt, 26); tx[26] = 0; int tw = strlen(tx) * 12;
    boxAdd(20, 30, 220, 46); frame->setTextColor(0xBDF7); frame->setTextSize(2); frame->setCursor(X(120) - tw / 2, Y(34)); frame->print(tx);
  }
- if (tel && phone.werk) {   // werk-driehoekje boven het snelheidsbord
+ if ((tel && phone.werk) || (!tel && lokWerk)) {   // werk-driehoekje boven het snelheidsbord
    boxAdd(64, 156, 90, 178);
    frame->fillTriangle(X(77), Y(157), X(89), Y(177), X(65), Y(177), 0xD8A6);
    frame->fillTriangle(X(77), Y(162), X(85), Y(174), X(69), Y(174), 0xFFFF);
@@ -1826,6 +1943,7 @@ void updateMood(float dt){
  if (phoneFresh() && phone.mood >= 0 && millis() > idleMoodUntilMs) mood = phone.mood;
  if (gagAct >= 0 && gagMood >= 0) mood = gagMood;
  if (slaapt) mood = SLEEPING;
+ if ((int32_t)(grpTot - millis()) > 0) mood = HAPPY;
  if ((int32_t)(flagTot - millis()) > 0) mood = EXCITED;
  if ((int32_t)(ritKlaarTot - millis()) > 0) mood = HAPPY;
  if (phoneFresh() && phone.camD >= 0 && phone.camD < 350) mood = ALERT;
@@ -1990,7 +2108,7 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v27 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v28 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -2045,11 +2163,12 @@ void setup(){
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
  logStart();
  bool wakkerDoorBeweging = esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0;
+ buddyPrefs.getString("wurl", wCfg.url, sizeof wCfg.url); buddyPrefs.getString("grp", wCfg.grp, sizeof wCfg.grp); buddyPrefs.getString("van", wCfg.van, sizeof wCfg.van); buddyPrefs.getString("naam", wCfg.naam, sizeof wCfg.naam);
  buddyPrefs.getString("ssid", wifiNaam, sizeof wifiNaam); buddyPrefs.getString("pass", wifiPass, sizeof wifiPass);
  xTaskCreatePinnedToCore(netTaak, "BuddyNet", 12288, nullptr, 1, nullptr, 0);
  logRegel("===== OPSTART v%d | reden: %s | heap %u =====", FW_VERSIE, resetReden(), (unsigned)ESP.getFreeHeap());
  if (wakkerDoorBeweging) { logRegel("wakker geworden door beweging (instappen?)"); startGag(22); gagMsg = "Hoi! Daar ben je!"; nextGagT = 20; }
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v27: outfits, instellen vanuit de app | uit/aan met de auto | wifi, eigen limieten, trajecten, updates | logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v28: files/werk/groep zonder telefoon, zwaaien | outfits, instellen vanuit de app | uit/aan met de auto | wifi, eigen limieten, trajecten, updates | logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
@@ -2069,6 +2188,7 @@ void loop(){
      if (c == '\n' || c == '\r') { cmd[cl] = 0; if (!strcmp(cmd, "log")) logDump(Serial); else if (!strcmp(cmd, "wis") && logFs) { logFs->remove(LOGF); logFs->remove(LOGOUD); Serial.println("Logboek gewist."); } cl = 0; }
      else if (cl < sizeof cmd - 1) cmd[cl++] = c;
    }
+   if (netNieuw) { netNieuw = false; wCfg = wNieuw; buddyPrefs.putString("wurl", wCfg.url); buddyPrefs.putString("grp", wCfg.grp); buddyPrefs.putString("van", wCfg.van); buddyPrefs.putString("naam", wCfg.naam); logRegel("groep/worker ingesteld (%s)", wCfg.naam); }
    if (setLicht >= 0) { helderheid = (uint8_t)constrain(setLicht * 255 / 100, 20, 255); buddyPrefs.putUChar("licht", helderheid); setLicht = -1; }
    if (setVol >= 0) { buddyVolume = (uint8_t)constrain((int)setVol, 0, 100); if (audioReady) applyCodecVolume(buddyVolume); buddyPrefs.putUChar("volume", buddyVolume); setVol = -1; }
    if (wifiNieuw) { wifiNieuw = false; strcpy(wifiNaam, wifiNaamNieuw); strcpy(wifiPass, wifiPassNieuw); buddyPrefs.putString("ssid", wifiNaam); buddyPrefs.putString("pass", wifiPass); wifiHerstart = true; logRegel("wifi ingesteld: %s", wifiNaam); }
@@ -2076,7 +2196,7 @@ void loop(){
  }
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v27 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v28 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -2087,6 +2207,7 @@ void loop(){
  }
  float dt=lastRenderUs ? fminf(0.10f,(uint32_t)(nowUs-lastRenderUs)/1000000.0f) : 1.0f/30.0f;
  lastRenderUs=nowUs; t+=dt;
+ { static uint32_t volT = 0; if (millis() - volT > 8000) { volT = millis(); drawnBox[0] = drawnBox[1] = prevBox = {0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1}; } }  // v28: af en toe alles wissen en opnieuw versturen
  imuStep(dt); gagStep(dt); driveStep(dt); slaapStap();
  if (menuOpen && (int32_t)(menuTot - millis()) < 0) menuOpen = false;
  updateMood(dt); updateParticles(dt);
@@ -2105,7 +2226,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v27 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v28 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){

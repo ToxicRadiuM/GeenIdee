@@ -1479,6 +1479,32 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       upd: function (g, tt) { dir(-.6, .4); fsc = 1 - Math.min(.06, tt * .03); if (tt > 2.8) { g.msg = 'Oeps, zei ik dat hardop?'; dir(.5, .5); } } },
     bounce: { name: 'Stuitert', dur: 4.2, idle: 1, mood: 'excited', msg: 'Boing boing boing!',
       upd: function (g, tt) { var h = Math.abs(Math.sin(tt * 5)) * Math.max(0, 1 - tt / 4.2); fdy = -h * 22; fsc = 1 + (h < .1 ? .06 : 0); dir(0, -h * .5); } },
+    /* ---- v78: nog meer animaties ---- */
+    regenboog: { name: 'Ziet een regenboog', dur: 6, idle: 1, drive: 1, mood: 'love', msg: 'Ooh, een regenboog!',
+      upd: function (g, tt) { dir(0, -.8); if (tt > 4.5) g.msg = 'Zo mooi…'; },
+      draw: function (g, tt) { var k = Math.min(1, tt / 1.2), kl = ['#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#0a84ff', '#af52de']; ctx.lineWidth = 5; ctx.lineCap = 'round';
+        kl.forEach(function (c, b) { ctx.strokeStyle = c; ctx.globalAlpha = .9; ctx.beginPath(); ctx.arc(120, 96, 64 - b * 5.5, Math.PI, Math.PI + Math.PI * k); ctx.stroke(); }); ctx.globalAlpha = 1; } },
+    raket: { name: 'Lanceert een raket', dur: 5, idle: 1, mood: 'excited', msg: '3…',
+      upd: function (g, tt) { dir(.4, -.6); if (tt < 2.6) g.msg = tt < .9 ? '3…' : (tt < 1.8 ? '2…' : '1…'); else { g.msg = 'Lancering!'; if (!g.b) { g.b = 1; burst(176, 190, 12); } } },
+      draw: function (g, tt) { var y = tt < 2.6 ? 190 : 190 - Math.pow(tt - 2.6, 2) * 60; if (y < -40) return; ctx.fillStyle = '#fff'; rr(170, y - 18, 12, 30, 5); ctx.fill(); ctx.fillStyle = '#ff453a';
+        ctx.beginPath(); ctx.moveTo(170, y - 16); ctx.lineTo(182, y - 16); ctx.lineTo(176, y - 30); ctx.fill(); ctx.beginPath(); ctx.moveTo(170, y + 4); ctx.lineTo(164, y + 14); ctx.lineTo(170, y + 12); ctx.fill(); ctx.beginPath(); ctx.moveTo(182, y + 4); ctx.lineTo(188, y + 14); ctx.lineTo(182, y + 12); ctx.fill();
+        ctx.fillStyle = '#64d2ff'; ctx.beginPath(); ctx.arc(176, y - 6, 3, 0, TAU); ctx.fill(); if (tt >= 2.6) { ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.arc(176, y + 18, 4 + Math.sin(T * 40) * 1.5, 0, TAU); ctx.fill(); ctx.fillStyle = '#ff9f0a'; ctx.beginPath(); ctx.arc(176, y + 24, 3, 0, TAU); ctx.fill(); } } },
+    ballon: { name: 'Ballonnetje', dur: 6, idle: 1, mood: 'happy', msg: 'Een ballonnetje!',
+      upd: function (g, tt) { g.y = 230 - tt * 40; dir(.5, (g.y - 120) / 120); if (g.y < 60 && !g.b) { g.b = 1; burst(176, g.y, 14); g.mood = 'startled'; g.msg = 'Pang! Oei…'; } },
+      draw: function (g, tt) { if (g.b) return; var x = 176 + Math.sin(tt * 2) * 6; ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, g.y + 16); ctx.quadraticCurveTo(x - 5, g.y + 30, x + Math.sin(tt * 3) * 4, g.y + 44); ctx.stroke();
+        ctx.fillStyle = '#ff375f'; ctx.beginPath(); ctx.ellipse(x, g.y, 13, 16, 0, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.ellipse(x - 5, g.y - 6, 3, 5, -.4, 0, TAU); ctx.fill(); } },
+    vuurvliegjes: { name: 'Vuurvliegjes', dur: 6.4, idle: 1, need: function () { var h = new Date().getHours(); return h >= 18 || h < 7; }, mood: 'relaxed', msg: 'Vuurvliegjes…',
+      upd: function (g, tt) { dir(Math.sin(tt * 1.3) * .7, Math.cos(tt * 1.1) * .4 - .2); },
+      draw: function (g, tt) { for (var i = 0; i < 7; i++) { var x = 120 + Math.sin(tt * (.7 + i * .13) + i * 2) * 90, y = 100 + Math.cos(tt * (.5 + i * .11) + i) * 70, hl = .5 + .5 * Math.sin(tt * 5 + i * 1.7); ctx.globalAlpha = hl; ctx.fillStyle = '#e6ff7a'; ctx.beginPath(); ctx.arc(x, y, 1.5 + hl * 2.5, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; } },
+    ufo: { name: 'Ziet een ufo', dur: 6, idle: 1, mood: 'alert', msg: 'Wat is DAT?!',
+      upd: function (g, tt) { g.x = -30 + tt / 6 * 300; dir((g.x - 120) / 110, -.9); if (tt > 2.2 && tt < 3.8) { g.mood = 'startled'; g.msg = 'Ze nemen me mee!'; fdy = -4; } else if (tt >= 3.8) { g.mood = 'happy'; g.msg = 'Pfiew. Ze waren vriendelijk.'; } },
+      draw: function (g, tt) { var x = g.x, y = 34 + Math.sin(tt * 2) * 4; if (tt > 2.2 && tt < 3.8) { ctx.fillStyle = 'rgba(100,210,255,.25)'; ctx.beginPath(); ctx.moveTo(x - 6, y + 7); ctx.lineTo(x + 6, y + 7); ctx.lineTo(x + 32, y + 150); ctx.lineTo(x - 32, y + 150); ctx.fill(); }
+        ctx.fillStyle = '#9aa7b4'; ctx.beginPath(); ctx.ellipse(x, y, 24, 7, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#64d2ff'; ctx.beginPath(); ctx.ellipse(x, y - 6, 10, 7, 0, Math.PI, 0); ctx.fill();
+        for (var i = -2; i <= 2; i++) { ctx.fillStyle = Math.floor(tt * 6 + i) % 2 ? '#ffd60a' : '#ff453a'; ctx.beginPath(); ctx.arc(x + i * 9, y + 2, 1.8, 0, TAU); ctx.fill(); } } },
+    slak: { name: 'Kijkt naar een slak', dur: 7, idle: 1, mood: 'bored', msg: 'Die slak is sneller…',
+      upd: function (g, tt) { g.x = 260 - tt * 16; dir((g.x - 120) / 120, .8); if (tt > 4.5) g.msg = 'Sneller dan de file, haha.'; },
+      draw: function (g, tt) { var x = g.x, y = 196; ctx.fillStyle = '#c8bb7e'; ctx.beginPath(); ctx.ellipse(x, y + 6, 16, 4, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#b5652a'; ctx.beginPath(); ctx.arc(x + 2, y - 2, 9, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#e0a060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x + 2, y - 2, 5, 0, TAU * .8); ctx.stroke(); ctx.strokeStyle = '#c8bb7e'; ctx.beginPath(); ctx.moveTo(x - 12, y + 2); ctx.lineTo(x - 16, y - 8); ctx.moveTo(x - 14, y + 2); ctx.lineTo(x - 20, y - 6); ctx.stroke(); } },
     /* ---- v77: feestdagen ---- */
     spook: { name: 'Ziet een spookje', dur: 5.4, idle: 1, drive: 1, feest: 'halloween', need: function () { var f = feestdag(); return !!(f && f.k === 'halloween' && mem.feestAan !== false); }, mood: 'alert', msg: 'Hè? Wat zweeft daar…',
       upd: function (g, tt) { g.x = 250 - tt * 55; dir((g.x - 120) / 100, -.4); if (tt > 2.4 && tt < 3.4) { g.mood = 'startled'; g.msg = 'BOE! Aaah!'; if (!g.b) { g.b = 1; burst(120, 110, 10); fdy = -8; } } else if (tt >= 3.4) { g.mood = 'happy'; g.msg = 'Haha, het is maar een lief spookje.'; } },
@@ -4258,7 +4284,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v77';
+  var VERSION = 'v78';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6247,6 +6273,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
           if (!timer) timer = setInterval(stuur, 1000);
           setTimeout(vraagLog, 4000);   /* elke keer bij verbinden het logboek even meenemen */
           setTimeout(stuurInst, 2000);   /* v77: instellingen en outfit */
+          setTimeout(function () {   /* v78: Worker-adres en groep, zodat het schermpje ook zonder telefoon files, werk en de groep ziet */
+            if (!pbase()) return; var nm = String(myWho() || 'Buddy').replace(/[^A-Za-z0-9 '\-]/g, '').slice(0, 20);
+            stuurTekst('NET:' + pbase() + '\t' + (grp || '') + '\t' + (mijnId || '') + '\t' + nm).catch(function () {});
+          }, 3000);
         });
     }
     function weg() {
@@ -6262,6 +6292,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (logBuf != null) { logBuf += t; return; }
       lg('van het Buddy-scherm: ' + t);
       if (t === 'MELD:cam') $('bUcam').click(); else if (t === 'MELD:mob') $('bUmob').click();
+      else if (t === 'MELD:zwaai' && typeof grStuur === 'function' && grp && pbase()) { grStuur('zwaai').then(function () { toast('👋 Gezwaaid naar de groep (vanaf het schermpje).'); }).catch(function () {}); }
     }
     /* v77: instellingen + outfit naar het schermpje */
     var SCKEY = 'dashboardmaatje-scherm-v1', sc = { l: 65, v: 80, a: '1' };

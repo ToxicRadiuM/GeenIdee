@@ -37,6 +37,18 @@ def radiaal_gat(hoek_deg, z, breed, hoog, diep=12):
     b = box(diep, breed, hoog).translate([BUIT_D / 2, 0, z])
     return b.rotate([0, 0, hoek_deg])
 
+def druppel_gat(hoek_deg, z, d, diep=12):
+    # rond gat met een 45-graden puntje erboven (print zonder support)
+    c = cyl(diep, d / 2, center=True).rotate([0, 90, 0])
+    k = box(diep, d / 2 * 1.414, d / 2 * 1.414).rotate([45, 0, 0])
+    return (c + k).translate([BUIT_D / 2, 0, z]).rotate([0, 0, hoek_deg])
+
+def dak_sleuf(hoek_deg, z, breed, hoog, diep=12):
+    # rechthoekige sleuf met een schuin dak (45 graden) bovenop
+    b = box(diep, breed, hoog).translate([0, 0, 0])
+    dak = Manifold.hull(box(diep, breed, 0.01).translate([0, 0, hoog / 2]) + box(diep, 0.4, 0.01).translate([0, 0, hoog / 2 + breed / 2 - 0.2]))
+    return (b + dak).translate([BUIT_D / 2, 0, z]).rotate([0, 0, hoek_deg])
+
 def rond_gat(hoek_deg, z, d, diep=12):
     c = cyl(diep, d / 2, center=True).rotate([0, 90, 0]).translate([BUIT_D / 2, 0, z])
     return c.rotate([0, 0, hoek_deg])
@@ -51,23 +63,23 @@ voor -= (cyl(1.6, BUIT_D / 2 + 1, BUIT_D / 2 + 1) - cyl(1.6, BUIT_D / 2 - 1.2, B
 z_usb = LIP + PCB_ACHTER + 1.6
 # v2: USB-C zat ~2 mm te laag -> open sleuf tot de achterrand (z 7,6 .. 14,8), past ook voor een dikke stekker
 voor -= box(14, 12.8, L1 - 7.6 + 0.02).translate([BUIT_D / 2, 0, 7.6 + (L1 - 7.6) / 2 + 0.01])
-voor -= radiaal_gat(180, LIP + PCB_ACHTER - 0.4, 13.0, 4.0)  # micro-SD links (v2: 1,7 mm lager en iets hoger gat)
+voor -= dak_sleuf(180, LIP + PCB_ACHTER - 0.4, 13.0, 4.0)  # micro-SD links (v3: met schuin dak, geen support)
 for h in (146, 214):                               # PWR (boven) en BOOT (onder) links: gaatje voor een pen/paperclip
-    voor -= rond_gat(h, LIP + PCB_ACHTER + 1.6, 3.6)
+    voor -= druppel_gat(h, LIP + PCB_ACHTER + 1.6, 3.6)
 
 # =================== deel 2: achterkant ===================
 Z0 = Z_BUS                                  # voorkant tussenplaat raakt de busjes
 L_PLUG = PLUG
 L_ACHT = HOLTE + ACHTER
 plug_r = BINN_D / 2 - PASSING
-achter = cyl(L_PLUG, plug_r).translate([0, 0, Z0]) + cyl(L_ACHT, BUIT_D / 2).translate([0, 0, Z0 + L_PLUG])
+OVERG = BUIT_D / 2 - plug_r   # v3: 45 graden schuine overgang, dan is er geen support nodig
+achter = cyl(L_PLUG, plug_r).translate([0, 0, Z0]) + cyl(OVERG, plug_r, BUIT_D / 2).translate([0, 0, Z0 + L_PLUG]) + cyl(L_ACHT - OVERG, BUIT_D / 2).translate([0, 0, Z0 + L_PLUG + OVERG])
 # holte (achter de tussenplaat)
 achter -= cyl(L_PLUG - PLAAT + L_ACHT - ACHTER, plug_r - 1.6).translate([0, 0, Z0 + PLAAT])
 achter -= cyl(L_ACHT - ACHTER, BUIT_D / 2 - WAND).translate([0, 0, Z0 + L_PLUG])
 # vlakke 'plank' bovenin voor de GPS-antenne (antenne plakken, keramiek naar boven)
 plank_y = 17.5
-plank = box(BUIT_D, BUIT_D, L_ACHT - ACHTER).translate([0, plank_y + BUIT_D / 2, Z0 + L_PLUG + (L_ACHT - ACHTER) / 2])
-achter += (plank ^ cyl(L_ACHT, BUIT_D / 2 - 0.01).translate([0, 0, Z0 + L_PLUG]))
+# v3: plank weggehaald (die had support nodig). De GPS-antenne gaat plat op de tussenplaat, keramiek naar achteren.
 # tussenplaat: schroefgaten M2 + verzinking aan de holte-kant
 for (x, y) in MOUNTS:
     achter += cyl(PLAAT, 3.2).translate([x, y, Z0])            # oogje rond het busje
@@ -88,7 +100,7 @@ achter -= cyl(ACHTER + 1, BUIT_D / 2 - WAND).translate([0, 0, z_back - ACHTER])
 SP = 0.2
 deksel = cyl(1.4, BUIT_D / 2) + cyl(2.2, BUIT_D / 2 - WAND - SP).translate([0, 0, -2.2])   # flens buiten + ring die erin steekt
 deksel -= cyl(2.2, BUIT_D / 2 - WAND - SP - 1.6).translate([0, 0, -2.21])                        # ring hol
-deksel = deksel - (cyl(1.0, BUIT_D / 2 + 1) - cyl(1.0, BUIT_D / 2 - 0.8, BUIT_D / 2 + 0.2)).translate([0, 0, 0.41])  # afgeronde buitenrand
+deksel = deksel - (cyl(1.0, BUIT_D / 2 + 1) - cyl(1.0, BUIT_D / 2, BUIT_D / 2 - 1.0)).translate([0, 0, 0.41])  # v3: schuine buitenrand (aan de bedkant, geen overhang)
 for i in range(-5, 6):
     for j in range(-5, 6):
         x = i * 3.6 + (1.8 if j % 2 else 0); y = j * 3.1
