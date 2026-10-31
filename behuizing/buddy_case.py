@@ -90,14 +90,20 @@ for (x, y) in MOUNTS:
     rib = box(R_HOL - rp + 0.6, 1.8, z_back - ACHTER - (Z0 + L_PLUG + R_HOL - r_plug_in) + 0.01)
     achter += rib.translate([(rp + R_HOL + 0.6) / 2, 0, (Z0 + L_PLUG + R_HOL - r_plug_in) + (z_back - ACHTER - (Z0 + L_PLUG + R_HOL - r_plug_in)) / 2]).rotate([0, 0, ang])
     achter += cyl(1.45, 0.7, 0.85).translate([x, y, Z0 - 1.4])   # tapse pin, punt naar het bord
-# speakerrooster v7e: één groot rond gat aan de buitenkant (eerste lagen op het bed: niks kleins meer),
-# daarna overbrugt hij dat gat met lange rechte lijnen (bruggetjes) die samen het rooster vormen.
-ROOSTER_R, OPEN_DIK, LAT_B, LAT_GAT = 12.5, 1.2, 1.6, 1.6
+# speakerrooster v7f: groot rond gat in de buitenste laagjes, daarna twee lagen schuine latjes eroverheen:
+# eerst //// en daarbovenop \\\\ (kruislings, als een gaasje). Lange rechte lijnen, niks kleins.
+ROOSTER_R, OPEN_DIK, LAT_B, LAT_GAT = 12.5, 0.8, 1.4, 2.2
+LAAG = (ACHTER - OPEN_DIK) / 2                      # 0,6 mm per richting
 achter -= cyl(OPEN_DIK + 0.5, ROOSTER_R).translate([0, -2, z_back - OPEN_DIK])
-for k in range(-8, 9):
-    yk = k * (LAT_B + LAT_GAT) + LAT_B / 2 + LAT_GAT / 2
-    if abs(yk) > ROOSTER_R - 0.5: continue
-    achter -= (box(2 * ROOSTER_R, LAT_GAT, ACHTER - OPEN_DIK + 0.2) ^ cyl(5, ROOSTER_R).translate([0, -yk, -2])).translate([0, yk - 2, z_back - ACHTER + (ACHTER - OPEN_DIK) / 2 - 0.05])
+def latten_gaten(hoek, z0):
+    g = None
+    for k in range(-12, 13):
+        yk = k * (LAT_B + LAT_GAT) + (LAT_B + LAT_GAT) / 2
+        s_ = box(2 * ROOSTER_R + 4, LAT_GAT, LAAG + 0.02).translate([0, yk, 0])
+        g = s_ if g is None else g + s_
+    return (g.rotate([0, 0, hoek]) ^ cyl(LAAG + 0.04, ROOSTER_R, center=True)).translate([0, -2, z0])
+achter -= latten_gaten(45, z_back - OPEN_DIK - LAAG / 2)            # laag tegen het gat: ////
+achter -= latten_gaten(-45, z_back - OPEN_DIK - LAAG * 1.5)         # binnenste laag: \\\\
 # nokjes die een rond speakertje (tot 30 mm) vasthouden
 for k in range(4):
     ang = math.radians(45 + 90 * k); r = 15.8
