@@ -2225,8 +2225,9 @@ void handleTouch(){
    down = false; lang = false; return;
  }
  // CST9217 levert paneelcoördinaten; vertaal naar de 240x240 tekenruimte.
- float x=(float)touchX[0]*240.0f/(float)LCD_WIDTH;
- float y=(float)touchY[0]*240.0f/(float)LCD_HEIGHT;
+ // v30: de touchlaag van dit bordje zit 180 graden gedraaid t.o.v. het beeld (net als in het Waveshare-voorbeeld: setMirrorXY(true,true))
+ float x=240.0f-(float)touchX[0]*240.0f/(float)LCD_WIDTH;
+ float y=240.0f-(float)touchY[0]*240.0f/(float)LCD_HEIGHT;
  if (!down) { down = true; downMs = now; dX = x; dY = y; lang = false; laatsteActie = now; if (slaapt) { slaapt = false; laatsteActie = now; } }
  lX = x; lY = y;
  if (venster) { vensterTot = now + 30000; vensterSleep(x, y); return; }   // in een venster: geen lang-drukken, wel slepen
