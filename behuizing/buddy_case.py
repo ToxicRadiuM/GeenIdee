@@ -16,7 +16,7 @@ MOUNTS = [(0.0, 20.5), (-13.75, -14.7), (13.75, -14.7)]   # M2-busjes (achterkan
 # ---------- behuizing ----------
 SPEL   = 0.35          # speling rond het glas
 WAND   = 2.4
-LIP    = 1.4           # rand voor het glas
+LIP    = 2.0           # rand voor het glas (v4: dikker, dan print hij als dicht vlak i.p.v. losse vulling)
 BUIT_D = GLAS_D + 2 * SPEL + 2 * WAND   # ~54.5
 BINN_D = GLAS_D + 2 * SPEL              # ~49.66
 Z_BUS  = LIP + BORD_DIEP                # achterkant busjes
