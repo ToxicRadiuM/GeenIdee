@@ -659,6 +659,7 @@ struct FlushJob { uint16_t *fb; Box b; };
 static QueueHandle_t flushQueue = nullptr;
 static SemaphoreHandle_t flushIdle = nullptr;
 static volatile uint32_t flushLastUs = 0;
+static volatile uint8_t wilLicht = 0, isLicht = 0;   // v23: helderheid alleen vanuit de verstuur-taak (anders botsen twee kernen op de schermbus)
 // v16: GPS-reset via TCA9554 P7 standaard UIT. Het officiele Waveshare GPS-voorbeeld raakt P7 niet aan;
 // in v14/v15 kwam er na onze resetpuls niks meer uit de GPS. Zet op true om de oude resetpuls terug te zetten.
 static constexpr bool GPS_RESET_PULSE = false;
@@ -1091,7 +1092,7 @@ static void menuKies(float x, float y) {
   float a = atan2f(dy, dx); int i = (int)lroundf((a + PI2 / 4) / (PI2 / 4)); i = ((i % 4) + 4) % 4;
   menuOpen = false;
   if (i == 0) volumeUiUntil = millis() + 8000;
-  else if (i == 1) { helderheid = helderheid >= 230 ? 40 : (helderheid < 100 ? 120 : (helderheid < 170 ? 180 : 255)); gfx->setBrightness(helderheid); buddyPrefs.putUChar("licht", helderheid); infoTot = millis() + 2500; }
+  else if (i == 1) { helderheid = helderheid >= 230 ? 40 : (helderheid < 100 ? 120 : (helderheid < 170 ? 180 : 255)); buddyPrefs.putUChar("licht", helderheid); infoTot = millis() + 2500; }
   else if (i == 2) { bleSend("MELD:cam"); mood = bleConnected ? ALERT : WORRIED; lastMood = -1; idleMoodUntilMs = millis() + 2500; Serial.println(bleConnected ? "Flitser gemeld via telefoon" : "Flitser melden: telefoon niet verbonden"); }
   else infoTot = millis() + 8000;
 }
@@ -1320,7 +1321,7 @@ static void segTekst(const char *t, float cx, float cy, float h, uint16_t c) {  
   for (int i = 0; i < n; i++) { segCijfer(t[i], x, y, h, c); x += segBreed(t[i], h) + gap; }
 }
 // Nederlandse tijd uit de GPS (UTC + 1, of + 2 in de zomertijd)
-static bool klokOk() { return gpsHH >= 0 && millis() - gpsTijdMs < 120000; }
+static bool klokOk() { int jr = (gpsDate[4] >= '0' && gpsDate[5] >= '0') ? (gpsDate[4] - '0') * 10 + (gpsDate[5] - '0') : 0; return gpsHH >= 0 && jr >= 24 && jr < 70 && millis() - gpsTijdMs < 120000; }  // 1980 = GPS weet de tijd nog niet
 static int dagVanWeek(int d, int m, int y) { static const int tt[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4}; if (m < 3) y--; return (y + y / 4 - y / 100 + y / 400 + tt[m - 1] + d) % 7; }
 static void lokaleTijd(int &hh, int &mm) {
   auto twee = [](int i) { return (gpsDate[i] >= '0' && gpsDate[i + 1] >= '0') ? (gpsDate[i] - '0') * 10 + (gpsDate[i + 1] - '0') : 1; };
@@ -1342,7 +1343,7 @@ static void slaapStap() {
   int hh = 12, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
   bool nacht = hh >= 21 || hh < 7;
   uint8_t doel = slaapt ? 12 : (nacht ? (uint8_t)(helderheid * .45f) : helderheid);
-  if (doel != huidigLicht) { huidigLicht = doel; gfx->setBrightness(doel); }
+  if (doel != huidigLicht) { huidigLicht = doel; wilLicht = doel ? doel : 1; }
 }
 
 void drawFace(){
@@ -1445,6 +1446,7 @@ void flushTask(void *) {
   FlushJob job;
   for (;;) {
     if (xQueueReceive(flushQueue, &job, portMAX_DELAY) != pdTRUE) continue;
+    if (wilLicht && wilLicht != isLicht) { isLicht = wilLicht; gfx->setBrightness(isLicht); }
     uint32_t t0 = micros();
     uint16_t w = job.b.x1 - job.b.x0 + 1, h = job.b.y1 - job.b.y0 + 1;
     gfx->startWrite();
@@ -1636,7 +1638,7 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v22 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v23 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -1683,19 +1685,19 @@ void setup(){
  if (qmiInit()) { imuReady = true; Serial.println("Buddy gyro: QMI8658 klaar (meehangen in bochten)"); }
  else Serial.println("Buddy gyro: QMI8658 niet gevonden");
  Serial.println("Buddy BLE: starten..."); Serial.flush();
- helderheid = buddyPrefs.getUChar("licht", 160); gfx->setBrightness(helderheid);
+ helderheid = buddyPrefs.getUChar("licht", 160); wilLicht = helderheid;
  rec80 = buddyPrefs.getFloat("b80", 0); rec100 = buddyPrefs.getFloat("b100", 0); recG = buddyPrefs.getFloat("gmax", 0);
  totKm = buddyPrefs.getFloat("km", 0); totRit = buddyPrefs.getUInt("rit", 0);
  buddyPrefs.getString("d80", dat80, sizeof dat80); buddyPrefs.getString("d100", dat100, sizeof dat100);
  bleStart();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v22: grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v23: grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v22 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v23 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -1724,7 +1726,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v22 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v23 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){
