@@ -150,13 +150,14 @@ def ringstuk(r_in, r_uit, breed, z0, h, hoek):
     b = box(r_uit - r_in, breed, h).translate([(r_in + r_uit) / 2, 0, z0 + h / 2])
     return b.rotate([0, 0, hoek])
 for hk in HOEKEN:
-    arm = ringstuk(R_UIT - ARM_DIK, R_UIT, ARM_BR, L1 - 0.01, ARM_LEN + 0.01, hk)
+    # v7b: armpje volgt de ronding (eerst een recht plaatje, dat stak aan de hoekjes uit)
+    arm = ringstuk(R_UIT - ARM_DIK - 1, R_UIT + 1, ARM_BR, L1 - 0.01, ARM_LEN + 0.01, hk) ^ (cyl(ARM_LEN + 0.01, R_UIT) - cyl(ARM_LEN + 0.01, R_UIT - ARM_DIK)).translate([0, 0, L1 - 0.01])
     # haakje naar binnen, met een schuin aanloopje aan de bovenkant (print zonder support, klikt makkelijk)
     haak = Manifold.hull(ringstuk(R_UIT - ARM_DIK - HAAK_IN, R_UIT - ARM_DIK + 0.01, ARM_BR, L1 + HAAK_Z0, HAAK_H * .55, hk)
                          + ringstuk(R_UIT - ARM_DIK - 0.05, R_UIT - ARM_DIK + 0.01, ARM_BR, L1 + HAAK_Z0, HAAK_H + HAAK_IN, hk))
     voor += arm + haak
     # achterkant: inkeping waar het armpje in valt (blijft mooi gelijk met de buitenkant) + venster voor het haakje
-    achter -= ringstuk(R_UIT - ARM_DIK - SPEL_K, R_UIT + 1, ARM_BR + 2 * SPEL_K, Z0 + L_PLUG - 0.01, ARM_LEN + 0.3, hk)
+    achter -= ringstuk(R_UIT - ARM_DIK - 3, R_UIT + 1, ARM_BR + 2 * SPEL_K, Z0 + L_PLUG - 0.01, ARM_LEN + 0.3, hk) - cyl(40, R_UIT - ARM_DIK - SPEL_K).translate([0, 0, Z0])
     achter -= ringstuk(R_UIT - ARM_DIK - 3, R_UIT, ARM_BR + 2 * SPEL_K, Z0 + L_PLUG + HAAK_Z0 - 0.1, HAAK_H + 0.3, hk)
 t1 = save(voor, 'buddy_1_voorkant')
 # achterkant geprint met de achterwand op het bed: omdraaien
