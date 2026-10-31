@@ -15,6 +15,45 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <esp_heap_caps.h>
+#include <LittleFS.h>             // v24: logboek in het flashgeheugen
+#include <FFat.h>
+#include <esp_system.h>
+#include <stdarg.h>
+
+// ===================== v24: logboek (blijft bewaard, ook zonder computer) =====================
+// Elke minuut een statusregel + gebeurtenissen (opstarten en waarom, rit, 0-100, GPS-fix, Bluetooth).
+// Uitlezen: Serial Monitor -> typ "log" (en Enter), of in de Buddy-app via "Log van het schermpje ophalen".
+static fs::FS *logFs = nullptr; static SemaphoreHandle_t logMutex = nullptr;
+static const char *LOGF = "/buddy_log.txt", *LOGOUD = "/buddy_log_oud.txt";
+static void logStart() {
+  if (LittleFS.begin(true)) logFs = &LittleFS;
+  else if (FFat.begin(true)) logFs = &FFat;
+  logMutex = xSemaphoreCreateMutex();
+  Serial.printf("Logboek: %s\n", logFs ? (logFs == &LittleFS ? "LittleFS klaar" : "FFat klaar") : "GEEN opslag (kies een Partition Scheme met SPIFFS of FATFS)");
+}
+static void logRegel(const char *fmt, ...) {
+  char buf[200]; va_list ap; va_start(ap, fmt);
+  uint32_t s0 = millis() / 1000; int n = snprintf(buf, sizeof buf, "[%02lu:%02lu:%02lu] ", (unsigned long)(s0 / 3600), (unsigned long)(s0 / 60 % 60), (unsigned long)(s0 % 60));
+  vsnprintf(buf + n, sizeof buf - n, fmt, ap); va_end(ap);
+  Serial.println(buf);
+  if (!logFs || !logMutex || xSemaphoreTake(logMutex, pdMS_TO_TICKS(50)) != pdTRUE) return;
+  File f = logFs->open(LOGF, FILE_APPEND);
+  if (f) { f.println(buf); size_t sz = f.size(); f.close(); if (sz > 200000) { logFs->remove(LOGOUD); logFs->rename(LOGF, LOGOUD); } }
+  xSemaphoreGive(logMutex);
+}
+static const char *resetReden() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON: return "stroom aan"; case ESP_RST_SW: return "herstart door software"; case ESP_RST_PANIC: return "CRASH (panic)";
+    case ESP_RST_INT_WDT: return "CRASH (interrupt-waakhond)"; case ESP_RST_TASK_WDT: return "CRASH (taak-waakhond)"; case ESP_RST_WDT: return "CRASH (waakhond)";
+    case ESP_RST_BROWNOUT: return "STROOM TE LAAG (brownout)"; case ESP_RST_DEEPSLEEP: return "uit diepe slaap"; case ESP_RST_EXT: return "reset-knop"; default: return "onbekend";
+  }
+}
+static void logDump(Stream &uit) {
+  if (!logFs) { uit.println("Geen logboek-opslag."); return; }
+  for (const char *naam : {LOGOUD, LOGF}) { File f = logFs->open(naam, FILE_READ); if (!f) continue; uit.printf("===== %s (%u bytes) =====\n", naam, (unsigned)f.size()); while (f.available()) uit.write(f.read()); f.close(); }
+  uit.println("===== einde logboek =====");
+}
+static volatile bool logVraag = false;
 
 // v15: de LC76G op de -G versie praat via I2C (0x50 schrijven / 0x54 lezen) op de gedeelde bus (SDA 15, SCL 14),
 // precies zoals het officiele Waveshare-voorbeeld 09_LC76G_I2C. De UART op 17/18 is volgens Waveshare optioneel
@@ -981,6 +1020,7 @@ static char bleBuf[256]; static size_t bleLen = 0;
 static const char *moodKeys[MOOD_COUNT] = {"neutral","content","relaxed","happy","love","excited","focused","startled","worried","bored","sleepy","yawn","sleeping","alert","blow","anticipate"};
 static bool phoneFresh() { return phone.ms && millis() - phone.ms < 3500; }
 static void parsePhone(char *line) {
+  if (strcmp(line, "LOG?") == 0) { logVraag = true; return; }
   char *f[12] = {0}; int n = 0; f[n++] = line;
   for (char *q = line; *q && n < 12; ++q) if (*q == '|') { *q = 0; f[n++] = q + 1; }
   if (n < 9 || strcmp(f[0], "B1") != 0) return;
@@ -992,8 +1032,8 @@ static void parsePhone(char *line) {
   d.ms = millis(); phone = d;
 }
 class BuddySrvCb : public BLEServerCallbacks {
-  void onConnect(BLEServer *) override { bleConnected = true; Serial.println("BLE: telefoon verbonden"); }
-  void onDisconnect(BLEServer *) override { bleConnected = false; Serial.println("BLE: telefoon weg, opnieuw zichtbaar"); BLEDevice::startAdvertising(); }
+  void onConnect(BLEServer *) override { bleConnected = true; logRegel("BLE: telefoon verbonden"); }
+  void onDisconnect(BLEServer *) override { bleConnected = false; logRegel("BLE: telefoon weg"); BLEDevice::startAdvertising(); }
 };
 class BuddyRxCb : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *c) override {
@@ -1017,6 +1057,18 @@ static void bleStart() {
   BLEAdvertising *adv = BLEDevice::getAdvertising(); adv->addServiceUUID(NUS_SVC); adv->setScanResponse(true);
   BLEDevice::startAdvertising();
   Serial.println("BLE: zichtbaar als 'Buddy-scherm'");
+}
+static void logNaarTelefoonTaak(void *) {
+  // laatste ~12 KB van het logboek in kleine stukjes naar de app (die zet het in zijn eigen log -> buddy-logs)
+  if (logFs && bleConnected && bleTx) {
+    bleTx->setValue((uint8_t *)"LOGBEGIN", 8); bleTx->notify(); vTaskDelay(pdMS_TO_TICKS(30));
+    File f = logFs->open(LOGF, FILE_READ);
+    if (f) { size_t sz = f.size(); if (sz > 12000) f.seek(sz - 12000);
+      uint8_t b[18]; while (bleConnected && f.available()) { int n = f.read(b, sizeof b); bleTx->setValue(b, n); bleTx->notify(); vTaskDelay(pdMS_TO_TICKS(12)); }
+      f.close(); }
+    bleTx->setValue((uint8_t *)"LOGEND", 6); bleTx->notify();
+  }
+  vTaskDelete(NULL);
 }
 static void bleSend(const char *t) { if (bleTx && bleConnected) { bleTx->setValue((uint8_t *)t, strlen(t)); bleTx->notify(); } }
 
@@ -1236,15 +1288,15 @@ static float flagTijd = 0; static bool flagRec = false;
 static void driveStep(float dt) {
   bool ok; float v = spdNow(&ok); uint32_t nu = millis();
   float gNu = sqrtf(leanX * leanX + pushZ * pushZ);
-  if (new80) { new80 = false; float tt = res80; if (rec80 <= 0 || tt < rec80) { rec80 = tt; snprintf(dat80, sizeof dat80, "%.2s-%.2s-%.2s", gpsDate, gpsDate + 2, gpsDate + 4); buddyPrefs.putFloat("b80", rec80); buddyPrefs.putString("d80", dat80); } Serial.printf("0-80: %.1f s\n", tt); }
+  if (new80) { new80 = false; float tt = res80; if (rec80 <= 0 || tt < rec80) { rec80 = tt; snprintf(dat80, sizeof dat80, "%.2s-%.2s-%.2s", gpsDate, gpsDate + 2, gpsDate + 4); buddyPrefs.putFloat("b80", rec80); buddyPrefs.putString("d80", dat80); } logRegel("0-80: %.1f s", tt); }
   if (new100) { new100 = false; float tt = res100; flagTijd = tt; flagRec = rec100 <= 0 || tt < rec100; flagTot = nu + 9000;
     if (flagRec) { rec100 = tt; snprintf(dat100, sizeof dat100, "%.2s-%.2s-%.2s", gpsDate, gpsDate + 2, gpsDate + 4); buddyPrefs.putFloat("b100", rec100); buddyPrefs.putString("d100", dat100); }
     if (tripBest <= 0 || tt < tripBest) tripBest = tt;
     for (int i = 0; i < 10; i++) addParticleAt(1, frand(30, 210), frand(40, 120), frand(-20, 20), frand(-30, 10), 1.2f, frand(5, 9));
-    char m[24]; snprintf(m, sizeof m, "SPRINT:%.1f", tt); bleSend(m); Serial.printf("0-100: %.1f s%s\n", tt, flagRec ? " RECORD" : ""); }
+    char m[24]; snprintf(m, sizeof m, "SPRINT:%.1f", tt); bleSend(m); logRegel("0-100: %.1f s%s", tt, flagRec ? " RECORD" : ""); }
   if (!ok) return;
   if (v > 5) { stilSinds = 0; if (!rijdtSinds) rijdtSinds = nu; } else { rijdtSinds = 0; if (!stilSinds) stilSinds = nu; }
-  if (!tripActief && rijdtSinds && nu - rijdtSinds > 5000) { tripActief = true; tripKm = tripMax = tripG = tripBest = 0; tripStart = nu; Serial.println("Rit begonnen"); }
+  if (!tripActief && rijdtSinds && nu - rijdtSinds > 5000) { tripActief = true; tripKm = tripMax = tripG = tripBest = 0; tripStart = nu; logRegel("Rit begonnen"); }
   if (tripActief) {
     tripKm += v * dt / 3600.f; if (v > tripMax) tripMax = v; if (gNu > tripG && gNu < 1.3f && v > 10) tripG = gNu;
     if (stilSinds && nu - stilSinds > 180000) {   // 3 minuten stil = rit klaar
@@ -1252,7 +1304,7 @@ static void driveStep(float dt) {
       if (tripKm > .3f) {
         totKm += tripKm; totRit++; buddyPrefs.putFloat("km", totKm); buddyPrefs.putUInt("rit", totRit);
         if (tripG > recG) { recG = tripG; buddyPrefs.putFloat("gmax", recG); }
-        ritKlaarTot = nu + 12000; Serial.printf("Rit klaar: %.1f km, max %.0f, %.2f G\n", tripKm, tripMax, tripG);
+        ritKlaarTot = nu + 12000; logRegel("Rit klaar: %.1f km, max %.0f km/u, %.2f G", tripKm, tripMax, tripG);
       }
     }
   }
@@ -1638,7 +1690,7 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v23 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v24 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -1691,13 +1743,33 @@ void setup(){
  buddyPrefs.getString("d80", dat80, sizeof dat80); buddyPrefs.getString("d100", dat100, sizeof dat100);
  bleStart();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v23: grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ logStart();
+ logRegel("===== OPSTART v24 | reden: %s | heap %u =====", resetReden(), (unsigned)ESP.getFreeHeap());
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v24: logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
+ {
+   static uint32_t logStatusMs = 0; static bool hadFix = false; static int fpsLog = 0;
+   bool fixNu = gpsFix && millis() - gpsLastFixMs < 5000;
+   if (fixNu != hadFix) { hadFix = fixNu; logRegel(fixNu ? "GPS: FIX! %d satellieten" : "GPS: fix kwijt (%d sat)", (int)gpsSatellites); }
+   if (millis() - logStatusMs > 60000) {
+     logStatusMs = millis(); int hh = -1, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
+     bool ok; float v = spdNow(&ok);
+     logRegel("status | klok %02d:%02d | gps %s sat=%d zicht=%d nmea=%lu/%lu | %.0f km/u | tel %s | heap %u | licht %d%s",
+       hh, mm, fixNu ? "FIX" : "zoekt", (int)gpsSatellites, (int)gpsInZicht, (unsigned long)nmeaOk, (unsigned long)nmeaBad, v,
+       bleConnected ? (phoneFresh() ? "data" : "stil") : "nee", (unsigned)ESP.getFreeHeap(), (int)huidigLicht, slaapt ? " | SLAAPT" : "");
+   }
+   if (Serial.available()) {
+     static char cmd[16]; static uint8_t cl = 0; char c = Serial.read();
+     if (c == '\n' || c == '\r') { cmd[cl] = 0; if (!strcmp(cmd, "log")) logDump(Serial); else if (!strcmp(cmd, "wis") && logFs) { logFs->remove(LOGF); logFs->remove(LOGOUD); Serial.println("Logboek gewist."); } cl = 0; }
+     else if (cl < sizeof cmd - 1) cmd[cl++] = c;
+   }
+   if (logVraag) { logVraag = false; xTaskCreatePinnedToCore(logNaarTelefoonTaak, "BuddyLogBLE", 4096, nullptr, 1, nullptr, 0); }
+ }
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v23 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v24 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -1726,7 +1798,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v23 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v24 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){

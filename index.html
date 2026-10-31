@@ -594,6 +594,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     <div class="kopIn">
       <p class="sub">Buddy-scherm (Waveshare)</p>
       <button class="btn" id="bleKnop" type="button">📡 Verbind met het Buddy-scherm</button>
+      <button class="btn" id="bleLog" type="button">📥 Logboek van het schermpje ophalen</button>
       <p class="chip" id="bleStat">Niet verbonden. Werkt met Chrome op Android. Het schermpje krijgt dan de limiet, flitsers, files, wegwerk en Buddy’s stemming van je telefoon. Lang drukken op het schermpje → FLITSER meldt via je telefoon.</p>
       <p class="sub">Algemeen</p>
       <div class="mobrow"><input type="text" id="meIn" maxlength="18" placeholder="Jouw naam"><button class="btn" id="meSave" type="button">Bewaar naam</button></div>
@@ -4191,7 +4192,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v75';
+  var VERSION = 'v76';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6173,16 +6174,25 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
           stat('✅ Verbonden met ' + (dev.name || 'Buddy-scherm') + '. Het schermpje krijgt nu elke seconde de info van je telefoon.');
           lg('Buddy-scherm verbonden'); $('bleKnop').textContent = '📡 Buddy-scherm: verbonden';
           if (!timer) timer = setInterval(stuur, 1000);
+          setTimeout(vraagLog, 4000);   /* elke keer bij verbinden het logboek even meenemen */
         });
     }
     function weg() {
       rx = null; stat('Verbinding met het schermpje weg, ik probeer het opnieuw…'); $('bleKnop').textContent = '📡 Verbind met het Buddy-scherm';
       setTimeout(function () { if (dev && !rx) koppel().catch(function () { stat('Niet verbonden. Tik op de knop om opnieuw te verbinden.'); }); }, 2500);
     }
+    var logBuf = null;
     function binnen(e) {
-      var t = new TextDecoder().decode(e.target.value); lg('van het Buddy-scherm: ' + t);
+      var t = new TextDecoder().decode(e.target.value);
+      /* v76: logboek van het schermpje komt in stukjes binnen en gaat in de gewone Buddy-log (-> buddy-logs) */
+      if (t === 'LOGBEGIN') { logBuf = ''; return; }
+      if (t === 'LOGEND') { if (logBuf != null) { var r = logBuf.split('\n').filter(function (x) { return x.trim(); }); r.forEach(function (x) { lg('scherm| ' + x.slice(0, 220)); }); stat('✅ Logboek van het schermpje opgehaald (' + r.length + ' regels). Het gaat mee met de gewone log.'); if (typeof logStuur === 'function') setTimeout(logStuur, 1500); } logBuf = null; return; }
+      if (logBuf != null) { logBuf += t; return; }
+      lg('van het Buddy-scherm: ' + t);
       if (t === 'MELD:cam') $('bUcam').click(); else if (t === 'MELD:mob') $('bUmob').click();
     }
+    function vraagLog() { if (!rx) { toast('Verbind eerst met het Buddy-scherm.'); return; } var d = new TextEncoder().encode('LOG?\n'); (rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(d) : rx.writeValue(d)).catch(function () {}); stat('Logboek van het schermpje wordt opgehaald…'); }
+    $('bleLog').addEventListener('click', vraagLog);
     function stuur() {
       if (!rx || bezig) return;
       var c = S.cam || null, f = S.fileVoor && T - S.fileVoor.t < 4 ? S.fileVoor : null, w = S.werkVoor && T - S.werkVoor.t < 4;
