@@ -616,6 +616,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <div class="limitrow"><label for="scLicht">Helderheid</label><input type="range" id="scLicht" min="10" max="100" step="5" value="65"></div>
       <div class="limitrow"><label for="scVol">Volume</label><input type="range" id="scVol" min="0" max="100" step="5" value="80"></div>
       <div class="limitrow"><label for="scAnim">Animaties</label><select id="scAnim"><option value="2">Rustig</option><option value="1" selected>Normaal</option><option value="0.5">Veel</option></select></div>
+      <div class="limitrow"><label for="scWarn">Waarschuwen bij ruim te hard</label><select id="scWarn"><option value="1" selected>Aan (boos kijken + piepje)</option><option value="0">Uit</option></select></div>
       <p class="foot">Het schermpje draagt vanzelf hetzelfde outfit als Buddy hier (ook de feestdag-outfits).</p>
       <p class="sub">Wifi voor het schermpje (hotspot van je telefoon)</p>
       <div class="mobrow"><input type="text" id="wfNaam" autocomplete="off" placeholder="Naam van je hotspot"></div>
@@ -4286,7 +4287,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v80';
+  var VERSION = 'v81';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5281,6 +5282,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     st.textContent = lijst.length ? (bordSoort === 'week' ? 'Deze week: ' + chal(weekIdx()).naam + '. De winnaar hoor je maandag. ' : B.naam + ' · ') + lijst.length + ' in de groep. Alleen echte ritten met GPS tellen mee.' : 'Nog niemand op het leaderboard. Rij een stukje met de GPS aan.';
     var vw = weekIdx() - 1, beker = null, bekerV = 0;   /* v77: wisselbeker voor de winnaar van vorige week */
     bordData.forEach(function (l) { var v = l.week && l.week.w === vw ? l.week.v : (l.vorige && l.vorige.w === vw ? l.vorige.v : 0); if (v > bekerV) { bekerV = v; beker = l.van; } });
+    window.__ikBeker = !!(beker && beker === mijnId);   /* v81: schermpje viert het mee */
     lijst.forEach(function (l, i) {
       var li = document.createElement('li'); if (l.van === mijnId) li.className = 'ik';
       var a = document.createElement('span'); a.className = 'pl'; a.textContent = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
@@ -5634,10 +5636,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         if (b.d >= 1) {  /* v63: nieuwe Worker geeft ook collega's tot 5 km, afgerond op hele km (nooit een precieze plek) */
           var kv = b.van + ':ver'; if (buurGezien[kv] && Date.now() - buurGezien[kv] < 60 * 60e3) return; buurGezien[kv] = Date.now();
           var mv = (b.n || 'Een collega') + ' rijdt ook in de buurt, zo’n ' + b.d + ' km bij je vandaan!';
-          setEv('excited', 4, mv); beep('pet'); toast(mv); try { grInRondje({ s: 'buur', n: b.n }, b.d + ' km bij je'); } catch (e) {} lg('collega op ' + b.d + ' km: ' + (b.n || '?')); return;
+          window.__buur = { n: b.n, d: b.d, t: Date.now() }; setEv('excited', 4, mv); beep('pet'); toast(mv); try { grInRondje({ s: 'buur', n: b.n }, b.d + ' km bij je'); } catch (e) {} lg('collega op ' + b.d + ' km: ' + (b.n || '?')); return;
         }
         buurGezien[b.van] = Date.now();
-        var m = 'Kijk! ' + (b.n || 'Een collega') + (b.a ? ' in de ' + b.a : '') + ' is vlakbij!';
+        var m = 'Kijk! ' + (b.n || 'Een collega') + (b.a ? ' in de ' + b.a : '') + ' is vlakbij!'; window.__buur = { n: b.n, d: 0, t: Date.now() };
         setEv('excited', 4.8, m); startGag('wave'); if (S.gag) S.gag.msg = m; beep('excited'); say(m, true); toast(m); try { grInRondje({ s: 'buur', n: b.n }); } catch (e) {}
         mem.ontmoet = (mem.ontmoet || 0) + 1; save(); lg('collega in de buurt: ' + (b.n || '?'));
       });
@@ -5869,7 +5871,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       return verk.then(function (vj) {
         var extra = 0, files = [];
         if (vj && Array.isArray(vj.meldingen)) vj.meldingen.forEach(function (m) { if ((m.k === 'jam' || m.k === 'closure') && Array.isArray(m.pts) && m.pts.length && opRouteLijn(m.pts, geom)) { extra += m.vertraging || 0; files.push(m); } });
-        var sec = rt.duration * 1.08 + extra, aan = Date.now() + sec * 1000;
+        var sec = rt.duration * 1.08 + extra, aan = Date.now() + sec * 1000; window.__thuisEta = { tijd: tijdStr(aan), t: Date.now() };
         var msg = 'Als je nu vertrekt ben je om ' + tijdStr(aan) + ' thuis (' + minTekst(sec) + ').';
         if (files.length) msg += ' ' + (files.length === 1 ? 'Er staat file' + (files[0].weg ? ' op de ' + files[0].weg : '') : 'Er staan ' + files.length + ' files') + (extra ? ', +' + Math.max(1, Math.round(extra / 60)) + ' min.' : ' op je route.');
         else if (vj) msg += ' Geen files onderweg.';
@@ -6298,20 +6300,21 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (logBuf != null) { logBuf += t; return; }
       lg('van het Buddy-scherm: ' + t);
       if (t === 'MELD:cam') $('bUcam').click(); else if (t === 'MELD:mob') $('bUmob').click();
+      else if (t === 'MELD:plek') { $('plekKnop').click(); }   /* v81: 'Wat was dat?' vanaf het schermpje */
       else if (t === 'MELD:zwaai' && typeof grStuur === 'function' && grp && pbase()) { grStuur('zwaai').then(function () { toast('👋 Gezwaaid naar de groep (vanaf het schermpje).'); }).catch(function () {}); }
     }
     /* v77: instellingen + outfit naar het schermpje */
-    var SCKEY = 'dashboardmaatje-scherm-v1', sc = { l: 65, v: 80, a: '1' };
+    var SCKEY = 'dashboardmaatje-scherm-v1', sc = { l: 65, v: 80, a: '1', w: '1' };
     try { var sc0 = JSON.parse(localStorage.getItem(SCKEY)); if (sc0) sc = sc0; } catch (e) {}
-    $('scLicht').value = sc.l; $('scVol').value = sc.v; $('scAnim').value = sc.a;
+    $('scLicht').value = sc.l; $('scVol').value = sc.v; $('scAnim').value = sc.a; $('scWarn').value = sc.w == null ? '1' : sc.w;
     function stuurTekst(t) {
       if (!rx) return Promise.reject(new Error('niet verbonden'));
       var d = new TextEncoder().encode(t + '\n'), st = []; for (var i = 0; i < d.length; i += 20) st.push(d.slice(i, i + 20));
       return st.reduce(function (pr, x) { return pr.then(function () { return rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(x) : rx.writeValue(x); }); }, Promise.resolve());
     }
     var scT = null;
-    function stuurInst() { clearTimeout(scT); scT = setTimeout(function () { if (!rx) return; bezig = true; stuurTekst('SET:l=' + sc.l + ';v=' + sc.v + ';a=' + sc.a + ';o=' + (typeof huidigOutfit === 'function' ? huidigOutfit() : 'geen')).catch(function () {}).then(function () { bezig = false; }); }, 400); }
-    ['scLicht', 'scVol', 'scAnim'].forEach(function (id) { $(id).addEventListener('change', function () { sc.l = +$('scLicht').value; sc.v = +$('scVol').value; sc.a = $('scAnim').value; try { localStorage.setItem(SCKEY, JSON.stringify(sc)); } catch (e) {} stuurInst(); }); });
+    function stuurInst() { clearTimeout(scT); scT = setTimeout(function () { if (!rx) return; bezig = true; stuurTekst('SET:l=' + sc.l + ';v=' + sc.v + ';a=' + sc.a + ';w=' + (sc.w == null ? '1' : sc.w) + ';o=' + (typeof huidigOutfit === 'function' ? huidigOutfit() : 'geen')).catch(function () {}).then(function () { bezig = false; }); }, 400); }
+    ['scLicht', 'scVol', 'scAnim', 'scWarn'].forEach(function (id) { $(id).addEventListener('change', function () { sc.l = +$('scLicht').value; sc.v = +$('scVol').value; sc.a = $('scAnim').value; sc.w = $('scWarn').value; try { localStorage.setItem(SCKEY, JSON.stringify(sc)); } catch (e) {} stuurInst(); }); });
     window.__scStuur = stuurInst;
     function vraagLog() { if (!rx) { toast('Verbind eerst met het Buddy-scherm.'); return; } var d = new TextEncoder().encode('LOG?\n'); (rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(d) : rx.writeValue(d)).catch(function () {}); stat('Logboek van het schermpje wordt opgehaald…'); }
     $('bleLog').addEventListener('click', vraagLog);
@@ -6340,13 +6343,16 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         return c + Math.round(nav.d);
       } catch (e) { return ''; }
     }
+    /* v81: thuis-tijd, collega in de buurt en wisselbeker ook naar het schermpje */
+    function etaCode() { var e = window.__thuisEta; return e && Date.now() - e.t < 90 * 60e3 ? e.tijd : ''; }
+    function buurCode() { var b = window.__buur; return b && Date.now() - b.t < 60e3 ? String(b.n || 'Collega').replace(/[|~\n]/g, ' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').slice(0, 14) + '~' + (b.d || 0) : ''; }
     function msiCode() { var g = S.gag; if (!g || g.k !== 'matrix') return ''; return g.mt === 'x' ? 'x' : String(g.mv || ''); }
     function stuur() {
       if (!rx || bezig) return;
       var c = S.cam || null, f = S.fileVoor && T - S.fileVoor.t < 4 ? S.fileVoor : null, w = S.werkVoor && T - S.werkVoor.t < 4;
       var txt = (($('thought') && $('thought').textContent) || '').replace(/[|\n\r]/g, ' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').trim().slice(0, 60);
       var msg = ['B1', Math.round(S.speed || 0), S.roadLim == null ? 0 : S.roadLim, c && c.dist != null ? Math.round(c.dist) : -1, c && c.limit ? c.limit : 0,
-        f ? Math.round(f.d) : -1, f && f.dl ? Math.round(f.dl / 60) : 0, w ? 1 : 0, curKey || 'neutral', txt, navCode(), msiCode()].join('|') + '\n';
+        f ? Math.round(f.d) : -1, f && f.dl ? Math.round(f.dl / 60) : 0, w ? 1 : 0, curKey || 'neutral', txt, navCode(), msiCode(), etaCode(), buurCode(), window.__ikBeker ? 1 : 0].join('|') + '\n';
       var data = new TextEncoder().encode(msg), stukken = [];
       for (var i = 0; i < data.length; i += 20) stukken.push(data.slice(i, i + 20));   /* kleine stukjes: werkt ook zonder grote MTU */
       bezig = true;
