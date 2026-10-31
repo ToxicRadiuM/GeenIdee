@@ -829,37 +829,56 @@ static void gpsByte(int value) {
 static uint8_t gpsI2cBuf[1024];
 static volatile uint8_t gpsI2cStap = 0;
 static volatile int gpsI2cN = 0;        // hoeveel bytes de GPS wel teruggaf bij de mislukte stap   // bij welke stap het misging (voor de Serial Monitor)
+// v18: volgens de werkende driver van ESP32Marauder (zelfde Waveshare-bord). Belangrijk:
+//  - de HELE transactie in een keer, zonder dat touch/audio er tussendoor op de bus mag (anders raakt de
+//    LC76G in de war en blijft 0x54 voorgoed weigeren tot de stroom er lang af is geweest);
+//  - korte pauzes (3 ms) tussen de stappen, eerst een "por" naar 0x50, en af en toe de wek-reeks.
+static bool lcTouch(uint8_t a) { Wire.beginTransmission(a); Wire.write((uint8_t)0); return Wire.endTransmission() == 0; }
+static uint8_t lcWriteCr(uint32_t reg, uint32_t len) {
+  uint8_t b[8] = {(uint8_t)reg, (uint8_t)(reg >> 8), (uint8_t)(reg >> 16), (uint8_t)(reg >> 24),
+                  (uint8_t)len, (uint8_t)(len >> 8), (uint8_t)(len >> 16), (uint8_t)(len >> 24)};
+  Wire.beginTransmission(0x50); Wire.write(b, 8); return Wire.endTransmission();
+}
+static uint32_t lcRead32(uint32_t reg) {
+  if (lcWriteCr(reg, 4) != 0) { gpsI2cStap = 1; return 0xFFFFFFFFUL; }
+  delay(3);
+  uint8_t b[4]; int n = Wire.requestFrom((int)0x54, 4); gpsI2cN = n;
+  for (int i = 0; i < n && i < 4; i++) b[i] = Wire.read();
+  if (n != 4) { gpsI2cStap = 2; return 0xFFFFFFFFUL; }
+  return b[0] | (b[1] << 8) | ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 24);
+}
+static void lcWake() {
+  if (!lcTouch(0x50)) return; delay(3);
+  uint32_t vrij = lcRead32(0xAA510004UL); if (vrij == 0xFFFFFFFFUL || vrij < 1) return; delay(3);
+  if (lcWriteCr(0xAA531000UL, 1) != 0) return; delay(3);
+  lcTouch(0x58);
+}
 static int lc76gReadI2C() {
-  static const uint8_t vraagLen[8] = {0x08, 0x00, 0x51, 0xAA, 0x04, 0x00, 0x00, 0x00};
-  uint8_t len4[4] = {0};
-  if (!i2cLock(40)) return -1;
-  Wire.beginTransmission(0x50); Wire.write(vraagLen, 8); int e = Wire.endTransmission();
-  i2cUnlock(); if (e) { gpsI2cStap = 10 + e; return -1; }
-  vTaskDelay(pdMS_TO_TICKS(100));
-  if (!i2cLock(40)) return -1;
-  int n = Wire.requestFrom((int)0x54, 4); for (int i = 0; i < 4 && Wire.available(); i++) len4[i] = Wire.read();
+  static uint8_t leeg = 0;
+  if (!i2cLock(200)) return -1;            // bus vasthouden tot de transactie klaar is
+  uint16_t oudTo = Wire.getTimeOut(); Wire.setTimeOut(300);
+  int res = -1;
+  do {
+    if (!lcTouch(0x50)) { lcTouch(0x54); lcTouch(0x58); gpsI2cStap = 1; break; }  // por + herstel-duwtje
+    delay(3);
+    uint32_t len = lcRead32(0xAA510008UL);
+    if (len == 0xFFFFFFFFUL) break;
+    if (len >= 35 * 1024) { gpsI2cStap = 3; break; }
+    if (len == 0) { res = 0; if (++leeg >= 8) { leeg = 0; lcWake(); } break; }
+    leeg = 0;
+    if (len > sizeof(gpsI2cBuf)) len = sizeof(gpsI2cBuf);   // de rest komt de volgende ronde
+    delay(3);
+    if (lcWriteCr(0xAA512000UL, len) != 0) { gpsI2cStap = 4; break; }
+    delay(3);
+    int n = Wire.requestFrom((int)0x54, (int)len), got = 0;
+    while (Wire.available() && got < (int)len) gpsI2cBuf[got++] = Wire.read();
+    if (got != (int)len) { gpsI2cStap = 5; gpsI2cN = got; break; }
+    res = got;
+  } while (0);
+  Wire.setTimeOut(oudTo);
   i2cUnlock();
-  if (n != 4) {  // v17: nog een keer proberen na een langere pauze (de GPS kan de klok even vasthouden)
-    vTaskDelay(pdMS_TO_TICKS(250));
-    if (!i2cLock(40)) return -1;
-    n = Wire.requestFrom((int)0x54, 4); for (int i = 0; i < 4 && Wire.available(); i++) len4[i] = Wire.read();
-    i2cUnlock();
-    if (n != 4) { gpsI2cStap = 2; gpsI2cN = n; return -1; }
-  }
-  uint32_t len = len4[0] | (len4[1] << 8) | ((uint32_t)len4[2] << 16) | ((uint32_t)len4[3] << 24);
-  if (len == 0) return 0;
-  if (len > 20000) { gpsI2cStap = 3; return -1; }                              // onzin-antwoord
-  if (len > sizeof(gpsI2cBuf)) len = sizeof(gpsI2cBuf);   // de rest komt de volgende ronde
-  uint8_t vraagData[8] = {0x00, 0x20, 0x51, 0xAA, (uint8_t)len, (uint8_t)(len >> 8), 0, 0};
-  if (!i2cLock(40)) return -1;
-  Wire.beginTransmission(0x50); Wire.write(vraagData, 8); e = Wire.endTransmission();
-  i2cUnlock(); if (e) { gpsI2cStap = 30 + e; return -1; }
-  vTaskDelay(pdMS_TO_TICKS(100));
-  if (!i2cLock(150)) return -1;
-  n = Wire.requestFrom((int)0x54, (int)len); int got = 0; while (Wire.available() && got < (int)len) gpsI2cBuf[got++] = Wire.read();
-  i2cUnlock();
-  for (int i = 0; i < got; i++) gpsByte(gpsI2cBuf[i]);
-  return got;
+  if (res > 0) for (int i = 0; i < res; i++) gpsByte(gpsI2cBuf[i]);
+  return res;
 }
 
 void gpsTask(void*) {
@@ -1134,7 +1153,7 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v17 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v18 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -1177,13 +1196,13 @@ void setup(){
  frame->setTextColor(EYE); frame->setTextSize(1);
  audioReady = initBuddyAudio();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v17: dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v18: GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v17 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v18 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -1210,7 +1229,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v17 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v18 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){
