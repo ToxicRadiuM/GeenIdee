@@ -24,7 +24,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 34;
+static const int FW_VERSIE = 35;
 static volatile int otaPct = -1;
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
 static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
@@ -2020,8 +2020,14 @@ void flushTask(void *) {
     uint32_t t0 = micros();
     uint16_t w = job.b.x1 - job.b.x0 + 1, h = job.b.y1 - job.b.y0 + 1;
     gfx->startWrite();
-    gfx->writeAddrWindow(job.b.x0, job.b.y0, w, h);
-    for (int16_t y = job.b.y0; y <= job.b.y1; y++) gfx->writePixels(job.fb + (int32_t)y * LCD_WIDTH + job.b.x0, w);
+    if (w * 10 >= LCD_WIDTH * 6) {
+      // v35: breed vak -> hele rijen in één keer versturen (één lange stroom i.p.v. honderden losse rijtjes)
+      gfx->writeAddrWindow(0, job.b.y0, LCD_WIDTH, h);
+      gfx->writePixels(job.fb + (int32_t)job.b.y0 * LCD_WIDTH, (uint32_t)LCD_WIDTH * h);
+    } else {
+      gfx->writeAddrWindow(job.b.x0, job.b.y0, w, h);
+      for (int16_t y = job.b.y0; y <= job.b.y1; y++) gfx->writePixels(job.fb + (int32_t)y * LCD_WIDTH + job.b.x0, w);
+    }
     gfx->endWrite();
     flushLastUs = micros() - t0;
     vTaskDelay(1);   // v22: core 0 even vrijgeven (anders slaat de waakhond aan als Bluetooth ook bezig is)
@@ -2282,7 +2288,7 @@ void setup(){
  frames[1]->fillScreen(BG); frame->fillScreen(BG); frame->flush();
  frames[1]->setTextColor(EYE); frames[1]->setTextSize(1);
  flushQueue = xQueueCreate(1, sizeof(FlushJob)); flushIdle = xSemaphoreCreateBinary(); xSemaphoreGive(flushIdle);
- xTaskCreatePinnedToCore(flushTask, "BuddyFlush", 8192, nullptr, 1, nullptr, 0);
+ xTaskCreatePinnedToCore(flushTask, "BuddyFlush", 8192, nullptr, 2, nullptr, 0);   // v35: voorrang boven wifi/GPS-taken
  Serial.printf("Buddy beeld klaar | framebuffer=16-bit PSRAM | QSPI=%ld Hz | PSRAM over: %u | heap over: %u\n", (long)QSPI_HZ, (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  frame->setTextColor(EYE); frame->setTextSize(1);
  audioReady = initBuddyAudio();
@@ -2333,7 +2339,7 @@ void loop(){
  }
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v29 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v%d ALIVE | scherm=OK | GPS=%s | heap=%u\n",FW_VERSIE,gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
