@@ -1324,6 +1324,33 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function note(x, y) { parts.push({ k: 'n', x: x, y: y, vx: rand(-8, 8), vy: -rand(18, 28), l: 0, m: 1.5, s: rand(12, 17) }); }
   function burst(x, y, n) { for (var i = 0; i < n; i++) { var a = rand(0, TAU), v = rand(30, 70); parts.push({ k: 'd', x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, l: 0, m: .6, s: rand(2, 4) }); } }
   var GAGS = {
+    /* v82: ouderwetse snelheidsmeter bij flink optrekken (alleen op seintje, net als op het schermpje) */
+    retroMeter: { name: 'Ouderwetse snelheidsmeter', dur: 6, mood: 'excited', msg: 'Vroem! Ouderwetse meter!', noFace: true,
+      upd: function (g, tt) {
+        var dt = Math.min(.1, Math.max(0, tt - (g.lt || 0))); g.lt = tt; g.n = g.n || 0; g.nv = g.nv || 0;
+        var doel = Math.min(200, Math.max(0, S.speed || 0));
+        g.nv += ((doel - g.n) * 55 - g.nv * 6.5) * dt; g.n += g.nv * dt; if (g.n < 0) { g.n = 0; g.nv = 0; }   /* veer + demper: schiet door en trilt na */
+      },
+      draw: function (g) {
+        var cx = 120, cy = 122, hoek = function (v) { return (225 - Math.min(200, Math.max(0, v)) / 200 * 270) * Math.PI / 180; };
+        var rond = function (r, kl) { ctx.fillStyle = kl; ctx.beginPath(); ctx.arc(120, 120, r, 0, TAU); ctx.fill(); };
+        rond(102, '#5a5a5a'); rond(99, '#c8c8c8'); rond(95, '#8c8c8c'); rond(92, '#fff3d6');
+        ctx.lineCap = 'butt'; ctx.strokeStyle = '#d40000'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(cx, cy, 82, -hoek(160), -hoek(200)); ctx.stroke();
+        ctx.strokeStyle = '#000';
+        for (var v = 0; v <= 200; v += 10) {
+          var a = hoek(v), c = Math.cos(a), sn = Math.sin(a), groot = v % 20 === 0;
+          ctx.lineWidth = groot ? 2.8 : 1.4; ctx.beginPath(); ctx.moveTo(cx + c * (groot ? 74 : 79), cy - sn * (groot ? 74 : 79)); ctx.lineTo(cx + c * 87, cy - sn * 87); ctx.stroke();
+          if (groot) { ctx.fillStyle = v >= 160 ? '#b00000' : '#000'; ctx.font = 'bold 12px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(v), cx + c * 62, cy - sn * 62); }
+        }
+        ctx.fillStyle = '#b00000'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('BUDDY', 120, 92);
+        ctx.fillStyle = '#444'; ctx.font = '10px system-ui, sans-serif'; ctx.fillText('km/h', 120, 140);
+        ctx.fillStyle = '#000'; ctx.fillRect(92, 150, 56, 16); ctx.fillStyle = '#222'; ctx.fillRect(94, 152, 52, 12);
+        ctx.fillStyle = '#fff'; ctx.font = '11px ui-monospace, monospace'; ctx.fillText(('000000' + Math.floor(mem.km || 0)).slice(-6), 120, 158.5);
+        var a2 = hoek(g.n || 0), c2 = Math.cos(a2), s2 = Math.sin(a2);
+        ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx + 2, cy + 2); ctx.lineTo(cx + c2 * 84 + 2, cy - s2 * 84 + 2); ctx.stroke();
+        ctx.strokeStyle = '#e00000'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - c2 * 14, cy + s2 * 14); ctx.lineTo(cx + c2 * 84, cy - s2 * 84); ctx.stroke();
+        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(cx, cy, 8, 0, TAU); ctx.fill(); ctx.fillStyle = '#c8c8c8'; ctx.beginPath(); ctx.arc(cx, cy, 4, 0, TAU); ctx.fill();
+      } },
     impatient: { name: 'Wordt ongeduldig', dur: 5.6, idle: 1, mood: 'bored', msg: 'Rood\u2026 nog steeds rood\u2026',
       upd: function (g, tt) { dir(0, tt < 3.6 ? -.7 : .2); fdy = tt > 1.5 ? Math.abs(Math.sin(tt * 6)) * 3 : 0; if (tt > 3.6) { g.msg = 'Kom op, groen!'; g.mood = 'anticipate'; } } },
     fly: { name: 'Jaagt op een vlieg', dur: 5.8, idle: 1, mood: 'alert', msg: 'Een vliegje! Waar is hij…',
@@ -1910,7 +1937,18 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     else if (curKey === 'sleeping') { parts.push({ k: 'z', x: 158, y: 78, vx: 8, vy: -14, l: 0, m: 2.4, s: 16 }); pTimer = 1.2; }
   }
 
+  /* v82: flink optrekken (>= 12 km/h erbij in 1,5 s) -> ouderwetse snelheidsmeter */
+  var retroH = [0, 0, 0, 0], retroT = 0;
+  function retroCheck() {
+    if (T - retroT >= .5) { retroT = T; retroH.shift(); retroH.push(S.speed || 0); }
+    var v = S.speed || 0;
+    if (v > 8 && retroH[3] - retroH[0] >= 12) {
+      if (!S.gag || S.gag.k !== 'retroMeter') { if (S.gag) endGag(true); startGag('retroMeter'); lg('retro meter: optrekken ' + Math.round(retroH[0]) + ' -> ' + Math.round(retroH[3])); }
+      else S.gag.end = Math.max(S.gag.end, T + 2.5);
+    }
+  }
   function render(dt) {
+    try { retroCheck(); } catch (e) {}
     if (ctx.reset) ctx.reset(); else { ctx.globalAlpha = 1; }
     var tg = P[curKey], k = 1 - Math.exp(-dt * 11);
     for (var n in tg) cur[n] += (tg[n] - cur[n]) * k;
@@ -4287,7 +4325,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v81';
+  var VERSION = 'v82';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
