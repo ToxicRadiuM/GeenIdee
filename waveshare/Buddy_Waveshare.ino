@@ -1100,7 +1100,12 @@ static void bleStart() {
   BLECharacteristic *rx = svc->createCharacteristic(NUS_RX, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
   rx->setCallbacks(new BuddyRxCb());
   rx->setAccessPermissions(ESP_GATT_PERM_WRITE_ENC_MITM);   // v29: alleen na koppelen met de koppelcode
-  BLESecurity *sec = new BLESecurity(); sec->setStaticPIN(koppelPin);
+  BLESecurity *sec = new BLESecurity();
+#if defined(ESP_ARDUINO_VERSION) && ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 3, 0)
+  sec->setPassKey(true, koppelPin); sec->setCapability(ESP_IO_CAP_OUT); sec->setAuthenticationMode(true, true, true);   // nieuwere ESP32-versie
+#else
+  sec->setStaticPIN(koppelPin);
+#endif
   bleTx = svc->createCharacteristic(NUS_TX, BLECharacteristic::PROPERTY_NOTIFY); bleTx->addDescriptor(new BLE2902());
   svc->start();
   BLEAdvertising *adv = BLEDevice::getAdvertising(); adv->addServiceUUID(NUS_SVC); adv->setScanResponse(true);
