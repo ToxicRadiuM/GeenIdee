@@ -6,7 +6,6 @@
 #include <Preferences.h>
 #include "ESP_I2S.h"
 #include "TouchDrvCSTXXX.hpp"
-#include "SensorQMI8658.hpp"   // v19: gyro/versnellingsmeter voor meehangen in bochten
 #include <BLEDevice.h>          // v19: koppeling met de Buddy-app op je telefoon
 #include <BLEServer.h>
 #include <BLE2902.h>
@@ -980,14 +979,28 @@ static void bleStart() {
 static void bleSend(const char *t) { if (bleTx && bleConnected) { bleTx->setValue((uint8_t *)t, strlen(t)); bleTx->notify(); } }
 
 // ===================== v19: meehangen in bochten (QMI8658) =====================
-SensorQMI8658 qmi; static bool imuReady = false;
+// v20: de QMI8658 rechtstreeks via registers (de SensorLib-versie liet v19 crashen bij het opstarten)
+static bool imuReady = false;
+static bool qmiW(uint8_t r, uint8_t v) { Wire.beginTransmission(0x6B); Wire.write(r); Wire.write(v); return Wire.endTransmission() == 0; }
+static bool qmiInit() {
+  Wire.beginTransmission(0x6B); Wire.write(0x00); if (Wire.endTransmission(false) != 0) return false;
+  if (Wire.requestFrom((int)0x6B, 1) != 1) return false;
+  uint8_t who = Wire.read(); if (who != 0x05) { Serial.printf("Buddy gyro: onbekend WHO_AM_I 0x%02X\n", who); return false; }
+  qmiW(0x02, 0x60);   // CTRL1: registers automatisch ophogen, little endian
+  qmiW(0x03, 0x15);   // CTRL2: versnelling +-4 G, ~250 Hz
+  qmiW(0x08, 0x01);   // CTRL7: versnellingsmeter aan
+  delay(20); return true;
+}
 static float gX = 0, gY = 0, gZ = 1, leanX = 0, pushZ = 0, hop = 0; static bool gInit = false;
 static constexpr float LEAN_RICHTING = 1.0f;  // hangt hij de verkeerde kant op? Zet dit op -1.0f
 static uint32_t schrikTot = 0;
 static void imuStep(float dt) {
   if (!imuReady || !i2cLock(2)) return;
-  float ax, ay, az; bool ok = qmi.getAccelerometer(ax, ay, az);
+  float ax, ay, az; uint8_t d[6]; bool ok = false;
+  Wire.beginTransmission(0x6B); Wire.write(0x35);
+  if (Wire.endTransmission(false) == 0 && Wire.requestFrom((int)0x6B, 6) == 6) { for (int i = 0; i < 6; i++) d[i] = Wire.read(); ok = true; }
   i2cUnlock(); if (!ok) return;
+  ax = (int16_t)(d[0] | (d[1] << 8)) / 8192.0f; ay = (int16_t)(d[2] | (d[3] << 8)) / 8192.0f; az = (int16_t)(d[4] | (d[5] << 8)) / 8192.0f;
   if (!gInit) { gX = ax; gY = ay; gZ = az; gInit = true; }
   float k = 1 - expf(-dt / 1.6f);            // zwaartekracht = traag gemiddelde
   gX += (ax - gX) * k; gY += (ay - gY) * k; gZ += (az - gZ) * k;
@@ -1310,7 +1323,7 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v19 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v20 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -1353,20 +1366,20 @@ void setup(){
  frame->setTextColor(EYE); frame->setTextSize(1);
  audioReady = initBuddyAudio();
  // v19: bewegingssensor
- if (qmi.begin(Wire, QMI8658_L_SLAVE_ADDRESS, IIC_SDA, IIC_SCL)) {
-   qmi.configAccelerometer(SensorQMI8658::ACC_RANGE_4G, SensorQMI8658::ACC_ODR_250Hz, SensorQMI8658::LPF_MODE_0);
-   qmi.enableAccelerometer(); imuReady = true; Serial.println("Buddy gyro: QMI8658 klaar (meehangen in bochten)");
- } else Serial.println("Buddy gyro: QMI8658 niet gevonden");
+ Serial.println("Buddy gyro: starten..."); Serial.flush();
+ if (qmiInit()) { imuReady = true; Serial.println("Buddy gyro: QMI8658 klaar (meehangen in bochten)"); }
+ else Serial.println("Buddy gyro: QMI8658 niet gevonden");
+ Serial.println("Buddy BLE: starten..."); Serial.flush();
  helderheid = buddyPrefs.getUChar("licht", 160); gfx->setBrightness(helderheid);
  bleStart();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v19: menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v20: menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v19 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v20 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -1395,7 +1408,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v19 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v20 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){
