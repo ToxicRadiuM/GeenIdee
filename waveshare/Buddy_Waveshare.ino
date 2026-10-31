@@ -643,12 +643,22 @@ class PsramCanvas : public Arduino_Canvas {
     return Arduino_Canvas::begin(speed);
   }
 };
-PsramCanvas *frame = nullptr;
+PsramCanvas *frame = nullptr;            // het beeld waar nu in getekend wordt
+PsramCanvas *frames[2] = {nullptr, nullptr};  // v16: twee beelden: core 1 tekent het ene terwijl core 0 het andere verstuurt
+static uint8_t frameIdx = 0;
 static constexpr int32_t QSPI_HZ = 80000000;  // bij strepen of flikkeren: 40000000
 
 // Alleen het stukje scherm dat echt veranderd is wordt opnieuw verstuurd (de "dirty box").
 struct Box { int16_t x0, y0, x1, y1; };
 static Box curBox = {32767, 32767, -32768, -32768}, prevBox = {0, 0, 465, 465};
+static Box drawnBox[2] = {{0, 0, 465, 465}, {0, 0, 465, 465}};  // wat er in elk beeld getekend staat (om te wissen)
+struct FlushJob { uint16_t *fb; Box b; };
+static QueueHandle_t flushQueue = nullptr;
+static SemaphoreHandle_t flushIdle = nullptr;
+static volatile uint32_t flushLastUs = 0;
+// v16: GPS-reset via TCA9554 P7 standaard UIT. Het officiele Waveshare GPS-voorbeeld raakt P7 niet aan;
+// in v14/v15 kwam er na onze resetpuls niks meer uit de GPS. Zet op true om de oude resetpuls terug te zetten.
+static constexpr bool GPS_RESET_PULSE = false;
 I2SClass buddyI2S;
 static bool audioReady = false;
 static volatile bool audioBusy = false;
@@ -817,26 +827,27 @@ static void gpsByte(int value) {
 
 // Officieel LC76G I2C-protocol (Waveshare 09_LC76G_I2C): vraag eerst hoeveel bytes klaarstaan, lees ze daarna.
 static uint8_t gpsI2cBuf[1024];
+static volatile uint8_t gpsI2cStap = 0;   // bij welke stap het misging (voor de Serial Monitor)
 static int lc76gReadI2C() {
   static const uint8_t vraagLen[8] = {0x08, 0x00, 0x51, 0xAA, 0x04, 0x00, 0x00, 0x00};
   uint8_t len4[4] = {0};
   if (!i2cLock(40)) return -1;
   Wire.beginTransmission(0x50); Wire.write(vraagLen, 8); int e = Wire.endTransmission();
-  i2cUnlock(); if (e) return -1;
-  vTaskDelay(pdMS_TO_TICKS(15));
+  i2cUnlock(); if (e) { gpsI2cStap = 10 + e; return -1; }
+  vTaskDelay(pdMS_TO_TICKS(100));
   if (!i2cLock(40)) return -1;
   int n = Wire.requestFrom((int)0x54, 4); for (int i = 0; i < 4 && Wire.available(); i++) len4[i] = Wire.read();
-  i2cUnlock(); if (n != 4) return -1;
+  i2cUnlock(); if (n != 4) { gpsI2cStap = 2; return -1; }
   uint32_t len = len4[0] | (len4[1] << 8) | ((uint32_t)len4[2] << 16) | ((uint32_t)len4[3] << 24);
   if (len == 0) return 0;
-  if (len > 20000) return -1;                              // onzin-antwoord
+  if (len > 20000) { gpsI2cStap = 3; return -1; }                              // onzin-antwoord
   if (len > sizeof(gpsI2cBuf)) len = sizeof(gpsI2cBuf);   // de rest komt de volgende ronde
   uint8_t vraagData[8] = {0x00, 0x20, 0x51, 0xAA, (uint8_t)len, (uint8_t)(len >> 8), 0, 0};
   if (!i2cLock(40)) return -1;
   Wire.beginTransmission(0x50); Wire.write(vraagData, 8); e = Wire.endTransmission();
-  i2cUnlock(); if (e) return -1;
-  vTaskDelay(pdMS_TO_TICKS(15));
-  if (!i2cLock(80)) return -1;
+  i2cUnlock(); if (e) { gpsI2cStap = 30 + e; return -1; }
+  vTaskDelay(pdMS_TO_TICKS(100));
+  if (!i2cLock(150)) return -1;
   n = Wire.requestFrom((int)0x54, (int)len); int got = 0; while (Wire.available() && got < (int)len) gpsI2cBuf[got++] = Wire.read();
   i2cUnlock();
   for (int i = 0; i < got; i++) gpsByte(gpsI2cBuf[i]);
@@ -853,7 +864,7 @@ void gpsTask(void*) {
       received = true; gpsByte(value);
     }
     if (received) { gpsDataOk = true; strcpy(gpsLastStage, "UART NMEA DATA"); }
-    if (millis() - lastI2c >= 250) {
+    if (millis() - lastI2c >= 500) {
       lastI2c = millis();
       int got = lc76gReadI2C();
       if (got > 0) { gpsDataOk = true; gpsI2cOk++; strcpy(gpsLastStage, "I2C NMEA DATA"); }
@@ -864,9 +875,9 @@ void gpsTask(void*) {
     if (millis() - gpsLastReportMs >= 3000) {
       gpsLastReportMs = millis();
       if (!gpsDataOk || millis() - gpsLastDataMs > 6000) strcpy(gpsLastStage, "GEEN DATA");
-      Serial.printf("GPS %s | i2c ok=%lu fout=%lu | baud=%lu | fix=%s | sats=%d | %.1f km/u | %.6f, %.6f | bytes=%lu | flitser=%d m\n",
+      Serial.printf("GPS %s | i2c ok=%lu fout=%lu (stap %d) | baud=%lu | fix=%s | sats=%d | %.1f km/u | %.6f, %.6f | bytes=%lu | flitser=%d m\n",
         (gpsDataOk && millis() - gpsLastDataMs < 6000) ? gpsLastStage : "GEEN DATA",
-        (unsigned long)gpsI2cOk, (unsigned long)gpsI2cFail, (unsigned long)GPS_UART_BAUD, gpsFix ? "JA" : "NEE", (int)gpsSatellites,
+        (unsigned long)gpsI2cOk, (unsigned long)gpsI2cFail, (int)gpsI2cStap, (unsigned long)GPS_UART_BAUD, gpsFix ? "JA" : "NEE", (int)gpsSatellites,
         (float)gpsSpeedKmh, (float)gpsLat, (float)gpsLon,
         (unsigned long)gpsNmeaBytes, (int)gpsNearestCameraM);
     }
@@ -886,7 +897,8 @@ void drawVolumeUi(){
 }
 void drawFace(){
  // v15: alleen wissen wat er vorige keer getekend is, in plaats van het hele scherm
- frame->fillRect(prevBox.x0, prevBox.y0, prevBox.x1 - prevBox.x0 + 1, prevBox.y1 - prevBox.y0 + 1, BG);
+ Box &oud = drawnBox[frameIdx];
+ frame->fillRect(oud.x0, oud.y0, oud.x1 - oud.x0 + 1, oud.y1 - oud.y0 + 1, BG);
  curBox = {32767, 32767, -32768, -32768};
  boxAdd(56, 176, 206, 240);   // rij-HUD, diagnose en volume: altijd vernieuwen
  // The original canvas clips all face artwork to a circular 204px viewport.
@@ -938,12 +950,27 @@ void flushDirty(){
   prevBox = curBox;
   if (prevBox.x0 < 0) prevBox.x0 = 0; if (prevBox.y0 < 0) prevBox.y0 = 0;
   if (prevBox.x1 > LCD_WIDTH - 1) prevBox.x1 = LCD_WIDTH - 1; if (prevBox.y1 > LCD_HEIGHT - 1) prevBox.y1 = LCD_HEIGHT - 1;
+  drawnBox[frameIdx] = prevBox;
   if (b.x1 < b.x0 || b.y1 < b.y0) return;
-  uint16_t *fb = frame->getFramebuffer(); uint16_t w = b.x1 - b.x0 + 1, h = b.y1 - b.y0 + 1;
-  gfx->startWrite();
-  gfx->writeAddrWindow(b.x0, b.y0, w, h);
-  for (int16_t y = b.y0; y <= b.y1; y++) gfx->writePixels(fb + (int32_t)y * LCD_WIDTH + b.x0, w);
-  gfx->endWrite();
+  // v16: niet zelf versturen maar doorgeven aan de verstuur-taak op core 0, en meteen het volgende beeld gaan tekenen
+  xSemaphoreTake(flushIdle, portMAX_DELAY);   // wacht tot het vorige beeld helemaal verstuurd is
+  FlushJob job = { frame->getFramebuffer(), b };
+  xQueueSend(flushQueue, &job, portMAX_DELAY);
+  frameIdx ^= 1; frame = frames[frameIdx];
+}
+void flushTask(void *) {
+  FlushJob job;
+  for (;;) {
+    if (xQueueReceive(flushQueue, &job, portMAX_DELAY) != pdTRUE) continue;
+    uint32_t t0 = micros();
+    uint16_t w = job.b.x1 - job.b.x0 + 1, h = job.b.y1 - job.b.y0 + 1;
+    gfx->startWrite();
+    gfx->writeAddrWindow(job.b.x0, job.b.y0, w, h);
+    for (int16_t y = job.b.y0; y <= job.b.y1; y++) gfx->writePixels(job.fb + (int32_t)y * LCD_WIDTH + job.b.x0, w);
+    gfx->endWrite();
+    flushLastUs = micros() - t0;
+    xSemaphoreGive(flushIdle);
+  }
 }
 void updateMood(float dt){
  // Rijstatus heeft altijd voorrang. Als Buddy stilstaat zonder GPS-fix,
@@ -1099,37 +1126,46 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v15 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v16 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
  Wire.setBufferSize(1100);  // v15: groot genoeg voor een blok GPS-tekst via I2C
  Wire.begin(IIC_SDA,IIC_SCL); Wire.setClock(100000); i2cMutex=xSemaphoreCreateMutex(); randomSeed(esp_random());
- bool gpsResetOk = releaseLc76gReset();
+ // v16: I2C-scan, zodat we zien of de GPS (0x50/0x54) er echt is
+ Serial.print("I2C-scan:");
+ for (uint8_t a = 1; a < 127; a++) { Wire.beginTransmission(a); if (Wire.endTransmission() == 0) Serial.printf(" 0x%02X", a); }
+ Serial.println("   (verwacht o.a. 0x18 audio, 0x20 expander, 0x34 power, 0x50/0x54 GPS, 0x5A touch, 0x6B gyro)");
+ bool gpsResetOk = GPS_RESET_PULSE ? releaseLc76gReset() : false;
  gpsSerial.begin(GPS_UART_BAUD, SERIAL_8N1, GPS_UART_RX, GPS_UART_TX);
  gpsSerial.setRxBufferSize(4096);
  delay(1200);  // LC76G heeft na de reset ruim een seconde nodig
  while(gpsSerial.available()) gpsSerial.read();
- Serial.printf("Buddy GPS UART gestart | RX=%d TX=%d | %lu baud | reset=%s\n", GPS_UART_RX, GPS_UART_TX, (unsigned long)GPS_UART_BAUD, gpsResetOk?"OK":"NIET BEVESTIGD");
+ Serial.printf("Buddy GPS UART gestart | RX=%d TX=%d | %lu baud | reset=%s\n", GPS_UART_RX, GPS_UART_TX, (unsigned long)GPS_UART_BAUD, GPS_RESET_PULSE ? (gpsResetOk?"OK":"NIET BEVESTIGD") : "UIT (niet aangeraakt)");
  buddyTouch.setPins(TP_RESET, TP_INT);
  if (buddyTouch.begin(Wire, CST92XX_SLAVE_ADDRESS, IIC_SDA, IIC_SCL)) { touchReady=true; Serial.println("Buddy touch: CST9217 klaar"); }
  else Serial.println("Buddy touch: niet beschikbaar; volumeregeling via scherm uitgeschakeld");
- frame = new PsramCanvas(LCD_WIDTH, LCD_HEIGHT, gfx, 0, 0, 0);
- if (!frame) { Serial.println("Buddy ERROR: canvas-object niet aangemaakt"); while(true) delay(1000); }
- if (!frame->begin(QSPI_HZ)) { Serial.printf("Buddy ERROR: framebuffer init mislukt (staat PSRAM op 'OPI PSRAM'?) | PSRAM=%u | heap=%u\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap()); while(true) delay(1000); }
+ frames[0] = new PsramCanvas(LCD_WIDTH, LCD_HEIGHT, gfx, 0, 0, 0);
+ frames[1] = new PsramCanvas(LCD_WIDTH, LCD_HEIGHT, gfx, 0, 0, 0);
+ frame = frames[0];
+ if (!frames[0] || !frames[1]) { Serial.println("Buddy ERROR: canvas-object niet aangemaakt"); while(true) delay(1000); }
+ if (!frames[0]->begin(QSPI_HZ) || !frames[1]->begin(GFX_SKIP_OUTPUT_BEGIN)) { Serial.printf("Buddy ERROR: framebuffer init mislukt (staat PSRAM op 'OPI PSRAM'?) | PSRAM=%u | heap=%u\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap()); while(true) delay(1000); }
  gfx->setBrightness(160);
- frame->fillScreen(BG); frame->flush();
+ frames[1]->fillScreen(BG); frame->fillScreen(BG); frame->flush();
+ frames[1]->setTextColor(EYE); frames[1]->setTextSize(1);
+ flushQueue = xQueueCreate(1, sizeof(FlushJob)); flushIdle = xSemaphoreCreateBinary(); xSemaphoreGive(flushIdle);
+ xTaskCreatePinnedToCore(flushTask, "BuddyFlush", 4096, nullptr, 2, nullptr, 0);
  Serial.printf("Buddy beeld klaar | framebuffer=16-bit PSRAM | QSPI=%ld Hz | PSRAM over: %u | heap over: %u\n", (long)QSPI_HZ, (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  frame->setTextColor(EYE); frame->setTextSize(1);
  audioReady = initBuddyAudio();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v15: 16-bit PSRAM framebuffer + alleen veranderde vak versturen + LC76G via I2C + rij-HUD");
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v16: dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v15 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?"UART DATA":"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v16 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -1145,7 +1181,7 @@ void loop(){
  drawFace();
  uint32_t drawDoneUs=micros();
  flushDirty();
- uint32_t flushDoneUs=micros();
+ uint32_t flushDoneUs=drawDoneUs+flushLastUs;  // v16: verzendtijd van het vorige beeld (loopt parallel)
  static uint64_t drawAccumUs=0, flushAccumUs=0;
  drawAccumUs += (uint32_t)(drawDoneUs-drawStartUs);
  flushAccumUs += (uint32_t)(flushDoneUs-drawDoneUs);
@@ -1156,7 +1192,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v15 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v16 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){
