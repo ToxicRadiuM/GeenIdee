@@ -16,6 +16,14 @@
 #include <freertos/task.h>
 #include <esp_heap_caps.h>
 #include <LittleFS.h>             // v24: logboek in het flashgeheugen
+#include <WiFi.h>                 // v25: zelfstandig via de hotspot van je telefoon
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+#include <HTTPUpdate.h>
+#include <time.h>
+static const int FW_VERSIE = 25;   // ophogen bij elke nieuwe versie (de update via wifi kijkt hiernaar)
+#define FW_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/firmware/"
+#define DATA_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/snelheden/"
 #include <FFat.h>
 #include <esp_system.h>
 #include <stdarg.h>
@@ -836,6 +844,7 @@ static void launchFix(uint32_t ms, float v) {
   }
   vPrev = v; tPrev = ms;
 }
+static volatile float gpsKoers = 0;
 static volatile uint32_t nmeaOk = 0, nmeaBad = 0; static char lastRmc[72] = "";
 static volatile int gpsHH = -1, gpsMM = 0, gpsInZicht = 0; static volatile uint32_t gpsTijdMs = 0; static int inZicht[5] = {0};
 // Parse NMEA coordinate (ddmm.mmmm / dddmm.mmmm) to decimal degrees.
@@ -853,7 +862,7 @@ void parseNmeaLine(char* line) {
   for(char *p=line; *p && n<20; ++p) if(*p==','){*p=0;f[n++]=p+1;}
   if (strstr(f[0],"RMC") && n>7 && f[2][0]=='A') {
     float lat=nmeaCoord(f[3],f[4]), lon=nmeaCoord(f[5],f[6]);
-    float knots=atof(f[7]); gpsLat=lat; gpsLon=lon; gpsSpeedKmh=knots*1.852f; gpsFix=true; gpsLastFixMs=millis(); gpsNewFix=true;
+    float knots=atof(f[7]); if (n>8 && f[8][0]) gpsKoers=atof(f[8]); gpsLat=lat; gpsLon=lon; gpsSpeedKmh=knots*1.852f; gpsFix=true; gpsLastFixMs=millis(); gpsNewFix=true;
     if (n>9 && strlen(f[9])==6) { memcpy(gpsDate, f[9], 6); gpsDate[6]=0; }
     if (strlen(f[1]) >= 6) { gpsHH = (f[1][0]-'0')*10 + (f[1][1]-'0'); gpsMM = (f[1][2]-'0')*10 + (f[1][3]-'0'); gpsTijdMs = millis(); }
     launchFix(millis(), gpsSpeedKmh);
@@ -872,12 +881,25 @@ float cameraDistanceM(float a1,float o1,float a2,float o2) {
   float h=sinf(da*.5f)*sinf(da*.5f)+cosf(a1*rad)*cosf(a2*rad)*sinf(dl*.5f)*sinf(dl*.5f);
   return 12742000.0f*asinf(sqrtf(fminf(1.0f,h)));
 }
+// v25: actuele lijst vaste flitsers (heel NL, OpenStreetMap) via wifi; de ingebouwde lijst is reserve
+struct NetCam { float lat, lon; int16_t lim; uint8_t type; };
+static NetCam *netCams = nullptr; static volatile int netCamN = 0;
 void checkBuddyCameras() {
-  if(!gpsFix) return; int best=99999, lim=0;
-  for(size_t i=0;i<BUDDY_CAMERA_COUNT;i++){ BuddyCamera c; memcpy_P(&c,&buddyCameras[i],sizeof(c));
-    if(fabsf(c.lat-gpsLat)>.006f || fabsf(c.lon-gpsLon)>.009f) continue;
-    int dist=(int)cameraDistanceM(gpsLat,gpsLon,c.lat,c.lon); if(dist<best){best=dist;lim=c.limit;}
+  if(!gpsFix) return; int best=99999, lim=0; float bLat = 0, bLon = 0;
+  int nn = netCamN; NetCam *nc = netCams;
+  if (nn > 0 && nc) {
+    for (int i = 0; i < nn; i++) { if (fabsf(nc[i].lat-gpsLat)>.012f || fabsf(nc[i].lon-gpsLon)>.018f) continue;
+      int dist=(int)cameraDistanceM(gpsLat,gpsLon,nc[i].lat,nc[i].lon); if(dist<best){best=dist;lim=nc[i].lim;bLat=nc[i].lat;bLon=nc[i].lon;} }
+  } else for(size_t i=0;i<BUDDY_CAMERA_COUNT;i++){ BuddyCamera c; memcpy_P(&c,&buddyCameras[i],sizeof(c));
+    if(fabsf(c.lat-gpsLat)>.012f || fabsf(c.lon-gpsLon)>.018f) continue;
+    int dist=(int)cameraDistanceM(gpsLat,gpsLon,c.lat,c.lon); if(dist<best){best=dist;lim=c.limit;bLat=c.lat;bLon=c.lon;}
   }
+  // v25: voorbij = voorbij. Loopt de afstand op (je rijdt ervan weg), dan niet meer melden tot je ver weg bent.
+  static float vLat = 0, vLon = 0; static int vMin = 99999, vOmhoog = 0; static bool voorbij = false;
+  if (best < 99999 && (fabsf(bLat - vLat) > 1e-5f || fabsf(bLon - vLon) > 1e-5f)) { vLat = bLat; vLon = bLon; vMin = best; vOmhoog = 0; voorbij = false; }
+  if (best < vMin) { vMin = best; vOmhoog = 0; } else if (best > vMin + 15) { if (++vOmhoog >= 2) voorbij = true; }
+  if (voorbij && best > 1500) voorbij = false;
+  if (voorbij) best = 99999;
   gpsNearestCameraM=best==99999?-1:best; gpsCameraLimit=lim;
   bool near=(best<=350); if(near && !gpsCameraAlert && millis()-gpsLastCameraAlert>25000){
     gpsCameraAlert=true; gpsLastCameraAlert=millis();  // v15: de mood zet updateMood() zelf (niet vanaf de GPS-core)
@@ -1012,6 +1034,7 @@ void drawVolumeUi(){
 #define NUS_SVC "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
 #define NUS_RX  "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 #define NUS_TX  "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
+static char wifiNaam[33] = "", wifiPass[65] = "", wifiNaamNieuw[33] = "", wifiPassNieuw[65] = ""; static volatile bool wifiNieuw = false, wifiHerstart = false;
 struct PhoneData { int v, lim, camD, camLim, fileD, fileMin; bool werk; int mood; char txt[64]; uint32_t ms; };
 static PhoneData phone = {0, 0, -1, 0, -1, 0, false, -1, "", 0};
 static BLECharacteristic *bleTx = nullptr;
@@ -1021,6 +1044,7 @@ static const char *moodKeys[MOOD_COUNT] = {"neutral","content","relaxed","happy"
 static bool phoneFresh() { return phone.ms && millis() - phone.ms < 3500; }
 static void parsePhone(char *line) {
   if (strcmp(line, "LOG?") == 0) { logVraag = true; return; }
+  if (!strncmp(line, "WIFI:", 5)) { char *tab = strchr(line + 5, '\t'); if (tab) { *tab = 0; strncpy(wifiNaamNieuw, line + 5, 32); wifiNaamNieuw[32] = 0; strncpy(wifiPassNieuw, tab + 1, 64); wifiPassNieuw[64] = 0; wifiNieuw = true; } return; }
   char *f[12] = {0}; int n = 0; f[n++] = line;
   for (char *q = line; *q && n < 12; ++q) if (*q == '|') { *q = 0; f[n++] = q + 1; }
   if (n < 9 || strcmp(f[0], "B1") != 0) return;
@@ -1125,10 +1149,12 @@ static void drawMenu() {
 }
 // v21: records en ritjes (blijven bewaard in het geheugen van het bordje)
 static float rec80 = 0, rec100 = 0, recG = 0, totKm = 0; static uint32_t totRit = 0; static char dat80[9] = "", dat100[9] = "";
+static const char *netStatus = "wifi uit";
 static void drawInfo() {
   boxAdd(20, 30, 220, 212);
   frame->setTextColor(EYE); frame->setTextSize(2);
-  char r[48]; int y = 62;
+  char r[48]; int y = 46;
+  snprintf(r, sizeof r, "Buddy v%d | %s", FW_VERSIE, netStatus); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
   snprintf(r, sizeof r, "GPS: %s %d sat", gpsFix ? "FIX" : (gpsDataOk ? "zoekt" : "geen data"), (int)gpsSatellites); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
   snprintf(r, sizeof r, "Telefoon: %s", bleConnected ? (phoneFresh() ? "verbonden" : "stil") : "niet"); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
   snprintf(r, sizeof r, "Volume %d%%  Licht %d", buddyVolume, helderheid * 100 / 255); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
@@ -1373,9 +1399,12 @@ static void segTekst(const char *t, float cx, float cy, float h, uint16_t c) {  
   for (int i = 0; i < n; i++) { segCijfer(t[i], x, y, h, c); x += segBreed(t[i], h) + gap; }
 }
 // Nederlandse tijd uit de GPS (UTC + 1, of + 2 in de zomertijd)
-static bool klokOk() { int jr = (gpsDate[4] >= '0' && gpsDate[5] >= '0') ? (gpsDate[4] - '0') * 10 + (gpsDate[5] - '0') : 0; return gpsHH >= 0 && jr >= 24 && jr < 70 && millis() - gpsTijdMs < 120000; }  // 1980 = GPS weet de tijd nog niet
+static bool ntpOk() { time_t nu = time(nullptr); return nu > 1700000000; }
+static bool klokOkGps() { int jr = (gpsDate[4] >= '0' && gpsDate[5] >= '0') ? (gpsDate[4] - '0') * 10 + (gpsDate[5] - '0') : 0; return gpsHH >= 0 && jr >= 24 && jr < 70 && millis() - gpsTijdMs < 120000; }  // 1980 = GPS weet de tijd nog niet
 static int dagVanWeek(int d, int m, int y) { static const int tt[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4}; if (m < 3) y--; return (y + y / 4 - y / 100 + y / 400 + tt[m - 1] + d) % 7; }
+static bool klokOk() { return klokOkGps() || ntpOk(); }
 static void lokaleTijd(int &hh, int &mm) {
+  if (!klokOkGps() && ntpOk()) { struct tm tmv; time_t nu = time(nullptr); localtime_r(&nu, &tmv); hh = tmv.tm_hour; mm = tmv.tm_min; return; }
   auto twee = [](int i) { return (gpsDate[i] >= '0' && gpsDate[i + 1] >= '0') ? (gpsDate[i] - '0') * 10 + (gpsDate[i + 1] - '0') : 1; };
   int d = twee(0), mo = twee(2), y = 2000 + twee(4);
   uint32_t extra = (millis() - gpsTijdMs) / 60000;
@@ -1396,6 +1425,178 @@ static void slaapStap() {
   bool nacht = hh >= 21 || hh < 7;
   uint8_t doel = slaapt ? 12 : (nacht ? (uint8_t)(helderheid * .45f) : helderheid);
   if (doel != huidigLicht) { huidigLicht = doel; wilLicht = doel ? doel : 1; }
+}
+
+// ===================== v25: zelfstandig via wifi (hotspot van je telefoon) =====================
+// Haalt zelf: maximumsnelheden per weg (Rijkswaterstaat-tegels), alle vaste flitsers en trajectcontroles,
+// de tijd (internet) en nieuwe versies van zichzelf (update via wifi, alleen als hij stilstaat).
+// Tegels worden in het geheugen bewaard, dus op bekende routes werkt de limiet ook zonder internet.
+struct Weg { uint16_t lim, clim, tb, te; uint32_t p0; uint16_t n; };
+static Weg *wegen = nullptr; static float *wegPt = nullptr; static int wegN = 0; static char tegelNu[16] = "";
+static volatile int wegLimiet = 0; static volatile uint32_t wegLimT = 0;
+struct Traject { float la1, lo1, la2, lo2; int16_t lim; };
+static Traject *trajecten = nullptr; static int trajN = 0;
+static volatile bool trajActief = false; static volatile float trajGem = 0; static volatile int trajLim = 0;
+static volatile int otaPct = -1;
+
+struct JP { const char *p, *e; };   // mini-JSON-lezer (genoeg voor onze eigen bestanden)
+static void jWs(JP &j) { while (j.p < j.e && (*j.p == ' ' || *j.p == '\n' || *j.p == '\r' || *j.p == '\t')) j.p++; }
+static bool jIs(JP &j, char c) { jWs(j); if (j.p < j.e && *j.p == c) { j.p++; return true; } return false; }
+static double jNum(JP &j) { jWs(j); char *q; double v = strtod(j.p, &q); if (q == j.p) { if (!strncmp(j.p, "null", 4)) j.p += 4; return 0; } j.p = q; return v; }
+static void jSkipStr(JP &j) { jWs(j); if (j.p < j.e && *j.p == '"') { j.p++; while (j.p < j.e && *j.p != '"') { if (*j.p == '\\') j.p++; j.p++; } j.p++; } }
+static bool jZoek(JP &j, const char *sleutel) { const char *q = strstr(j.p, sleutel); if (!q) return false; j.p = q + strlen(sleutel); return true; }
+
+static uint8_t *haalUrl(const char *url, size_t &len) {
+  len = 0; WiFiClientSecure cl; cl.setInsecure(); HTTPClient h; h.setTimeout(15000);
+  if (!h.begin(cl, url)) return nullptr;
+  int code = h.GET(); if (code != 200) { h.end(); logRegel("net: %s -> %d", url + 34, code); return nullptr; }
+  int n = h.getSize(); size_t cap = n > 0 ? n + 1 : 600000;
+  uint8_t *buf = (uint8_t *)heap_caps_malloc(cap, MALLOC_CAP_SPIRAM); if (!buf) { h.end(); return nullptr; }
+  WiFiClient *st = h.getStreamPtr(); size_t got = 0; uint32_t t0 = millis();
+  while ((n < 0 || got < (size_t)n) && millis() - t0 < 40000 && got < cap - 1) {
+    size_t a = st->available();
+    if (a) { if (got + a > cap - 1) a = cap - 1 - got; got += st->readBytes(buf + got, a); }
+    else { if (!h.connected() && n < 0) break; vTaskDelay(pdMS_TO_TICKS(5)); }
+  }
+  buf[got] = 0; len = got; h.end(); return buf;
+}
+static void bewaar(const char *pad, const uint8_t *b, size_t n) { if (!logFs) return; File f = logFs->open(pad, FILE_WRITE); if (f) { f.write(b, n); f.close(); } }
+static uint8_t *leesBestand(const char *pad, size_t &n) {
+  n = 0; if (!logFs) return nullptr; File f = logFs->open(pad, FILE_READ); if (!f) return nullptr;
+  n = f.size(); uint8_t *b = (uint8_t *)heap_caps_malloc(n + 1, MALLOC_CAP_SPIRAM); if (!b) { f.close(); return nullptr; }
+  f.read(b, n); b[n] = 0; f.close(); return b;
+}
+static bool zetTegel(const char *key, const uint8_t *txt, size_t len) {
+  JP j{(const char *)txt, (const char *)txt + len};
+  if (!jZoek(j, "\"w\":[")) return false;
+  int maxW = len / 25 + 8, maxP = len / 7 + 16;
+  Weg *nw = (Weg *)heap_caps_malloc(sizeof(Weg) * maxW, MALLOC_CAP_SPIRAM); float *np = (float *)heap_caps_malloc(sizeof(float) * maxP, MALLOC_CAP_SPIRAM);
+  if (!nw || !np) { free(nw); free(np); return false; }
+  int w = 0, pc = 0;
+  while (w < maxW && jIs(j, '[')) {
+    Weg g{}; g.lim = (uint16_t)jNum(j); jIs(j, ','); jNum(j); jIs(j, ',');
+    g.p0 = pc; g.n = 0;
+    if (jIs(j, '[')) { while (pc + 2 < maxP) { if (jIs(j, ']')) break; float la = jNum(j); jIs(j, ','); float lo = jNum(j); jIs(j, ','); np[pc++] = la; np[pc++] = lo; g.n++; } }
+    jIs(j, ',');
+    if (jIs(j, '[')) { g.clim = (uint16_t)jNum(j); jIs(j, ','); g.tb = (uint16_t)jNum(j); jIs(j, ','); g.te = (uint16_t)jNum(j); jIs(j, ']'); } else jNum(j);   // null
+    jIs(j, ','); jNum(j); jIs(j, ','); jNum(j); jIs(j, ','); jSkipStr(j); jIs(j, ']');
+    if (g.n >= 2) nw[w++] = g;
+    jIs(j, ',');
+  }
+  Weg *ow = wegen; float *op = wegPt; wegN = 0; wegen = nw; wegPt = np; wegN = w; free(ow); free(op);
+  strncpy(tegelNu, key, sizeof tegelNu - 1);
+  logRegel("tegel %s: %d wegvakken", key, w);
+  return true;
+}
+static void tegelKey(double lat, double lon, char *uit, size_t n) { snprintf(uit, n, "%d_%d", (int)floor(lat / 0.03), (int)floor(lon / 0.05)); }
+static void laadTegel(const char *key, bool online) {
+  char pad[32]; snprintf(pad, sizeof pad, "/t_%s.json", key); size_t n; uint8_t *b = leesBestand(pad, n);
+  if (b && n > 10) { bool ok = zetTegel(key, b, n); free(b); if (ok) return; } else free(b);
+  if (!online) return;
+  char url[128]; snprintf(url, sizeof url, DATA_BASIS "t/%s.json", key);
+  b = haalUrl(url, n);
+  if (b && n > 10) { if (zetTegel(key, b, n)) bewaar(pad, b, n); }
+  else if (b == nullptr) { /* geen tegel = geen wegen met limiet hier; leeg bestand bewaren zodat hij niet blijft vragen */ }
+  free(b);
+}
+static void laadFlitsers(bool online) {
+  size_t n; uint8_t *b = online ? haalUrl(DATA_BASIS "flitsers.json", n) : nullptr; bool vers = b != nullptr;
+  if (!b) b = leesBestand("/flitsers.json", n);
+  if (!b) return;
+  JP j{(const char *)b, (const char *)b + n};
+  int max = n / 20 + 8; NetCam *nc = (NetCam *)heap_caps_malloc(sizeof(NetCam) * max, MALLOC_CAP_SPIRAM); int k = 0;
+  if (nc && jZoek(j, "\"c\":[")) {
+    while (k < max && jIs(j, '[')) { NetCam c; c.lat = jNum(j); jIs(j, ','); c.lon = jNum(j); jIs(j, ','); c.lim = (int16_t)jNum(j); jIs(j, ','); c.type = (uint8_t)jNum(j); while (j.p < j.e && *j.p != ']') j.p++; jIs(j, ']'); nc[k++] = c; jIs(j, ','); }
+  }
+  JP j2{(const char *)b, (const char *)b + n}; int tmax = 200, t = 0; Traject *tr = (Traject *)heap_caps_malloc(sizeof(Traject) * tmax, MALLOC_CAP_SPIRAM);
+  if (tr && jZoek(j2, "\"t\":[")) {
+    while (t < tmax && jIs(j2, '[')) { Traject x; x.la1 = jNum(j2); jIs(j2, ','); x.lo1 = jNum(j2); jIs(j2, ','); x.la2 = jNum(j2); jIs(j2, ','); x.lo2 = jNum(j2); jIs(j2, ','); x.lim = (int16_t)jNum(j2); jIs(j2, ','); jSkipStr(j2); jIs(j2, ']'); tr[t++] = x; jIs(j2, ','); }
+  }
+  if (k > 100) { NetCam *oc = netCams; netCamN = 0; netCams = nc; netCamN = k; free(oc); } else free(nc);
+  if (t > 0) { Traject *ot = trajecten; trajN = 0; trajecten = tr; trajN = t; free(ot); } else free(tr);
+  if (vers && k > 100) bewaar("/flitsers.json", b, n);
+  logRegel("flitsers: %d vast, %d trajectcontroles (%s)", k, t, vers ? "nieuw van internet" : "uit geheugen");
+  free(b);
+}
+static float afstandM(float la1, float lo1, float la2, float lo2) { float kx = 111320.f * cosf(la1 * 0.0174533f); float dx = (lo2 - lo1) * kx, dy = (la2 - la1) * 110540.f; return sqrtf(dx * dx + dy * dy); }
+static void bepaalWeg() {
+  if (!gpsFix || !wegN || !wegen) return;
+  float lat = gpsLat, lon = gpsLon, hd = gpsKoers, v = gpsSpeedKmh;
+  float kx = 111320.f * cosf(lat * 0.0174533f), ky = 110540.f, best = 1e9; int bi = -1;
+  for (int i = 0; i < wegN; i++) {
+    const Weg &g = wegen[i]; const float *p = wegPt + g.p0;
+    for (int k = 0; k + 1 < g.n; k++) {
+      float ax = (p[k * 2 + 1] - lon) * kx, ay = (p[k * 2] - lat) * ky, bx = (p[k * 2 + 3] - lon) * kx, by = (p[k * 2 + 2] - lat) * ky;
+      if ((ax > 60 && bx > 60) || (ax < -60 && bx < -60) || (ay > 60 && by > 60) || (ay < -60 && by < -60)) continue;
+      float dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy, tt = l2 > 0 ? -(ax * dx + ay * dy) / l2 : 0; tt = fmaxf(0, fminf(1, tt));
+      float px = ax + tt * dx, py = ay + tt * dy, d = sqrtf(px * px + py * py);
+      if (d > 40) continue;
+      float br = atan2f(dx, dy) * 57.2958f, df = fabsf(fmodf(fabsf(br - hd), 180.f)); if (df > 90) df = 180 - df;
+      float score = d + ((v > 8 && df > 35) ? 25 : 0);
+      if (score < best) { best = score; bi = i; }
+    }
+  }
+  if (bi < 0) return;
+  const Weg &g = wegen[bi]; int lim = g.lim;
+  if (g.clim && klokOk()) { int hh, mm; lokaleTijd(hh, mm); int m = hh * 60 + mm; bool in = g.tb < g.te ? (m >= g.tb && m < g.te) : (m >= g.tb || m < g.te); if (in) lim = g.clim; }
+  wegLimiet = lim; wegLimT = millis();
+}
+static void trajectStap(float dt) {
+  static int ti = -1; static float afstand = 0, tijd = 0, rechtL = 0;
+  if (!gpsFix || !trajN || !trajecten) { return; }
+  float lat = gpsLat, lon = gpsLon, v = gpsSpeedKmh;
+  if (ti < 0) {
+    if (v < 30) return;
+    for (int i = 0; i < trajN; i++) if (afstandM(lat, lon, trajecten[i].la1, trajecten[i].lo1) < 150) {
+      // alleen starten als je richting het eind rijdt
+      float br = atan2f((trajecten[i].lo2 - lon) * cosf(lat * 0.0174533f), trajecten[i].la2 - lat) * 57.2958f; float df = fabsf(fmodf(fabsf(br - gpsKoers), 360.f)); if (df > 180) df = 360 - df;
+      if (df > 60) continue;
+      ti = i; afstand = tijd = 0; rechtL = afstandM(trajecten[i].la1, trajecten[i].lo1, trajecten[i].la2, trajecten[i].lo2);
+      trajLim = trajecten[i].lim; trajActief = true; trajGem = v; logRegel("traject begonnen (%d km/u, %.1f km)", trajLim, rechtL / 1000); break;
+    }
+    return;
+  }
+  afstand += v / 3.6f * dt; tijd += dt; if (tijd > 2) trajGem = afstand / tijd * 3.6f;
+  bool eind = afstandM(lat, lon, trajecten[ti].la2, trajecten[ti].lo2) < 150 || afstand > rechtL * 1.6f + 2000 || tijd > 3600;
+  if (eind) { logRegel("traject klaar: gemiddeld %.0f bij %d", trajGem, trajLim); ti = -1; trajActief = false; }
+}
+static void checkOta() {
+  size_t n; uint8_t *b = haalUrl(FW_BASIS "versie.txt", n); if (!b) return;
+  int v = atoi((char *)b); free(b);
+  if (v <= FW_VERSIE) { logRegel("update: dit is de nieuwste (v%d)", FW_VERSIE); return; }
+  logRegel("update: v%d -> v%d wordt binnengehaald", FW_VERSIE, v);
+  otaPct = 0;
+  WiFiClientSecure cl; cl.setInsecure();
+  httpUpdate.onProgress([](int cur, int tot) { if (tot > 0) otaPct = cur * 100 / tot; });
+  httpUpdate.rebootOnUpdate(true);
+  t_httpUpdate_return r = httpUpdate.update(cl, FW_BASIS "firmware.bin");
+  logRegel("update mislukt (%d): %s", (int)r, httpUpdate.getLastErrorString().c_str()); otaPct = -1;
+}
+static void netTaak(void *) {
+  uint32_t flitsT = 0, otaT = 0, beginT = 0, stapT = millis(); bool ntpAan = false, flitsOud = false;
+  laadFlitsers(false); flitsOud = true;   // eerst uit het geheugen
+  for (;;) {
+    float dt = (millis() - stapT) / 1000.f; stapT = millis();
+    // 1. tegel voor de huidige plek (uit het geheugen of van internet)
+    bool online = WiFi.status() == WL_CONNECTED;
+    if (gpsFix) { char key[16]; tegelKey(gpsLat, gpsLon, key, sizeof key); if (strcmp(key, tegelNu)) laadTegel(key, online); }
+    bepaalWeg(); trajectStap(dt);
+    // 2. wifi
+    if (wifiHerstart) { wifiHerstart = false; WiFi.disconnect(true); vTaskDelay(pdMS_TO_TICKS(300)); beginT = 0; }
+    if (!wifiNaam[0]) { netStatus = "wifi uit"; vTaskDelay(pdMS_TO_TICKS(1000)); continue; }
+    if (!online) {
+      netStatus = "wifi zoekt";
+      if (!beginT || millis() - beginT > 30000) { WiFi.mode(WIFI_STA); WiFi.setSleep(true); WiFi.begin(wifiNaam, wifiPass); beginT = millis(); }
+      vTaskDelay(pdMS_TO_TICKS(1000)); continue;
+    }
+    netStatus = "wifi OK";
+    if (!ntpAan) { ntpAan = true; configTzTime("CET-1CEST,M3.5.0,M10.5.0/3", "pool.ntp.org", "time.google.com"); logRegel("wifi verbonden (%s), IP %s", wifiNaam, WiFi.localIP().toString().c_str()); }
+    if (!flitsT || millis() - flitsT > 24UL * 3600000 || flitsOud) { flitsOud = false; flitsT = millis(); laadFlitsers(true); }
+    if (gpsFix && tegelNu[0] == 0) { char key[16]; tegelKey(gpsLat, gpsLon, key, sizeof key); laadTegel(key, true); }
+    bool stil = !gpsFix || gpsSpeedKmh < 1;
+    if (stil && (!otaT || millis() - otaT > 3UL * 3600000) && millis() > 60000) { otaT = millis(); checkOta(); }
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
 }
 
 void drawFace(){
@@ -1428,10 +1629,19 @@ void drawFace(){
  bool fixNow = gpsFix && (millis()-gpsLastFixMs)<5000;
  bool tel = phoneFresh();
  int ownSpeed = fixNow ? (int)lroundf(gpsSpeedKmh) : (tel ? phone.v : -1);
- int limit = (tel && phone.lim > 0) ? phone.lim : ((gpsNearestCameraM >= 0 && gpsNearestCameraM <= 600) ? gpsCameraLimit : 0);
+ int limit = (tel && phone.lim > 0) ? phone.lim : ((wegLimiet > 0 && millis() - wegLimT < 6000) ? wegLimiet : ((gpsNearestCameraM >= 0 && gpsNearestCameraM <= 600) ? gpsCameraLimit : 0));
  // v19: file en tekst van de telefoon bovenin, werk-driehoekje naast het bord
  int camM = (tel && phone.camD >= 0) ? phone.camD : gpsNearestCameraM;
- if (camM >= 0 && camM < 1000) {
+ if (trajActief) {   // v25: trajectcontrole met je gemiddelde
+   char ct[28]; snprintf(ct, sizeof ct, "TRAJECT %d / %d", (int)lroundf(trajGem), trajLim);
+   bool tg = trajGem > trajLim + 2;
+   boxAdd(30, 26, 210, 50); roundRect(34, 28, 172, 20, 10, tg ? 0xB000 : 0x0230);
+   frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - strlen(ct) * 6, Y(32)); frame->print(ct);
+ } else if (otaPct >= 0) {
+   char ct[24]; snprintf(ct, sizeof ct, "UPDATE %d%%", otaPct);
+   boxAdd(40, 26, 200, 50); roundRect(44, 28, 152, 20, 10, 0x0418);
+   frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - strlen(ct) * 6, Y(32)); frame->print(ct);
+ } else if (camM >= 0 && camM < 1000) {
    char ct[24]; snprintf(ct, sizeof ct, "FLITSER %dm", (camM / 10) * 10);
    boxAdd(40, 26, 200, 50); roundRect(44, 28, 152, 20, 10, 0x8000);
    frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - strlen(ct) * 6, Y(32)); frame->print(ct);
@@ -1690,7 +1900,7 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v24 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v25 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -1744,8 +1954,10 @@ void setup(){
  bleStart();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
  logStart();
- logRegel("===== OPSTART v24 | reden: %s | heap %u =====", resetReden(), (unsigned)ESP.getFreeHeap());
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v24: logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ buddyPrefs.getString("ssid", wifiNaam, sizeof wifiNaam); buddyPrefs.getString("pass", wifiPass, sizeof wifiPass);
+ xTaskCreatePinnedToCore(netTaak, "BuddyNet", 12288, nullptr, 1, nullptr, 0);
+ logRegel("===== OPSTART v%d | reden: %s | heap %u =====", FW_VERSIE, resetReden(), (unsigned)ESP.getFreeHeap());
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v25: wifi, eigen limieten, trajecten, updates | logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
@@ -1765,11 +1977,12 @@ void loop(){
      if (c == '\n' || c == '\r') { cmd[cl] = 0; if (!strcmp(cmd, "log")) logDump(Serial); else if (!strcmp(cmd, "wis") && logFs) { logFs->remove(LOGF); logFs->remove(LOGOUD); Serial.println("Logboek gewist."); } cl = 0; }
      else if (cl < sizeof cmd - 1) cmd[cl++] = c;
    }
+   if (wifiNieuw) { wifiNieuw = false; strcpy(wifiNaam, wifiNaamNieuw); strcpy(wifiPass, wifiPassNieuw); buddyPrefs.putString("ssid", wifiNaam); buddyPrefs.putString("pass", wifiPass); wifiHerstart = true; logRegel("wifi ingesteld: %s", wifiNaam); }
    if (logVraag) { logVraag = false; xTaskCreatePinnedToCore(logNaarTelefoonTaak, "BuddyLogBLE", 4096, nullptr, 1, nullptr, 0); }
  }
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v24 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v25 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -1798,7 +2011,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v24 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v25 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){

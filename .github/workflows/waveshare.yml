@@ -1,0 +1,58 @@
+# Buddy-scherm (Waveshare ESP32-S3 AMOLED 1.75): automatisch compileren.
+# - Bij elke push met wijzigingen in waveshare/ wordt de code echt gecompileerd (dan zie je meteen fouten).
+# - Alleen op main wordt de firmware gepubliceerd op branch "firmware"; het schermpje haalt die zelf binnen via wifi.
+name: Buddy-scherm bouwen
+
+on:
+  push:
+    paths: ['waveshare/**', '.github/workflows/waveshare.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: waveshare-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bouw:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: arduino/setup-arduino-cli@v2
+
+      - name: ESP32-core installeren
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.1.3
+
+      - name: Bibliotheken (dezelfde als de Waveshare-voorbeelden)
+        run: |
+          git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-1.75 ws
+          mkdir -p ~/Arduino/libraries
+          cp -r ws/examples/arduino/libraries/GFX_Library_for_Arduino ws/examples/arduino/libraries/SensorLib ~/Arduino/libraries/
+
+      - name: Compileren
+        run: |
+          mkdir -p bouw/Buddy_Waveshare out
+          cp waveshare/Buddy_Waveshare.ino waveshare/pin_config.h bouw/Buddy_Waveshare/
+          set -o pipefail
+          arduino-cli compile --fqbn "esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PartitionScheme=app3M_fat9M_16MB,PSRAM=opi" \
+            --output-dir out --warnings default bouw/Buddy_Waveshare 2>&1 | tee compile.log
+          grep -o 'FW_VERSIE = [0-9]*' waveshare/Buddy_Waveshare.ino | grep -o '[0-9]*' > out/versie.txt
+          ls -la out
+
+      - name: Firmware publiceren (alleen main)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir pub && cp out/Buddy_Waveshare.ino.bin pub/firmware.bin && cp out/versie.txt pub/ && cp compile.log pub/
+          cp out/Buddy_Waveshare.ino.merged.bin pub/firmware_volledig.bin 2>/dev/null || true
+          cd pub
+          git init -q && git checkout -q -b firmware && git add -A
+          git -c user.name="Buddy-bot" -c user.email="buddy-bot@users.noreply.github.com" commit -q -m "Buddy-scherm v$(cat versie.txt)"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" firmware
