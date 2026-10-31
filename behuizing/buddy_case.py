@@ -82,14 +82,14 @@ z_back = Z0 + L_PLUG + L_ACHT
 achter -= cyl(L_PLUG + 0.02, r_plug_in).translate([0, 0, Z0 - 0.01])
 achter -= cyl(R_HOL - r_plug_in + 0.1, r_plug_in - 0.05, R_HOL + 0.05).translate([0, 0, Z0 + L_PLUG - 0.05])
 achter -= cyl(z_back - ACHTER - (Z0 + L_PLUG + R_HOL - r_plug_in) + 0.2, R_HOL).translate([0, 0, Z0 + L_PLUG + R_HOL - r_plug_in - 0.2])
+VOORSPAN = 0.15
 # paaltjes op de busjes, met een pinnetje dat in het M2-gaatje valt (centreert het bord)
 for (x, y) in MOUNTS:
-    achter += cyl(z_back - ACHTER - Z0 + 0.01, 3.0).translate([x, y, Z0])
+    achter += cyl(z_back - ACHTER - Z0 + 0.01 + VOORSPAN, 3.0).translate([x, y, Z0 - VOORSPAN])   # v8: iets langer -> klemt het bord
     # v7c: ribbetje van paaltje naar de wand -> geen losse eilandjes meer (die werden pap: draadjes en klodders)
     ang = math.degrees(math.atan2(y, x)); rp = math.hypot(x, y)
     rib = box(R_HOL - rp + 0.6, 1.8, z_back - ACHTER - (Z0 + L_PLUG + R_HOL - r_plug_in) + 0.01)
     achter += rib.translate([(rp + R_HOL + 0.6) / 2, 0, (Z0 + L_PLUG + R_HOL - r_plug_in) + (z_back - ACHTER - (Z0 + L_PLUG + R_HOL - r_plug_in)) / 2]).rotate([0, 0, ang])
-    achter += cyl(1.45, 0.7, 0.85).translate([x, y, Z0 - 1.4])   # tapse pin, punt naar het bord
 # speakerrooster v7f: groot rond gat in de buitenste laagjes, daarna twee lagen schuine latjes eroverheen:
 # eerst //// en daarbovenop \\\\ (kruislings, als een gaasje). Lange rechte lijnen, niks kleins.
 ROOSTER_R, OPEN_DIK, LAT_B, LAT_GAT = 12.5, 0.8, 1.4, 2.2
@@ -161,16 +161,34 @@ HOEKEN = (90, 210, 330)                          # niet bij USB-C (0) en de knop
 def ringstuk(r_in, r_uit, breed, z0, h, hoek):
     b = box(r_uit - r_in, breed, h).translate([(r_in + r_uit) / 2, 0, z0 + h / 2])
     return b.rotate([0, 0, hoek])
-for hk in HOEKEN:
-    # v7b: armpje volgt de ronding (eerst een recht plaatje, dat stak aan de hoekjes uit)
-    arm = ringstuk(R_UIT - ARM_DIK - 1, R_UIT + 1, ARM_BR, L1 - 0.01, ARM_LEN + 0.01, hk) ^ (cyl(ARM_LEN + 0.01, R_UIT) - cyl(ARM_LEN + 0.01, R_UIT - ARM_DIK)).translate([0, 0, L1 - 0.01])
-    # haakje naar binnen, met een schuin aanloopje aan de bovenkant (print zonder support, klikt makkelijk)
-    haak = Manifold.hull(ringstuk(R_UIT - ARM_DIK - HAAK_IN, R_UIT - ARM_DIK + 0.01, ARM_BR, L1 + HAAK_Z0, HAAK_H * .55, hk)
-                         + ringstuk(R_UIT - ARM_DIK - 0.05, R_UIT - ARM_DIK + 0.01, ARM_BR, L1 + HAAK_Z0, HAAK_H + HAAK_IN, hk))
-    voor += arm + haak
-    # achterkant: inkeping waar het armpje in valt (blijft mooi gelijk met de buitenkant) + venster voor het haakje
-    achter -= ringstuk(R_UIT - ARM_DIK - 3, R_UIT + 1, ARM_BR + 2 * SPEL_K, Z0 + L_PLUG - 0.01, ARM_LEN + 0.3, hk) - cyl(40, R_UIT - ARM_DIK - SPEL_K).translate([0, 0, Z0])
-    achter -= ringstuk(R_UIT - ARM_DIK - 3, R_UIT, ARM_BR + 2 * SPEL_K, Z0 + L_PLUG + HAAK_Z0 - 0.1, HAAK_H + 0.3, hk)
+# v8: DRAAISLUITING (bajonet) i.p.v. klikarmpjes: niets hoeft te buigen, dus niets breekt of springt los.
+# 3 nokjes op de plug van de achterkant; in de voorkant 3 L-vormige gleufjes: recht erin, dan 20 graden draaien.
+from manifold3d import CrossSection
+def boog(r_in, r_uit, a0, a1, z0, h):
+    n = max(6, int(abs(a1 - a0) / 2) + 2)
+    pts = [(r_uit * math.cos(math.radians(a0 + (a1 - a0) * i / n)), r_uit * math.sin(math.radians(a0 + (a1 - a0) * i / n))) for i in range(n + 1)]
+    pts += [(r_in * math.cos(math.radians(a1 - (a1 - a0) * i / n)), r_in * math.sin(math.radians(a1 - (a1 - a0) * i / n))) for i in range(n + 1)]
+    return Manifold.extrude(CrossSection([pts]), h).translate([0, 0, z0])
+NOK_HOEK = (95, 215, 335)          # eindstand (na het draaien); USB-C zit op 0
+DRAAI = 20.0
+NOK_B = 5.0                        # breedte nokje (mm)
+NOK_UIT = 1.0                      # hoe ver het nokje uitsteekt
+NZ0, NZ1 = Z0 + 0.6, Z0 + 2.0      # nokje van z 13,0 tot 14,4
+R_B = BINN_D / 2                   # boring voorkant
+G_R = R_B + 1.25                   # diepte gleuf in de voorwand
+SP_G = 0.25                        # speling
+for hk in NOK_HOEK:
+    hb = math.degrees(NOK_B / 2 / plug_r)
+    # nokje: onderkant (voorkant) plat, bovenkant 45 graden schuin (print zonder support met de achterwand op het bed)
+    nok = Manifold.hull(boog(plug_r - 0.3, plug_r + NOK_UIT, hk - hb, hk + hb, NZ0, 0.35) + boog(plug_r - 0.3, plug_r + 0.02, hk - hb, hk + hb, NZ0, NZ1 - NZ0))
+    achter += nok
+    # gleuf rondom (draaistuk) in de voorkant: vloer plat, dak 45 graden (print zonder support met de schermrand op het bed)
+    gb = math.degrees((NOK_B / 2 + SP_G) / R_B)
+    gleuf = Manifold.hull(boog(R_B - 1, G_R, hk - DRAAI - gb, hk + gb, NZ0 - SP_G, 0.35 + 2 * SP_G) + boog(R_B - 1, R_B + 0.02, hk - DRAAI - gb, hk + gb, NZ0 - SP_G, NZ1 - NZ0 + 2 * SP_G + 0.45))   # dak iets steiler dan 45 graden
+    voor -= gleuf
+    # rechte invoer vanaf de achterrand van de voorkant naar het draaistuk
+    voor -= boog(R_B - 1, G_R, hk - DRAAI - gb, hk - DRAAI + gb, NZ0 - SP_G, L1 - NZ0 + 1)
+# nokjes op de achterkant mogen niet tegen de oude armuitsparingen zitten (die zijn er niet meer)
 t1 = save(voor, 'buddy_1_voorkant')
 # achterkant geprint met de achterwand op het bed: omdraaien
 t2 = save(achter.rotate([180, 0, 0]).translate([0, 0, z_back]), 'buddy_2_achterkant')   # v7: achterwand op het bed
