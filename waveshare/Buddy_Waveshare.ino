@@ -702,6 +702,12 @@ Expr cur=exprs[NEUTRAL];
 float t=0, lastFrame=0, nextBlink=2, blinkStart=-1, blink=1, gx=0,gy=0,tgx=0,tgy=0,nextGaze=0;
 float breathe=0, headBob=0;
 int mood=NEUTRAL, lastMood=-1;
+// v21: toestand van de animaties (gags), net als in de app
+static int gagAct = -1, gagMood = -1; static float gagT0 = 0, nextGagT = 6; static const char *gagMsg = nullptr;
+static float fdx = 0, fdy = 0, eyeL = 1, eyeR = 1, faceOx = 0, faceOy = 0;
+static bool fxNoBlink = false, fxSpiral = false, fxTongue = false;
+static float g_fx = 120, g_fy = 90, g_r = 0, g_d = 0, g_nn = 0; static bool g_b = false;
+static volatile uint32_t flagTot = 0;   // 0-100 vlag-show
 struct Particle { float x,y,vx,vy,age,life,size; uint8_t kind; } particles[24];
 
 int16_t X(float x){return (int16_t)lroundf(x*LCD_WIDTH/240.0f);} 
@@ -740,7 +746,7 @@ void gazeTarget(){
  else {tgx=random(-30,31)/100.f;tgy=-.1f;nextGaze=t+2;}
 }
 void eye(float cx,float cy,int side){
- float w=44*cur.scale, h=fmaxf(3,62*cur.open*cur.scale*blink);
+ float w=44*cur.scale, h=fmaxf(3,62*cur.open*cur.scale*blink*(side<0?eyeL:eyeR));
  boxAdd(cx-w/2-4,cy-h/2-4,cx+w/2+4,cy+h*1.65f);
  // Solid cyan eye, rounded exactly like the original Buddy canvas design.
  roundRect(cx-w/2,cy-h/2,w,h,fminf(w,h)*.42f,EYE);
@@ -769,6 +775,27 @@ void mouth(float oy){
  float hw=12+8*fabsf(cur.mouth), prevx=cx-hw, prevy=cy;
  for(int i=1;i<=16;i++){float q=-1+2*i/16.f;float xx=cx+q*hw, yy=cy+cur.mouth*18*(1-q*q);line(prevx,prevy,xx,yy,EYE,2);prevx=xx;prevy=yy;}
 }
+// v21: 0-80 / 0-100 meten met de GPS, net als launchFix() in de app (tijdstip van 80/100 tussen twee metingen in)
+static char gpsDate[7] = "";
+static volatile float res80 = 0, res100 = 0; static volatile bool new80 = false, new100 = false;
+static void launchFix(uint32_t ms, float v) {
+  static bool arm = false, d80 = false, fijn = false; static uint32_t tStil = 0, t0 = 0, tPrev = 0, t1 = 0; static float vPrev = 0, v1 = 0;
+  if (v < 1.0f) { arm = true; tStil = ms; t0 = 0; d80 = false; }
+  else if (arm && t0 == 0) {
+    float f = (vPrev < 1 && v > vPrev) ? (1 - vPrev) / (v - vPrev) : 0; f = fmaxf(0, fminf(1, f));
+    t0 = tStil + (uint32_t)((ms - tStil) * f); arm = false; t1 = ms; v1 = v; fijn = false;
+  } else if (t0 && !fijn && ms > t1) {   // tweede meting: terugrekenen wanneer je echt wegreed
+    fijn = true; float helling = (v - v1) / (float)(ms - t1);
+    if (helling > 0) { float st = t1 - v1 / helling; if (st < tStil) st = tStil; if (st < t1) t0 = (uint32_t)st; }
+  }
+  if (t0) {
+    auto kruis = [&](float doel) -> float { return v > vPrev ? tPrev + (ms - tPrev) * (doel - vPrev) / (v - vPrev) : (float)ms; };
+    if (!d80 && v >= 80 && vPrev < 80) { d80 = true; float tt = (kruis(80) - t0) / 1000.f; if (tt > 2.5f && tt < 9) { res80 = tt; new80 = true; } }
+    if (v >= 100 && vPrev < 100) { float tt = (kruis(100) - t0) / 1000.f; t0 = 0; if (tt > 3.5f && tt < 10) { res100 = tt; new100 = true; } }
+    else if (ms - t0 > 15000) t0 = 0;
+  }
+  vPrev = v; tPrev = ms;
+}
 // Parse NMEA coordinate (ddmm.mmmm / dddmm.mmmm) to decimal degrees.
 float nmeaCoord(const char* v, const char* hemi) {
   if (!v || !*v) return 0; float raw=atof(v); int deg=(int)(raw/100.0f); float out=deg+(raw-deg*100)/60.0f;
@@ -783,6 +810,8 @@ void parseNmeaLine(char* line) {
   if (strstr(f[0],"RMC") && n>7 && f[2][0]=='A') {
     float lat=nmeaCoord(f[3],f[4]), lon=nmeaCoord(f[5],f[6]);
     float knots=atof(f[7]); gpsLat=lat; gpsLon=lon; gpsSpeedKmh=knots*1.852f; gpsFix=true; gpsLastFixMs=millis(); gpsNewFix=true;
+    if (n>9 && strlen(f[9])==6) { memcpy(gpsDate, f[9], 6); gpsDate[6]=0; }
+    launchFix(millis(), gpsSpeedKmh);
   } else if(strstr(f[0],"GGA") && n>8) {
     int q=atoi(f[6]); gpsSatellites=atoi(f[7]); if(q>0 && f[2][0]) {gpsLat=nmeaCoord(f[2],f[3]);gpsLon=nmeaCoord(f[4],f[5]);gpsFix=true;gpsLastFixMs=millis();} else if(q==0) gpsFix=false;
   }
@@ -1029,14 +1058,20 @@ static void drawMenu() {
   frame->fillCircle(X(120), Y(120), S(26), 0x2124); frame->drawCircle(X(120), Y(120), S(26), EYE);
   frame->setTextColor(EYE); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(120) - 7); frame->print("TERUG");
 }
+// v21: records en ritjes (blijven bewaard in het geheugen van het bordje)
+static float rec80 = 0, rec100 = 0, recG = 0, totKm = 0; static uint32_t totRit = 0; static char dat80[9] = "", dat100[9] = "";
 static void drawInfo() {
-  boxAdd(20, 30, 220, 200);
+  boxAdd(20, 30, 220, 212);
   frame->setTextColor(EYE); frame->setTextSize(2);
   char r[48]; int y = 62;
   snprintf(r, sizeof r, "GPS: %s %d sat", gpsFix ? "FIX" : (gpsDataOk ? "zoekt" : "geen data"), (int)gpsSatellites); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
   snprintf(r, sizeof r, "Telefoon: %s", bleConnected ? (phoneFresh() ? "verbonden" : "stil") : "niet"); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
   snprintf(r, sizeof r, "Volume %d%%  Licht %d", buddyVolume, helderheid * 100 / 255); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
-  snprintf(r, sizeof r, "Bocht %.2f G", fabsf(leanX)); frame->setCursor(X(40), Y(y)); frame->print(r);
+  snprintf(r, sizeof r, "Bocht %.2f G", fabsf(leanX)); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
+  frame->setTextColor(GOLD);
+  if (rec100 > 0) snprintf(r, sizeof r, "0-100: %.1fs %s", rec100, dat100); else snprintf(r, sizeof r, "0-100: nog niet"); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
+  if (rec80 > 0) snprintf(r, sizeof r, "0-80:  %.1fs %s", rec80, dat80); else snprintf(r, sizeof r, "0-80:  nog niet"); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
+  snprintf(r, sizeof r, "Max %.2fG %dkm %drit", recG, (int)totKm, (int)totRit); frame->setCursor(X(40), Y(y)); frame->print(r);
 }
 static void menuKies(float x, float y) {
   float dx = x - 120, dy = y - 120, r = sqrtf(dx * dx + dy * dy);
@@ -1049,6 +1084,198 @@ static void menuKies(float x, float y) {
   else infoTot = millis() + 8000;
 }
 
+// ===================== v21: animaties (overgezet uit de app) =====================
+enum { G_IDLE = 1, G_DRIVE = 2, G_STOP = 4 };
+struct GagDef { float dur; uint8_t flags; int8_t mood; const char *msg; };
+static const GagDef GAGS[] = {
+  {5.6f, G_STOP, BORED, "Rood... nog steeds rood..."},     // 0 ongeduldig (stilstaan tijdens een rit)
+  {5.8f, G_IDLE, ALERT, "Een vliegje!"},                    // 1 vlieg
+  {5.0f, G_IDLE, BLOW, "Ik blaas een bel..."},              // 2 bel
+  {4.6f, G_IDLE | G_DRIVE, ALERT, "Even rondkijken..."},    // 3 rondkijken
+  {4.8f, G_IDLE, BORED, "Wheeeee..."},                      // 4 ogen rollen
+  {3.8f, G_IDLE, YAWN, "Ah... ah..."},                      // 5 niezen
+  {6.0f, G_IDLE | G_DRIVE, HAPPY, "La la la..."},           // 6 neuriën
+  {2.2f, G_IDLE | G_DRIVE, HAPPY, "Knipoog!"},              // 7 knipoog
+  {6.0f, G_IDLE, EXCITED, "Dansje!"},                       // 8 dansen
+  {2.6f, G_IDLE, HAPPY, "Bleh!"},                           // 9 tong
+  {6.4f, G_IDLE, ALERT, "Wie knippert eerst?"},             // 10 staren
+  {6.4f, G_IDLE, SLEEPY, "Zzz... zo moe..."},               // 11 knikkebollen
+  {4.6f, G_IDLE | G_DRIVE, NEUTRAL, "Hik... sorry."},       // 12 hik
+  {6.0f, G_IDLE, FOCUSED, "Drie ballen... kijk!"},          // 13 jongleren
+  {3.6f, G_IDLE, NEUTRAL, "Waar is Buddy..."},              // 14 kiekeboe
+  {6.4f, G_IDLE, WORRIED, "Regent het alleen bij mij?"},    // 15 regenwolkje
+  {6.2f, G_IDLE, LOVE, "Ooh, een vlinder..."},              // 16 vlinder
+  {5.0f, G_IDLE | G_DRIVE, CONTENT, "Zo. Cool."},           // 17 zonnebril
+  {4.6f, G_IDLE, WORRIED, "Bonk... sterretjes."},           // 18 sterretjes
+  {5.6f, G_IDLE, HAPPY, "Jojo!"},                           // 19 jojo
+  {4.8f, G_IDLE, ANTICIPATE, "..."},                        // 20 om het hoekje gluren
+  {4.4f, G_IDLE, WORRIED, "Brrr... verwarming aan?"},       // 21 koud
+  {3.6f, G_IDLE | G_DRIVE, HAPPY, "Hoi hoi!"},              // 22 zwaaien
+  {5.4f, G_IDLE | G_DRIVE, ALERT, "Kijk, een vliegtuig!"},  // 23 vliegtuig
+  {5.2f, G_IDLE | G_DRIVE, EXCITED, "Ba-dum-tss!"},         // 24 trommelen
+  {4.0f, G_IDLE | G_DRIVE, LOVE, "Jij bent mijn favoriet."},// 25 verlegen
+  {4.2f, G_IDLE, EXCITED, "Boing boing!"},                  // 26 stuiteren
+  {5.6f, G_IDLE, FOCUSED, "Hmm... even nadenken."},         // 27 nadenken
+};
+static constexpr int GAG_N = sizeof(GAGS) / sizeof(GAGS[0]);
+static inline void gdir(float x, float y) { tgx = x; tgy = y; nextGaze = t + .3f; }
+static inline float frand(float a, float b) { return a + (b - a) * (random(10000) / 10000.0f); }
+static void addParticleAt(uint8_t kind, float x, float y, float vx, float vy, float life, float size) {
+  for (auto &p : particles) if (p.life <= 0) { p = {x, y, vx, vy, 0, life, size, kind}; return; }
+}
+static void burstAt(float x, float y, int n) { for (int i = 0; i < n; i++) { float a = frand(0, PI2), v = frand(30, 70); addParticleAt(1, x, y, cosf(a) * v, sinf(a) * v, .6f, frand(3, 6)); } }
+static void noot(float x, float y) { addParticleAt(3, x, y, frand(-8, 8), -frand(18, 28), 1.5f, 6); }
+static void ellipseF(float x, float y, float rx, float ry, uint16_t c) { boxAdd(x - rx, y - ry, x + rx, y + ry); frame->fillEllipse(X(x), Y(y), S(rx), S(ry), c); }
+static void triF(float x1, float y1, float x2, float y2, float x3, float y3, uint16_t c) { boxAdd(fminf(x1, fminf(x2, x3)), fminf(y1, fminf(y2, y3)), fmaxf(x1, fmaxf(x2, x3)), fmaxf(y1, fmaxf(y2, y3))); frame->fillTriangle(X(x1), Y(y1), X(x2), Y(y2), X(x3), Y(y3), c); }
+static void spiraal(float cx, float cy) { float px = cx, py = cy; for (int i = 1; i <= 40; i++) { float a = i * .5f + t * 6, r = i * .55f; float x = cx + cosf(a) * r, y = cy + sinf(a) * r; line(px, py, x, y, EYE, 3); px = x; py = y; } }
+
+static float spdNow(bool *ok = nullptr) {
+  bool g = gpsFix && millis() - gpsLastFixMs < 5000;
+  if (ok) *ok = g || phoneFresh();
+  return g ? gpsSpeedKmh : (phoneFresh() ? (float)phone.v : 0);
+}
+static bool tripActief = false;
+static void startGag(int k) {
+  gagAct = k; gagT0 = t; gagMood = GAGS[k].mood; gagMsg = GAGS[k].msg; g_b = false; g_nn = 0; g_r = 0;
+}
+static void gagStep(float dt) {
+  fdx = fdy = 0; eyeL = eyeR = 1; fxNoBlink = fxSpiral = fxTongue = false;
+  float v = spdNow();
+  if (gagAct < 0) {
+    if (t < nextGagT || menuOpen || millis() < flagTot || mood == ALERT || mood == WORRIED || mood == SLEEPING) return;
+    bool rijdt = v >= 15, stil = v < 1;
+    int kies[GAG_N]; int n = 0;
+    for (int k = 0; k < GAG_N; k++) {
+      uint8_t f = GAGS[k].flags;
+      if ((stil && (f & G_IDLE)) || (rijdt && (f & G_DRIVE)) || (stil && tripActief && (f & G_STOP))) kies[n++] = k;
+    }
+    if (!n) { nextGagT = t + 3; return; }
+    int k = kies[random(n)]; startGag(k);
+    nextGagT = t + GAGS[k].dur + (stil ? frand(8, 16) : frand(15, 30));
+    return;
+  }
+  float tt = t - gagT0; const GagDef &d = GAGS[gagAct];
+  if (tt > d.dur) { gagAct = -1; gagMood = -1; gagMsg = nullptr; return; }
+  switch (gagAct) {
+    case 0: gdir(0, tt < 3.6f ? -.7f : .2f); fdy = tt > 1.5f ? fabsf(sinf(tt * 6)) * 3 : 0; if (tt > 3.6f) { gagMsg = "Kom op, groen!"; gagMood = ANTICIPATE; } break;
+    case 1: { float x = sinf(tt * 2.1f) * .9f + sinf(tt * 5) * .1f, y = cosf(tt * 1.6f) * .6f; g_fx = 120 + x * 75; g_fy = 88 + y * 40;
+      if (tt < 4.8f) gdir(x * .9f, y * .9f); else { gdir(0, .1f); gagMood = HAPPY; gagMsg = "Gevangen! ...oh, weg."; } } break;
+    case 2: gdir(0, .3f); if (tt < 3.6f) g_r = 3 + tt / 3.6f * 27; else { g_r = 0; gagMood = HAPPY; gagMsg = "Plop!"; if (!g_b) { g_b = true; burstAt(120, 168, 12); } } break;
+    case 3: { static const float dx[5] = {-1, 1, -.6f, .8f, 0}, dy[5] = {0, -.3f, .2f, -.2f, 0}; int i = (int)(tt / .85f) % 5; gdir(dx[i], dy[i]); if (tt > 4) gagMsg = "Alles veilig."; } break;
+    case 4: { float a = tt * 6.5f; gdir(cosf(a) * .95f, sinf(a) * .85f); if (tt > 3.3f) { fxSpiral = true; gagMood = WORRIED; gagMsg = "Oei, duizelig..."; } } break;
+    case 5: if (tt < 2) { fdy = -tt * 3; eyeL = eyeR = 1 - tt * .2f; gdir(0, -.4f); } else { gagMood = STARTLED; fdy = 9; gagMsg = "HATSJOE!"; eyeL = eyeR = .15f; if (!g_b) { g_b = true; burstAt(120, 172, 16); } } break;
+    case 6: fdx = sinf(tt * 3) * 5; gdir(sinf(tt * 1.5f) * .3f, -.15f); if (tt > g_nn) { g_nn += .55f; noot(150 + frand(-10, 20), 80); } break;
+    case 7: if (tt > .4f && tt < 1.3f) { eyeR = .08f; if (!g_b) { g_b = true; burstAt(190, 96, 6); } } gdir(0, 0); break;
+    case 8: fdx = sinf(tt * 5) * 10; fdy = -fabsf(sinf(tt * 5)) * 7; gdir(sinf(tt * 5) * .5f, 0); if (tt > g_nn) { g_nn += .45f; noot(frand(40, 200), frand(60, 100)); } if (tt > 4.8f) gagMsg = "Kijk mij eens!"; break;
+    case 9: fxTongue = tt > .3f && tt < 2.2f; if (fxTongue) eyeL = .45f; gdir(0, .1f); break;
+    case 10: gdir(0, 0); if (tt < 5.4f) fxNoBlink = true; else { gagMsg = "Oei, ik knipperde."; if (!g_b) { g_b = true; blinkStart = t; } } break;
+    case 11: if (tt < 4.4f) { fdy = tt * 3.2f; gdir(0, .6f); } else { gagMood = STARTLED; gagMsg = "Ik sliep niet!"; gdir(0, 0); } break;
+    case 12: { float h = fmodf(tt, .95f); if (h < .14f && tt < 4) { fdy = -9; gagMood = STARTLED; gagMsg = "Hik!"; } else { gagMood = NEUTRAL; gagMsg = tt < 4 ? "Hik... sorry." : "Weg. Denk ik."; } } break;
+    case 13: { float a = tt * 4.2f; gdir(cosf(a) * .5f, -.5f + fabsf(sinf(a)) * .3f); if (tt > 5) { gagMood = HAPPY; gagMsg = "Ta-daa!"; } } break;
+    case 14: if (tt < 2.2f) { eyeL = eyeR = .06f; fxNoBlink = true; fdy = 3; } else { gagMood = EXCITED; gagMsg = "KIEKEBOE!"; fdy = -6; if (!g_b) { g_b = true; burstAt(120, 110, 14); } } break;
+    case 15: gdir(0, -.8f); if (tt > 4.6f) { gagMood = HAPPY; gagMsg = "Oh, de zon komt al!"; gdir(0, -.3f); } break;
+    case 16: { float x = sinf(tt * 1.3f) * .85f, y = sinf(tt * 2.6f) * .45f - .2f; g_fx = 120 + x * 80; g_fy = 80 + y * 45; gdir(x, y); if (tt > 5.4f) gagMsg = "Dag vlinder!"; } break;
+    case 17: gdir(0, 0); g_fy = tt < .8f ? -60 + tt / .8f * 166 : 106; if (tt > 3.4f) gagMsg = "Coolste auto op de weg."; break;
+    case 18: fxSpiral = tt < 3.6f; if (tt > 3.6f) { gagMood = CONTENT; gagMsg = "Gaat alweer."; } break;
+    case 19: g_d = fabsf(sinf(tt * 2.6f)); gdir(.3f, -.2f + g_d * .9f); break;
+    case 20: if (tt < 1.2f) fdx = tt / 1.2f * 150; else if (tt < 3.2f) { fdx = 150 - fminf(1, (tt - 1.2f) / .5f) * 60; gdir(-1, 0); gagMsg = "Psst... ben je er nog?"; }
+             else { fdx = 90 * fmaxf(0, 1 - (tt - 3.2f) / .6f); gagMood = HAPPY; gagMsg = "Daar ben ik weer!"; gdir(0, 0); } break;
+    case 21: if (tt < 3.4f) { fdx = sinf(tt * 60) * 2.2f; fdy = sinf(tt * 47) * 1.2f; gdir(0, .2f); } else { gagMood = CONTENT; gagMsg = "Ahh, lekker warm."; } break;
+    case 22: gdir(.2f, 0); break;
+    case 23: g_fx = -20 + tt / 5.4f * 280; gdir((g_fx - 120) / 120, -1); if (tt > 4.4f) gagMsg = "Die gaat op vakantie!"; break;
+    case 24: { float b = fmodf(tt * 4, 1); fdy = b < .15f ? 4 : 0; gdir(sinf(tt * 4) * .4f, .3f); if (tt > g_nn) { g_nn += .5f; noot(frand(30, 210), frand(140, 165)); } } break;
+    case 25: gdir(-.6f, .4f); if (tt > 2.8f) { gagMsg = "Oeps, zei ik dat hardop?"; gdir(.5f, .5f); } break;
+    case 26: { float h = fabsf(sinf(tt * 5)) * fmaxf(0, 1 - tt / 4.2f); fdy = -h * 22; gdir(0, -h * .5f); } break;
+    case 27: gdir(.7f, -.7f); if (tt > 4.4f) { gagMood = HAPPY; gagMsg = "Ik weet het! ...kwijt."; gdir(0, 0); } break;
+  }
+}
+static void gagDraw() {
+  if (gagAct < 0) return;
+  float tt = t - gagT0;
+  switch (gagAct) {
+    case 1: if (tt < 4.8f) { circle(g_fx, g_fy, 2.6f, EYE); float f = sinf(tt * 60) > 0 ? 4 : 2; ellipseF(g_fx - 4, g_fy - 3, 4, f, 0x9CF3); ellipseF(g_fx + 4, g_fy - 3, 4, f, 0x9CF3); } break;
+    case 2: if (g_r > 0) { float x = 120 + sinf(tt * 3) * 2, y = 182 - g_r * .4f + faceOy * .5f; boxAdd(x - g_r, y - g_r, x + g_r, y + g_r); for (int i = 0; i < 4; i++) frame->drawCircle(X(x), Y(y), S(g_r) - i, EYE); } break;
+    case 9: if (fxTongue) { float y = 174 + faceOy * .5f; roundRect(112 + faceOx * .5f, y, 16, 13, 6, 0xF986); line(120 + faceOx * .5f, y + 2, 120 + faceOx * .5f, y + 9, 0xB000, 1); } break;
+    case 13: if (tt <= 5) for (int i = 0; i < 3; i++) { float a = tt * 4.2f + i * PI2 / 3; circle(120 + cosf(a) * 46, 52 - fabsf(sinf(a)) * 26, 5, i == 1 ? GOLD : EYE); } break;
+    case 15: { float x = 120 + sinf(tt) * 6;
+      if (tt < 5.2f) { circle(x - 16, 34, 13, 0x9CF3); circle(x, 28, 16, 0x9CF3); circle(x + 17, 35, 12, 0x9CF3);
+        for (int i = 0; i < 6; i++) { float y = 50 + fmodf(tt * 60 + i * 13, 34); line(x - 20 + i * 8, y, x - 22 + i * 8, y + 6, 0x7E5F, 2); } }
+      if (tt > 4.6f) circle(176, 46, 12, GOLD); } break;
+    case 16: { float f = fabsf(sinf(tt * 14)), x = g_fx, y = g_fy - (tt > 5.4f ? (tt - 5.4f) * 90 : 0);
+      ellipseF(x - 5 * f - 1, y, 6 * f + 1, 7, 0xFC18); ellipseF(x + 5 * f + 1, y, 6 * f + 1, 7, 0xFC18);
+      ellipseF(x - 4 * f, y + 7, 4 * f + 1, 4, GOLD); ellipseF(x + 4 * f, y + 7, 4 * f + 1, 4, GOLD); line(x, y - 6, x, y + 10, EYE, 2); } break;
+    case 17: { float y = g_fy + faceOy; for (int k = 0; k < 2; k++) { float x = (k ? 167 : 73) + faceOx; roundRect(x - 30, y - 18, 60, 34, 10, 0x0000); frame->drawRoundRect(X(x - 30), Y(y - 18), S(60), S(34), S(10), 0x39E7); ellipseF(x - 18, y - 7, 8, 3, 0x6B4D); }
+      line(103 + faceOx, y - 8, 137 + faceOx, y - 8, 0x39E7, 3); } break;
+    case 18: if (tt <= 3.6f) for (int i = 0; i < 4; i++) { float a = tt * 3 + i * PI2 / 4; star(120 + cosf(a) * 50, 40 + sinf(a) * 12, 7, GOLD); } break;
+    case 19: { float x = 175, y = 40 + g_d * 120; line(x, 30, x, y, EYE, 1); circle(x, y + 7, 8, RED); circle(x, y + 7, 2.5f, 0xFFFF); } break;
+    case 21: if (tt <= 3.4f) for (int i = 0; i < 3; i++) { float x = 40 + i * 80 + sinf(tt * 3 + i) * 4, y = 36; line(x - 6, y, x + 6, y, 0x9EFF, 2); line(x, y - 6, x, y + 6, 0x9EFF, 2); line(x - 4, y - 4, x + 4, y + 4, 0x9EFF, 2); line(x + 4, y - 4, x - 4, y + 4, 0x9EFF, 2); } break;
+    case 22: { float a = sinf(tt * 9) * .45f - .3f, hx = 196 + sinf(a) * 34, hy = 150 - cosf(a) * 34; line(196, 150, hx, hy, EYE, 6); circle(hx, hy, 10, EYE);
+      for (int i = -1; i <= 1; i++) line(hx + i * 5, hy - 8, hx + i * 5 + sinf(a) * 8, hy - 8 - cosf(a) * 8, EYE, 2); } break;
+    case 23: { float x = g_fx, y = 30 + sinf(tt) * 3; line(x - 70, y + 1, x - 12, y + 1, 0x632C, 1); roundRect(x - 12, y - 3, 26, 7, 3, EYE);
+      triF(x - 2, y, x - 8, y + 11, x + 3, y + 1, EYE); triF(x - 8, y, x - 13, y - 8, x - 6, y - 1, EYE); } break;
+    case 27: if (tt <= 4.4f) { if (tt > 0) circle(178, 64, 3, EYE); if (tt > .4f) circle(188, 50, 4.5f, EYE); if (tt > .8f) circle(200, 32, 8, EYE); } break;
+  }
+}
+
+// ===================== v21: G-meter, 0-100 vlag en ritjes =====================
+static float tripKm = 0, tripMax = 0, tripG = 0, tripBest = 0; static uint32_t tripStart = 0, stilSinds = 0, rijdtSinds = 0, ritKlaarTot = 0;
+static float flagTijd = 0; static bool flagRec = false;
+static void driveStep(float dt) {
+  bool ok; float v = spdNow(&ok); uint32_t nu = millis();
+  float gNu = sqrtf(leanX * leanX + pushZ * pushZ);
+  if (new80) { new80 = false; float tt = res80; if (rec80 <= 0 || tt < rec80) { rec80 = tt; snprintf(dat80, sizeof dat80, "%.2s-%.2s-%.2s", gpsDate, gpsDate + 2, gpsDate + 4); buddyPrefs.putFloat("b80", rec80); buddyPrefs.putString("d80", dat80); } Serial.printf("0-80: %.1f s\n", tt); }
+  if (new100) { new100 = false; float tt = res100; flagTijd = tt; flagRec = rec100 <= 0 || tt < rec100; flagTot = nu + 9000;
+    if (flagRec) { rec100 = tt; snprintf(dat100, sizeof dat100, "%.2s-%.2s-%.2s", gpsDate, gpsDate + 2, gpsDate + 4); buddyPrefs.putFloat("b100", rec100); buddyPrefs.putString("d100", dat100); }
+    if (tripBest <= 0 || tt < tripBest) tripBest = tt;
+    for (int i = 0; i < 10; i++) addParticleAt(1, frand(30, 210), frand(40, 120), frand(-20, 20), frand(-30, 10), 1.2f, frand(5, 9));
+    char m[24]; snprintf(m, sizeof m, "SPRINT:%.1f", tt); bleSend(m); Serial.printf("0-100: %.1f s%s\n", tt, flagRec ? " RECORD" : ""); }
+  if (!ok) return;
+  if (v > 5) { stilSinds = 0; if (!rijdtSinds) rijdtSinds = nu; } else { rijdtSinds = 0; if (!stilSinds) stilSinds = nu; }
+  if (!tripActief && rijdtSinds && nu - rijdtSinds > 5000) { tripActief = true; tripKm = tripMax = tripG = tripBest = 0; tripStart = nu; Serial.println("Rit begonnen"); }
+  if (tripActief) {
+    tripKm += v * dt / 3600.f; if (v > tripMax) tripMax = v; if (gNu > tripG && gNu < 1.3f && v > 10) tripG = gNu;
+    if (stilSinds && nu - stilSinds > 180000) {   // 3 minuten stil = rit klaar
+      tripActief = false;
+      if (tripKm > .3f) {
+        totKm += tripKm; totRit++; buddyPrefs.putFloat("km", totKm); buddyPrefs.putUInt("rit", totRit);
+        if (tripG > recG) { recG = tripG; buddyPrefs.putFloat("gmax", recG); }
+        ritKlaarTot = nu + 12000; Serial.printf("Rit klaar: %.1f km, max %.0f, %.2f G\n", tripKm, tripMax, tripG);
+      }
+    }
+  }
+}
+static void drawGmeter() {
+  bool ok; float v = spdNow(&ok);
+  if (!imuReady || !ok || v < 5) return;
+  float cx = 120, cy = 20, r = 9;
+  boxAdd(cx - r - 2, cy - r - 2, cx + r + 2, cy + r + 2);
+  frame->drawCircle(X(cx), Y(cy), S(r), 0x4208); frame->drawCircle(X(cx), Y(cy), S(r * .5f), 0x2945);
+  float dx = fmaxf(-1, fminf(1, -leanX * LEAN_RICHTING / .6f)) * r, dy = fmaxf(-1, fminf(1, -pushZ / .6f)) * r, g = sqrtf(leanX * leanX + pushZ * pushZ);
+  circle(cx + dx, cy + dy, 2.6f, g < .3f ? 0x07E8 : (g < .5f ? GOLD : RED));
+}
+static void drawFlag() {
+  if ((int32_t)(flagTot - millis()) <= 0) return;
+  float w = sinf(t * 8) * 3;   // wapperen
+  line(196 + faceOx * .3f, 88, 196 + faceOx * .3f, 176, 0xC618, 3);
+  for (int i = 0; i < 5; i++) for (int j = 0; j < 3; j++) {
+    float x = 160 + i * 7 + faceOx * .3f, y = 88 + j * 7 + w * (i / 5.f);
+    roundRect(x, y, 7, 7, 0, ((i + j) & 1) ? 0x0000 : 0xFFFF);
+  }
+  char tx[16]; snprintf(tx, sizeof tx, "%.1f s", flagTijd); for (char *q = tx; *q; q++) if (*q == '.') *q = ',';
+  int tw = strlen(tx) * 18; boxAdd(40, 24, 200, 60);
+  frame->setTextColor(GOLD); frame->setTextSize(3); frame->setCursor(X(120) - tw / 2, Y(30)); frame->print(tx);
+  if (flagRec && (millis() / 300) % 2) { frame->setTextSize(2); frame->setTextColor(0xFFFF); frame->setCursor(X(120) - 42, Y(48)); frame->print("RECORD!"); }
+}
+static void drawRitKlaar() {
+  if ((int32_t)(ritKlaarTot - millis()) <= 0) return;
+  boxAdd(30, 44, 210, 100);
+  roundRect(32, 44, 176, 54, 14, 0x10A2);
+  char r1[32], r2[32]; snprintf(r1, sizeof r1, "Rit: %.1f km", tripKm); snprintf(r2, sizeof r2, "max %d  %.2f G", (int)tripMax, tripG);
+  for (char *q = r1; *q; q++) if (*q == '.') *q = ','; for (char *q = r2; *q; q++) if (*q == '.') *q = ',';
+  frame->setTextSize(2); frame->setTextColor(EYE); frame->setCursor(X(120) - strlen(r1) * 6, Y(52)); frame->print(r1);
+  frame->setTextColor(GOLD); frame->setCursor(X(120) - strlen(r2) * 6, Y(74)); frame->print(r2);
+}
+
 void drawFace(){
  // v15: alleen wissen wat er vorige keer getekend is, in plaats van het hele scherm
  Box &oud = drawnBox[frameIdx];
@@ -1059,18 +1286,21 @@ void drawFace(){
  // Black screen background already provides the same circular-screen appearance.
  if (menuOpen) { drawMenu(); return; }
  float ox=gx*9 + fmaxf(-16.f, fminf(16.f, -leanX * 40.f * LEAN_RICHTING)), oy=gy*7 + headBob - hop * 10.f + fmaxf(-6.f, fminf(6.f, pushZ * 14.f));
+ ox += fdx; oy += fdy; faceOx = ox; faceOy = oy;
  if(mood==LOVE){float pulse=1+sinf(t*7)*.08f;heart(73+ox,114+oy,29*pulse,HEART);heart(167+ox,114+oy,29*pulse,HEART);}
  else if(mood==EXCITED && ((int)(t*2)%2==0)){star(73+ox,106+oy,27+sinf(t*9)*2,EYE);star(167+ox,106+oy,27+sinf(t*9)*2,EYE);}
  else if(mood==HAPPY && ((int)(t*3)%4==0)){line(53+ox,120+oy,93+ox,120+oy,EYE,5);line(147+ox,120+oy,187+ox,120+oy,EYE,5);}
+ else if(fxSpiral){spiraal(73+ox,106+oy);spiraal(167+ox,106+oy);}
  else {eye(73+ox,106+oy,-1);eye(167+ox,106+oy,1);}
  if(cur.blush>.02f){uint16_t c=BLUSH;circle(52+ox*.5f,150,8,c);circle(188+ox*.5f,150,8,c);}
  mouth(oy);
  drawVolumeUi();
  if ((int32_t)(infoTot - millis()) > 0) drawInfo();
  // small floating hearts, sparkles and sleep-z particles from original spawn behaviour
- for(auto &p:particles) if(p.life>0){float a=1-p.age/p.life;uint16_t c=p.kind==0?HEART:EYE;if(p.kind==0)heart(p.x,p.y,p.size*a,c);else if(p.kind==1)star(p.x,p.y,p.size*a,c);else { // Z mark
+ for(auto &p:particles) if(p.life>0){float a=1-p.age/p.life;uint16_t c=p.kind==0?HEART:EYE;if(p.kind==0)heart(p.x,p.y,p.size*a,c);else if(p.kind==3){circle(p.x,p.y,2.5f*a+1.5f,c);line(p.x+2.5f,p.y,p.x+2.5f,p.y-10,c,2);line(p.x+2.5f,p.y-10,p.x+8,p.y-7,c,2);}else if(p.kind==1)star(p.x,p.y,p.size*a,c);else { // Z mark
    line(p.x-4,p.y-4,p.x+4,p.y-4,c,2);line(p.x+4,p.y-4,p.x-4,p.y+4,c,2);line(p.x-4,p.y+4,p.x+4,p.y+4,c,2);
  }}
+ gagDraw(); drawFlag(); drawRitKlaar(); drawGmeter();
  // Originele Buddy-rij-HUD: rond maximumsnelheidsbord links, eigen snelheid rechts.
  // Zelfde principe/positie als speedDraw() in de webapp; bij geen bekende limiet tonen we '?'.
  bool fixNow = gpsFix && (millis()-gpsLastFixMs)<5000;
@@ -1084,7 +1314,10 @@ void drawFace(){
    boxAdd(50, 26, 190, 50); roundRect(52, 28, 136, 20, 10, 0x3082);
    bool aan = (millis() / 400) % 2; circle(64, 38, 3, aan ? 0xF8A6 : 0x7800); circle(73, 38, 3, aan ? 0x7800 : 0xF8A6);
    frame->setTextColor(0xFEDB); frame->setTextSize(2); frame->setCursor(X(82), Y(31)); frame->print(ft);
- } else if (tel && phone.txt[0] && mood != SLEEPING) {
+ } else if (gagAct >= 0 && gagMsg && gagMsg[0] && (int32_t)(flagTot - millis()) <= 0 && (int32_t)(ritKlaarTot - millis()) <= 0) {
+   char tx[27]; strncpy(tx, gagMsg, 26); tx[26] = 0; int tw = strlen(tx) * 12;
+   boxAdd(20, 30, 220, 46); frame->setTextColor(0xBDF7); frame->setTextSize(2); frame->setCursor(X(120) - tw / 2, Y(34)); frame->print(tx);
+ } else if (tel && phone.txt[0] && mood != SLEEPING && (int32_t)(flagTot - millis()) <= 0) {
    char tx[27]; strncpy(tx, phone.txt, 26); tx[26] = 0; int tw = strlen(tx) * 12;
    boxAdd(20, 30, 220, 46); frame->setTextColor(0xBDF7); frame->setTextSize(2); frame->setCursor(X(120) - tw / 2, Y(34)); frame->print(tx);
  }
@@ -1161,6 +1394,9 @@ void updateMood(float dt){
  }
  // v19: als de telefoon verbonden is, neemt hij de stemming van de app over (die weet veel meer)
  if (phoneFresh() && phone.mood >= 0 && millis() > idleMoodUntilMs) mood = phone.mood;
+ if (gagAct >= 0 && gagMood >= 0) mood = gagMood;
+ if ((int32_t)(flagTot - millis()) > 0) mood = EXCITED;
+ if ((int32_t)(ritKlaarTot - millis()) > 0) mood = HAPPY;
  if (phoneFresh() && phone.camD >= 0 && phone.camD < 350) mood = ALERT;
  if (millis() < schrikTot) mood = STARTLED;
  if (millis() < aaiTot) mood = LOVE;
@@ -1173,7 +1409,7 @@ void updateMood(float dt){
  float tgxL = tgx + fmaxf(-.6f, fminf(.6f, -leanX * 2.5f * LEAN_RICHTING));   // v19: kijkt de bocht in
  float kg=1-expf(-dt*9.0f);gx+=(tgxL-gx)*kg;gy+=(tgy-gy)*kg;
  breathe += dt*1.7f; headBob = sinf(breathe)*1.25f;
- blink=1;if(mood!=SLEEPING){if(t>nextBlink){blinkStart=t;nextBlink=t+((random(100)<22)? .3f:random(22,56)/10.f);}float bt=(t-blinkStart)/.16f;if(bt>=0&&bt<1)blink=1-.92f*sinf(3.14159f*bt);}
+ blink=1;if(mood!=SLEEPING && !fxNoBlink){if(t>nextBlink){blinkStart=t;nextBlink=t+((random(100)<22)? .3f:random(22,56)/10.f);}float bt=(t-blinkStart)/.16f;if(bt>=0&&bt<1)blink=1-.92f*sinf(3.14159f*bt);}
 }
 
 void updateParticles(float dt){
@@ -1323,7 +1559,7 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v20 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v21 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -1371,15 +1607,18 @@ void setup(){
  else Serial.println("Buddy gyro: QMI8658 niet gevonden");
  Serial.println("Buddy BLE: starten..."); Serial.flush();
  helderheid = buddyPrefs.getUChar("licht", 160); gfx->setBrightness(helderheid);
+ rec80 = buddyPrefs.getFloat("b80", 0); rec100 = buddyPrefs.getFloat("b100", 0); recG = buddyPrefs.getFloat("gmax", 0);
+ totKm = buddyPrefs.getFloat("km", 0); totRit = buddyPrefs.getUInt("rit", 0);
+ buddyPrefs.getString("d80", dat80, sizeof dat80); buddyPrefs.getString("d100", dat100, sizeof dat100);
  bleStart();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v20: menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v21: 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v20 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v21 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -1390,7 +1629,7 @@ void loop(){
  }
  float dt=lastRenderUs ? fminf(0.10f,(uint32_t)(nowUs-lastRenderUs)/1000000.0f) : 1.0f/30.0f;
  lastRenderUs=nowUs; t+=dt;
- imuStep(dt);
+ imuStep(dt); gagStep(dt); driveStep(dt);
  if (menuOpen && (int32_t)(menuTot - millis()) < 0) menuOpen = false;
  updateMood(dt); updateParticles(dt);
  uint32_t drawStartUs=micros();
@@ -1408,7 +1647,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v20 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v21 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){
