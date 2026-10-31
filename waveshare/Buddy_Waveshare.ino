@@ -24,7 +24,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 29;
+static const int FW_VERSIE = 30;
 static volatile int otaPct = -1;
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
 static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
@@ -1031,16 +1031,6 @@ void gpsTask(void*) {
   }
 }
 
-void drawVolumeUi(){
- if ((int32_t)(millis()-volumeUiUntil)>0) return;
- // Tijdelijke volumeregeling; verschijnt wanneer je onderaan het scherm tikt.
- roundRect(58,184,124,34,9,0x2104);
- frame->drawRoundRect(X(66),Y(199),S(108),S(7),S(3),EYE);
- roundRect(67,200,106.0f*buddyVolume/100.0f,5,2,EYE);
- circle(67+106.0f*buddyVolume/100.0f,202.5f,5,0xFFFF);
- frame->setTextColor(EYE); frame->setTextSize(1); frame->setCursor(X(91),Y(191));
- frame->print("VOLUME "); frame->print(buddyVolume); frame->print("%");
-}
 // ===================== v19: koppeling met de telefoon (Bluetooth) =====================
 // De Buddy-app stuurt elke seconde: snelheid, limiet, flitser, file, werk, zijn stemming en wat hij zegt.
 // Het schermpje kan terugsturen: "MELD:cam" (flitser melden) en "MELD:mob" (mobiele controle).
@@ -1172,6 +1162,8 @@ static void imuStep(float dt) {
 
 // ===================== v19: rond menu (lang drukken) =====================
 static bool menuOpen = false; static uint32_t menuTot = 0, infoTot = 0, aaiTot = 0;
+// v30: vensters over alles heen (0 = geen, 1 = info, 2 = volume, 3 = helderheid); sluiten met TERUG
+static uint8_t venster = 0; static uint32_t vensterTot = 0; static bool lichtOpslaan = false;
 static uint8_t helderheid = 160;
 static const char *menuTxt[5] = {"VOLUME", "HELDER", "FLITSER", "INFO", "ZWAAI"};   // v28: zwaaien naar de groep
 static void drawMenu() {
@@ -1190,29 +1182,71 @@ static void drawMenu() {
 // v21: records en ritjes (blijven bewaard in het geheugen van het bordje)
 static float rec80 = 0, rec100 = 0, recG = 0, totKm = 0; static uint32_t totRit = 0; static char dat80[9] = "", dat100[9] = "";
 static const char *netStatus = "wifi uit";
+static void infoRegel(int y, const char *r) { frame->setCursor(X(120) - (int)strlen(r) * 6, Y(y)); frame->print(r); }
 static void drawInfo() {
-  boxAdd(20, 30, 220, 212);
   frame->setTextColor(EYE); frame->setTextSize(2);
   char r[48]; int y = 46;
-  snprintf(r, sizeof r, "Buddy v%d | %s", FW_VERSIE, netStatus); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
-  snprintf(r, sizeof r, "GPS: %s %d sat", gpsFix ? "FIX" : (gpsDataOk ? "zoekt" : "geen data"), (int)gpsSatellites); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
-  snprintf(r, sizeof r, "Tel: %s  code %06lu", bleConnected ? (phoneFresh() ? "OK" : "stil") : "niet", (unsigned long)koppelPin); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
-  snprintf(r, sizeof r, "Volume %d%%  Licht %d", buddyVolume, helderheid * 100 / 255); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
-  snprintf(r, sizeof r, "Bocht %.2f G", fabsf(leanX)); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
+  snprintf(r, sizeof r, "Buddy v%d %s", FW_VERSIE, netStatus); infoRegel(y, r); y += 16;
+  snprintf(r, sizeof r, "GPS %s %d sat", gpsFix ? "FIX" : (gpsDataOk ? "zoekt" : "geen data"), (int)gpsSatellites); infoRegel(y, r); y += 16;
+  snprintf(r, sizeof r, "Tel %s code %06lu", bleConnected ? (phoneFresh() ? "OK" : "stil") : "niet", (unsigned long)koppelPin); infoRegel(y, r); y += 16;
+  snprintf(r, sizeof r, "Volume %d%% Licht %d%%", buddyVolume, helderheid * 100 / 255); infoRegel(y, r); y += 16;
+  snprintf(r, sizeof r, "Bocht %.2f G", fabsf(leanX)); infoRegel(y, r); y += 16;
   frame->setTextColor(GOLD);
-  if (rec100 > 0) snprintf(r, sizeof r, "0-100: %.1fs %s", rec100, dat100); else snprintf(r, sizeof r, "0-100: nog niet"); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
-  if (rec80 > 0) snprintf(r, sizeof r, "0-80:  %.1fs %s", rec80, dat80); else snprintf(r, sizeof r, "0-80:  nog niet"); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
-  snprintf(r, sizeof r, "Max %.2fG %dkm %drit", recG, (int)totKm, (int)totRit); frame->setCursor(X(40), Y(y)); frame->print(r);
+  if (rec100 > 0) snprintf(r, sizeof r, "0-100 %.1fs %s", rec100, dat100); else snprintf(r, sizeof r, "0-100 nog niet"); infoRegel(y, r); y += 16;
+  if (rec80 > 0) snprintf(r, sizeof r, "0-80 %.1fs %s", rec80, dat80); else snprintf(r, sizeof r, "0-80 nog niet"); infoRegel(y, r); y += 16;
+  snprintf(r, sizeof r, "Max %.2fG %dkm %d rit", recG, (int)totKm, (int)totRit); infoRegel(y, r);
+}
+// Schuifbalk: x 40..200 op hoogte 122; sleep je vinger eroverheen.
+static const float SL_X0 = 40, SL_X1 = 200, SL_Y = 122;
+static void drawSlider(int pct, const char *titel, uint16_t kleur) {
+  frame->setTextColor(0xFFFF); frame->setTextSize(3);
+  frame->setCursor(X(120) - (int)strlen(titel) * 9, Y(48)); frame->print(titel);
+  char r[8]; snprintf(r, sizeof r, "%d%%", pct);
+  frame->setTextColor(kleur); frame->setTextSize(4); frame->setCursor(X(120) - (int)strlen(r) * 12, Y(76)); frame->print(r);
+  float kx = SL_X0 + (SL_X1 - SL_X0) * pct / 100.0f;
+  roundRect(SL_X0, SL_Y - 5, SL_X1 - SL_X0, 10, 5, 0x2945);
+  if (kx > SL_X0 + 1) roundRect(SL_X0, SL_Y - 5, kx - SL_X0, 10, 5, kleur);
+  circle(kx, SL_Y, 13, 0xFFFF); frame->drawCircle(X(kx), Y(SL_Y), S(13), kleur);
+  frame->setTextColor(0x8410); frame->setTextSize(2);
+  frame->setCursor(X(SL_X0) - 6, Y(SL_Y + 22)); frame->print("-");
+  frame->setCursor(X(SL_X1) - 6, Y(SL_Y + 22)); frame->print("+");
+}
+static void drawVenster() {
+  boxAdd(0, 0, 240, 240);
+  frame->fillCircle(X(120), Y(120), S(119), 0x0841);
+  frame->drawCircle(X(120), Y(120), S(118), EYE);
+  if (venster == 1) drawInfo();
+  else if (venster == 2) drawSlider(buddyVolume, "VOLUME", EYE);
+  else drawSlider(helderheid * 100 / 255, "HELDER", GOLD);
+  // TERUG-knop onderaan
+  roundRect(70, 182, 100, 32, 16, 0x18E3); frame->drawRoundRect(X(70), Y(182), S(100), S(32), S(16), EYE);
+  frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(198) - 7); frame->print("TERUG");
+}
+static void openVenster(uint8_t v) { venster = v; vensterTot = millis() + 30000; menuOpen = false; }
+static void sluitVenster() {
+  venster = 0;
+  if (lichtOpslaan) { buddyPrefs.putUChar("licht", helderheid); lichtOpslaan = false; }
+}
+// Vinger op de schuifbalk (ook tijdens slepen)
+static void vensterSleep(float x, float y) {
+  if (venster < 2 || y < SL_Y - 30 || y > SL_Y + 30 || x < SL_X0 - 20 || x > SL_X1 + 20) return;
+  int v = constrain((int)lroundf((x - SL_X0) * 100.0f / (SL_X1 - SL_X0)), 0, 100);
+  if (venster == 2) {
+    if ((uint8_t)v != buddyVolume) { buddyVolume = (uint8_t)v; if (audioReady) applyCodecVolume(buddyVolume); volumeNeedsSave = true; lastVolumeChange = millis(); }
+  } else {
+    uint8_t h = (uint8_t)constrain(v * 255 / 100, 20, 255);   // nooit helemaal zwart
+    if (h != helderheid) { helderheid = h; lichtOpslaan = true; }
+  }
 }
 static void menuKies(float x, float y) {
   float dx = x - 120, dy = y - 120, r = sqrtf(dx * dx + dy * dy);
   if (r < 34) { menuOpen = false; return; }
   float a = atan2f(dy, dx); int i = (int)lroundf((a + PI2 / 4) / (PI2 / 5)); i = ((i % 5) + 5) % 5;
   menuOpen = false;
-  if (i == 0) volumeUiUntil = millis() + 8000;
-  else if (i == 1) { helderheid = helderheid >= 230 ? 40 : (helderheid < 100 ? 120 : (helderheid < 170 ? 180 : 255)); buddyPrefs.putUChar("licht", helderheid); infoTot = millis() + 2500; }
+  if (i == 0) openVenster(2);
+  else if (i == 1) openVenster(3);
   else if (i == 2) { bleSend("MELD:cam"); mood = bleConnected ? ALERT : WORRIED; lastMood = -1; idleMoodUntilMs = millis() + 2500; Serial.println(bleConnected ? "Flitser gemeld via telefoon" : "Flitser melden: telefoon niet verbonden"); }
-  else if (i == 3) infoTot = millis() + 8000;
+  else if (i == 3) openVenster(1);
   else { zwaaiVraag = true; if (bleConnected) bleSend("MELD:zwaai"); startGag(22); gagMsg = "Zwaai naar de groep!"; }
 }
 
@@ -1837,6 +1871,7 @@ void drawFace(){
  // The original canvas clips all face artwork to a circular 204px viewport.
  // Black screen background already provides the same circular-screen appearance.
  if (menuOpen) { drawMenu(); return; }
+ if (venster) { drawVenster(); return; }   // v30: venster ligt over alles heen
  float ox=gx*9 + fmaxf(-16.f, fminf(16.f, -leanX * 40.f * LEAN_RICHTING)), oy=gy*7 + headBob - hop * 10.f + fmaxf(-6.f, fminf(6.f, pushZ * 14.f));
  ox += fdx; oy += fdy; faceOx = ox; faceOy = oy;
  if(mood==LOVE){float pulse=1+sinf(t*7)*.08f;heart(73+ox,114+oy,29*pulse,HEART);heart(167+ox,114+oy,29*pulse,HEART);}
@@ -1846,8 +1881,6 @@ void drawFace(){
  else {eye(73+ox,106+oy,-1);eye(167+ox,106+oy,1);}
  if(cur.blush>.02f){uint16_t c=BLUSH;circle(52+ox*.5f,150,8,c);circle(188+ox*.5f,150,8,c);}
  mouth(oy);
- drawVolumeUi();
- if ((int32_t)(infoTot - millis()) > 0) drawInfo();
  // small floating hearts, sparkles and sleep-z particles from original spawn behaviour
  for(auto &p:particles) if(p.life>0){float a=1-p.age/p.life;uint16_t c=p.kind==0?HEART:EYE;if(p.kind==0)heart(p.x,p.y,p.size*a,c);else if(p.kind==3){circle(p.x,p.y,2.5f*a+1.5f,c);line(p.x+2.5f,p.y,p.x+2.5f,p.y-10,c,2);line(p.x+2.5f,p.y-10,p.x+8,p.y-7,c,2);}else if(p.kind==1)star(p.x,p.y,p.size*a,c);else { // Z mark
    line(p.x-4,p.y-4,p.x+4,p.y-4,c,2);line(p.x+4,p.y-4,p.x-4,p.y+4,c,2);line(p.x-4,p.y+4,p.x+4,p.y+4,c,2);
@@ -2172,16 +2205,17 @@ void playMoodSound(int m) {
 
 void handleTouch(){
  static bool down = false; static uint32_t downMs = 0; static float dX = 0, dY = 0, lX = 0, lY = 0; static bool lang = false;
- uint32_t now=millis(); if(!touchReady || now-lastTouchPoll<12) return; lastTouchPoll=now;
+ uint32_t now=millis();
+ if (venster && (int32_t)(now - vensterTot) > 0) sluitVenster();   // 30 s niks gedaan: venster dicht
+ if(!touchReady || now-lastTouchPoll<12) return; lastTouchPoll=now;
  if(i2cMutex && xSemaphoreTake(i2cMutex,0)!=pdTRUE) return; uint8_t n=buddyTouch.getPoint(touchX,touchY,1); if(i2cMutex) xSemaphoreGive(i2cMutex);
  if(!n) {
-   // v19: loslaten = een tik afhandelen
+   // loslaten = een tik afhandelen
    if (down && !lang && now - downMs < 600) {
-     if (menuOpen) menuKies(lX, lY);
-     else if ((int32_t)(volumeUiUntil-now) < 0) {
-       if (lY > 188.0f) volumeUiUntil = now + 8000;                  // onderaan tikken = volume
-       else { aaiTot = now + 2200; idleMoodUntilMs = now + 2200; }   // op zijn gezicht tikken = aaien
-     }
+     if (venster) { if (lY > 172.0f && fabsf(lX - 120.0f) < 62.0f) sluitVenster(); }   // TERUG
+     else if (menuOpen) menuKies(lX, lY);
+     else if (lY > 188.0f) openVenster(2);                          // onderaan tikken = volume
+     else { aaiTot = now + 2200; idleMoodUntilMs = now + 2200; }    // op zijn gezicht tikken = aaien
    }
    down = false; lang = false; return;
  }
@@ -2190,20 +2224,9 @@ void handleTouch(){
  float y=(float)touchY[0]*240.0f/(float)LCD_HEIGHT;
  if (!down) { down = true; downMs = now; dX = x; dY = y; lang = false; laatsteActie = now; if (slaapt) { slaapt = false; laatsteActie = now; } }
  lX = x; lY = y;
- // v19: lang drukken (0,7 s, zonder te slepen) opent of sluit het ronde menu
- if (!lang && now - downMs > 700 && fabsf(x - dX) < 12 && fabsf(y - dY) < 12) { lang = true; menuOpen = !menuOpen; menuTot = now + 10000; volumeUiUntil = 0; }
- if (menuOpen) return;
- // De hele popup is aanraakbaar; de slider reageert ook op slepen buiten de trackhoogte.
- if((int32_t)(volumeUiUntil-now)>=0 && x>=58.0f && x<=182.0f && y>=184.0f && y<=218.0f){
-   int v=(int)lroundf((x-66.0f)*100.0f/108.0f);
-   v=constrain(v,0,100);
-   if((uint8_t)v!=buddyVolume){
-     buddyVolume=(uint8_t)v;
-     if(audioReady) applyCodecVolume(buddyVolume);
-     volumeNeedsSave=true; lastVolumeChange=now;
-   }
-   volumeUiUntil=now+8000;
- }
+ if (venster) { vensterTot = now + 30000; vensterSleep(x, y); return; }   // in een venster: geen lang-drukken, wel slepen
+ // lang drukken (0,7 s, zonder te slepen) opent of sluit het ronde menu
+ if (!lang && now - downMs > 700 && fabsf(x - dX) < 12 && fabsf(y - dY) < 12) { lang = true; menuOpen = !menuOpen; menuTot = now + 10000; }
 }
 
 void setup(){
