@@ -26,7 +26,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 37;
+static const int FW_VERSIE = 38;
 struct Box { int16_t x0, y0, x1, y1; };   // v37: bovenaan i.v.m. automatische functie-koppen van Arduino
 static volatile int otaPct = -1;
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
@@ -708,8 +708,25 @@ class PsramCanvas : public Arduino_Canvas {
   static inline uint16_t sw(uint16_t c) { return (uint16_t)((c >> 8) | (c << 8)); }
   void writePixelPreclipped(int16_t x, int16_t y, uint16_t c) override { Arduino_Canvas::writePixelPreclipped(x, y, sw(c)); }
   void writeFastVLine(int16_t x, int16_t y, int16_t h, uint16_t c) override { Arduino_Canvas::writeFastVLine(x, y, h, sw(c)); }
-  void writeFastHLine(int16_t x, int16_t y, int16_t w, uint16_t c) override { Arduino_Canvas::writeFastHLine(x, y, w, sw(c)); }
-  void writeFillRectPreclipped(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t c) override { Arduino_Canvas::writeFillRectPreclipped(x, y, w, h, sw(c)); }
+  // v38: snel vullen: 2 pixels tegelijk (32 bit) en 4x uitgerold, zwart via memset. Was 1 pixel per keer.
+  static inline void vulRij(uint16_t *p, int32_t w, uint16_t c) {
+    if ((uint8_t)(c >> 8) == (uint8_t)c) { memset(p, (uint8_t)c, (size_t)w * 2); return; }
+    if (((uintptr_t)p & 2) && w) { *p++ = c; w--; }
+    uint32_t c2 = (uint32_t)c | ((uint32_t)c << 16); uint32_t *q = (uint32_t *)p; int32_t n = w >> 1;
+    while (n >= 4) { q[0] = c2; q[1] = c2; q[2] = c2; q[3] = c2; q += 4; n -= 4; }
+    while (n-- > 0) *q++ = c2;
+    if (w & 1) *(uint16_t *)q = c;
+  }
+  void writeFastHLine(int16_t x, int16_t y, int16_t w, uint16_t c) override {
+    if (w < 0) { x += w + 1; w = -w; }
+    if (y < 0 || y >= _height || w == 0) return;
+    int32_t x0 = x, x1 = (int32_t)x + w - 1; if (x0 < 0) x0 = 0; if (x1 >= _width) x1 = _width - 1; if (x1 < x0) return;
+    vulRij(getFramebuffer() + (int32_t)y * _width + x0, x1 - x0 + 1, sw(c));
+  }
+  void writeFillRectPreclipped(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t c) override {
+    uint16_t *r = getFramebuffer() + (int32_t)y * _width + x; uint16_t k = sw(c);
+    for (int16_t j = 0; j < h; j++, r += _width) vulRij(r, w, k);
+  }
 };
 PsramCanvas *frame = nullptr;            // het beeld waar nu in getekend wordt
 PsramCanvas *frames[2] = {nullptr, nullptr};  // v16: twee beelden: core 1 tekent het ene terwijl core 0 het andere verstuurt
