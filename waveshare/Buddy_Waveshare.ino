@@ -23,7 +23,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 26;
+static const int FW_VERSIE = 27;
 static volatile int otaPct = -1;   // voortgang van een update via wifi (-1 = geen)   // ophogen bij elke nieuwe versie (de update via wifi kijkt hiernaar)
 #define FW_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/firmware/"
 #define DATA_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/snelheden/"
@@ -1038,6 +1038,7 @@ void drawVolumeUi(){
 #define NUS_SVC "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
 #define NUS_RX  "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 #define NUS_TX  "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
+static volatile int setLicht = -1, setVol = -1; static volatile float animFactor = 1.0f; static char outfitK[16] = ""; static volatile uint32_t outfitT = 0;
 static char wifiNaam[33] = "", wifiPass[65] = "", wifiNaamNieuw[33] = "", wifiPassNieuw[65] = ""; static volatile bool wifiNieuw = false, wifiHerstart = false;
 struct PhoneData { int v, lim, camD, camLim, fileD, fileMin; bool werk; int mood; char txt[64]; uint32_t ms; };
 static PhoneData phone = {0, 0, -1, 0, -1, 0, false, -1, "", 0};
@@ -1048,6 +1049,15 @@ static const char *moodKeys[MOOD_COUNT] = {"neutral","content","relaxed","happy"
 static bool phoneFresh() { return phone.ms && millis() - phone.ms < 3500; }
 static void parsePhone(char *line) {
   if (strcmp(line, "LOG?") == 0) { logVraag = true; return; }
+  if (!strncmp(line, "SET:", 4)) {   // v27: instellingen uit de app, bv. SET:l=65;v=80;a=1;o=pet
+    for (char *tok = strtok(line + 4, ";"); tok; tok = strtok(nullptr, ";")) {
+      if (tok[0] == 'l' && tok[1] == '=') setLicht = atoi(tok + 2);
+      else if (tok[0] == 'v' && tok[1] == '=') setVol = atoi(tok + 2);
+      else if (tok[0] == 'a' && tok[1] == '=') { float f = atof(tok + 2); if (f > .2f && f < 5) animFactor = f; }
+      else if (tok[0] == 'o' && tok[1] == '=') { strncpy(outfitK, tok + 2, sizeof outfitK - 1); outfitK[sizeof outfitK - 1] = 0; outfitT = millis(); }
+    }
+    return;
+  }
   if (!strncmp(line, "WIFI:", 5)) { char *tab = strchr(line + 5, '\t'); if (tab) { *tab = 0; strncpy(wifiNaamNieuw, line + 5, 32); wifiNaamNieuw[32] = 0; strncpy(wifiPassNieuw, tab + 1, 64); wifiPassNieuw[64] = 0; wifiNieuw = true; } return; }
   char *f[12] = {0}; int n = 0; f[n++] = line;
   for (char *q = line; *q && n < 12; ++q) if (*q == '|') { *q = 0; f[n++] = q + 1; }
@@ -1227,6 +1237,44 @@ static void burstAt(float x, float y, int n) { for (int i = 0; i < n; i++) { flo
 static void noot(float x, float y) { addParticleAt(3, x, y, frand(-8, 8), -frand(18, 28), 1.5f, 6); }
 static void ellipseF(float x, float y, float rx, float ry, uint16_t c) { boxAdd(x - rx, y - ry, x + rx, y + ry); frame->fillEllipse(X(x), Y(y), S(rx), S(ry), c); }
 static void triF(float x1, float y1, float x2, float y2, float x3, float y3, uint16_t c) { boxAdd(fminf(x1, fminf(x2, x3)), fminf(y1, fminf(y2, y3)), fmaxf(x1, fmaxf(x2, x3)), fmaxf(y1, fmaxf(y2, y3))); frame->fillTriangle(X(x1), Y(y1), X(x2), Y(y2), X(x3), Y(y3), c); }
+// ===================== v27: outfits (zelfde als in de app) en feestdagen =====================
+static const char *feestOutfit() {
+  int d = 0, m = 0;
+  if (gpsDate[0] >= '0' && gpsDate[4] >= '0' && !(gpsDate[4] == '8' && gpsDate[5] == '0')) { d = (gpsDate[0] - '0') * 10 + gpsDate[1] - '0'; m = (gpsDate[2] - '0') * 10 + gpsDate[3] - '0'; }
+  else { time_t nu = time(nullptr); if (nu > 1700000000) { struct tm tv; localtime_r(&nu, &tv); d = tv.tm_mday; m = tv.tm_mon + 1; } }
+  if (!m) return nullptr;
+  if ((m == 12 && d == 31) || (m == 1 && d == 1)) return "feesthoed";
+  if (m == 2 && d == 14) return "hartjes";
+  if (m == 4 && d == 27) return "oranjekroon";
+  if (m == 10 && d == 31) return "heksenhoed";
+  if ((m == 11 && d >= 15) || (m == 12 && d <= 5)) return "mijter";
+  if (m == 12 && d >= 6 && d <= 26) return "kerstmuts";
+  return nullptr;
+}
+static void drawOutfit() {
+  const char *k = (outfitK[0] && millis() - outfitT < 24UL * 3600000) ? outfitK : feestOutfit();
+  if (!k || !strcmp(k, "geen")) return;
+  float x = faceOx * .4f, y = faceOy * .4f;
+  const uint16_t ROOD = 0xE1A6, WIT = 0xF79E, GOUDK = 0xFE4A, ORANJE = 0xFBC0, PAARS = 0x7AB8;
+  auto kroon = [&](uint16_t c) {
+    triF(88 + x, 60 + y, 88 + x, 34 + y, 101 + x, 46 + y, c); triF(88 + x, 60 + y, 101 + x, 46 + y, 152 + x, 60 + y, c);
+    triF(101 + x, 46 + y, 120 + x, 26 + y, 139 + x, 46 + y, c); triF(101 + x, 46 + y, 139 + x, 46 + y, 152 + x, 60 + y, c);
+    triF(139 + x, 46 + y, 152 + x, 34 + y, 152 + x, 60 + y, c);
+    circle(88 + x, 34 + y, 3.5f, c == GOUDK ? ROOD : WIT); circle(120 + x, 26 + y, 3.5f, c == GOUDK ? ROOD : WIT); circle(152 + x, 34 + y, 3.5f, c == GOUDK ? ROOD : WIT);
+  };
+  if (!strcmp(k, "pet")) { ellipseF(120 + x, 58 + y, 54, 34, ROOD); roundRect(60 + x, 56 + y, 120, 12, 4, 0x0000); triF(150 + x, 58 + y, 204 + x, 66 + y, 176 + x, 70 + y, 0xB0E3); circle(120 + x, 24 + y, 4, WIT); }
+  else if (!strcmp(k, "kroon")) kroon(GOUDK);
+  else if (!strcmp(k, "oranjekroon")) kroon(ORANJE);
+  else if (!strcmp(k, "kerstmuts")) { triF(70 + x, 58 + y, 166 + x, 34 + y, 170 + x, 58 + y, ROOD); triF(70 + x, 58 + y, 120 + x, 22 + y, 166 + x, 34 + y, ROOD); roundRect(64 + x, 52 + y, 112, 14, 7, WIT); circle(166 + x, 34 + y, 8, WIT); }
+  else if (!strcmp(k, "mijter")) { triF(92 + x, 62 + y, 120 + x, 8 + y, 148 + x, 62 + y, ROOD); roundRect(88 + x, 56 + y, 64, 8, 3, GOUDK); roundRect(117 + x, 24 + y, 6, 30, 1, GOUDK); roundRect(108 + x, 33 + y, 24, 6, 1, GOUDK); }
+  else if (!strcmp(k, "heksenhoed")) { roundRect(56 + x, 54 + y, 128, 9, 4, PAARS); triF(100 + x, 56 + y, 120 + x, 4 + y, 140 + x, 56 + y, PAARS); roundRect(104 + x, 46 + y, 32, 7, 1, ORANJE); }
+  else if (!strcmp(k, "feesthoed")) { triF(98 + x, 62 + y, 120 + x, 8 + y, 142 + x, 62 + y, 0x451F); roundRect(108 + x, 36 + y, 24, 8, 2, GOUDK); circle(120 + x, 8 + y, 6, HEART); }
+  else if (!strcmp(k, "strik")) { triF(120 + x, 196 + y, 102 + x, 186 + y, 102 + x, 206 + y, ROOD); triF(120 + x, 196 + y, 138 + x, 186 + y, 138 + x, 206 + y, ROOD); circle(120 + x, 196 + y, 4.5f, ROOD); }
+  else if (!strcmp(k, "oren")) { triF(56 + x, 64 + y, 70 + x, 18 + y, 100 + x, 50 + y, EYE); triF(184 + x, 64 + y, 170 + x, 18 + y, 140 + x, 50 + y, EYE); triF(66 + x, 56 + y, 72 + x, 32 + y, 88 + x, 50 + y, BLUSH); triF(174 + x, 56 + y, 168 + x, 32 + y, 152 + x, 50 + y, BLUSH); }
+  else if (!strcmp(k, "koptel")) { for (int i = 0; i < 12; i++) { float a1 = 3.39f + i * .2f, a2 = a1 + .2f; line(120 + cosf(a1) * 88 + x, 112 + sinf(a1) * 88 + y, 120 + cosf(a2) * 88 + x, 112 + sinf(a2) * 88 + y, 0x9533, 6); } roundRect(22 + x, 90 + y, 20, 46, 8, 0x5373); roundRect(198 + x, 90 + y, 20, 46, 8, 0x5373); }
+  else if (!strcmp(k, "helm")) { for (int i = 0; i < 16; i++) { float a1 = 3.46f + i * .157f, a2 = a1 + .16f; line(120 + cosf(a1) * 88 + x, 120 + sinf(a1) * 88 + y, 120 + cosf(a2) * 88 + x, 120 + sinf(a2) * 88 + y, ROOD, 13); } }
+  else if (!strcmp(k, "hartjes")) { float w = sinf(t * 4) * 2; heart(96 + w + x, 36 + y, 12, HEART); heart(144 - w + x, 36 + y, 12, HEART); }
+}
 static void spiraal(float cx, float cy) { float px = cx, py = cy; for (int i = 1; i <= 40; i++) { float a = i * .5f + t * 6, r = i * .55f; float x = cx + cosf(a) * r, y = cy + sinf(a) * r; line(px, py, x, y, EYE, 3); px = x; py = y; } }
 
 static float spdNow(bool *ok = nullptr) {
@@ -1251,7 +1299,7 @@ static void gagStep(float dt) {
     }
     if (!n) { nextGagT = t + 3; return; }
     int k = kies[random(n)]; startGag(k);
-    nextGagT = t + GAGS[k].dur + (stil ? frand(8, 16) : frand(15, 30));
+    nextGagT = t + GAGS[k].dur + (stil ? frand(8, 16) : frand(15, 30)) * animFactor;
     return;
   }
   float tt = t - gagT0; const GagDef &d = GAGS[gagAct];
@@ -1665,7 +1713,7 @@ void drawFace(){
  for(auto &p:particles) if(p.life>0){float a=1-p.age/p.life;uint16_t c=p.kind==0?HEART:EYE;if(p.kind==0)heart(p.x,p.y,p.size*a,c);else if(p.kind==3){circle(p.x,p.y,2.5f*a+1.5f,c);line(p.x+2.5f,p.y,p.x+2.5f,p.y-10,c,2);line(p.x+2.5f,p.y-10,p.x+8,p.y-7,c,2);}else if(p.kind==1)star(p.x,p.y,p.size*a,c);else { // Z mark
    line(p.x-4,p.y-4,p.x+4,p.y-4,c,2);line(p.x+4,p.y-4,p.x-4,p.y+4,c,2);line(p.x-4,p.y+4,p.x+4,p.y+4,c,2);
  }}
- gagDraw(); drawFlag(); drawRitKlaar(); drawGmeter();
+ drawOutfit(); gagDraw(); drawFlag(); drawRitKlaar(); drawGmeter();
  // Originele Buddy-rij-HUD: rond maximumsnelheidsbord links, eigen snelheid rechts.
  // Zelfde principe/positie als speedDraw() in de webapp; bij geen bekende limiet tonen we '?'.
  bool fixNow = gpsFix && (millis()-gpsLastFixMs)<5000;
@@ -1942,7 +1990,7 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v26 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v27 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -2001,7 +2049,7 @@ void setup(){
  xTaskCreatePinnedToCore(netTaak, "BuddyNet", 12288, nullptr, 1, nullptr, 0);
  logRegel("===== OPSTART v%d | reden: %s | heap %u =====", FW_VERSIE, resetReden(), (unsigned)ESP.getFreeHeap());
  if (wakkerDoorBeweging) { logRegel("wakker geworden door beweging (instappen?)"); startGag(22); gagMsg = "Hoi! Daar ben je!"; nextGagT = 20; }
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v26: uit/aan met de auto | wifi, eigen limieten, trajecten, updates | logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v27: outfits, instellen vanuit de app | uit/aan met de auto | wifi, eigen limieten, trajecten, updates | logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
@@ -2021,12 +2069,14 @@ void loop(){
      if (c == '\n' || c == '\r') { cmd[cl] = 0; if (!strcmp(cmd, "log")) logDump(Serial); else if (!strcmp(cmd, "wis") && logFs) { logFs->remove(LOGF); logFs->remove(LOGOUD); Serial.println("Logboek gewist."); } cl = 0; }
      else if (cl < sizeof cmd - 1) cmd[cl++] = c;
    }
+   if (setLicht >= 0) { helderheid = (uint8_t)constrain(setLicht * 255 / 100, 20, 255); buddyPrefs.putUChar("licht", helderheid); setLicht = -1; }
+   if (setVol >= 0) { buddyVolume = (uint8_t)constrain((int)setVol, 0, 100); if (audioReady) applyCodecVolume(buddyVolume); buddyPrefs.putUChar("volume", buddyVolume); setVol = -1; }
    if (wifiNieuw) { wifiNieuw = false; strcpy(wifiNaam, wifiNaamNieuw); strcpy(wifiPass, wifiPassNieuw); buddyPrefs.putString("ssid", wifiNaam); buddyPrefs.putString("pass", wifiPass); wifiHerstart = true; logRegel("wifi ingesteld: %s", wifiNaam); }
    if (logVraag) { logVraag = false; xTaskCreatePinnedToCore(logNaarTelefoonTaak, "BuddyLogBLE", 4096, nullptr, 1, nullptr, 0); }
  }
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v26 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v27 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -2055,7 +2105,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v26 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v27 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){

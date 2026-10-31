@@ -195,6 +195,16 @@ body[data-tab="meer"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="meer
 body:not(.dev) #kopBouw { display: none !important; }
 #flKaart { position: fixed; inset: 0; z-index: 75; background: #10151a; color: #eef2f5; display: flex; flex-direction: column; }
 #flKaart[hidden] { display: none; }
+#ritOv { position: fixed; inset: 0; z-index: 90; background: #10151a; color: #eef2f5; display: flex; flex-direction: column; }
+#ritOv[hidden] { display: none; }
+#ritOv .fkKop { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; gap: 10px; }
+#ritOvMap { flex: 1; min-height: 300px; }
+.v77lijst { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.v77lijst li { display: flex; align-items: center; gap: 10px; background: color-mix(in srgb, var(--ink) 6%, transparent); border-radius: 12px; padding: 9px 12px; font-size: 14px; }
+.v77lijst li span { flex: 1; line-height: 1.3; }
+.v77lijst li button { flex: none; }
+.maandBlok { background: color-mix(in srgb, var(--ink) 5%, transparent); border-radius: 14px; padding: 10px 14px; margin-top: 8px; font-size: 14px; line-height: 1.5; }
+.maandBlok b { display: block; font-size: 15px; margin-bottom: 2px; }
 #flKaart .fkKop { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; gap: 10px; }
 #flKaartMap { flex: 1 1 55%; min-height: 240px; background: #1a2129; }
 #flKaartLijst { flex: 1 1 45%; overflow-y: auto; margin: 0; padding: 8px 14px 18px; list-style: none; display: flex; flex-direction: column; gap: 8px; }
@@ -409,6 +419,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 </head>
 <body>
 <div id="flKaart" hidden role="dialog" aria-label="Flitsers op de kaart"><div class="fkKop"><b>Gemelde flitsers</b><button type="button" id="flKaartSluit" class="btn">Sluiten</button></div><div id="flKaartMap"></div><ol id="flKaartLijst"></ol></div>
+<div id="ritOv" hidden role="dialog" aria-label="Rit op de kaart"><div class="fkKop"><b id="ritOvTitel">Rit op de kaart</b><button type="button" id="ritOvSluit" class="btn">Sluiten</button></div><div id="ritOvMap"></div><p id="ritOvUitleg" class="foot" style="padding:8px 14px 16px;margin:0"></p></div>
 <div id="rondRing" aria-label="Menu"><div class="rrVlak"></div></div>
 <button id="carBack" type="button">Terug</button>
 <button id="carRit" type="button">🏁 Rit klaar</button>
@@ -428,7 +439,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     <div id="ritKaartGrid"></div>
     <canvas id="ritKaartMap" width="600" height="300" hidden></canvas>
     <p id="ritKaartStijl"></p>
-    <div class="rkKnoppen"><button id="ritKaartDeel" type="button">📤 Delen</button><button id="ritKaartSluit" type="button">Sluiten</button></div>
+    <div class="rkKnoppen"><button id="ritKaartOpKaart" type="button">🗺️ Kaart</button><button id="ritKaartDeel" type="button">📤 Delen</button><button id="ritKaartSluit" type="button">Sluiten</button></div>
   </div>
 </div>
 <button id="carAdd" type="button">Vaste<br>flitser</button>
@@ -485,6 +496,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <button class="btn" id="bRond" type="button" style="grid-column:1/-1">⭕ Rond scherm (zoals het echte schermpje)</button>
       <p class="foot" style="grid-column:1/-1">Rond scherm: alleen Buddy, precies zoals hij straks op het schermpje staat. Lang drukken op zijn gezicht opent het menu (flitser melden, groep, rit klaar, geluid, terug). Vegen naar links of rechts wisselt tussen gezicht, grote snelheid en je rit.</p>
       <button class="btn" id="bSound" type="button" aria-pressed="false" style="grid-column:1/-1">Geluid: uit</button>
+      <button class="btn" id="plekKnop" type="button" style="grid-column:1/-1">📍 Wat was dat? Plek onthouden</button>
     </div>
     <p class="note" id="note" aria-live="polite"></p>
     <p class="warn" id="gpsHelp" role="status" hidden></p>
@@ -507,6 +519,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="chip" id="vcStat">Buddy checkt dit vanzelf rond je gewone vertrektijd en als je wegrijdt.</p>
       <button class="btn" id="thuisKnop" type="button">🏠 Hoe laat ben ik thuis?</button>
       <button class="btn" id="thuisZet" type="button">📍 Hier woon ik</button>
+      <button class="btn" id="thuisDeel" type="button">📤 Laat weten hoe laat ik thuis ben</button>
       <p class="chip" id="thuisStat">Buddy zegt ’s middags bij het wegrijden vanzelf hoe laat je thuis bent, met de files erbij.</p>
       <p class="sub">Routes klaarzetten</p>
       <button class="btn" id="routeKnop" type="button">📶 Mijn routes nu klaarzetten</button>
@@ -555,6 +568,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="chip" id="weekStat">Deze week nog geen ritten.</p>
       <button class="btn" id="weekKnop" type="button">📅 Weekrapport bekijken</button>
       <button class="btn" id="dagKnop" type="button">📔 Dagboek van vandaag</button>
+      <button class="btn" id="maandKnop" type="button">📊 Maandoverzicht</button>
+      <div id="maandStat" hidden></div>
       <button class="btn" id="bReplay" type="button">Laatste rit afspelen (4x sneller)</button>
       <p class="sub">Buddy’s level</p>
       <p class="chip" id="lvStat">⭐ Level 1</p>
@@ -595,6 +610,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="sub">Buddy-scherm (Waveshare)</p>
       <button class="btn" id="bleKnop" type="button">📡 Verbind met het Buddy-scherm</button>
       <button class="btn" id="bleLog" type="button">📥 Logboek van het schermpje ophalen</button>
+      <p class="sub">Schermpje instellen</p>
+      <div class="limitrow"><label for="scLicht">Helderheid</label><input type="range" id="scLicht" min="10" max="100" step="5" value="65"></div>
+      <div class="limitrow"><label for="scVol">Volume</label><input type="range" id="scVol" min="0" max="100" step="5" value="80"></div>
+      <div class="limitrow"><label for="scAnim">Animaties</label><select id="scAnim"><option value="2">Rustig</option><option value="1" selected>Normaal</option><option value="0.5">Veel</option></select></div>
+      <p class="foot">Het schermpje draagt vanzelf hetzelfde outfit als Buddy hier (ook de feestdag-outfits).</p>
       <p class="sub">Wifi voor het schermpje (hotspot van je telefoon)</p>
       <div class="mobrow"><input type="text" id="wfNaam" autocomplete="off" placeholder="Naam van je hotspot"></div>
       <div class="mobrow"><input type="password" id="wfPass" autocomplete="off" placeholder="Wachtwoord van je hotspot"></div>
@@ -734,6 +754,12 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     <div class="kaartKop"><b>🗺️ Flitsers en meldingen</b><span class="foot">Blauw = van jou · Rood = vast · Oranje = mobiel. Tik op een stip om hem te verwijderen.</span></div>
     <div id="kaartPlek"></div>
     <div class="btns kaartKnoppen" id="kaartKnoppen"></div>
+    <div class="kaartKop" style="margin-top:6px"><b>📍 Mijn plekjes</b><span class="foot">Tik op “Wat was dat?” (of zeg “onthoud dit”) en Buddy bewaart de plek. Paarse stippen op de kaart.</span></div>
+    <button class="btn" id="plekKnop2" type="button">📍 Wat was dat? Plek onthouden</button>
+    <ul id="plekLijst" class="v77lijst"></ul>
+    <div class="kaartKop" style="margin-top:6px"><b>⚡ Laden in de buurt</b><span class="foot">Laadpalen en Superchargers rond je plek (OpenStreetMap). Tik op 🧭 om te navigeren.</span></div>
+    <button class="btn" id="laadZoekKnop" type="button">⚡ Zoek laadpalen in de buurt</button>
+    <ul id="laadLijst" class="v77lijst"></ul>
   </section>
   <p class="foot" id="verTxt" style="text-align:center">Buddy</p>
 </main>
@@ -1268,6 +1294,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
   }
   function launchDone(tt) {
+    if (S.ritStart && lastPos) { S.ritStart.ev = S.ritStart.ev || []; S.ritStart.ev.push([+lastPos.lat.toFixed(5), +lastPos.lon.toFixed(5), '0-100 ' + fmt1(tt) + ' s']); }
     if (tt > 10 || tt < 3.5 || S.asleep) return;
     var rec = mem.best === 0 || tt < mem.best;
     if (rec) mem.best = tt;
@@ -1452,6 +1479,35 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       upd: function (g, tt) { dir(-.6, .4); fsc = 1 - Math.min(.06, tt * .03); if (tt > 2.8) { g.msg = 'Oeps, zei ik dat hardop?'; dir(.5, .5); } } },
     bounce: { name: 'Stuitert', dur: 4.2, idle: 1, mood: 'excited', msg: 'Boing boing boing!',
       upd: function (g, tt) { var h = Math.abs(Math.sin(tt * 5)) * Math.max(0, 1 - tt / 4.2); fdy = -h * 22; fsc = 1 + (h < .1 ? .06 : 0); dir(0, -h * .5); } },
+    /* ---- v77: feestdagen ---- */
+    spook: { name: 'Ziet een spookje', dur: 5.4, idle: 1, drive: 1, feest: 'halloween', need: function () { var f = feestdag(); return !!(f && f.k === 'halloween' && mem.feestAan !== false); }, mood: 'alert', msg: 'Hè? Wat zweeft daar…',
+      upd: function (g, tt) { g.x = 250 - tt * 55; dir((g.x - 120) / 100, -.4); if (tt > 2.4 && tt < 3.4) { g.mood = 'startled'; g.msg = 'BOE! Aaah!'; if (!g.b) { g.b = 1; burst(120, 110, 10); fdy = -8; } } else if (tt >= 3.4) { g.mood = 'happy'; g.msg = 'Haha, het is maar een lief spookje.'; } },
+      draw: function (g, tt) {
+        var x = g.x, y = 70 + Math.sin(tt * 3) * 6; ctx.fillStyle = 'rgba(245,245,255,.92)';
+        ctx.beginPath(); ctx.arc(x, y, 18, Math.PI, 0); ctx.lineTo(x + 18, y + 22);
+        for (var i = 0; i < 4; i++) ctx.quadraticCurveTo(x + 18 - i * 9 - 4.5, y + 28 + (i % 2 ? -4 : 4), x + 18 - (i + 1) * 9, y + 22);
+        ctx.closePath(); ctx.fill(); ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(x - 6, y - 2, 3, 0, TAU); ctx.arc(x + 6, y - 2, 3, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.ellipse(x, y + 8, 3, 4, 0, 0, TAU); ctx.fill();
+      } },
+    schaduw: { name: 'Schrikt van zijn schaduw', dur: 4.6, idle: 1, feest: 'halloween', need: function () { var f = feestdag(); return !!(f && f.k === 'halloween' && mem.feestAan !== false); }, mood: 'worried', msg: 'Wie staat daar achter me?',
+      upd: function (g, tt) { dir(Math.sin(tt * 5) > 0 ? -.9 : .9, .5); if (tt > 1.6 && tt < 2.6) { g.mood = 'startled'; fdx = Math.sin(tt * 40) * 3; g.msg = 'AAH!'; } else if (tt >= 2.6) { g.mood = 'happy'; g.msg = 'Oh… dat ben ik zelf. Hihi.'; } },
+      draw: function (g, tt) { ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.ellipse(120 + Math.sin(tt * 2) * 30, 214, 46, 9, 0, 0, TAU); ctx.fill(); } },
+    pompoen: { name: 'Pompoen', dur: 5, idle: 1, drive: 1, feest: 'halloween', need: function () { var f = feestdag(); return !!(f && f.k === 'halloween' && mem.feestAan !== false); }, mood: 'excited', msg: 'Snoep of je leven!',
+      upd: function (g, tt) { dir(.6, .3); g.s = Math.min(1, tt * 2); },
+      draw: function (g, tt) {
+        var x = 190, y = 168, r = 20 * g.s; if (r < 1) return;
+        ctx.fillStyle = '#FF7A00'; ctx.beginPath(); ctx.ellipse(x - r * .35, y, r * .55, r * .8, 0, 0, TAU); ctx.ellipse(x + r * .35, y, r * .55, r * .8, 0, 0, TAU); ctx.ellipse(x, y, r * .6, r * .85, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#3E7D2B'; ctx.fillRect(x - 2, y - r * .95, 4, r * .3);
+        ctx.fillStyle = Math.sin(T * 9) > -.3 ? '#FFE082' : '#FFB300';
+        ctx.beginPath(); ctx.moveTo(x - 9 * g.s, y - 3 * g.s); ctx.lineTo(x - 4 * g.s, y - 9 * g.s); ctx.lineTo(x - 1 * g.s, y - 3 * g.s); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x + 9 * g.s, y - 3 * g.s); ctx.lineTo(x + 4 * g.s, y - 9 * g.s); ctx.lineTo(x + 1 * g.s, y - 3 * g.s); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x - 11 * g.s, y + 4 * g.s); ctx.quadraticCurveTo(x, y + 14 * g.s, x + 11 * g.s, y + 4 * g.s); ctx.lineTo(x + 5 * g.s, y + 7 * g.s); ctx.lineTo(x, y + 5 * g.s); ctx.lineTo(x - 5 * g.s, y + 7 * g.s); ctx.closePath(); ctx.fill();
+      } },
+    schoen: { name: 'Zet zijn schoen', dur: 5.6, idle: 1, feest: 'sinterklaas', need: function () { var f = feestdag(); return !!(f && f.k === 'sinterklaas' && mem.feestAan !== false); }, mood: 'anticipate', msg: 'Schoen gezet… zou Sint komen?',
+      upd: function (g, tt) { dir(0, .7); if (tt > 2.6) { g.mood = 'excited'; g.msg = 'Pepernoten! Dankjewel Sint!'; if (tt > (g.nn || 2.6)) { g.nn = (g.nn || 2.6) + .2; parts.push({ k: 'pn', x: rand(60, 180), y: 20, vx: rand(-10, 10), vy: rand(40, 70), l: 0, m: 2.4, s: rand(3, 5) }); } } },
+      draw: function (g, tt) { ctx.fillStyle = '#8D6E63'; rr(96, 196, 48, 14, 7); ctx.fill(); ctx.fillStyle = '#6D4C41'; rr(126, 182, 18, 20, 5); ctx.fill(); } },
+    cadeau: { name: 'Pakt een cadeautje uit', dur: 5.2, idle: 1, feest: 'kerst', need: function () { var f = feestdag(); return !!(f && f.k === 'kerst' && mem.feestAan !== false); }, mood: 'anticipate', msg: 'Een cadeautje! Voor mij?',
+      upd: function (g, tt) { dir(0, .6); if (tt > 3) { g.mood = 'love'; g.msg = 'Een nieuwe ruitenwisser! Precies wat ik wilde.'; if (!g.b) { g.b = 1; burst(120, 180, 18); } } },
+      draw: function (g, tt) { var o = tt > 3 ? Math.min(30, (tt - 3) * 60) : 0; ctx.fillStyle = '#E53935'; rr(100, 176, 40, 30, 4); ctx.fill(); ctx.fillStyle = '#FFC857'; ctx.fillRect(117, 176, 6, 30); rr(96, 168 - o, 48, 10, 3); ctx.fill(); } },
     think: { name: 'Denkt diep na', dur: 5.6, idle: 1, mood: 'focused', msg: 'Hmm… waarom heet het een parkeerplaats als je er niet mag rijden?',
       upd: function (g, tt) { dir(.7, -.7); frot = .06; if (tt > 4.4) { g.mood = 'happy'; g.msg = 'Ik weet het! …nee, kwijt.'; frot = 0; dir(0, 0); } },
       draw: function (g, tt) { if (tt > 4.4) return; ctx.fillStyle = EYE; ctx.globalAlpha = .8; [[178, 64, 3], [188, 50, 4.5], [200, 32, 8]].forEach(function (c, i) { if (tt > i * .4) { ctx.beginPath(); ctx.arc(c[0], c[1], c[2], 0, TAU); ctx.fill(); } }); ctx.globalAlpha = 1; } }
@@ -1459,6 +1515,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function ster(x, y, r) { ctx.beginPath(); for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, rr0 = i % 2 ? r * .45 : r; ctx.lineTo(x + Math.cos(a) * rr0, y + Math.sin(a) * rr0); } ctx.closePath(); ctx.fill(); }
   function gagWeight(k) {
     var w = mem.gagW[k] === undefined ? 1 : mem.gagW[k], th = character().thrill;
+    if (GAGS[k] && GAGS[k].feest) w *= 4;   /* v77: op feestdagen vaker de feest-animaties */
     if (k === 'impatient') return S.trip ? w * 5 : w * 0.15;
     if (k === 'dance' || k === 'spin') w *= 1 + th / 80;
     if (k === 'nod' || k === 'hum' || k === 'look') w *= 1 + (100 - th) / 200;
@@ -1616,6 +1673,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (/hik/.test(t)) return { k: 'cmd', t: trick('hiccup', 'Hik!') };
     if (/vlieg/.test(t)) return { k: 'cmd', t: trick('fly', 'Waar?') };
     if (/staar|wie knippert/.test(t)) return { k: 'cmd', t: trick('stare', 'Daar gaan we.') };
+    if (/onthoud (dit|deze plek|dat)|wat was dat|plek onthouden/.test(t)) { var ok = window.__plekNu && window.__plekNu('spraak'); return { k: 'cmd', t: ok ? 'Plek onthouden! Kijk later bij Kaart.' : 'Ik weet nog niet waar we zijn.' }; }
     if (/verras|doe iets|iets leuks|grapje doen|doe een grapje/.test(t)) { startGag(pick(Object.keys(GAGS).filter(function (k) { return GAGS[k].idle && !GAGS[k].ev; }))); return { k: 'cmd', t: 'Even kijken…' }; }
     if (/welterusten|ga slapen|slaap lekker|ga maar slapen/.test(t)) { S.idle = 71 * ix(); return { k: 'cmd', t: 'Slaap lekker. Tik op me als je weer weg wilt.' }; }
     /* knowledge about you */
@@ -1881,6 +1939,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       else if (q.k === 's') { ctx.fillStyle = EYE; spark(q.x, q.y, q.s); }
       else if (q.k === 'c') { ctx.fillStyle = q.col; ctx.fillRect(q.x, q.y, q.s, q.s * .6); }
       else if (q.k === 'd') { ctx.fillStyle = EYE; ctx.beginPath(); ctx.arc(q.x, q.y, q.s, 0, TAU); ctx.fill(); }
+      else if (q.k === 'v') { ctx.fillStyle = '#2b2236'; var fl = Math.sin(q.l * 18) * q.s * .6; ctx.beginPath(); ctx.ellipse(q.x, q.y, q.s * .35, q.s * .45, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.quadraticCurveTo(q.x - q.s, q.y - fl - 3, q.x - q.s * 1.6, q.y + 1); ctx.quadraticCurveTo(q.x - q.s * .8, q.y + 2, q.x, q.y + 2); ctx.moveTo(q.x, q.y); ctx.quadraticCurveTo(q.x + q.s, q.y - fl - 3, q.x + q.s * 1.6, q.y + 1); ctx.quadraticCurveTo(q.x + q.s * .8, q.y + 2, q.x, q.y + 2); ctx.fill(); ctx.fillStyle = '#FFD60A'; ctx.fillRect(q.x - 2, q.y - 1, 1.3, 1.3); ctx.fillRect(q.x + 1, q.y - 1, 1.3, 1.3); }
+      else if (q.k === 'pn') { ctx.fillStyle = '#A1663A'; ctx.beginPath(); ctx.arc(q.x, q.y, q.s, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.arc(q.x - q.s * .3, q.y - q.s * .3, q.s * .35, 0, TAU); ctx.fill(); }
       else if (q.k === 'n') { ctx.fillStyle = EYE; ctx.font = '700 ' + q.s + 'px sans-serif'; ctx.fillText('\u266A', q.x, q.y); }
       else { ctx.fillStyle = EYE; ctx.font = '600 ' + (q.s * (1 + q.l / q.m * .6)) + 'px "Chakra Petch", sans-serif'; ctx.fillText('z', q.x, q.y); }
       ctx.globalAlpha = 1;
@@ -4028,6 +4088,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function ritPtsBewaar(r, r0) {
     if (!r0 || !r0.pts || r0.pts.length < 4) return;
     ritPts[r.t0] = { p: r0.pts, f: r0.fl || [] }; if (r0.ov && r0.ov.length === r0.pts.length / 2) ritPts[r.t0].o = r0.ov;
+    if (r0.ev && r0.ev.length) ritPts[r.t0].e = r0.ev; if (r0.gPos) ritPts[r.t0].g = r0.gPos;
     var ks = Object.keys(ritPts).sort(); while (ks.length > 12) delete ritPts[ks.shift()];
     try { localStorage.setItem(RITPTSKEY, JSON.stringify(ritPts)); } catch (e) { ritPts = {}; ritPts[r.t0] = { p: r0.pts, f: r0.fl || [] }; try { localStorage.setItem(RITPTSKEY, JSON.stringify(ritPts)); } catch (e2) {} }
   }
@@ -4197,7 +4258,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v76';
+  var VERSION = 'v77';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -4463,12 +4524,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (!voelOk() || S.speed < 12) { V.remT = 0; V.bochtT = 0; return; }
     V.ritVoel = true;
     try { moeStap(dt); } catch (e) {}
-    var gtot = Math.sqrt(V.lon * V.lon + V.lat * V.lat) / 9.81; if (gtot > V.gmax && gtot < 1.3) V.gmax = gtot;
+    var gtot = Math.sqrt(V.lon * V.lon + V.lat * V.lat) / 9.81; if (gtot > V.gmax && gtot < 1.3) { V.gmax = gtot; if (S.ritStart && lastPos) S.ritStart.gPos = [+lastPos.lat.toFixed(5), +lastPos.lon.toFixed(5), Math.round(gtot * 100) / 100]; }
     if ((Math.abs(V.lon) > 4 || Math.abs(V.lat) > 4) && T - V.harshT > 3) { V.harshT = T; V.harsh++; }
     /* hard remmen */
     if (V.lon < -5) V.remT += dt; else V.remT = 0;
     if (V.remT > .25 && T - V.remCool > 20 && !S.asleep) {
       V.remCool = T; S.lastStart = T; S.squash = .8; V.remT = 0;
+      if (S.ritStart && lastPos) { S.ritStart.ev = S.ritStart.ev || []; if (S.ritStart.ev.length < 40) S.ritStart.ev.push([+lastPos.lat.toFixed(5), +lastPos.lon.toFixed(5), 'rem']); }
       if (V.lon < -8) setEv('startled', 3, 'Pfff… dat was op het randje. Alles goed?'); else setEv('startled', 2.2, pick(['Wow! Remmen!', 'Oei! Dat was stevig.', 'Hoppa, vol in de ankers!']));
       beep('startled'); lg('stevig geremd (sensor ' + fmt1(-V.lon / 9.81) + ' G)');
     }
@@ -5189,6 +5251,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (fout) { st.textContent = fout; return; }
     var B = BORD[bordSoort], lijst = bordData.slice().sort(function (a, b) { return B.w(b) - B.w(a); });
     st.textContent = lijst.length ? (bordSoort === 'week' ? 'Deze week: ' + chal(weekIdx()).naam + '. De winnaar hoor je maandag. ' : B.naam + ' · ') + lijst.length + ' in de groep. Alleen echte ritten met GPS tellen mee.' : 'Nog niemand op het leaderboard. Rij een stukje met de GPS aan.';
+    var vw = weekIdx() - 1, beker = null, bekerV = 0;   /* v77: wisselbeker voor de winnaar van vorige week */
+    bordData.forEach(function (l) { var v = l.week && l.week.w === vw ? l.week.v : (l.vorige && l.vorige.w === vw ? l.vorige.v : 0); if (v > bekerV) { bekerV = v; beker = l.van; } });
     lijst.forEach(function (l, i) {
       var li = document.createElement('li'); if (l.van === mijnId) li.className = 'ik';
       var a = document.createElement('span'); a.className = 'pl'; a.textContent = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
@@ -5196,6 +5260,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var bds = String(l.bd || '').split('.').map(function (k) { return BADGEMAP[k] ? BADGEMAP[k].i : ''; }).join('');
       if (l.a || bds) { var au = document.createElement('small'); au.textContent = (l.a || '') + (bds ? (l.a ? '  ' : '') + bds : ''); n.appendChild(au); }
       var w = document.createElement('span'); w.className = 'wd'; w.textContent = B.f(l);
+      if (beker && l.van === beker) { var bk = document.createElement('span'); bk.textContent = ' 🏆'; bk.title = 'Wisselbeker: winnaar van de weekchallenge van vorige week'; n.insertBefore(bk, n.childNodes[1] || null); }
       li.appendChild(a); li.appendChild(n); li.appendChild(w);
       n.style.cursor = 'pointer'; n.addEventListener('click', function () { bordInfo = bordInfo === l.van ? null : l.van; bordToon(); });
       if (l.van !== mijnId) {
@@ -6154,6 +6219,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       });
       if (lastPos) pts.push([lastPos.lat, lastPos.lon]);
       if (pts.length) flMap.fitBounds(pts, { padding: [30, 30], maxZoom: 15 });
+      if (window.__plekOpKaart) window.__plekOpKaart();
     }
   }
   $('kaartKnop').addEventListener('click', function () {
@@ -6180,6 +6246,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
           lg('Buddy-scherm verbonden'); $('bleKnop').textContent = '📡 Buddy-scherm: verbonden';
           if (!timer) timer = setInterval(stuur, 1000);
           setTimeout(vraagLog, 4000);   /* elke keer bij verbinden het logboek even meenemen */
+          setTimeout(stuurInst, 2000);   /* v77: instellingen en outfit */
         });
     }
     function weg() {
@@ -6196,6 +6263,19 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       lg('van het Buddy-scherm: ' + t);
       if (t === 'MELD:cam') $('bUcam').click(); else if (t === 'MELD:mob') $('bUmob').click();
     }
+    /* v77: instellingen + outfit naar het schermpje */
+    var SCKEY = 'dashboardmaatje-scherm-v1', sc = { l: 65, v: 80, a: '1' };
+    try { var sc0 = JSON.parse(localStorage.getItem(SCKEY)); if (sc0) sc = sc0; } catch (e) {}
+    $('scLicht').value = sc.l; $('scVol').value = sc.v; $('scAnim').value = sc.a;
+    function stuurTekst(t) {
+      if (!rx) return Promise.reject(new Error('niet verbonden'));
+      var d = new TextEncoder().encode(t + '\n'), st = []; for (var i = 0; i < d.length; i += 20) st.push(d.slice(i, i + 20));
+      return st.reduce(function (pr, x) { return pr.then(function () { return rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(x) : rx.writeValue(x); }); }, Promise.resolve());
+    }
+    var scT = null;
+    function stuurInst() { clearTimeout(scT); scT = setTimeout(function () { if (!rx) return; bezig = true; stuurTekst('SET:l=' + sc.l + ';v=' + sc.v + ';a=' + sc.a + ';o=' + (typeof huidigOutfit === 'function' ? huidigOutfit() : 'geen')).catch(function () {}).then(function () { bezig = false; }); }, 400); }
+    ['scLicht', 'scVol', 'scAnim'].forEach(function (id) { $(id).addEventListener('change', function () { sc.l = +$('scLicht').value; sc.v = +$('scVol').value; sc.a = $('scAnim').value; try { localStorage.setItem(SCKEY, JSON.stringify(sc)); } catch (e) {} stuurInst(); }); });
+    window.__scStuur = stuurInst;
     function vraagLog() { if (!rx) { toast('Verbind eerst met het Buddy-scherm.'); return; } var d = new TextEncoder().encode('LOG?\n'); (rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(d) : rx.writeValue(d)).catch(function () {}); stat('Logboek van het schermpje wordt opgehaald…'); }
     $('bleLog').addEventListener('click', vraagLog);
     /* v76: wifi-gegevens naar het schermpje */
@@ -6230,6 +6310,136 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'Buddy' }], optionalServices: [SVC] }).then(function (d) {
         dev = d; d.addEventListener('gattserverdisconnected', weg); stat('Verbinden…'); return koppel();
       }).catch(function (e) { stat('Niet verbonden' + (e && e.message ? ' (' + e.message + ')' : '') + '.'); });
+    });
+  })();
+
+  /* ======================= v77: plekjes, laden, thuis delen, rit op kaart, maandoverzicht, wisselbeker ======================= */
+  (function () {
+    /* --- "Wat was dat?": plek onthouden --- */
+    var PLEKKEY = 'dashboardmaatje-plekken-v1', plekken = [];
+    try { plekken = JSON.parse(localStorage.getItem(PLEKKEY)) || []; } catch (e) { plekken = []; }
+    function plekBewaar() { try { localStorage.setItem(PLEKKEY, JSON.stringify(plekken.slice(-60))); } catch (e) {} }
+    function plekToon() {
+      var ol = $('plekLijst'); if (!ol) return; while (ol.firstChild) ol.removeChild(ol.firstChild);
+      if (!plekken.length) { var e0 = document.createElement('li'); e0.textContent = 'Nog geen plekjes onthouden.'; ol.appendChild(e0); }
+      plekken.slice().reverse().slice(0, 15).forEach(function (p) {
+        var li = document.createElement('li'), sp = document.createElement('span');
+        sp.textContent = '📍 ' + dagStr(p.t) + ' ' + tijdStr(p.t) + (p.v ? ' · ' + p.v + ' km/h' : '') + (p.n ? '\n' + p.n : ''); sp.style.whiteSpace = 'pre-line';
+        var bn = document.createElement('button'); bn.type = 'button'; bn.className = 'btn'; bn.textContent = '🧭';
+        bn.addEventListener('click', function () { window.open('https://www.google.com/maps/search/?api=1&query=' + p.lat + ',' + p.lon, '_blank', 'noopener'); });
+        var bx = document.createElement('button'); bx.type = 'button'; bx.className = 'btn'; bx.textContent = '🗑️';
+        bx.addEventListener('click', function () { plekken = plekken.filter(function (q) { return q !== p; }); plekBewaar(); plekToon(); plekOpKaart(); });
+        li.appendChild(sp); li.appendChild(bn); li.appendChild(bx); ol.appendChild(li);
+      });
+    }
+    var plekLaag = null;
+    function plekOpKaart() {
+      if (!window.L || typeof flMap === 'undefined' || !flMap) return;
+      if (plekLaag) plekLaag.remove(); plekLaag = L.layerGroup().addTo(flMap);
+      plekken.forEach(function (p) { L.circleMarker([p.lat, p.lon], { radius: 8, color: '#fff', weight: 2, fillColor: '#bf5af2', fillOpacity: 1 }).addTo(plekLaag).bindPopup('📍 ' + dagStr(p.t) + ' ' + tijdStr(p.t)); });
+    }
+    window.__plekOpKaart = plekOpKaart;
+    function plekNu(bron) {
+      if (!lastPos) { toast('Ik weet nog niet waar we zijn. Zet de GPS aan.'); return false; }
+      plekken.push({ lat: +lastPos.lat.toFixed(5), lon: +lastPos.lon.toFixed(5), t: Date.now(), v: Math.round(S.speed || 0) });
+      plekBewaar(); plekToon(); plekOpKaart(); setEv('happy', 2.5, 'Plek onthouden! Kijk later bij Kaart.'); beep('pet'); lg('plek onthouden (' + bron + ')');
+      return true;
+    }
+    window.__plekNu = plekNu;
+    $('plekKnop').addEventListener('click', function () { plekNu('knop'); });
+    $('plekKnop2').addEventListener('click', function () { plekNu('knop'); });
+    plekToon();
+
+    /* --- Laden in de buurt --- */
+    $('laadZoekKnop').addEventListener('click', function () {
+      if (!lastPos) { toast('Zet eerst de GPS aan.'); return; }
+      var la = lastPos.lat, lo = lastPos.lon, d = .06, bb = (la - d).toFixed(4) + ',' + (lo - d * 1.6).toFixed(4) + ',' + (la + d).toFixed(4) + ',' + (lo + d * 1.6).toFixed(4);
+      var q = '[out:json][timeout:25];(node["amenity"="charging_station"](' + bb + ');way["amenity"="charging_station"](' + bb + '););out center tags;';
+      var ol = $('laadLijst'); while (ol.firstChild) ol.removeChild(ol.firstChild); var w0 = document.createElement('li'); w0.textContent = 'Even zoeken…'; ol.appendChild(w0);
+      fetchOverpass(q, 30000).then(function (j) {
+        var l = [];
+        (j.elements || []).forEach(function (e) {
+          var y = e.lat != null ? e.lat : e.center && e.center.lat, x = e.lon != null ? e.lon : e.center && e.center.lon; if (y == null) return;
+          var t = e.tags || {}, naam = t.name || t.operator || t.brand || 'Laadpaal', tesla = /tesla|supercharger/i.test((t.operator || '') + (t.brand || '') + (t.name || '') + (t.network || ''));
+          var kw = 0; Object.keys(t).forEach(function (k) { if (/:output$/.test(k)) { var m = String(t[k]).match(/([\d.]+)\s*kw/i); if (m) kw = Math.max(kw, +m[1]); } });
+          l.push({ y: y, x: x, d: gdist(la, lo, y, x), naam: naam, tesla: tesla, kw: kw, n: +t.capacity || 0, snel: kw >= 50 || /combo|ccs|chademo|tesla_supercharger/i.test(Object.keys(t).join(' ')) });
+        });
+        l.sort(function (a, b) { return (b.tesla - a.tesla) * 2500 + a.d - b.d - (b.tesla - a.tesla) * 2500 + (a.d - b.d) * 0; });
+        l.sort(function (a, b) { return a.d - b.d; });
+        while (ol.firstChild) ol.removeChild(ol.firstChild);
+        if (!l.length) { var e1 = document.createElement('li'); e1.textContent = 'Geen laadpalen gevonden binnen ±7 km.'; ol.appendChild(e1); return; }
+        var tes = l.filter(function (a) { return a.tesla; }).slice(0, 3), rest = l.filter(function (a) { return !a.tesla; }).slice(0, 10);
+        tes.concat(rest).forEach(function (a) {
+          var li = document.createElement('li'), sp = document.createElement('span');
+          sp.textContent = (a.tesla ? '🔴 Tesla Supercharger' : (a.snel ? '⚡ Snellader' : '🔌 Laadpaal')) + ' · ' + (a.d < 1000 ? Math.round(a.d / 10) * 10 + ' m' : (a.d / 1000).toFixed(1).replace('.', ',') + ' km') + '\n' + a.naam + (a.kw ? ' · ' + a.kw + ' kW' : '') + (a.n ? ' · ' + a.n + ' plekken' : '');
+          sp.style.whiteSpace = 'pre-line';
+          var bn = document.createElement('button'); bn.type = 'button'; bn.className = 'btn'; bn.textContent = '🧭';
+          bn.addEventListener('click', function () { window.open('https://www.google.com/maps/dir/?api=1&destination=' + a.y + ',' + a.x, '_blank', 'noopener'); });
+          li.appendChild(sp); li.appendChild(bn); ol.appendChild(li);
+        });
+        lg('laden in de buurt: ' + l.length + ' gevonden, ' + tes.length + ' Tesla');
+      }).catch(function (e) { while (ol.firstChild) ol.removeChild(ol.firstChild); var e2 = document.createElement('li'); e2.textContent = 'Zoeken lukte nu niet (' + ((e && e.message) || e) + '). Probeer het zo nog eens.'; ol.appendChild(e2); });
+    });
+
+    /* --- "Ik ben om … thuis" delen --- */
+    $('thuisDeel').addEventListener('click', function () {
+      var deel = function () {
+        var m = ($('thuisStat').textContent || '').match(/om (\d{1,2}:\d{2}) thuis/);
+        if (!m) { toast('Ik kon nog niet uitrekenen hoe laat je thuis bent.'); return; }
+        var tekst = 'Ik ben om ' + m[1] + ' thuis 🚗' + (/file/i.test($('thuisStat').textContent) && !/Geen files/.test($('thuisStat').textContent) ? ' (er staat wat file)' : '') + ' – verstuurd door Buddy';
+        if (navigator.share) navigator.share({ text: tekst }).catch(function () {});
+        else window.open('https://wa.me/?text=' + encodeURIComponent(tekst), '_blank', 'noopener');
+        lg('thuis-tijd gedeeld: ' + m[1]);
+      };
+      if (/om \d{1,2}:\d{2} thuis/.test($('thuisStat').textContent || '') && Date.now() - (window.__thuisT || 0) < 10 * 60e3) { deel(); return; }
+      $('thuisKnop').click(); window.__thuisT = Date.now();
+      var n = 0, iv = setInterval(function () { n++; if (/om \d{1,2}:\d{2} thuis/.test($('thuisStat').textContent || '') || n > 20) { clearInterval(iv); deel(); } }, 500);
+    });
+
+    /* --- Rit op de echte kaart --- */
+    var ritMap = null, ritLaag = null;
+    $('ritKaartOpKaart').addEventListener('click', function () {
+      var r = typeof ritKaartHuidig !== 'undefined' ? ritKaartHuidig : null, d = r && ritPts[r.t0];
+      if (!d || !d.p || d.p.length < 4) { toast('Van deze rit heb ik geen route bewaard.'); return; }
+      $('ritOv').hidden = false; $('ritOvTitel').textContent = 'Rit van ' + dagStr(r.t0) + ' ' + tijdStr(r.t0);
+      laadLeaflet().then(function () {
+        if (!ritMap) { ritMap = L.map('ritOvMap'); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap-bijdragers' }).addTo(ritMap); }
+        if (ritLaag) ritLaag.remove(); ritLaag = L.layerGroup().addTo(ritMap);
+        var pts = []; for (var i = 0; i < d.p.length; i += 2) pts.push([d.p[i], d.p[i + 1]]);
+        if (d.o && d.o.length === pts.length) { for (var k = 1; k < pts.length; k++) L.polyline([pts[k - 1], pts[k]], { color: d.o[k] ? '#ff453a' : '#0a84ff', weight: 5, opacity: .9 }).addTo(ritLaag); }
+        else L.polyline(pts, { color: '#0a84ff', weight: 5 }).addTo(ritLaag);
+        L.circleMarker(pts[0], { radius: 7, color: '#fff', weight: 2, fillColor: '#30d158', fillOpacity: 1 }).addTo(ritLaag).bindPopup('Start');
+        L.circleMarker(pts[pts.length - 1], { radius: 7, color: '#fff', weight: 2, fillColor: '#111', fillOpacity: 1 }).addTo(ritLaag).bindPopup('Einde');
+        (d.f || []).forEach(function (v, i2, a) { if (i2 % 2) return; L.circleMarker([a[i2], a[i2 + 1]], { radius: 6, color: '#fff', weight: 2, fillColor: '#ffd60a', fillOpacity: 1 }).addTo(ritLaag).bindPopup('📸 Netjes langs een flitser'); });
+        (d.e || []).forEach(function (e) { var rem = e[2] === 'rem'; L.circleMarker([e[0], e[1]], { radius: 7, color: '#fff', weight: 2, fillColor: rem ? '#ff9f0a' : '#bf5af2', fillOpacity: 1 }).addTo(ritLaag).bindPopup(rem ? '🛑 Hard geremd' : '🏁 ' + e[2]); });
+        if (d.g) L.circleMarker([d.g[0], d.g[1]], { radius: 7, color: '#fff', weight: 2, fillColor: '#64d2ff', fillOpacity: 1 }).addTo(ritLaag).bindPopup('🌀 Hoogste G-kracht: ' + String(d.g[2]).replace('.', ',') + ' G');
+        ritMap.invalidateSize(); ritMap.fitBounds(pts, { padding: [24, 24] });
+        $('ritOvUitleg').textContent = 'Blauw = rit' + (d.o ? ', rood = harder dan de limiet' : '') + ' · 🟢 start · ⚫ einde · 🟡 netjes langs flitser · 🟠 hard geremd · 🟣 sprint · 🔵 hoogste G-kracht';
+        setTimeout(function () { ritMap.invalidateSize(); }, 150);
+      }).catch(function () { toast('De kaart laadt nu niet.'); });
+    });
+    $('ritOvSluit').addEventListener('click', function () { $('ritOv').hidden = true; });
+
+    /* --- Maandoverzicht --- */
+    $('maandKnop').addEventListener('click', function () {
+      var el = $('maandStat'); if (!el.hidden) { el.hidden = true; return; }
+      while (el.firstChild) el.removeChild(el.firstChild);
+      var per = {};
+      ritten.forEach(function (r) { var d = new Date(r.t0), k = d.getFullYear() * 12 + d.getMonth(); (per[k] = per[k] || []).push(r); });
+      var ks = Object.keys(per).map(Number).sort(function (a, b) { return b - a; }).slice(0, 3);
+      if (!ks.length) { var p0 = document.createElement('p'); p0.textContent = 'Nog geen ritten om te laten zien.'; el.appendChild(p0); }
+      ks.forEach(function (k) {
+        var l = per[k], km = 0, min = 0, dag = [0, 0, 0, 0, 0, 0, 0], uur = {}, lang = null, stijl = 0;
+        l.forEach(function (r) { km += r.km; min += r.min; var d = new Date(r.t0); dag[d.getDay()]++; var u = d.getHours(); uur[u] = (uur[u] || 0) + 1; if (!lang || r.km > lang.km) lang = r; stijl += r.stijl || 0; });
+        var dd = dag.indexOf(Math.max.apply(null, dag)), uu = Object.keys(uur).sort(function (a, b) { return uur[b] - uur[a]; })[0];
+        var b = document.createElement('div'); b.className = 'maandBlok';
+        var t = document.createElement('b'); t.textContent = MAANDEN[k % 12].replace(/^./, function (c) { return c.toUpperCase(); }) + ' ' + Math.floor(k / 12); b.appendChild(t);
+        [['🛣️', Math.round(km) + ' km in ' + l.length + ' ritten'], ['⏱️', Math.floor(min / 60) + ' uur ' + (min % 60) + ' min achter het stuur'], ['〰️', 'gemiddeld ' + (min ? Math.round(km / (min / 60)) : 0) + ' km/h'],
+         ['📅', 'drukste dag: ' + DAGEN[dd] + ' · meestal weg om ' + uu + ':00'], ['🏆', 'langste rit: ' + String(lang.km).replace('.', ',') + ' km (' + dagStr(lang.t0) + ')'], ['🧘', 'gemiddelde rijstijl: ' + Math.round(stijl / l.length) + '/100']]
+          .forEach(function (x) { var r0 = document.createElement('div'); r0.textContent = x[0] + ' ' + x[1]; b.appendChild(r0); });
+        el.appendChild(b);
+      });
+      el.hidden = false;
     });
   })();
 
@@ -6364,6 +6574,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     feestFxT -= dt; if (feestFxT > 0) return;
     if (f.k === 'kerst') { parts.push({ k: 'd', x: rand(30, 210), y: 16, vx: rand(-6, 6), vy: rand(14, 24), l: 0, m: 7, s: rand(1.4, 2.6) }); feestFxT = .5; }
     else if (f.k === 'koningsdag') { parts.push({ k: 'c', x: rand(30, 210), y: 14, vx: rand(-8, 8), vy: rand(26, 40), l: 0, m: 4, s: rand(3, 5), col: '#FF7A00' }); feestFxT = 1.2; }
+    else if (f.k === 'halloween') { var lk = Math.random() < .5; parts.push({ k: 'v', x: lk ? -10 : 250, y: rand(24, 70), vx: (lk ? 1 : -1) * rand(45, 70), vy: rand(-6, 6), l: 0, m: 5, s: rand(6, 9) }); feestFxT = rand(2.5, 5); }
+    else if (f.k === 'sinterklaas') { parts.push({ k: 'pn', x: rand(40, 200), y: 14, vx: rand(-4, 4), vy: rand(20, 32), l: 0, m: 6, s: rand(2.5, 4) }); feestFxT = 3; }
     else feestFxT = 99;
   }
 
@@ -6373,7 +6585,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     window.open('https://www.google.com/maps/search/?api=1&query=' + park.lat + ',' + park.lon, '_blank', 'noopener');
   });
   $('vcKnop').addEventListener('click', function () { vertrekCheck('knop'); });
-  $('outfitIn').addEventListener('change', function () { mem.outfit = $('outfitIn').value; save(); outfitKeuze(); setEv('happy', 2.5, 'Staat me goed, hè?'); });
+  $('outfitIn').addEventListener('change', function () { mem.outfit = $('outfitIn').value; save(); outfitKeuze(); setEv('happy', 2.5, 'Staat me goed, hè?'); if (window.__scStuur) window.__scStuur(); });
   $('feestIn').checked = mem.feestAan !== false;
   $('feestIn').addEventListener('change', function () { mem.feestAan = $('feestIn').checked; save(); outfitKeuze(); });
   $('buurIn').checked = buurAan;
