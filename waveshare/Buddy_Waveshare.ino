@@ -24,7 +24,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 32;
+static const int FW_VERSIE = 33;
 static volatile int otaPct = -1;
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
 static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
@@ -2239,11 +2239,11 @@ void setup(){
  Serial.begin(115200);
  // USB CDC kan na reset iets later beschikbaar komen; wacht kort en meld expliciet.
  uint32_t serialWaitStart=millis();
- while(!Serial && millis()-serialWaitStart<2500) delay(10);
+ while(!Serial && millis()-serialWaitStart<300) delay(10);   // v33: niet meer 2,5 s wachten op een computer (in de auto is die er niet)
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v29 BOOT - USB SERIAL ACTIEF");
+ Serial.printf("BUDDY v%d BOOT - USB SERIAL ACTIEF\n", FW_VERSIE);
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -2262,11 +2262,11 @@ void setup(){
    uint8_t cfg = 0xFF; if (Wire.requestFrom((int)0x20, 1) == 1) cfg = Wire.read();
    Wire.beginTransmission(0x20); Wire.write(0x03); Wire.write((uint8_t)(cfg | 0x80)); int pe = Wire.endTransmission();
    Serial.printf("GPS_RST (P7) teruggezet naar ingang: %s (config was 0x%02X)\n", pe == 0 ? "OK" : "MISLUKT", cfg);
-   delay(1500);  // GPS rustig laten opstarten
+   delay(400);   // GPS rustig laten opstarten (v33: korter, de GPS-taak vangt latere data toch op)
  }
  gpsSerial.begin(GPS_UART_BAUD, SERIAL_8N1, GPS_UART_RX, GPS_UART_TX);
  gpsSerial.setRxBufferSize(4096);
- delay(1200);  // LC76G heeft na de reset ruim een seconde nodig
+ delay(300);   // v33: korter; eventuele rommel van de LC76G wordt later gewoon overgeslagen
  while(gpsSerial.available()) gpsSerial.read();
  Serial.printf("Buddy GPS UART gestart | RX=%d TX=%d | %lu baud | reset=%s\n", GPS_UART_RX, GPS_UART_TX, (unsigned long)GPS_UART_BAUD, GPS_RESET_PULSE ? (gpsResetOk?"OK":"NIET BEVESTIGD") : "UIT (niet aangeraakt)");
  buddyTouch.setPins(TP_RESET, TP_INT);
