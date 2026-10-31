@@ -67,48 +67,39 @@ voor -= dak_sleuf(180, LIP + PCB_ACHTER - 0.4, 13.0, 4.0)  # micro-SD links (v3:
 for h in (146, 214):                               # PWR (boven) en BOOT (onder) links: gaatje voor een pen/paperclip
     voor -= druppel_gat(h, LIP + PCB_ACHTER + 1.6, 3.6)
 
-# =================== deel 2: achterkant ===================
-Z0 = Z_BUS                                  # voorkant tussenplaat raakt de busjes
+# =================== deel 2: achterkant (v7: één stuk mét achterwand, geen los dekseltje meer) ===================
+# Geprint met de achterwand op het bed. In plaats van een tussenplaat drukken 3 paaltjes op de messing busjes van het bord.
+Z0 = Z_BUS                                  # hier zitten de busjes
 L_PLUG = PLUG
 L_ACHT = HOLTE + ACHTER
 plug_r = BINN_D / 2 - PASSING
-OVERG = BUIT_D / 2 - plug_r   # v3: 45 graden schuine overgang, dan is er geen support nodig
+OVERG = BUIT_D / 2 - plug_r                 # 45 graden schuine overgang buitenkant
+R_HOL = BUIT_D / 2 - WAND                   # binnenkant hoofdwand
+r_plug_in = plug_r - 1.6
 achter = cyl(L_PLUG, plug_r).translate([0, 0, Z0]) + cyl(OVERG, plug_r, BUIT_D / 2).translate([0, 0, Z0 + L_PLUG]) + cyl(L_ACHT - OVERG, BUIT_D / 2).translate([0, 0, Z0 + L_PLUG + OVERG])
-# holte (achter de tussenplaat)
-achter -= cyl(L_PLUG - PLAAT + L_ACHT - ACHTER, plug_r - 1.6).translate([0, 0, Z0 + PLAAT])
-achter -= cyl(L_ACHT - ACHTER - OVERG, BUIT_D / 2 - WAND).translate([0, 0, Z0 + L_PLUG + OVERG])   # v5: pas na de schuine overgang wijder (anders zat er een spleet)
-# vlakke 'plank' bovenin voor de GPS-antenne (antenne plakken, keramiek naar boven)
-plank_y = 17.5
-# v3: plank weggehaald (die had support nodig). De GPS-antenne gaat plat op de tussenplaat, keramiek naar achteren.
-# tussenplaat: schroefgaten M2 + verzinking aan de holte-kant
-for (x, y) in MOUNTS:
-    achter += cyl(PLAAT, 3.2).translate([x, y, Z0])            # oogje rond het busje
-    achter -= cyl(PLAAT + 2, 1.15).translate([x, y, Z0 - 1])   # M2 doorgaand
-# v2: inkeping in de plug + 1,2 mm in de wand voor de USB-C-stekker
-achter -= box(10, 12.8, L_PLUG + 1.2).translate([BUIT_D / 2 - 2, 0, Z0 + (L_PLUG + 1.2) / 2 - 0.01])
-# doorvoeren in de tussenplaat: header onder, SPK/BAT-stekkertjes boven, GPS-kabeltje + midden
-achter -= box(26, 7.5, 10).translate([-0.5, -18.6, Z0])
-for xs in (-7.4, 7.4):
-    achter -= box(8.6, 8, 10).translate([xs, 19.0, Z0])
-achter -= box(18, 15, 10).translate([10.5, -4, Z0])
-achter -= box(14, 12, 10).translate([-9, 2, Z0])
 z_back = Z0 + L_PLUG + L_ACHT
-# achterwand wordt een los dekseltje (dan hoeft er niets in de lucht geprint te worden)
-achter -= cyl(ACHTER + 1, BUIT_D / 2 - WAND).translate([0, 0, z_back - ACHTER])
-
-# =================== deel 3: dekseltje met speakerrooster ===================
-SP = 0.2
-deksel = cyl(1.4, BUIT_D / 2) + cyl(2.2, BUIT_D / 2 - WAND - SP).translate([0, 0, -2.2])   # flens buiten + ring die erin steekt
-deksel -= cyl(2.2, BUIT_D / 2 - WAND - SP - 1.6).translate([0, 0, -2.21])                        # ring hol
-deksel = deksel - (cyl(1.0, BUIT_D / 2 + 1) - cyl(1.0, BUIT_D / 2, BUIT_D / 2 - 1.0)).translate([0, 0, 0.41])  # v3: schuine buitenrand (aan de bedkant, geen overhang)
-for i in range(-5, 6):
-    for j in range(-5, 6):
-        x = i * 3.6 + (1.8 if j % 2 else 0); y = j * 3.1
-        if math.hypot(x, y - 0) < 13.5:
-            deksel -= cyl(6, 0.95).translate([x, y - 2, -3])
-for k in range(4):   # nokjes die een rond speakertje (tot 30 mm) vasthouden
+# holte: plug-deel, dan 45 graden schuin naar de wijdere holte (geen overhang als hij achterwand-onder print)
+achter -= cyl(L_PLUG + 0.02, r_plug_in).translate([0, 0, Z0 - 0.01])
+achter -= cyl(R_HOL - r_plug_in + 0.1, r_plug_in - 0.05, R_HOL + 0.05).translate([0, 0, Z0 + L_PLUG - 0.05])
+achter -= cyl(z_back - ACHTER - (Z0 + L_PLUG + R_HOL - r_plug_in) + 0.2, R_HOL).translate([0, 0, Z0 + L_PLUG + R_HOL - r_plug_in - 0.2])
+# paaltjes op de busjes, met een pinnetje dat in het M2-gaatje valt (centreert het bord)
+for (x, y) in MOUNTS:
+    achter += cyl(z_back - ACHTER - Z0 + 0.01, 2.6).translate([x, y, Z0])
+    achter += cyl(1.45, 0.7, 0.85).translate([x, y, Z0 - 1.4])   # tapse pin, punt naar het bord
+# speakerrooster: grotere gaatjes (2,6 mm), recht omhoog geprint = strak
+for i in range(-6, 7):
+    for j in range(-6, 7):
+        x = i * 4.2 + (2.1 if j % 2 else 0); y = j * 3.64
+        if math.hypot(x, y + 2) < 13.0:
+            achter -= cyl(ACHTER + 1, 1.3).translate([x, y - 2, z_back - ACHTER - 0.5])
+# nokjes die een rond speakertje (tot 30 mm) vasthouden
+for k in range(4):
     ang = math.radians(45 + 90 * k); r = 15.8
-    deksel += box(3, 3, 3.5).rotate([0, 0, 45 + 90 * k]).translate([r * math.cos(ang), r * math.sin(ang) - 2, -1.75])
+    achter += box(3, 3, 3.5).rotate([0, 0, 45 + 90 * k]).translate([r * math.cos(ang), r * math.sin(ang) - 2, z_back - ACHTER - 1.75 + 0.01])
+# schuine buitenrand achter (bedkant)
+achter -= (cyl(1.0, BUIT_D / 2 + 1) - cyl(1.0, BUIT_D / 2, BUIT_D / 2 - 1.0)).translate([0, 0, z_back - 1.0 + 0.001])
+# USB-C: inkeping in de plug + 1,2 mm in de wand
+achter -= box(10, 12.8, L_PLUG + 1.2).translate([BUIT_D / 2 - 2, 0, Z0 + (L_PLUG + 1.2) / 2 - 0.01])
 
 # =================== deel 3: voetje ===================
 KANTEL = 12.0                     # scherm iets omhoog gekanteld, naar de bestuurder
@@ -141,7 +132,7 @@ zadel = zadel ^ box(80, 80, 80).translate([0, 0, 40])
 def save(m, naam):
     mesh = m.to_mesh()
     v = np.array(mesh.vert_properties)[:, :3]; f = np.array(mesh.tri_verts)
-    t = trimesh.Trimesh(v, f, process=True)
+    t = trimesh.Trimesh(v, f, process=False)
     t.export(f'/home/claude/case/{naam}.stl')
     b = t.bounds; print(naam, 'maat', np.round(b[1] - b[0], 1), 'watertight', t.is_watertight, 'vol', round(t.volume / 1000, 1), 'cm3')
     return t
@@ -150,8 +141,9 @@ def save(m, naam):
 # 3 klikarmpjes aan de voorkant grijpen in 3 venstertjes in de achterkant. Het bord zit geklemd tussen het schermrandje
 # en de tussenplaat (de schroefgaatjes mogen blijven, maar zijn niet meer nodig).
 R_UIT = BUIT_D / 2
-ARM_DIK, ARM_BR, ARM_LEN = 1.3, 8.0, 7.2
-HAAK_Z0, HAAK_H, HAAK_IN = 5.2, 1.6, 0.75     # haakje: vanaf ARM-basis, hoogte, hoe ver naar binnen
+# v7: armpjes langer en het haakje minder diep -> buigen ~4x minder ver door, breken niet meer af
+ARM_DIK, ARM_BR, ARM_LEN = 1.4, 10.0, 9.5
+HAAK_Z0, HAAK_H, HAAK_IN = 7.4, 1.6, 0.5     # haakje: vanaf ARM-basis, hoogte, hoe ver naar binnen
 SPEL_K = 0.2
 HOEKEN = (90, 210, 330)                          # niet bij USB-C (0) en de knopjes (146/214 zitten alleen in de voorkant)
 def ringstuk(r_in, r_uit, breed, z0, h, hoek):
@@ -166,16 +158,10 @@ for hk in HOEKEN:
     # achterkant: inkeping waar het armpje in valt (blijft mooi gelijk met de buitenkant) + venster voor het haakje
     achter -= ringstuk(R_UIT - ARM_DIK - SPEL_K, R_UIT + 1, ARM_BR + 2 * SPEL_K, Z0 + L_PLUG - 0.01, ARM_LEN + 0.3, hk)
     achter -= ringstuk(R_UIT - ARM_DIK - 3, R_UIT, ARM_BR + 2 * SPEL_K, Z0 + L_PLUG + HAAK_Z0 - 0.1, HAAK_H + 0.3, hk)
-# dekseltje klikt ook: rilletje rond de ring + gleufje in de achterkant (beide met schuine kanten)
-RIB = 0.35
-rib = (cyl(0.5, BUIT_D / 2 - WAND - SP, BUIT_D / 2 - WAND - SP + RIB) + cyl(0.5, BUIT_D / 2 - WAND - SP + RIB, BUIT_D / 2 - WAND - SP).translate([0, 0, 0.5])).translate([0, 0, -1.7])
-deksel += rib - cyl(3, BUIT_D / 2 - WAND - SP - 0.5).translate([0, 0, -2.5])   # alleen een ringetje, binnenkant blijft vrij
-achter -= (cyl(0.6, BUIT_D / 2 - WAND, BUIT_D / 2 - WAND + RIB + .15) + cyl(0.6, BUIT_D / 2 - WAND + RIB + .15, BUIT_D / 2 - WAND).translate([0, 0, 0.6])).translate([0, 0, z_back - 1.85])
 t1 = save(voor, 'buddy_1_voorkant')
 # achterkant geprint met de achterwand op het bed: omdraaien
-t2 = save(achter.translate([0, 0, -Z0]), 'buddy_2_achterkant')          # tussenplaat op het bed
-t3 = save(deksel.rotate([180, 0, 0]).translate([0, 0, 1.4]), 'buddy_3_dekseltje')  # buitenkant op het bed
+t2 = save(achter.rotate([180, 0, 0]).translate([0, 0, z_back]), 'buddy_2_achterkant')   # v7: achterwand op het bed
 t4 = save(zadel, 'buddy_4_voetje')
 # preview: alles in elkaar
 samen = [voor, achter]
-save(voor + achter + deksel.translate([0, 0, z_back]), '_preview_pod')
+save(voor + achter, '_preview_pod')
