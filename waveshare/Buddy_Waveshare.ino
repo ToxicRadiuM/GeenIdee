@@ -24,7 +24,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 31;
+static const int FW_VERSIE = 32;
 static volatile int otaPct = -1;
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
 static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
@@ -1576,7 +1576,7 @@ static void qmiWakkerBijBeweging() {
   qmiW(0x02, 0x40);                 // CTRL1: auto-increment
   qmiW(0x08, 0x00);                 // CTRL7: sensoren uit tijdens instellen
   qmiW(0x03, (0x02 << 4) | 12);     // CTRL2: +-8 G, laag-vermogen 128 Hz
-  qmiW(0x0B, 80);                   // CAL1_L: drempel 80 mg
+  qmiW(0x0B, 40);                   // CAL1_L: drempel 40 mg (v32: gevoeliger, deur dicht maakt hem nu wakker)
   qmiW(0x0C, (0x03 << 6) | 0x20);   // CAL1_H: INT2, beginwaarde 1 (hoog), even negeren na start
   qmiW(0x0A, 0x08);                 // CTRL9: WoM-instelling schrijven
   for (int i = 0; i < 100; i++) { Wire.beginTransmission(0x6B); Wire.write(0x2D); Wire.endTransmission(false); if (Wire.requestFrom((int)0x6B, 1) == 1 && (Wire.read() & 0x80)) break; delay(2); }
@@ -1843,7 +1843,7 @@ static void netTaak(void *) {
   for (;;) {
     float dt = (millis() - stapT) / 1000.f; stapT = millis();
     // 1. tegel voor de huidige plek (uit het geheugen of van internet)
-    bool online = WiFi.status() == WL_CONNECTED;
+    bool online = WiFi.status() == WL_CONNECTED && (uint32_t)WiFi.localIP() != 0;   // v32: pas online met een IP-adres
     if (gpsFix) { char key[16]; tegelKey(gpsLat, gpsLon, key, sizeof key); if (strcmp(key, tegelNu)) laadTegel(key, online); }
     bepaalWeg(); trajectStap(dt); fileVoorStap();
     // 2. wifi
