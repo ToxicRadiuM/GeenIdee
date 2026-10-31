@@ -569,6 +569,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <button class="btn" id="weekKnop" type="button">📅 Weekrapport bekijken</button>
       <button class="btn" id="dagKnop" type="button">📔 Dagboek van vandaag</button>
       <button class="btn" id="maandKnop" type="button">📊 Maandoverzicht</button>
+      <button class="btn" id="staatKnop" type="button">📋 Weekstaat (waar ben ik gestart en gestopt)</button>
+      <div id="weekStaat" hidden></div>
       <div id="maandStat" hidden></div>
       <button class="btn" id="bReplay" type="button">Laatste rit afspelen (4x sneller)</button>
       <p class="sub">Buddy’s level</p>
@@ -4284,7 +4286,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v78';
+  var VERSION = 'v79';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5416,7 +5418,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   /* ---------- 2. Ritten en weekoverzicht ---------- */
   var ritten = [];
   try { ritten = JSON.parse(localStorage.getItem(RITKEY)) || []; } catch (e) { ritten = []; }
-  function ritStart() { V.harsh = 0; V.gmax = 0; V.ritVoel = false; S.ritStart = { t: Date.now(), km: mem.kmLive || 0, netjes: mem.netjes || 0, h: new Date().getHours() + new Date().getMinutes() / 60, vmax: 0, nul: 0, nulTelt: false }; ritVakken = {}; }
+  function ritStart() { V.harsh = 0; V.gmax = 0; V.ritVoel = false; S.ritStart = { van: lastPos ? [+lastPos.lat.toFixed(5), +lastPos.lon.toFixed(5)] : null, t: Date.now(), km: mem.kmLive || 0, netjes: mem.netjes || 0, h: new Date().getHours() + new Date().getMinutes() / 60, vmax: 0, nul: 0, nulTelt: false }; ritVakken = {}; }
   /* Wordt aangeroepen als een echte rit klaar is (8 min stilstaan of GPS uit) */
   function ritKlaar(sc) {
     var r0 = S.ritStart; S.ritStart = null;
@@ -5428,6 +5430,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (V.ritVoel) { r.g = Math.round(V.gmax * 100) / 100; r.sch = V.harsh; if (r.g > (mem.gmaxLive || 0) && r.g < 1.3) { mem.gmaxLive = r.g; mem.gmaxLiveD = Date.now(); } }
     if (V.ritVoel && r.km >= 3) { var zs = clamp(100 - V.harsh / r.km * 100 * 8, 0, 100), wz = wk(); wz.zSom = (wz.zSom || 0) + zs * r.km; wz.zKm = (wz.zKm || 0) + r.km; r.zacht = Math.round(zs); }
     try { ritPtsBewaar(r, r0); } catch (e) {}
+    /* v79: waar begon en eindigde de rit (alleen op je eigen telefoon, voor de weekstaat) */
+    r.van = r0.van || (r0.pts && r0.pts.length >= 2 ? [r0.pts[0], r0.pts[1]] : null);
+    r.naar = lastPos ? [+lastPos.lat.toFixed(5), +lastPos.lon.toFixed(5)] : (r0.pts && r0.pts.length >= 2 ? [r0.pts[r0.pts.length - 2], r0.pts[r0.pts.length - 1]] : null);
+    setTimeout(function () { try { if (window.ritAdressen) window.ritAdressen(r); } catch (e) {} }, 1500);
     ritten.push(r); if (ritten.length > 80) ritten = ritten.slice(-80);
     try { localStorage.setItem(RITKEY, JSON.stringify(ritten)); } catch (e) {}
     /* week en badges */
@@ -6450,6 +6456,68 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       }).catch(function () { toast('De kaart laadt nu niet.'); });
     });
     $('ritOvSluit').addEventListener('click', function () { $('ritOv').hidden = true; });
+
+    /* --- v79: weekstaat: per rit van waar naar waar, met tijden en km (alleen op je eigen telefoon) --- */
+    var adresCache = {};
+    function plekNaam(p) {
+      if (!p) return Promise.resolve('');
+      var h = typeof thuisPlek === 'function' ? thuisPlek() : null;
+      if (h && gdist(p[0], p[1], h.lat, h.lon) < 200) return Promise.resolve('Thuis');
+      var k = p[0].toFixed(3) + ',' + p[1].toFixed(3); if (adresCache[k]) return Promise.resolve(adresCache[k]);
+      return fetch('https://api.pdok.nl/bzk/locatieserver/search/v3_1/reverse?lat=' + p[0] + '&lon=' + p[1] + '&rows=1&type=adres&fl=weergavenaam,straatnaam,huisnummer,woonplaatsnaam')
+        .then(function (r) { return r.json(); }).then(function (j) {
+          var d = j && j.response && j.response.docs && j.response.docs[0];
+          var n = d ? ((d.straatnaam || '') + (d.huisnummer ? ' ' + d.huisnummer : '') + (d.woonplaatsnaam ? ', ' + d.woonplaatsnaam : '')).trim().replace(/^,\s*/, '') || d.weergavenaam : '';
+          adresCache[k] = n || (p[0].toFixed(4) + ', ' + p[1].toFixed(4)); return adresCache[k];
+        }).catch(function () { return p[0].toFixed(4) + ', ' + p[1].toFixed(4); });
+    }
+    function ritAdressen(r) {
+      if (!r || (r.vanN && r.naarN)) return Promise.resolve();
+      return Promise.all([plekNaam(r.van), plekNaam(r.naar)]).then(function (a) {
+        r.vanN = a[0] || r.vanN || '—'; r.naarN = a[1] || r.naarN || '—';
+        try { localStorage.setItem(RITKEY, JSON.stringify(ritten)); } catch (e) {}
+      });
+    }
+    window.ritAdressen = ritAdressen;
+    var staatWeek = null;
+    function staatToon() {
+      var el = $('weekStaat'); while (el.firstChild) el.removeChild(el.firstChild);
+      var w = staatWeek, ma = new Date(Date.UTC(2024, 0, 1) + w * 7 * 864e5), zo = new Date(ma.getTime() + 6 * 864e5);
+      var kop = document.createElement('div'); kop.style.display = 'flex'; kop.style.alignItems = 'center'; kop.style.gap = '8px'; kop.style.margin = '8px 0';
+      var vorige = document.createElement('button'); vorige.type = 'button'; vorige.className = 'btn'; vorige.textContent = '◀';
+      var volgende = document.createElement('button'); volgende.type = 'button'; volgende.className = 'btn'; volgende.textContent = '▶'; volgende.disabled = w >= weekIdx();
+      var tt = document.createElement('b'); tt.style.flex = '1'; tt.style.textAlign = 'center'; tt.textContent = 'Week ' + ma.getUTCDate() + ' ' + MAANDEN[ma.getUTCMonth()] + ' – ' + zo.getUTCDate() + ' ' + MAANDEN[zo.getUTCMonth()];
+      vorige.addEventListener('click', function () { staatWeek--; staatToon(); }); volgende.addEventListener('click', function () { staatWeek++; staatToon(); });
+      kop.appendChild(vorige); kop.appendChild(tt); kop.appendChild(volgende); el.appendChild(kop);
+      var lijst = ritten.filter(function (r) { return weekIdx(new Date(r.t0)) === w; }).sort(function (a, b) { return a.t0 - b.t0; });
+      if (!lijst.length) { var p0 = document.createElement('p'); p0.className = 'foot'; p0.textContent = 'Geen ritten in deze week.'; el.appendChild(p0); return; }
+      var ol = document.createElement('ul'); ol.className = 'v77lijst'; var km = 0, min = 0, mist = [];
+      lijst.forEach(function (r) {
+        km += r.km; min += r.min;
+        if (!r.van && ritPts[r.t0] && ritPts[r.t0].p.length >= 4) { var pp = ritPts[r.t0].p; r.van = [pp[0], pp[1]]; r.naar = [pp[pp.length - 2], pp[pp.length - 1]]; }
+        if ((r.van || r.naar) && !(r.vanN && r.naarN)) mist.push(r);
+        var li = document.createElement('li'), sp = document.createElement('span'); sp.style.whiteSpace = 'pre-line';
+        sp.textContent = DAGEN[new Date(r.t0).getDay()] + ' ' + dagStr(r.t0) + ' · ' + tijdStr(r.t0) + '–' + tijdStr(r.t1 || r.t0 + r.min * 60e3) + ' · ' + String(r.km).replace('.', ',') + ' km\n'
+          + '🟢 ' + (r.vanN || (r.van ? '…' : 'onbekend')) + '\n🏁 ' + (r.naarN || (r.naar ? '…' : 'onbekend'));
+        li.appendChild(sp); ol.appendChild(li);
+      });
+      el.appendChild(ol);
+      var tot = document.createElement('p'); tot.style.margin = '8px 0'; tot.innerHTML = '<b>Totaal:</b> ' + lijst.length + ' ritten · ' + String(Math.round(km * 10) / 10).replace('.', ',') + ' km · ' + Math.floor(min / 60) + ' u ' + (min % 60) + ' min'; el.appendChild(tot);
+      var ex = document.createElement('button'); ex.type = 'button'; ex.className = 'btn'; ex.textContent = '📤 Weekstaat delen of opslaan (CSV, voor Excel)';
+      ex.addEventListener('click', function () {
+        var rijen = [['Datum', 'Vertrek', 'Aankomst', 'Van', 'Naar', 'Km', 'Minuten']];
+        lijst.forEach(function (r) { var d = new Date(r.t0); rijen.push([d.getDate() + '-' + (d.getMonth() + 1) + '-' + d.getFullYear(), tijdStr(r.t0), tijdStr(r.t1 || r.t0 + r.min * 60e3), r.vanN || '', r.naarN || '', String(r.km).replace('.', ','), r.min]); });
+        var csv = '﻿' + rijen.map(function (x) { return x.map(function (v) { v = String(v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(';'); }).join('\r\n');
+        var naam = 'Buddy-weekstaat-' + ma.getUTCFullYear() + '-' + (ma.getUTCMonth() + 1) + '-' + ma.getUTCDate() + '.csv';
+        var f = null; try { f = new File([csv], naam, { type: 'text/csv' }); } catch (e) {}
+        if (f && navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], title: 'Weekstaat' }).catch(function () {});
+        else { var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = naam; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }
+      });
+      el.appendChild(ex);
+      var nb = document.createElement('p'); nb.className = 'foot'; nb.textContent = 'Alleen op deze telefoon bewaard, niet gedeeld met de groep. Adressen via PDOK (Kadaster).'; el.appendChild(nb);
+      if (mist.length) { var k = 0; (function volgende() { if (k >= mist.length) { staatToon(); return; } ritAdressen(mist[k++]).then(function () { setTimeout(volgende, 250); }); })(); }
+    }
+    $('staatKnop').addEventListener('click', function () { var el = $('weekStaat'); if (!el.hidden) { el.hidden = true; return; } staatWeek = weekIdx(); el.hidden = false; staatToon(); });
 
     /* --- Maandoverzicht --- */
     $('maandKnop').addEventListener('click', function () {
