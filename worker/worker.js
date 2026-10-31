@@ -586,6 +586,11 @@ async function groep(url, env, g, json) {
   // Soepelste rijder van de week (0-100, gemeten met de bewegingssensor)
   const zw = getal(q('zw'), 1e5), zv = getal(q('zv'), 100);
   if (zw && zv) lid.zacht = { w: zw, v: zv }; else if (oud && oud.zacht) lid.zacht = oud.zacht;
+  // v74: datum (dagen sinds 1970) van de 0-100 en 0-80 records, en de hoogste G-kracht (x100) met datum
+  for (const k of ['nd', 'td', 'gm', 'gd']) {
+    const w = getal(q(k), 1e7), max = k === 'gm' ? 150 : 1e7;
+    if (w > 0 && w <= max) lid[k] = w; else if (oud && oud[k]) lid[k] = oud[k];
+  }
   const ww = getal(q('ww'), 1e5), wv = getal(q('wv'), 1e6);
   if (ww) {
     lid.week = { w: ww, v: wv };
