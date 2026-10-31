@@ -49,8 +49,9 @@ voor -= cyl(LIP + 0.01, ZICHT_D / 2 + 1.2, ZICHT_D / 2).translate([0, 0, -0.005]
 # afgeronde voorrand (afschuining buitenkant)
 voor -= (cyl(1.6, BUIT_D / 2 + 1, BUIT_D / 2 + 1) - cyl(1.6, BUIT_D / 2 - 1.2, BUIT_D / 2 + .4)).translate([0, 0, -0.001])
 z_usb = LIP + PCB_ACHTER + 1.6
-voor -= radiaal_gat(0, z_usb, 12.6, 7.2)          # USB-C rechts (past ook voor een dikke stekker)
-voor -= radiaal_gat(180, LIP + PCB_ACHTER + 1.3, 13.0, 3.2)  # micro-SD links
+# v2: USB-C zat ~2 mm te laag -> open sleuf tot de achterrand (z 7,6 .. 14,8), past ook voor een dikke stekker
+voor -= box(14, 12.8, L1 - 7.6 + 0.02).translate([BUIT_D / 2, 0, 7.6 + (L1 - 7.6) / 2 + 0.01])
+voor -= radiaal_gat(180, LIP + PCB_ACHTER - 0.4, 13.0, 4.0)  # micro-SD links (v2: 1,7 mm lager en iets hoger gat)
 for h in (146, 214):                               # PWR (boven) en BOOT (onder) links: gaatje voor een pen/paperclip
     voor -= rond_gat(h, LIP + PCB_ACHTER + 1.6, 3.6)
 
@@ -71,6 +72,8 @@ achter += (plank ^ cyl(L_ACHT, BUIT_D / 2 - 0.01).translate([0, 0, Z0 + L_PLUG])
 for (x, y) in MOUNTS:
     achter += cyl(PLAAT, 3.2).translate([x, y, Z0])            # oogje rond het busje
     achter -= cyl(PLAAT + 2, 1.15).translate([x, y, Z0 - 1])   # M2 doorgaand
+# v2: inkeping in de plug + 1,2 mm in de wand voor de USB-C-stekker
+achter -= box(10, 12.8, L_PLUG + 1.2).translate([BUIT_D / 2 - 2, 0, Z0 + (L_PLUG + 1.2) / 2 - 0.01])
 # doorvoeren in de tussenplaat: header onder, SPK/BAT-stekkertjes boven, GPS-kabeltje + midden
 achter -= box(26, 7.5, 10).translate([-0.5, -18.6, Z0])
 for xs in (-7.4, 7.4):
