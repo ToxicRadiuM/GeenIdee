@@ -21,7 +21,10 @@
 #include <HTTPClient.h>
 #include <HTTPUpdate.h>
 #include <time.h>
-static const int FW_VERSIE = 25;   // ophogen bij elke nieuwe versie (de update via wifi kijkt hiernaar)
+#include <esp_sleep.h>
+#include <driver/rtc_io.h>
+static const int FW_VERSIE = 26;
+static volatile int otaPct = -1;   // voortgang van een update via wifi (-1 = geen)   // ophogen bij elke nieuwe versie (de update via wifi kijkt hiernaar)
 #define FW_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/firmware/"
 #define DATA_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/snelheden/"
 struct JP { const char *p, *e; };   // mini-JSON-lezer (staat bovenaan i.v.m. de automatische prototypes van Arduino)
@@ -1105,14 +1108,15 @@ static bool qmiInit() {
   Wire.beginTransmission(0x6B); Wire.write(0x00); if (Wire.endTransmission(false) != 0) return false;
   if (Wire.requestFrom((int)0x6B, 1) != 1) return false;
   uint8_t who = Wire.read(); if (who != 0x05) { Serial.printf("Buddy gyro: onbekend WHO_AM_I 0x%02X\n", who); return false; }
-  qmiW(0x02, 0x60);   // CTRL1: registers automatisch ophogen, little endian
+  qmiW(0x60, 0xB0); delay(30);   // v26: zachte reset (ook om de 'wakker bij beweging'-stand van de slaap te wissen)
+  qmiW(0x02, 0x40);   // CTRL1: registers automatisch ophogen (v26: was 0x60 = big endian, daardoor klopte het meehangen niet)
   qmiW(0x03, 0x15);   // CTRL2: versnelling +-4 G, ~250 Hz
   qmiW(0x08, 0x01);   // CTRL7: versnellingsmeter aan
   delay(20); return true;
 }
 static float gX = 0, gY = 0, gZ = 1, leanX = 0, pushZ = 0, hop = 0; static bool gInit = false;
 static constexpr float LEAN_RICHTING = 1.0f;  // hangt hij de verkeerde kant op? Zet dit op -1.0f
-static uint32_t schrikTot = 0;
+static uint32_t schrikTot = 0; static volatile uint32_t laatsteBeweging = 0, laatsteDeur = 0;
 static void imuStep(float dt) {
   if (!imuReady || !i2cLock(2)) return;
   float ax, ay, az; uint8_t d[6]; bool ok = false;
@@ -1129,6 +1133,10 @@ static void imuStep(float dt) {
   if (fabsf(dy) > .45f && hop < .3f) { hop = 1; }   // drempel of gat
   hop = fmaxf(0, hop - dt * 3.2f);
   if (fabsf(pushZ) > .45f && millis() > schrikTot) schrikTot = millis() + 1400;  // hard remmen / optrekken
+  // v26: schokjes voor in- en uitstappen
+  float schok = sqrtf(dx * dx + dy * dy + dz * dz);
+  if (schok > .035f) laatsteBeweging = millis();
+  if (schok > .22f) laatsteDeur = millis();
 }
 
 // ===================== v19: rond menu (lang drukken) =====================
@@ -1417,10 +1425,45 @@ static void lokaleTijd(int &hh, int &mm) {
   hh = min / 60; mm = min % 60;
 }
 static uint32_t laatsteActie = 0; static bool slaapt = false; static uint8_t huidigLicht = 0;
+// v26: echt uit (diepe slaap) en weer aan als de auto beweegt (instappen, deur, rijden).
+// De bewegingssensor blijft wakker en maakt het bordje wakker via zijn INT2-pin (GPIO21).
+static void qmiWakkerBijBeweging() {
+  if (!i2cLock(200)) return;
+  qmiW(0x60, 0xB0); delay(30);
+  qmiW(0x02, 0x40);                 // CTRL1: auto-increment
+  qmiW(0x08, 0x00);                 // CTRL7: sensoren uit tijdens instellen
+  qmiW(0x03, (0x02 << 4) | 12);     // CTRL2: +-8 G, laag-vermogen 128 Hz
+  qmiW(0x0B, 80);                   // CAL1_L: drempel 80 mg
+  qmiW(0x0C, (0x03 << 6) | 0x20);   // CAL1_H: INT2, beginwaarde 1 (hoog), even negeren na start
+  qmiW(0x0A, 0x08);                 // CTRL9: WoM-instelling schrijven
+  for (int i = 0; i < 100; i++) { Wire.beginTransmission(0x6B); Wire.write(0x2D); Wire.endTransmission(false); if (Wire.requestFrom((int)0x6B, 1) == 1 && (Wire.read() & 0x80)) break; delay(2); }
+  qmiW(0x0A, 0x00);                 // bevestigen
+  delay(5);
+  qmiW(0x08, 0x01);                 // versnellingsmeter aan
+  qmiW(0x02, 0x40 | 0x10);          // INT2 aan
+  i2cUnlock();
+}
+static void diepSlapen(const char *reden) {
+  logRegel("uit (diepe slaap): %s. Wakker bij beweging.", reden);
+  delay(50);
+  xSemaphoreTake(flushIdle, pdMS_TO_TICKS(1000));   // wachten tot het scherm klaar is met versturen
+  gfx->displayOff();
+  digitalWrite(PA, LOW);                            // versterker uit
+  if (imuReady) qmiWakkerBijBeweging();
+  delay(300);
+  rtc_gpio_pullup_en(GPIO_NUM_21);
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_21, 0);
+  esp_deep_sleep_start();
+}
 static void slaapStap() {
   bool ok; float v = spdNow(&ok); uint32_t nu = millis();
   if (v > 3 || fabsf(pushZ) > .12f || hop > .5f || !laatsteActie) laatsteActie = nu;
-  bool moetSlapen = nu - laatsteActie > 10UL * 60000 && !menuOpen;   // 10 minuten niks = slapen
+  // v26: deur dicht en daarna stil (en je telefoon niet meer verbonden) = je bent uitgestapt -> uit
+  bool geparkeerd = !ok || v < 1;
+  if (geparkeerd && laatsteDeur && nu - laatsteDeur > 60000 && nu - laatsteDeur < 120000 && nu - laatsteBeweging > 45000
+      && nu - laatsteActie > 45000 && !bleConnected && !menuOpen && otaPct < 0) diepSlapen("deur dicht en daarna stil");
+  if (geparkeerd && nu - laatsteActie > 10UL * 60000 && nu - laatsteBeweging > 60000 && !menuOpen && otaPct < 0) diepSlapen("10 minuten niets");
+  bool moetSlapen = nu - laatsteActie > 3UL * 60000 && !menuOpen;   // 3 minuten niks = dommelen (scherm zacht)
   if (moetSlapen != slaapt) { slaapt = moetSlapen; if (!slaapt) { mood = STARTLED; lastMood = -1; idleMoodUntilMs = nu + 1500; } }
   int hh = 12, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
   bool nacht = hh >= 21 || hh < 7;
@@ -1438,7 +1481,6 @@ static volatile int wegLimiet = 0; static volatile uint32_t wegLimT = 0;
 struct Traject { float la1, lo1, la2, lo2; int16_t lim; };
 static Traject *trajecten = nullptr; static int trajN = 0;
 static volatile bool trajActief = false; static volatile float trajGem = 0; static volatile int trajLim = 0;
-static volatile int otaPct = -1;
 
 static void jWs(JP &j) { while (j.p < j.e && (*j.p == ' ' || *j.p == '\n' || *j.p == '\r' || *j.p == '\t')) j.p++; }
 static bool jIs(JP &j, char c) { jWs(j); if (j.p < j.e && *j.p == c) { j.p++; return true; } return false; }
@@ -1900,7 +1942,7 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v25 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v26 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -1954,10 +1996,12 @@ void setup(){
  bleStart();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
  logStart();
+ bool wakkerDoorBeweging = esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0;
  buddyPrefs.getString("ssid", wifiNaam, sizeof wifiNaam); buddyPrefs.getString("pass", wifiPass, sizeof wifiPass);
  xTaskCreatePinnedToCore(netTaak, "BuddyNet", 12288, nullptr, 1, nullptr, 0);
  logRegel("===== OPSTART v%d | reden: %s | heap %u =====", FW_VERSIE, resetReden(), (unsigned)ESP.getFreeHeap());
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v25: wifi, eigen limieten, trajecten, updates | logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ if (wakkerDoorBeweging) { logRegel("wakker geworden door beweging (instappen?)"); startGag(22); gagMsg = "Hoi! Daar ben je!"; nextGagT = 20; }
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v26: uit/aan met de auto | wifi, eigen limieten, trajecten, updates | logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
@@ -1982,7 +2026,7 @@ void loop(){
  }
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v25 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v26 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -2011,7 +2055,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v25 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v26 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){
