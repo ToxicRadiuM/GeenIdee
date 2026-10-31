@@ -26,7 +26,9 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 39;
+static const int FW_VERSIE = 40;
+// v40: ouderwetse snelheidsmeter bij flink optrekken
+static uint32_t meterTot = 0, meterStart = 0; static float naald = 0, naaldV = 0;
 // v39: te-hard-waarschuwing, thuis-tijd, collega in de buurt, wisselbeker
 static volatile int setWarn = -1; static bool waarschuwAan = true; static int hudLimiet = 0, hudSnelheid = -1;
 static volatile bool buurNieuw = false; static char buurTxt[40] = ""; static bool bekerGetoond = false;
@@ -1924,6 +1926,29 @@ static void netTaak(void *) {
   }
 }
 
+// v40: retro snelheidsmeter (crème wijzerplaat, chromen rand, rode naald die doorschiet en natrilt)
+static inline float meterHoek(float v) { return (225.f - fminf(fmaxf(v, 0.f), 200.f) / 200.f * 270.f) * (float)M_PI / 180.f; }
+static void drawMeter() {
+  const float cx = 120, cy = 122;
+  boxAdd(0, 0, 240, 240);
+  circle(120, 120, 119, 0x6B4D); circle(120, 120, 116, 0xC618); circle(120, 120, 112, 0x8C51);
+  circle(120, 120, 109, 0xFF9A);                                   // crème wijzerplaat
+  for (int v = 160; v < 200; v += 2) { float a0 = meterHoek(v), a1 = meterHoek(v + 2.4f);   // rode zone
+    dikLijn(cx + cosf(a0) * 99, cy - sinf(a0) * 99, cx + cosf(a1) * 99, cy - sinf(a1) * 99, 6, 0xD800); }
+  for (int v = 0; v <= 200; v += 10) { float a = meterHoek(v), c = cosf(a), sn = sinf(a); bool groot = v % 20 == 0;
+    dikLijn(cx + c * (groot ? 88 : 94), cy - sn * (groot ? 88 : 94), cx + c * 103, cy - sn * 103, groot ? 3.2f : 1.6f, 0x0000);
+    if (groot) { char t[4]; snprintf(t, sizeof t, "%d", v); frame->setTextColor(v >= 160 ? 0xB000 : 0x0000); frame->setTextSize(2);
+      frame->setCursor(X(cx + c * 74) - (int)strlen(t) * 6, Y(cy - sn * 74) - 7); frame->print(t); } }
+  frame->setTextColor(0xB000); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(84)); frame->print("BUDDY");
+  frame->setTextColor(0x4208); frame->setTextSize(2); frame->setCursor(X(120) - 24, Y(150)); frame->print("km/h");
+  roundRect(88, 170, 64, 18, 3, 0x0000); roundRect(90, 172, 60, 14, 2, 0x2104);   // kilometerteller
+  char od[10]; snprintf(od, sizeof od, "%06d", (int)totKm % 1000000);
+  frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 36, Y(179) - 7); frame->print(od);
+  float a = meterHoek(naald), c = cosf(a), sn = sinf(a);
+  dikLijn(cx + 2, cy + 2, cx + c * 98 + 2, cy - sn * 98 + 2, 3.2f, 0xBDD7);       // schaduwtje
+  dikLijn(cx - c * 16, cy + sn * 16, cx + c * 98, cy - sn * 98, 3.4f, 0xE000);     // rode naald
+  circle(cx, cy, 10, 0x0000); circle(cx, cy, 5, 0xC618);                          // naaf
+}
 void drawFace(){
  // v15: alleen wissen wat er vorige keer getekend is, in plaats van het hele scherm
  Box &oud = drawnBox[frameIdx];
@@ -1934,6 +1959,7 @@ void drawFace(){
  // Black screen background already provides the same circular-screen appearance.
  if (menuOpen) { drawMenu(); return; }
  if (venster) { drawVenster(); return; }   // v30: venster ligt over alles heen
+ if ((int32_t)(meterTot - millis()) > 0) { drawMeter(); return; }   // v40: retro meter bij flink optrekken
  float ox=gx*9 + fmaxf(-16.f, fminf(16.f, -leanX * 40.f * LEAN_RICHTING)), oy=gy*7 + headBob - hop * 10.f + fmaxf(-6.f, fminf(6.f, pushZ * 14.f));
  ox += fdx; oy += fdy; faceOx = ox; faceOy = oy;
  if(mood==LOVE){float pulse=1+sinf(t*7)*.08f;heart(73+ox,114+oy,29*pulse,HEART);heart(167+ox,114+oy,29*pulse,HEART);}
@@ -2467,6 +2493,16 @@ void loop(){
      if (!hardSinds) hardSinds = nu;
      if (nu - hardSinds > 4000 && (!hardT || nu - hardT > 60000)) { hardT = nu; startGag(39); playMoodSound(ALERT); logRegel("te hard: %d bij %d", hudSnelheid, hudLimiet); }
    } else hardSinds = 0;
+   { // v40: flink optrekken (>= 12 km/u erbij in 1,5 s) -> ouderwetse snelheidsmeter
+     static uint32_t vT = 0; static float vH[4] = {0, 0, 0, 0}; float vn = spdNow();
+     if (nu - vT >= 500) { vT = nu; vH[0] = vH[1]; vH[1] = vH[2]; vH[2] = vH[3]; vH[3] = vn; }
+     if (vn > 8 && vH[3] - vH[0] >= 12 && !menuOpen && !venster) {
+       if ((int32_t)(meterTot - nu) <= 0) { meterStart = nu; naald = 0; naaldV = 0; logRegel("retro meter: optrekken %.0f -> %.0f", vH[0], vH[3]); }
+       meterTot = nu + 2500; if (meterTot < meterStart + 6000) meterTot = meterStart + 6000;
+     }
+     float doel = vn; naaldV += ((doel - naald) * 55.f - naaldV * 6.5f) * dt; naald += naaldV * dt;   // veer + demper: schiet door en trilt na
+     if (naald < 0) { naald = 0; naaldV = 0; }
+   }
    if (buurNieuw) { buurNieuw = false; startGag(22); gagMood = EXCITED; gagMsg = buurTxt; playMoodSound(EXCITED); }
    if (phoneFresh() && phone.beker && !bekerGetoond && gagAct < 0 && !menuOpen && !venster) { bekerGetoond = true; startGag(38); playMoodSound(EXCITED); }
  }
