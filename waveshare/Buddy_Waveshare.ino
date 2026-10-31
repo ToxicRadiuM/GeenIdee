@@ -796,6 +796,8 @@ static void launchFix(uint32_t ms, float v) {
   }
   vPrev = v; tPrev = ms;
 }
+static volatile uint32_t nmeaOk = 0, nmeaBad = 0; static char lastRmc[72] = "";
+static volatile int gpsHH = -1, gpsMM = 0, gpsInZicht = 0; static volatile uint32_t gpsTijdMs = 0; static int inZicht[5] = {0};
 // Parse NMEA coordinate (ddmm.mmmm / dddmm.mmmm) to decimal degrees.
 float nmeaCoord(const char* v, const char* hemi) {
   if (!v || !*v) return 0; float raw=atof(v); int deg=(int)(raw/100.0f); float out=deg+(raw-deg*100)/60.0f;
@@ -805,13 +807,22 @@ void parseNmeaLine(char* line) {
   if (!line || line[0]!='$') return;
   // v15: checksum controleren, anders kan een half gelezen regel een rare snelheid of plek geven
   char *ster = strrchr(line, '*');
-  if (ster && strlen(ster) >= 3) { uint8_t cs = 0; for (char *q = line + 1; q < ster; ++q) cs ^= (uint8_t)*q; if (cs != (uint8_t)strtol(ster + 1, nullptr, 16)) return; *ster = 0; } char *f[20]={0}; int n=0; f[n++]=line;
+  if (ster && strlen(ster) >= 3) { uint8_t cs = 0; for (char *q = line + 1; q < ster; ++q) cs ^= (uint8_t)*q; if (cs != (uint8_t)strtol(ster + 1, nullptr, 16)) { nmeaBad++; return; } *ster = 0; }
+  nmeaOk++; if (strstr(line, "RMC")) { strncpy(lastRmc, line, sizeof lastRmc - 1); lastRmc[sizeof lastRmc - 1] = 0; }
+  char *f[20]={0}; int n=0; f[n++]=line;
   for(char *p=line; *p && n<20; ++p) if(*p==','){*p=0;f[n++]=p+1;}
   if (strstr(f[0],"RMC") && n>7 && f[2][0]=='A') {
     float lat=nmeaCoord(f[3],f[4]), lon=nmeaCoord(f[5],f[6]);
     float knots=atof(f[7]); gpsLat=lat; gpsLon=lon; gpsSpeedKmh=knots*1.852f; gpsFix=true; gpsLastFixMs=millis(); gpsNewFix=true;
     if (n>9 && strlen(f[9])==6) { memcpy(gpsDate, f[9], 6); gpsDate[6]=0; }
+    if (strlen(f[1]) >= 6) { gpsHH = (f[1][0]-'0')*10 + (f[1][1]-'0'); gpsMM = (f[1][2]-'0')*10 + (f[1][3]-'0'); gpsTijdMs = millis(); }
     launchFix(millis(), gpsSpeedKmh);
+  } else if (strstr(f[0], "RMC") && n > 1 && strlen(f[1]) >= 6) {   // ook zonder fix weet hij al hoe laat het is
+    gpsHH = (f[1][0]-'0')*10 + (f[1][1]-'0'); gpsMM = (f[1][2]-'0')*10 + (f[1][3]-'0'); gpsTijdMs = millis();
+    if (n>9 && strlen(f[9])==6) { memcpy(gpsDate, f[9], 6); gpsDate[6]=0; }
+  } else if (strstr(f[0], "GSV") && n > 3) {   // satellieten in zicht (per systeem: GPS, Galileo, BeiDou, Glonass)
+    int k = f[0][2] == 'P' ? 0 : f[0][2] == 'A' ? 1 : f[0][2] == 'B' ? 2 : f[0][2] == 'L' ? 3 : 4; if (k < 5) inZicht[k] = atoi(f[3]);
+    gpsInZicht = inZicht[0] + inZicht[1] + inZicht[2] + inZicht[3] + inZicht[4];
   } else if(strstr(f[0],"GGA") && n>8) {
     int q=atoi(f[6]); gpsSatellites=atoi(f[7]); if(q>0 && f[2][0]) {gpsLat=nmeaCoord(f[2],f[3]);gpsLon=nmeaCoord(f[4],f[5]);gpsFix=true;gpsLastFixMs=millis();} else if(q==0) gpsFix=false;
   }
@@ -939,6 +950,7 @@ void gpsTask(void*) {
         (unsigned long)gpsI2cOk, (unsigned long)gpsI2cFail, (int)gpsI2cStap, (int)gpsI2cN, (unsigned long)GPS_UART_BAUD, gpsFix ? "JA" : "NEE", (int)gpsSatellites,
         (float)gpsSpeedKmh, (float)gpsLat, (float)gpsLon,
         (unsigned long)gpsNmeaBytes, (int)gpsNearestCameraM);
+      Serial.printf("   NMEA goed=%lu fout=%lu | satellieten in zicht=%d | laatste RMC: %s\n", (unsigned long)nmeaOk, (unsigned long)nmeaBad, (int)gpsInZicht, lastRmc);
     }
     vTaskDelay(pdMS_TO_TICKS(20));
   }
@@ -1276,6 +1288,63 @@ static void drawRitKlaar() {
   frame->setTextColor(GOLD); frame->setCursor(X(120) - strlen(r2) * 6, Y(74)); frame->print(r2);
 }
 
+// ===================== v22: grote cijfers, klok, slapen en nachtstand =====================
+static void dikLijn(float x1, float y1, float x2, float y2, float w, uint16_t c) {
+  boxAdd(fminf(x1, x2) - w, fminf(y1, y2) - w, fmaxf(x1, x2) + w, fmaxf(y1, y2) + w);
+  float dx = x2 - x1, dy = y2 - y1, l = sqrtf(dx * dx + dy * dy); if (l < .01f) l = .01f;
+  float nx = -dy / l * w / 2, ny = dx / l * w / 2;
+  frame->fillTriangle(X(x1 + nx), Y(y1 + ny), X(x2 + nx), Y(y2 + ny), X(x2 - nx), Y(y2 - ny), c);
+  frame->fillTriangle(X(x1 + nx), Y(y1 + ny), X(x2 - nx), Y(y2 - ny), X(x1 - nx), Y(y1 - ny), c);
+  frame->fillCircle(X(x1), Y(y1), S(w / 2), c); frame->fillCircle(X(x2), Y(y2), S(w / 2), c);
+}
+// segmenten: a=boven b=rechtsboven c=rechtsonder d=onder e=linksonder f=linksboven g=midden
+static const uint8_t SEG[10] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
+static float segBreed(char ch, float h) { return ch == ':' ? h * .22f : h * .56f; }
+static void segCijfer(char ch, float x, float y, float h, uint16_t c) {   // x,y = linksboven
+  float w = h * .56f, th = h * .15f, m = th * .5f;
+  if (ch == ':') { circle(x + h * .11f, y + h * .3f, th * .55f, c); circle(x + h * .11f, y + h * .72f, th * .55f, c); return; }
+  uint8_t s = ch == '-' ? 0x40 : (ch >= '0' && ch <= '9' ? SEG[ch - '0'] : 0x40);
+  float L = x + m, R = x + w - m, T = y + m, M = y + h / 2, B = y + h - m;
+  if (s & 0x01) dikLijn(L, T, R, T, th, c);
+  if (s & 0x02) dikLijn(R, T, R, M, th, c);
+  if (s & 0x04) dikLijn(R, M, R, B, th, c);
+  if (s & 0x08) dikLijn(L, B, R, B, th, c);
+  if (s & 0x10) dikLijn(L, M, L, B, th, c);
+  if (s & 0x20) dikLijn(L, T, L, M, th, c);
+  if (s & 0x40) dikLijn(L, M, R, M, th, c);
+}
+static void segTekst(const char *t, float cx, float cy, float h, uint16_t c) {   // gecentreerd op cx,cy
+  float gap = h * .16f, tot = 0; int n = strlen(t);
+  for (int i = 0; i < n; i++) tot += segBreed(t[i], h) + (i ? gap : 0);
+  float x = cx - tot / 2, y = cy - h / 2;
+  for (int i = 0; i < n; i++) { segCijfer(t[i], x, y, h, c); x += segBreed(t[i], h) + gap; }
+}
+// Nederlandse tijd uit de GPS (UTC + 1, of + 2 in de zomertijd)
+static bool klokOk() { return gpsHH >= 0 && millis() - gpsTijdMs < 120000; }
+static int dagVanWeek(int d, int m, int y) { static const int tt[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4}; if (m < 3) y--; return (y + y / 4 - y / 100 + y / 400 + tt[m - 1] + d) % 7; }
+static void lokaleTijd(int &hh, int &mm) {
+  auto twee = [](int i) { return (gpsDate[i] >= '0' && gpsDate[i + 1] >= '0') ? (gpsDate[i] - '0') * 10 + (gpsDate[i + 1] - '0') : 1; };
+  int d = twee(0), mo = twee(2), y = 2000 + twee(4);
+  uint32_t extra = (millis() - gpsTijdMs) / 60000;
+  int min = gpsHH * 60 + gpsMM + (int)extra;
+  bool zomer = false;
+  if (mo > 3 && mo < 10) zomer = true;
+  else if (mo == 3 || mo == 10) { int laatsteZo = 31 - dagVanWeek(31, mo, y); bool na = d > laatsteZo || (d == laatsteZo && gpsHH >= 1); zomer = (mo == 3) ? na : !na; }
+  min += zomer ? 120 : 60; min %= 1440;
+  hh = min / 60; mm = min % 60;
+}
+static uint32_t laatsteActie = 0; static bool slaapt = false; static uint8_t huidigLicht = 0;
+static void slaapStap() {
+  bool ok; float v = spdNow(&ok); uint32_t nu = millis();
+  if (v > 3 || fabsf(pushZ) > .12f || hop > .5f || !laatsteActie) laatsteActie = nu;
+  bool moetSlapen = nu - laatsteActie > 10UL * 60000 && !menuOpen;   // 10 minuten niks = slapen
+  if (moetSlapen != slaapt) { slaapt = moetSlapen; if (!slaapt) { mood = STARTLED; lastMood = -1; idleMoodUntilMs = nu + 1500; } }
+  int hh = 12, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
+  bool nacht = hh >= 21 || hh < 7;
+  uint8_t doel = slaapt ? 12 : (nacht ? (uint8_t)(helderheid * .45f) : helderheid);
+  if (doel != huidigLicht) { huidigLicht = doel; gfx->setBrightness(doel); }
+}
+
 void drawFace(){
  // v15: alleen wissen wat er vorige keer getekend is, in plaats van het hele scherm
  Box &oud = drawnBox[frameIdx];
@@ -1308,7 +1377,12 @@ void drawFace(){
  int ownSpeed = fixNow ? (int)lroundf(gpsSpeedKmh) : (tel ? phone.v : -1);
  int limit = (tel && phone.lim > 0) ? phone.lim : ((gpsNearestCameraM >= 0 && gpsNearestCameraM <= 600) ? gpsCameraLimit : 0);
  // v19: file en tekst van de telefoon bovenin, werk-driehoekje naast het bord
- if (tel && phone.fileD >= 0) {
+ int camM = (tel && phone.camD >= 0) ? phone.camD : gpsNearestCameraM;
+ if (camM >= 0 && camM < 1000) {
+   char ct[24]; snprintf(ct, sizeof ct, "FLITSER %dm", (camM / 10) * 10);
+   boxAdd(40, 26, 200, 50); roundRect(44, 28, 152, 20, 10, 0x8000);
+   frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - strlen(ct) * 6, Y(32)); frame->print(ct);
+ } else if (tel && phone.fileD >= 0) {
    char ft[32]; if (phone.fileD < 950) snprintf(ft, sizeof ft, "FILE %dm", (phone.fileD / 50) * 50); else snprintf(ft, sizeof ft, "FILE %d,%dkm", phone.fileD / 1000, (phone.fileD % 1000) / 100);
    if (phone.fileMin > 0) { size_t l = strlen(ft); snprintf(ft + l, sizeof ft - l, " +%dm", phone.fileMin); }
    boxAdd(50, 26, 190, 50); roundRect(52, 28, 136, 20, 10, 0x3082);
@@ -1321,31 +1395,32 @@ void drawFace(){
    char tx[27]; strncpy(tx, phone.txt, 26); tx[26] = 0; int tw = strlen(tx) * 12;
    boxAdd(20, 30, 220, 46); frame->setTextColor(0xBDF7); frame->setTextSize(2); frame->setCursor(X(120) - tw / 2, Y(34)); frame->print(tx);
  }
- if (tel && phone.werk) {
-   boxAdd(46, 196, 66, 222);
-   frame->fillTriangle(X(56), Y(197), X(66), Y(216), X(46), Y(216), 0xD8A6);
-   frame->fillTriangle(X(56), Y(202), X(62), Y(213), X(50), Y(213), 0xFFFF);
-   circle(56, 207, 1.6f, 0x0000);
+ if (tel && phone.werk) {   // werk-driehoekje boven het snelheidsbord
+   boxAdd(64, 156, 90, 178);
+   frame->fillTriangle(X(77), Y(157), X(89), Y(177), X(65), Y(177), 0xD8A6);
+   frame->fillTriangle(X(77), Y(162), X(85), Y(174), X(69), Y(174), 0xFFFF);
+   circle(77, 169, 1.8f, 0x0000);
  }
- int sx=82, sy=210, sr=17;
- frame->fillCircle(X(sx),Y(sy),S(sr),0xFFFF);
- frame->drawCircle(X(sx),Y(sy),S(sr),0xD800);
- frame->drawCircle(X(sx),Y(sy),S(sr-2),0xD800);
- frame->setTextColor(0x0000); frame->setTextSize(2);
- char limTxt[6]; if(limit>0) snprintf(limTxt,sizeof(limTxt),"%d",limit); else snprintf(limTxt,sizeof(limTxt),"?");
- int tw=(int)strlen(limTxt)*12;
- frame->setCursor(X(sx)-S(tw/2)+S(1),Y(sy)-S(7)); frame->print(limTxt);
- frame->setTextColor(EYE); frame->setTextSize(3);
- char spdTxt[8]; if(ownSpeed>=0) snprintf(spdTxt,sizeof(spdTxt),"%d",ownSpeed); else snprintf(spdTxt,sizeof(spdTxt),"--");
- frame->setCursor(X(126),Y(199)); frame->print(spdTxt);
- frame->setTextSize(1); frame->setCursor(X(174),Y(213)); frame->print("km/u");
- // Kleine diagnose onder de rij-HUD: onderscheid tussen geen fix en geen I2C-data.
- frame->setTextColor(0x7BEF); frame->setCursor(X(82),Y(235));
- if(fixNow) { frame->print("GPS OK  "); frame->print((int)gpsSatellites); frame->print(" SAT"); }
- else if(gpsDataOk && millis()-gpsLastDataMs<6000) { frame->print("GPS WACHT OP FIX  "); frame->print((int)gpsSatellites); frame->print(" SAT"); }
- else frame->print("GPS GEEN DATA (I2C)");
- int camM = (tel && phone.camD >= 0) ? phone.camD : gpsNearestCameraM;
- if(camM>=0 && camM<1000){char camLabel[24];snprintf(camLabel,sizeof(camLabel),"FLITSER %dm",camM);frame->setTextColor(HEART);frame->setCursor(X(90),Y(183));frame->print(camLabel); }
+ // v22: grote, haarscherpe cijfers die precies in het midden staan (eigen 7-segment-cijfers)
+ bool rust = (ownSpeed <= 0) && klokOk() && (gagAct < 0);   // stilstaan: klok in plaats van 0
+ int sx = 76, sy = 200; float sr = 24;
+ boxAdd(sx - sr - 2, sy - sr - 2, sx + sr + 2, sy + sr + 2);
+ bool teHard = limit > 0 && ownSpeed > limit + 3;
+ uint16_t ring = (teHard && (millis() / 350) % 2) ? 0xF800 : 0xD800;
+ frame->fillCircle(X(sx), Y(sy), S(sr), ring);
+ frame->fillCircle(X(sx), Y(sy), S(sr - 4.2f), 0xFFFF);
+ char limTxt[6]; if (limit > 0) snprintf(limTxt, sizeof limTxt, "%d", limit); else snprintf(limTxt, sizeof limTxt, "-");
+ segTekst(limTxt, sx, sy, strlen(limTxt) >= 3 ? 12.5f : 17.f, 0x0000);
+ char spdTxt[8];
+ if (rust) { int hh, mm; lokaleTijd(hh, mm); snprintf(spdTxt, sizeof spdTxt, "%02d:%02d", hh, mm); segTekst(spdTxt, 152, 197, 22, EYE); }
+ else { if (ownSpeed >= 0) snprintf(spdTxt, sizeof spdTxt, "%d", ownSpeed); else snprintf(spdTxt, sizeof spdTxt, "--");
+   segTekst(spdTxt, 150, 196, 30, teHard ? 0xFB2C : EYE);
+   frame->setTextColor(0x8C71); frame->setTextSize(2); frame->setCursor(X(150) - 24, Y(216)); frame->print("km/u"); }
+ // kleine GPS-status helemaal onderin (alleen als er nog geen fix is)
+ if (!fixNow) {
+   char st[28]; if (gpsDataOk && millis() - gpsLastDataMs < 6000) snprintf(st, sizeof st, "GPS zoekt %d/%d", (int)gpsSatellites, (int)gpsInZicht); else snprintf(st, sizeof st, "GPS geen data");
+   frame->setTextColor(0x6B4D); frame->setTextSize(1); frame->setCursor(X(120) - strlen(st) * 3, Y(229)); frame->print(st);
+ }
 }
 // v15: alleen het veranderde vak naar het scherm sturen. De CO5300 wil even begin-/eindcoordinaten.
 void flushDirty(){
@@ -1377,6 +1452,7 @@ void flushTask(void *) {
     for (int16_t y = job.b.y0; y <= job.b.y1; y++) gfx->writePixels(job.fb + (int32_t)y * LCD_WIDTH + job.b.x0, w);
     gfx->endWrite();
     flushLastUs = micros() - t0;
+    vTaskDelay(1);   // v22: core 0 even vrijgeven (anders slaat de waakhond aan als Bluetooth ook bezig is)
     xSemaphoreGive(flushIdle);
   }
 }
@@ -1395,6 +1471,7 @@ void updateMood(float dt){
  // v19: als de telefoon verbonden is, neemt hij de stemming van de app over (die weet veel meer)
  if (phoneFresh() && phone.mood >= 0 && millis() > idleMoodUntilMs) mood = phone.mood;
  if (gagAct >= 0 && gagMood >= 0) mood = gagMood;
+ if (slaapt) mood = SLEEPING;
  if ((int32_t)(flagTot - millis()) > 0) mood = EXCITED;
  if ((int32_t)(ritKlaarTot - millis()) > 0) mood = HAPPY;
  if (phoneFresh() && phone.camD >= 0 && phone.camD < 350) mood = ALERT;
@@ -1533,7 +1610,7 @@ void handleTouch(){
  // CST9217 levert paneelcoördinaten; vertaal naar de 240x240 tekenruimte.
  float x=(float)touchX[0]*240.0f/(float)LCD_WIDTH;
  float y=(float)touchY[0]*240.0f/(float)LCD_HEIGHT;
- if (!down) { down = true; downMs = now; dX = x; dY = y; lang = false; }
+ if (!down) { down = true; downMs = now; dX = x; dY = y; lang = false; laatsteActie = now; if (slaapt) { slaapt = false; laatsteActie = now; } }
  lX = x; lY = y;
  // v19: lang drukken (0,7 s, zonder te slepen) opent of sluit het ronde menu
  if (!lang && now - downMs > 700 && fabsf(x - dX) < 12 && fabsf(y - dY) < 12) { lang = true; menuOpen = !menuOpen; menuTot = now + 10000; volumeUiUntil = 0; }
@@ -1559,7 +1636,7 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v21 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v22 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -1597,7 +1674,7 @@ void setup(){
  frames[1]->fillScreen(BG); frame->fillScreen(BG); frame->flush();
  frames[1]->setTextColor(EYE); frames[1]->setTextSize(1);
  flushQueue = xQueueCreate(1, sizeof(FlushJob)); flushIdle = xSemaphoreCreateBinary(); xSemaphoreGive(flushIdle);
- xTaskCreatePinnedToCore(flushTask, "BuddyFlush", 4096, nullptr, 2, nullptr, 0);
+ xTaskCreatePinnedToCore(flushTask, "BuddyFlush", 8192, nullptr, 1, nullptr, 0);
  Serial.printf("Buddy beeld klaar | framebuffer=16-bit PSRAM | QSPI=%ld Hz | PSRAM over: %u | heap over: %u\n", (long)QSPI_HZ, (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  frame->setTextColor(EYE); frame->setTextSize(1);
  audioReady = initBuddyAudio();
@@ -1612,13 +1689,13 @@ void setup(){
  buddyPrefs.getString("d80", dat80, sizeof dat80); buddyPrefs.getString("d100", dat100, sizeof dat100);
  bleStart();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v21: 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v22: grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v21 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v22 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -1629,7 +1706,7 @@ void loop(){
  }
  float dt=lastRenderUs ? fminf(0.10f,(uint32_t)(nowUs-lastRenderUs)/1000000.0f) : 1.0f/30.0f;
  lastRenderUs=nowUs; t+=dt;
- imuStep(dt); gagStep(dt); driveStep(dt);
+ imuStep(dt); gagStep(dt); driveStep(dt); slaapStap();
  if (menuOpen && (int32_t)(menuTot - millis()) < 0) menuOpen = false;
  updateMood(dt); updateParticles(dt);
  uint32_t drawStartUs=micros();
@@ -1647,7 +1724,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v21 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v22 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){
