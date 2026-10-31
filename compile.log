@@ -1,0 +1,10 @@
+/home/runner/work/GeenIdee/GeenIdee/bouw/Buddy_Waveshare/Buddy_Waveshare.ino: In function 'void addParticle(uint8_t)':
+/home/runner/work/GeenIdee/GeenIdee/bouw/Buddy_Waveshare/Buddy_Waveshare.ino:795:45: warning: narrowing conversion of '(120 + random(-75, 76))' from 'long int' to 'float' [-Wnarrowing]
+  795 |  for(auto &p:particles) if(p.life<=0){p={120+random(-75,76),82,(float)random(-12,13),(float)-random(20,42),0,kind==0?1.6f:kind==1?.9f:2.4f,(float)random(5,10),kind};return;}
+      |                                          ~~~^~~~~~~~~~~~~~~
+/home/runner/Arduino/libraries/GFX_Library_for_Arduino/src/databus/Arduino_ESP32LCD8.cpp: In member function 'virtual bool Arduino_ESP32LCD8::begin(int32_t, int8_t)':
+/home/runner/Arduino/libraries/GFX_Library_for_Arduino/src/databus/Arduino_ESP32LCD8.cpp:801:18: warning: narrowing conversion of '((Arduino_ESP32LCD8*)this)->Arduino_ESP32LCD8::<anonymous>.Arduino_DataBus::_speed' from 'int32_t' {aka 'long int'} to 'uint32_t' {aka 'long unsigned int'} [-Wnarrowing]
+  801 |       .pclk_hz = _speed,
+      |                  ^~~~~~
+Sketch uses 1949020 bytes (61%) of program storage space. Maximum is 3145728 bytes.
+Global variables use 74388 bytes (22%) of dynamic memory, leaving 253292 bytes for local variables. Maximum is 327680 bytes.
