@@ -827,7 +827,8 @@ static void gpsByte(int value) {
 
 // Officieel LC76G I2C-protocol (Waveshare 09_LC76G_I2C): vraag eerst hoeveel bytes klaarstaan, lees ze daarna.
 static uint8_t gpsI2cBuf[1024];
-static volatile uint8_t gpsI2cStap = 0;   // bij welke stap het misging (voor de Serial Monitor)
+static volatile uint8_t gpsI2cStap = 0;
+static volatile int gpsI2cN = 0;        // hoeveel bytes de GPS wel teruggaf bij de mislukte stap   // bij welke stap het misging (voor de Serial Monitor)
 static int lc76gReadI2C() {
   static const uint8_t vraagLen[8] = {0x08, 0x00, 0x51, 0xAA, 0x04, 0x00, 0x00, 0x00};
   uint8_t len4[4] = {0};
@@ -837,7 +838,14 @@ static int lc76gReadI2C() {
   vTaskDelay(pdMS_TO_TICKS(100));
   if (!i2cLock(40)) return -1;
   int n = Wire.requestFrom((int)0x54, 4); for (int i = 0; i < 4 && Wire.available(); i++) len4[i] = Wire.read();
-  i2cUnlock(); if (n != 4) { gpsI2cStap = 2; return -1; }
+  i2cUnlock();
+  if (n != 4) {  // v17: nog een keer proberen na een langere pauze (de GPS kan de klok even vasthouden)
+    vTaskDelay(pdMS_TO_TICKS(250));
+    if (!i2cLock(40)) return -1;
+    n = Wire.requestFrom((int)0x54, 4); for (int i = 0; i < 4 && Wire.available(); i++) len4[i] = Wire.read();
+    i2cUnlock();
+    if (n != 4) { gpsI2cStap = 2; gpsI2cN = n; return -1; }
+  }
   uint32_t len = len4[0] | (len4[1] << 8) | ((uint32_t)len4[2] << 16) | ((uint32_t)len4[3] << 24);
   if (len == 0) return 0;
   if (len > 20000) { gpsI2cStap = 3; return -1; }                              // onzin-antwoord
@@ -875,9 +883,9 @@ void gpsTask(void*) {
     if (millis() - gpsLastReportMs >= 3000) {
       gpsLastReportMs = millis();
       if (!gpsDataOk || millis() - gpsLastDataMs > 6000) strcpy(gpsLastStage, "GEEN DATA");
-      Serial.printf("GPS %s | i2c ok=%lu fout=%lu (stap %d) | baud=%lu | fix=%s | sats=%d | %.1f km/u | %.6f, %.6f | bytes=%lu | flitser=%d m\n",
+      Serial.printf("GPS %s | i2c ok=%lu fout=%lu (stap %d, n=%d) | baud=%lu | fix=%s | sats=%d | %.1f km/u | %.6f, %.6f | bytes=%lu | flitser=%d m\n",
         (gpsDataOk && millis() - gpsLastDataMs < 6000) ? gpsLastStage : "GEEN DATA",
-        (unsigned long)gpsI2cOk, (unsigned long)gpsI2cFail, (int)gpsI2cStap, (unsigned long)GPS_UART_BAUD, gpsFix ? "JA" : "NEE", (int)gpsSatellites,
+        (unsigned long)gpsI2cOk, (unsigned long)gpsI2cFail, (int)gpsI2cStap, (int)gpsI2cN, (unsigned long)GPS_UART_BAUD, gpsFix ? "JA" : "NEE", (int)gpsSatellites,
         (float)gpsSpeedKmh, (float)gpsLat, (float)gpsLon,
         (unsigned long)gpsNmeaBytes, (int)gpsNearestCameraM);
     }
@@ -1126,7 +1134,7 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v16 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v17 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -1136,7 +1144,17 @@ void setup(){
  Serial.print("I2C-scan:");
  for (uint8_t a = 1; a < 127; a++) { Wire.beginTransmission(a); if (Wire.endTransmission() == 0) Serial.printf(" 0x%02X", a); }
  Serial.println("   (verwacht o.a. 0x18 audio, 0x20 expander, 0x34 power, 0x50/0x54 GPS, 0x5A touch, 0x6B gyro)");
+ Wire.setTimeOut(1000);   // v17: ruim de tijd geven, net als het Waveshare-voorbeeld (1 s)
  bool gpsResetOk = GPS_RESET_PULSE ? releaseLc76gReset() : false;
+ if (!GPS_RESET_PULSE) {
+   // v17: P7 (GPS_RST) terugzetten naar de fabrieksstand (ingang, dus los). De expander onthoudt de stand van v14/v15
+   // tot de stroom er helemaal af is geweest; daardoor kon de GPS nog steeds "vastgehouden" worden.
+   Wire.beginTransmission(0x20); Wire.write(0x03); Wire.endTransmission(false);
+   uint8_t cfg = 0xFF; if (Wire.requestFrom((int)0x20, 1) == 1) cfg = Wire.read();
+   Wire.beginTransmission(0x20); Wire.write(0x03); Wire.write((uint8_t)(cfg | 0x80)); int pe = Wire.endTransmission();
+   Serial.printf("GPS_RST (P7) teruggezet naar ingang: %s (config was 0x%02X)\n", pe == 0 ? "OK" : "MISLUKT", cfg);
+   delay(1500);  // GPS rustig laten opstarten
+ }
  gpsSerial.begin(GPS_UART_BAUD, SERIAL_8N1, GPS_UART_RX, GPS_UART_TX);
  gpsSerial.setRxBufferSize(4096);
  delay(1200);  // LC76G heeft na de reset ruim een seconde nodig
@@ -1159,13 +1177,13 @@ void setup(){
  frame->setTextColor(EYE); frame->setTextSize(1);
  audioReady = initBuddyAudio();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v16: dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v17: dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v16 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v17 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -1192,7 +1210,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v16 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v17 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){
