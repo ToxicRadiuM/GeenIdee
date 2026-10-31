@@ -815,7 +815,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function babble(kind, text) {
     if (!sound || !ac || T - lastBab < 1.2) return;
     var bo = document.getElementById('babOn'); if (bo && !bo.checked) return;
-    lastBab = T; text = text || '';
+    lastBab = T; text = text || ''; audioGebruik(ac);
     var n = Math.max(2, Math.min(6, Math.round(text.length / 14) + 2));
     var base = { happy: 640, excited: 720, love: 560, sad: 430, angry: 310, startled: 780, worried: 480, sleepy: 380, bored: 430, laugh: 700, content: 560 }[kind] || 560;
     var up = /\?\s*$/.test(text) ? 1 : (kind === 'sad' || kind === 'sleepy' || kind === 'bored' || kind === 'worried' ? -1 : 0);
@@ -828,9 +828,23 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       o.connect(g); g.connect(ac.destination); o.start(st); o.stop(st + .12);
     }
   }
+  /* v74: Buddy laat de audio weer los. Een AudioContext die blijft draaien houdt de geluidsuitgang van de telefoon bezet,
+     waardoor de radio/muziek in de auto niet terugkomt (zoals bij Flitsmeister wel). Na elk geluidje gaat hij na 2 s weer slapen. */
+  var audioLaatst = 0;
+  function audioGebruik(c) {
+    audioLaatst = Date.now();
+    try { if (c && c.state === 'suspended' && c.resume) c.resume(); } catch (e) {}
+  }
+  setInterval(function () {
+    if (Date.now() - audioLaatst < 2500) return;
+    [typeof ac !== 'undefined' ? ac : null, typeof gac !== 'undefined' ? gac : null].forEach(function (c) {
+      try { if (c && c.state === 'running' && c.suspend) c.suspend(); } catch (e) {}
+    });
+  }, 1000);
   function beep(name) {
     if (!sound || !ac) return;
     var seq = TUNES[name]; if (!seq) return;
+    audioGebruik(ac);
     var t0 = ac.currentTime;
     seq.forEach(function (f, i) {
       var o = ac.createOscillator(), g = ac.createGain(), s = t0 + i * 0.09;
@@ -4965,12 +4979,12 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   /* Signaal bij een groepsbericht: korte trilling en een eigen klein deuntje, los van het geluid van Buddy */
   var GRSIGKEY = 'dashboardmaatje-grsignaal-v1', GRGEZKEY = 'dashboardmaatje-grgezien-v1', grSignaalOn = true, grGezienOn = true, gac = null;
   try { grSignaalOn = localStorage.getItem(GRSIGKEY) !== '0'; grGezienOn = localStorage.getItem(GRGEZKEY) !== '0'; } catch (e) {}
-  document.addEventListener('pointerdown', function maakGac() { try { if (!gac) gac = new (window.AudioContext || window.webkitAudioContext)(); if (gac.state === 'suspended') gac.resume(); } catch (e) {} }, { passive: true });
+  document.addEventListener('pointerdown', function maakGac() { try { if (!gac) gac = new (window.AudioContext || window.webkitAudioContext)(); audioGebruik(gac); } catch (e) {} }, { passive: true });
   function grSignaal(zacht) {
     if (!grSignaalOn) return;
     try { if (navigator.vibrate) navigator.vibrate(zacht ? 60 : [90, 70, 90]); } catch (e) {}
     try {
-      var c = gac || ac; if (!c) return; if (c.state === 'suspended') c.resume();
+      var c = gac || ac; if (!c) return; audioGebruik(c);
       var t0 = c.currentTime, tonen = zacht ? [1320] : [880, 1175, 1568];
       tonen.forEach(function (f, i) {
         var o = c.createOscillator(), g = c.createGain(), st = t0 + i * .11;
@@ -7160,6 +7174,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function alarmTone(f, dur, vol) {
     if (!sound || !ac) return;
     try {
+      audioGebruik(ac);
       var t0 = ac.currentTime + .01, o = ac.createOscillator(), g = ac.createGain();
       o.type = 'square'; o.frequency.value = f;
       g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + .01); g.gain.setValueAtTime(vol, t0 + dur * .7); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
@@ -7171,6 +7186,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   var alDing = null;
   function dingTone() {
     if (!sound || !ac) return;
+    audioGebruik(ac);
     try {
       [[1320, 0], [1760, .12]].forEach(function (x) {
         var t0 = ac.currentTime + .01 + x[1], o = ac.createOscillator(), g = ac.createGain();
