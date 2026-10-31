@@ -24,7 +24,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 35;
+static const int FW_VERSIE = 36;
 static volatile int otaPct = -1;
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
 static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
@@ -700,6 +700,13 @@ class PsramCanvas : public Arduino_Canvas {
     if (!_framebuffer) return false;
     return Arduino_Canvas::begin(speed);
   }
+  // v36: kleuren meteen met omgedraaide bytes opslaan (zoals het scherm ze wil). Dan kan het beeld zonder
+  // omrekenen rechtstreeks naar het scherm, en is het versturen veel sneller.
+  static inline uint16_t sw(uint16_t c) { return (uint16_t)((c >> 8) | (c << 8)); }
+  void writePixelPreclipped(int16_t x, int16_t y, uint16_t c) override { Arduino_Canvas::writePixelPreclipped(x, y, sw(c)); }
+  void writeFastVLine(int16_t x, int16_t y, int16_t h, uint16_t c) override { Arduino_Canvas::writeFastVLine(x, y, h, sw(c)); }
+  void writeFastHLine(int16_t x, int16_t y, int16_t w, uint16_t c) override { Arduino_Canvas::writeFastHLine(x, y, w, sw(c)); }
+  void writeFillRectPreclipped(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t c) override { Arduino_Canvas::writeFillRectPreclipped(x, y, w, h, sw(c)); }
 };
 PsramCanvas *frame = nullptr;            // het beeld waar nu in getekend wordt
 PsramCanvas *frames[2] = {nullptr, nullptr};  // v16: twee beelden: core 1 tekent het ene terwijl core 0 het andere verstuurt
@@ -2023,10 +2030,10 @@ void flushTask(void *) {
     if (w * 10 >= LCD_WIDTH * 6) {
       // v35: breed vak -> hele rijen in één keer versturen (één lange stroom i.p.v. honderden losse rijtjes)
       gfx->writeAddrWindow(0, job.b.y0, LCD_WIDTH, h);
-      gfx->writePixels(job.fb + (int32_t)job.b.y0 * LCD_WIDTH, (uint32_t)LCD_WIDTH * h);
+      bus->writeBytes((uint8_t *)(job.fb + (int32_t)job.b.y0 * LCD_WIDTH), (uint32_t)LCD_WIDTH * h * 2);   // v36: zonder omrekenen
     } else {
       gfx->writeAddrWindow(job.b.x0, job.b.y0, w, h);
-      for (int16_t y = job.b.y0; y <= job.b.y1; y++) gfx->writePixels(job.fb + (int32_t)y * LCD_WIDTH + job.b.x0, w);
+      for (int16_t y = job.b.y0; y <= job.b.y1; y++) bus->writeBytes((uint8_t *)(job.fb + (int32_t)y * LCD_WIDTH + job.b.x0), (uint32_t)w * 2);
     }
     gfx->endWrite();
     flushLastUs = micros() - t0;
@@ -2288,7 +2295,7 @@ void setup(){
  frames[1]->fillScreen(BG); frame->fillScreen(BG); frame->flush();
  frames[1]->setTextColor(EYE); frames[1]->setTextSize(1);
  flushQueue = xQueueCreate(1, sizeof(FlushJob)); flushIdle = xSemaphoreCreateBinary(); xSemaphoreGive(flushIdle);
- xTaskCreatePinnedToCore(flushTask, "BuddyFlush", 8192, nullptr, 2, nullptr, 0);   // v35: voorrang boven wifi/GPS-taken
+ xTaskCreatePinnedToCore(flushTask, "BuddyFlush", 8192, nullptr, 1, nullptr, 0);   // v36: weer prioriteit 1 (met 2 kreeg core 0 geen adem -> waakhond)
  Serial.printf("Buddy beeld klaar | framebuffer=16-bit PSRAM | QSPI=%ld Hz | PSRAM over: %u | heap over: %u\n", (long)QSPI_HZ, (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  frame->setTextColor(EYE); frame->setTextSize(1);
  audioReady = initBuddyAudio();
