@@ -6,6 +6,10 @@
 #include <Preferences.h>
 #include "ESP_I2S.h"
 #include "TouchDrvCSTXXX.hpp"
+#include "SensorQMI8658.hpp"   // v19: gyro/versnellingsmeter voor meehangen in bochten
+#include <BLEDevice.h>          // v19: koppeling met de Buddy-app op je telefoon
+#include <BLEServer.h>
+#include <BLE2902.h>
 
 #include <pgmspace.h>
 #include <freertos/FreeRTOS.h>
@@ -922,6 +926,116 @@ void drawVolumeUi(){
  frame->setTextColor(EYE); frame->setTextSize(1); frame->setCursor(X(91),Y(191));
  frame->print("VOLUME "); frame->print(buddyVolume); frame->print("%");
 }
+// ===================== v19: koppeling met de telefoon (Bluetooth) =====================
+// De Buddy-app stuurt elke seconde: snelheid, limiet, flitser, file, werk, zijn stemming en wat hij zegt.
+// Het schermpje kan terugsturen: "MELD:cam" (flitser melden) en "MELD:mob" (mobiele controle).
+#define NUS_SVC "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+#define NUS_RX  "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
+#define NUS_TX  "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
+struct PhoneData { int v, lim, camD, camLim, fileD, fileMin; bool werk; int mood; char txt[64]; uint32_t ms; };
+static PhoneData phone = {0, 0, -1, 0, -1, 0, false, -1, "", 0};
+static BLECharacteristic *bleTx = nullptr;
+static volatile bool bleConnected = false;
+static char bleBuf[256]; static size_t bleLen = 0;
+static const char *moodKeys[MOOD_COUNT] = {"neutral","content","relaxed","happy","love","excited","focused","startled","worried","bored","sleepy","yawn","sleeping","alert","blow","anticipate"};
+static bool phoneFresh() { return phone.ms && millis() - phone.ms < 3500; }
+static void parsePhone(char *line) {
+  char *f[12] = {0}; int n = 0; f[n++] = line;
+  for (char *q = line; *q && n < 12; ++q) if (*q == '|') { *q = 0; f[n++] = q + 1; }
+  if (n < 9 || strcmp(f[0], "B1") != 0) return;
+  PhoneData d = phone;
+  d.v = atoi(f[1]); d.lim = atoi(f[2]); d.camD = atoi(f[3]); d.camLim = atoi(f[4]);
+  d.fileD = atoi(f[5]); d.fileMin = atoi(f[6]); d.werk = atoi(f[7]) == 1; d.mood = -1;
+  for (int i = 0; i < MOOD_COUNT; i++) if (strcmp(f[8], moodKeys[i]) == 0) d.mood = i;
+  strncpy(d.txt, n > 9 ? f[9] : "", sizeof(d.txt) - 1); d.txt[sizeof(d.txt) - 1] = 0;
+  d.ms = millis(); phone = d;
+}
+class BuddySrvCb : public BLEServerCallbacks {
+  void onConnect(BLEServer *) override { bleConnected = true; Serial.println("BLE: telefoon verbonden"); }
+  void onDisconnect(BLEServer *) override { bleConnected = false; Serial.println("BLE: telefoon weg, opnieuw zichtbaar"); BLEDevice::startAdvertising(); }
+};
+class BuddyRxCb : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *c) override {
+    auto v = c->getValue();
+    for (size_t i = 0; i < v.length(); i++) {
+      char ch = v[i];
+      if (ch == '\n') { bleBuf[bleLen] = 0; parsePhone(bleBuf); bleLen = 0; }
+      else if (bleLen < sizeof(bleBuf) - 1) bleBuf[bleLen++] = ch;
+    }
+  }
+};
+static void bleStart() {
+  BLEDevice::init("Buddy-scherm");
+  BLEDevice::setMTU(185);
+  BLEServer *srv = BLEDevice::createServer(); srv->setCallbacks(new BuddySrvCb());
+  BLEService *svc = srv->createService(NUS_SVC);
+  BLECharacteristic *rx = svc->createCharacteristic(NUS_RX, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
+  rx->setCallbacks(new BuddyRxCb());
+  bleTx = svc->createCharacteristic(NUS_TX, BLECharacteristic::PROPERTY_NOTIFY); bleTx->addDescriptor(new BLE2902());
+  svc->start();
+  BLEAdvertising *adv = BLEDevice::getAdvertising(); adv->addServiceUUID(NUS_SVC); adv->setScanResponse(true);
+  BLEDevice::startAdvertising();
+  Serial.println("BLE: zichtbaar als 'Buddy-scherm'");
+}
+static void bleSend(const char *t) { if (bleTx && bleConnected) { bleTx->setValue((uint8_t *)t, strlen(t)); bleTx->notify(); } }
+
+// ===================== v19: meehangen in bochten (QMI8658) =====================
+SensorQMI8658 qmi; static bool imuReady = false;
+static float gX = 0, gY = 0, gZ = 1, leanX = 0, pushZ = 0, hop = 0; static bool gInit = false;
+static constexpr float LEAN_RICHTING = 1.0f;  // hangt hij de verkeerde kant op? Zet dit op -1.0f
+static uint32_t schrikTot = 0;
+static void imuStep(float dt) {
+  if (!imuReady || !i2cLock(2)) return;
+  float ax, ay, az; bool ok = qmi.getAccelerometer(ax, ay, az);
+  i2cUnlock(); if (!ok) return;
+  if (!gInit) { gX = ax; gY = ay; gZ = az; gInit = true; }
+  float k = 1 - expf(-dt / 1.6f);            // zwaartekracht = traag gemiddelde
+  gX += (ax - gX) * k; gY += (ay - gY) * k; gZ += (az - gZ) * k;
+  float dx = ax - gX, dy = ay - gY, dz = az - gZ;
+  float kl = 1 - expf(-dt / .18f);
+  leanX += (dx - leanX) * kl; pushZ += (dz - pushZ) * kl;
+  if (fabsf(dy) > .45f && hop < .3f) { hop = 1; }   // drempel of gat
+  hop = fmaxf(0, hop - dt * 3.2f);
+  if (fabsf(pushZ) > .45f && millis() > schrikTot) schrikTot = millis() + 1400;  // hard remmen / optrekken
+}
+
+// ===================== v19: rond menu (lang drukken) =====================
+static bool menuOpen = false; static uint32_t menuTot = 0, infoTot = 0, aaiTot = 0;
+static uint8_t helderheid = 160;
+static const char *menuTxt[4] = {"VOLUME", "HELDER", "FLITSER", "INFO"};
+static void drawMenu() {
+  boxAdd(0, 0, 240, 240);
+  frame->fillCircle(X(120), Y(120), S(118), 0x0841);
+  for (int i = 0; i < 4; i++) {
+    float a = -PI2 / 4 + i * PI2 / 4; float cx = 120 + cosf(a) * 74, cy = 120 + sinf(a) * 74;
+    frame->fillCircle(X(cx), Y(cy), S(34), i == 2 ? 0x8000 : 0x18E3);
+    frame->drawCircle(X(cx), Y(cy), S(34), EYE);
+    frame->setTextColor(0xFFFF); frame->setTextSize(2);
+    int tw = strlen(menuTxt[i]) * 12; frame->setCursor(X(cx) - tw / 2, Y(cy) - 7); frame->print(menuTxt[i]);
+  }
+  frame->fillCircle(X(120), Y(120), S(26), 0x2124); frame->drawCircle(X(120), Y(120), S(26), EYE);
+  frame->setTextColor(EYE); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(120) - 7); frame->print("TERUG");
+}
+static void drawInfo() {
+  boxAdd(20, 30, 220, 200);
+  frame->setTextColor(EYE); frame->setTextSize(2);
+  char r[48]; int y = 62;
+  snprintf(r, sizeof r, "GPS: %s %d sat", gpsFix ? "FIX" : (gpsDataOk ? "zoekt" : "geen data"), (int)gpsSatellites); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
+  snprintf(r, sizeof r, "Telefoon: %s", bleConnected ? (phoneFresh() ? "verbonden" : "stil") : "niet"); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
+  snprintf(r, sizeof r, "Volume %d%%  Licht %d", buddyVolume, helderheid * 100 / 255); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
+  snprintf(r, sizeof r, "Bocht %.2f G", fabsf(leanX)); frame->setCursor(X(40), Y(y)); frame->print(r);
+}
+static void menuKies(float x, float y) {
+  float dx = x - 120, dy = y - 120, r = sqrtf(dx * dx + dy * dy);
+  if (r < 34) { menuOpen = false; return; }
+  float a = atan2f(dy, dx); int i = (int)lroundf((a + PI2 / 4) / (PI2 / 4)); i = ((i % 4) + 4) % 4;
+  menuOpen = false;
+  if (i == 0) volumeUiUntil = millis() + 8000;
+  else if (i == 1) { helderheid = helderheid >= 230 ? 40 : (helderheid < 100 ? 120 : (helderheid < 170 ? 180 : 255)); gfx->setBrightness(helderheid); buddyPrefs.putUChar("licht", helderheid); infoTot = millis() + 2500; }
+  else if (i == 2) { bleSend("MELD:cam"); mood = bleConnected ? ALERT : WORRIED; lastMood = -1; idleMoodUntilMs = millis() + 2500; Serial.println(bleConnected ? "Flitser gemeld via telefoon" : "Flitser melden: telefoon niet verbonden"); }
+  else infoTot = millis() + 8000;
+}
+
 void drawFace(){
  // v15: alleen wissen wat er vorige keer getekend is, in plaats van het hele scherm
  Box &oud = drawnBox[frameIdx];
@@ -930,7 +1044,8 @@ void drawFace(){
  boxAdd(56, 176, 206, 240);   // rij-HUD, diagnose en volume: altijd vernieuwen
  // The original canvas clips all face artwork to a circular 204px viewport.
  // Black screen background already provides the same circular-screen appearance.
- float ox=gx*9, oy=gy*7 + headBob;
+ if (menuOpen) { drawMenu(); return; }
+ float ox=gx*9 + fmaxf(-16.f, fminf(16.f, -leanX * 40.f * LEAN_RICHTING)), oy=gy*7 + headBob - hop * 10.f + fmaxf(-6.f, fminf(6.f, pushZ * 14.f));
  if(mood==LOVE){float pulse=1+sinf(t*7)*.08f;heart(73+ox,114+oy,29*pulse,HEART);heart(167+ox,114+oy,29*pulse,HEART);}
  else if(mood==EXCITED && ((int)(t*2)%2==0)){star(73+ox,106+oy,27+sinf(t*9)*2,EYE);star(167+ox,106+oy,27+sinf(t*9)*2,EYE);}
  else if(mood==HAPPY && ((int)(t*3)%4==0)){line(53+ox,120+oy,93+ox,120+oy,EYE,5);line(147+ox,120+oy,187+ox,120+oy,EYE,5);}
@@ -938,6 +1053,7 @@ void drawFace(){
  if(cur.blush>.02f){uint16_t c=BLUSH;circle(52+ox*.5f,150,8,c);circle(188+ox*.5f,150,8,c);}
  mouth(oy);
  drawVolumeUi();
+ if ((int32_t)(infoTot - millis()) > 0) drawInfo();
  // small floating hearts, sparkles and sleep-z particles from original spawn behaviour
  for(auto &p:particles) if(p.life>0){float a=1-p.age/p.life;uint16_t c=p.kind==0?HEART:EYE;if(p.kind==0)heart(p.x,p.y,p.size*a,c);else if(p.kind==1)star(p.x,p.y,p.size*a,c);else { // Z mark
    line(p.x-4,p.y-4,p.x+4,p.y-4,c,2);line(p.x+4,p.y-4,p.x-4,p.y+4,c,2);line(p.x-4,p.y+4,p.x+4,p.y+4,c,2);
@@ -945,8 +1061,26 @@ void drawFace(){
  // Originele Buddy-rij-HUD: rond maximumsnelheidsbord links, eigen snelheid rechts.
  // Zelfde principe/positie als speedDraw() in de webapp; bij geen bekende limiet tonen we '?'.
  bool fixNow = gpsFix && (millis()-gpsLastFixMs)<5000;
- int ownSpeed = fixNow ? (int)lroundf(gpsSpeedKmh) : -1;
- int limit = (gpsNearestCameraM >= 0 && gpsNearestCameraM <= 600) ? gpsCameraLimit : 0;
+ bool tel = phoneFresh();
+ int ownSpeed = fixNow ? (int)lroundf(gpsSpeedKmh) : (tel ? phone.v : -1);
+ int limit = (tel && phone.lim > 0) ? phone.lim : ((gpsNearestCameraM >= 0 && gpsNearestCameraM <= 600) ? gpsCameraLimit : 0);
+ // v19: file en tekst van de telefoon bovenin, werk-driehoekje naast het bord
+ if (tel && phone.fileD >= 0) {
+   char ft[32]; if (phone.fileD < 950) snprintf(ft, sizeof ft, "FILE %dm", (phone.fileD / 50) * 50); else snprintf(ft, sizeof ft, "FILE %d,%dkm", phone.fileD / 1000, (phone.fileD % 1000) / 100);
+   if (phone.fileMin > 0) { size_t l = strlen(ft); snprintf(ft + l, sizeof ft - l, " +%dm", phone.fileMin); }
+   boxAdd(50, 26, 190, 50); roundRect(52, 28, 136, 20, 10, 0x3082);
+   bool aan = (millis() / 400) % 2; circle(64, 38, 3, aan ? 0xF8A6 : 0x7800); circle(73, 38, 3, aan ? 0x7800 : 0xF8A6);
+   frame->setTextColor(0xFEDB); frame->setTextSize(2); frame->setCursor(X(82), Y(31)); frame->print(ft);
+ } else if (tel && phone.txt[0] && mood != SLEEPING) {
+   char tx[27]; strncpy(tx, phone.txt, 26); tx[26] = 0; int tw = strlen(tx) * 12;
+   boxAdd(20, 30, 220, 46); frame->setTextColor(0xBDF7); frame->setTextSize(2); frame->setCursor(X(120) - tw / 2, Y(34)); frame->print(tx);
+ }
+ if (tel && phone.werk) {
+   boxAdd(46, 196, 66, 222);
+   frame->fillTriangle(X(56), Y(197), X(66), Y(216), X(46), Y(216), 0xD8A6);
+   frame->fillTriangle(X(56), Y(202), X(62), Y(213), X(50), Y(213), 0xFFFF);
+   circle(56, 207, 1.6f, 0x0000);
+ }
  int sx=82, sy=210, sr=17;
  frame->fillCircle(X(sx),Y(sy),S(sr),0xFFFF);
  frame->drawCircle(X(sx),Y(sy),S(sr),0xD800);
@@ -964,7 +1098,8 @@ void drawFace(){
  if(fixNow) { frame->print("GPS OK  "); frame->print((int)gpsSatellites); frame->print(" SAT"); }
  else if(gpsDataOk && millis()-gpsLastDataMs<6000) { frame->print("GPS WACHT OP FIX  "); frame->print((int)gpsSatellites); frame->print(" SAT"); }
  else frame->print("GPS GEEN DATA (I2C)");
- if(gpsNearestCameraM>=0 && gpsNearestCameraM<1000){char camLabel[24];snprintf(camLabel,sizeof(camLabel),"FLITSER %dm",(int)gpsNearestCameraM);frame->setTextColor(HEART);frame->setCursor(X(90),Y(183));frame->print(camLabel); }
+ int camM = (tel && phone.camD >= 0) ? phone.camD : gpsNearestCameraM;
+ if(camM>=0 && camM<1000){char camLabel[24];snprintf(camLabel,sizeof(camLabel),"FLITSER %dm",camM);frame->setTextColor(HEART);frame->setCursor(X(90),Y(183));frame->print(camLabel); }
 }
 // v15: alleen het veranderde vak naar het scherm sturen. De CO5300 wil even begin-/eindcoordinaten.
 void flushDirty(){
@@ -1005,18 +1140,25 @@ void updateMood(float dt){
  if(gpsFix && gpsSpeedKmh>5) mood=FOCUSED;
  else if(gpsFix) mood=CONTENT;
  else {
-   if(millis()>idleMoodUntilMs){
+   if(millis()>idleMoodUntilMs && !phoneFresh()){
      static const uint8_t idleSequence[]={NEUTRAL,RELAXED,BORED,YAWN,HAPPY,ANTICIPATE};
      mood=idleSequence[idleMoodStep++ % (sizeof(idleSequence)/sizeof(idleSequence[0]))];
      idleMoodUntilMs=millis()+((mood==YAWN)?1800:((mood==BORED)?2600:3200));
    }
  }
+ // v19: als de telefoon verbonden is, neemt hij de stemming van de app over (die weet veel meer)
+ if (phoneFresh() && phone.mood >= 0 && millis() > idleMoodUntilMs) mood = phone.mood;
+ if (phoneFresh() && phone.camD >= 0 && phone.camD < 350) mood = ALERT;
+ if (millis() < schrikTot) mood = STARTLED;
+ if (millis() < aaiTot) mood = LOVE;
  if(gpsFix && gpsNearestCameraM>=0 && gpsNearestCameraM<350) mood=ALERT;
  if(gpsFix && gpsSpeedKmh>0 && gpsCameraLimit>0 && gpsSpeedKmh>gpsCameraLimit+4 && gpsNearestCameraM>=0 && gpsNearestCameraM<600) mood=WORRIED;
  if(mood!=lastMood){lastMood=mood;if(mood==LOVE)addParticle(0);if(mood==EXCITED)addParticle(1);if(mood==SLEEPING)addParticle(2);playMoodSound(mood);}
  Expr target=exprs[mood];float k=1-expf(-dt*11.0f);
  cur.open+=(target.open-cur.open)*k;cur.lid+=(target.lid-cur.lid)*k;cur.tilt+=(target.tilt-cur.tilt)*k;cur.squint+=(target.squint-cur.squint)*k;cur.scale+=(target.scale-cur.scale)*k;cur.mouth+=(target.mouth-cur.mouth)*k;cur.mo+=(target.mo-cur.mo)*k;cur.blush+=(target.blush-cur.blush)*k;
- if(t>nextGaze)gazeTarget();float kg=1-expf(-dt*9.0f);gx+=(tgx-gx)*kg;gy+=(tgy-gy)*kg;
+ if(t>nextGaze)gazeTarget();
+ float tgxL = tgx + fmaxf(-.6f, fminf(.6f, -leanX * 2.5f * LEAN_RICHTING));   // v19: kijkt de bocht in
+ float kg=1-expf(-dt*9.0f);gx+=(tgxL-gx)*kg;gy+=(tgy-gy)*kg;
  breathe += dt*1.7f; headBob = sinf(breathe)*1.25f;
  blink=1;if(mood!=SLEEPING){if(t>nextBlink){blinkStart=t;nextBlink=t+((random(100)<22)? .3f:random(22,56)/10.f);}float bt=(t-blinkStart)/.16f;if(bt>=0&&bt<1)blink=1-.92f*sinf(3.14159f*bt);}
 }
@@ -1125,13 +1267,28 @@ void playMoodSound(int m) {
 }
 
 void handleTouch(){
+ static bool down = false; static uint32_t downMs = 0; static float dX = 0, dY = 0, lX = 0, lY = 0; static bool lang = false;
  uint32_t now=millis(); if(!touchReady || now-lastTouchPoll<12) return; lastTouchPoll=now;
- if(i2cMutex && xSemaphoreTake(i2cMutex,0)!=pdTRUE) return; uint8_t n=buddyTouch.getPoint(touchX,touchY,1); if(i2cMutex) xSemaphoreGive(i2cMutex); if(!n) return;
+ if(i2cMutex && xSemaphoreTake(i2cMutex,0)!=pdTRUE) return; uint8_t n=buddyTouch.getPoint(touchX,touchY,1); if(i2cMutex) xSemaphoreGive(i2cMutex);
+ if(!n) {
+   // v19: loslaten = een tik afhandelen
+   if (down && !lang && now - downMs < 600) {
+     if (menuOpen) menuKies(lX, lY);
+     else if ((int32_t)(volumeUiUntil-now) < 0) {
+       if (lY > 188.0f) volumeUiUntil = now + 8000;                  // onderaan tikken = volume
+       else { aaiTot = now + 2200; idleMoodUntilMs = now + 2200; }   // op zijn gezicht tikken = aaien
+     }
+   }
+   down = false; lang = false; return;
+ }
  // CST9217 levert paneelcoördinaten; vertaal naar de 240x240 tekenruimte.
  float x=(float)touchX[0]*240.0f/(float)LCD_WIDTH;
  float y=(float)touchY[0]*240.0f/(float)LCD_HEIGHT;
- // Tik onderaan om de volumepopup te openen.
- if(y>188.0f && (int32_t)(volumeUiUntil-now)<0) volumeUiUntil=now+8000;
+ if (!down) { down = true; downMs = now; dX = x; dY = y; lang = false; }
+ lX = x; lY = y;
+ // v19: lang drukken (0,7 s, zonder te slepen) opent of sluit het ronde menu
+ if (!lang && now - downMs > 700 && fabsf(x - dX) < 12 && fabsf(y - dY) < 12) { lang = true; menuOpen = !menuOpen; menuTot = now + 10000; volumeUiUntil = 0; }
+ if (menuOpen) return;
  // De hele popup is aanraakbaar; de slider reageert ook op slepen buiten de trackhoogte.
  if((int32_t)(volumeUiUntil-now)>=0 && x>=58.0f && x<=182.0f && y>=184.0f && y<=218.0f){
    int v=(int)lroundf((x-66.0f)*100.0f/108.0f);
@@ -1153,7 +1310,7 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v18 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v19 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -1195,14 +1352,21 @@ void setup(){
  Serial.printf("Buddy beeld klaar | framebuffer=16-bit PSRAM | QSPI=%ld Hz | PSRAM over: %u | heap over: %u\n", (long)QSPI_HZ, (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  frame->setTextColor(EYE); frame->setTextSize(1);
  audioReady = initBuddyAudio();
+ // v19: bewegingssensor
+ if (qmi.begin(Wire, QMI8658_L_SLAVE_ADDRESS, IIC_SDA, IIC_SCL)) {
+   qmi.configAccelerometer(SensorQMI8658::ACC_RANGE_4G, SensorQMI8658::ACC_ODR_250Hz, SensorQMI8658::LPF_MODE_0);
+   qmi.enableAccelerometer(); imuReady = true; Serial.println("Buddy gyro: QMI8658 klaar (meehangen in bochten)");
+ } else Serial.println("Buddy gyro: QMI8658 niet gevonden");
+ helderheid = buddyPrefs.getUChar("licht", 160); gfx->setBrightness(helderheid);
+ bleStart();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v18: GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v19: menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v18 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v19 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -1213,6 +1377,8 @@ void loop(){
  }
  float dt=lastRenderUs ? fminf(0.10f,(uint32_t)(nowUs-lastRenderUs)/1000000.0f) : 1.0f/30.0f;
  lastRenderUs=nowUs; t+=dt;
+ imuStep(dt);
+ if (menuOpen && (int32_t)(menuTot - millis()) < 0) menuOpen = false;
  updateMood(dt); updateParticles(dt);
  uint32_t drawStartUs=micros();
  drawFace();
@@ -1229,7 +1395,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v18 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v19 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){

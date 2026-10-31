@@ -174,6 +174,25 @@ body.rond .helmet { --hs: min(96vw, 96vh); padding: 0; background: none; box-sha
 body.rond .helmet::after { display: none; }
 body.rond .bezel { box-shadow: none; }
 body.rond #carBack, body.rond #carRit, body.rond #carSpel, body.rond #carAdd, body.rond #carAddM, body.rond #carGroep, body.rond #carStart { display: none !important; }
+/* v75: tabbalk onderin, zoals een gewone app */
+#tabBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--panel); border-top: 1px solid var(--line); padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); }
+#tabBar button { background: none; border: 0; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; min-height: 52px; border-radius: 12px; cursor: pointer; }
+#tabBar button span { font-size: 21px; line-height: 1; }
+#tabBar button[aria-pressed="true"] { color: var(--ink); background: color-mix(in srgb, var(--ink) 8%, transparent); }
+body.car #tabBar, body.rond #tabBar { display: none; }
+body:not(.car):not(.rond) main { padding-bottom: 84px; }
+body[data-tab="buddy"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="buddy"]),
+body[data-tab="kaart"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="kaart"]),
+body[data-tab="groep"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="groep"]),
+body[data-tab="meer"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="meer"]) { display: none !important; }
+#tabKaart { display: flex; flex-direction: column; gap: 12px; }
+#tabKaart .kaartKop { display: flex; flex-direction: column; gap: 4px; }
+#tabKaart #flKaart { position: static; inset: auto; z-index: auto; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+#tabKaart #flKaart .fkKop { display: none; }
+#tabKaart #flKaartMap { height: 52vh; min-height: 280px; flex: none; }
+#tabKaart #flKaartLijst { max-height: none; overflow: visible; }
+#tabKaart #flKaartLijst li { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+body:not(.dev) #kopBouw { display: none !important; }
 #flKaart { position: fixed; inset: 0; z-index: 75; background: #10151a; color: #eef2f5; display: flex; flex-direction: column; }
 #flKaart[hidden] { display: none; }
 #flKaart .fkKop { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; gap: 10px; }
@@ -573,6 +592,9 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   </details>
   <details class="kop" id="kopInst"><summary><span class="kopT">⚙️ Instellingen</span><span class="kopS">flitsers, geluid, back-up, testlog</span></summary>
     <div class="kopIn">
+      <p class="sub">Buddy-scherm (Waveshare)</p>
+      <button class="btn" id="bleKnop" type="button">📡 Verbind met het Buddy-scherm</button>
+      <p class="chip" id="bleStat">Niet verbonden. Werkt met Chrome op Android. Het schermpje krijgt dan de limiet, flitsers, files, wegwerk en Buddy’s stemming van je telefoon. Lang drukken op het schermpje → FLITSER meldt via je telefoon.</p>
       <p class="sub">Algemeen</p>
       <div class="mobrow"><input type="text" id="meIn" maxlength="18" placeholder="Jouw naam"><button class="btn" id="meSave" type="button">Bewaar naam</button></div>
       <p class="foot">iPhone? Zet tijdens het rijden de energiebesparingsstand uit en tik één keer op het scherm na het opstarten, dan blijft het scherm aan. Eventueel: Instellingen → Scherm en helderheid → Automatische vergrendeling → Nooit.</p>
@@ -702,8 +724,19 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     </div>
   </details>
   </div>
+  <section id="tabKaart" class="tabPaneel" aria-label="Kaart">
+    <div class="kaartKop"><b>🗺️ Flitsers en meldingen</b><span class="foot">Blauw = van jou · Rood = vast · Oranje = mobiel. Tik op een stip om hem te verwijderen.</span></div>
+    <div id="kaartPlek"></div>
+    <div class="btns kaartKnoppen" id="kaartKnoppen"></div>
+  </section>
   <p class="foot" id="verTxt" style="text-align:center">Buddy</p>
 </main>
+<nav id="tabBar" aria-label="Hoofdmenu">
+  <button type="button" data-tab="buddy" aria-pressed="true"><span>🙂</span>Buddy</button>
+  <button type="button" data-tab="kaart" aria-pressed="false"><span>🗺️</span>Kaart</button>
+  <button type="button" data-tab="groep" aria-pressed="false"><span>👥</span>Groep</button>
+  <button type="button" data-tab="meer" aria-pressed="false"><span>☰</span>Meer</button>
+</nav>
 
 <script>
 (function () {
@@ -1325,8 +1358,99 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         var h = tt % .95;
         if (h < .14 && tt < 4) { fdy = -9; g.mood = 'startled'; g.msg = 'Hik!'; if (!g.hh || g.hh !== Math.floor(tt / .95) + 1) g.hh = Math.floor(tt / .95) + 1; }
         else { g.mood = 'neutral'; if (tt < 4) g.msg = 'Hik… sorry.'; else g.msg = 'Weg. Denk ik.'; }
-      } }
+      } },
+    /* ---- v75: een hele hoop nieuwe animaties ---- */
+    juggle: { name: 'Jongleert', dur: 6, idle: 1, mood: 'focused', msg: 'Drie ballen… kijk!',
+      upd: function (g, tt) { var a = tt * 4.2; dir(Math.cos(a) * .5, -.5 + Math.abs(Math.sin(a)) * .3); if (tt > 5) { g.mood = 'happy'; g.msg = 'Ta-daa!'; } },
+      draw: function (g, tt) {
+        if (tt > 5) return;
+        ctx.fillStyle = EYE;
+        for (var i = 0; i < 3; i++) { var a = tt * 4.2 + i * TAU / 3; ctx.beginPath(); ctx.arc(120 + Math.cos(a) * 46, 52 - Math.abs(Math.sin(a)) * 26, 5, 0, TAU); ctx.fill(); }
+      } },
+    peekaboo: { name: 'Kiekeboe', dur: 3.6, idle: 1, mood: 'neutral', msg: 'Waar is Buddy…',
+      upd: function (g, tt) {
+        if (tt < 2.2) { eyeL = eyeR = .06; fxNoBlink = true; fdy = 3; }
+        else { g.mood = 'excited'; g.msg = 'KIEKEBOE!'; fdy = -6; if (!g.b) { g.b = 1; burst(120, 110, 14); } }
+      } },
+    rain: { name: 'Eigen regenwolkje', dur: 6.4, idle: 1, mood: 'worried', msg: 'Hè, regent het alleen bij mij?',
+      upd: function (g, tt) { dir(0, -.8); if (tt > 4.6) { g.mood = 'happy'; g.msg = 'Oh, de zon komt al!'; dir(0, -.3); } },
+      draw: function (g, tt) {
+        var x = 120 + Math.sin(tt) * 6;
+        if (tt > 4.6) { ctx.globalAlpha = Math.max(0, 1 - (tt - 4.6)); }
+        ctx.fillStyle = '#9aa7b4';
+        [[-16, 0, 13], [0, -6, 16], [17, 1, 12]].forEach(function (c) { ctx.beginPath(); ctx.arc(x + c[0], 34 + c[1], c[2], 0, TAU); ctx.fill(); });
+        ctx.strokeStyle = '#7fc8ff'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+        for (var i = 0; i < 6; i++) { var y = 50 + ((tt * 60 + i * 13) % 34); ctx.beginPath(); ctx.moveTo(x - 20 + i * 8, y); ctx.lineTo(x - 22 + i * 8, y + 6); ctx.stroke(); }
+        ctx.globalAlpha = 1;
+        if (tt > 4.6) { ctx.fillStyle = '#FFD60A'; ctx.globalAlpha = Math.min(1, (tt - 4.6) * 1.5); ctx.beginPath(); ctx.arc(176, 46, 12, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
+      } },
+    butterfly: { name: 'Kijkt naar een vlinder', dur: 6.2, idle: 1, mood: 'love', msg: 'Ooh, een vlinder…',
+      upd: function (g, tt) { var x = Math.sin(tt * 1.3) * .85, y = Math.sin(tt * 2.6) * .45 - .2; g.fx = 120 + x * 80; g.fy = 80 + y * 45; dir(x, y); if (tt > 5.4) g.msg = 'Dag vlinder!'; },
+      draw: function (g, tt) {
+        var f = Math.abs(Math.sin(tt * 14)), x = g.fx, y = g.fy - (tt > 5.4 ? (tt - 5.4) * 90 : 0);
+        ctx.fillStyle = '#FF8FA3'; ctx.beginPath(); ctx.ellipse(x - 5 * f - 1, y, 6 * f + 1, 7, -.3, 0, TAU); ctx.ellipse(x + 5 * f + 1, y, 6 * f + 1, 7, .3, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#FFD60A'; ctx.beginPath(); ctx.ellipse(x - 4 * f, y + 7, 4 * f + 1, 4, -.3, 0, TAU); ctx.ellipse(x + 4 * f, y + 7, 4 * f + 1, 4, .3, 0, TAU); ctx.fill();
+        ctx.fillStyle = EYE; ctx.fillRect(x - 1, y - 6, 2, 16);
+      } },
+    shades: { name: 'Zet zijn zonnebril op', dur: 5, idle: 1, drive: 1, mood: 'content', msg: 'Zo. Cool.',
+      upd: function (g, tt) { dir(0, 0); g.y = tt < .8 ? -60 + tt / .8 * 166 : 106; if (tt > 3.4) g.msg = 'Ik ben de coolste auto op de weg.'; },
+      draw: function (g, tt) {
+        ctx.fillStyle = '#05070a'; ctx.strokeStyle = '#3a4048'; ctx.lineWidth = 3;
+        [73, 167].forEach(function (x) { rr(x - 30, g.y - 18, 60, 34, 10); ctx.fill(); ctx.stroke(); });
+        ctx.beginPath(); ctx.moveTo(103, g.y - 8); ctx.quadraticCurveTo(120, g.y - 16, 137, g.y - 8); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,.35)'; [55, 149].forEach(function (x) { ctx.beginPath(); ctx.ellipse(x, g.y - 7, 8, 3, -.4, 0, TAU); ctx.fill(); });
+      } },
+    stars: { name: 'Ziet sterretjes', dur: 4.6, idle: 1, mood: 'worried', msg: 'Bonk… ik zie sterretjes.',
+      upd: function (g, tt) { fxSpiral = tt < 3.6; frot = Math.sin(tt * 5) * .05 * Math.max(0, 1 - tt / 4); if (tt > 3.6) { g.mood = 'content'; g.msg = 'Gaat alweer.'; } },
+      draw: function (g, tt) {
+        if (tt > 3.6) return;
+        ctx.fillStyle = '#FFD60A';
+        for (var i = 0; i < 4; i++) { var a = tt * 3 + i * TAU / 4, x = 120 + Math.cos(a) * 50, y = 40 + Math.sin(a) * 12; ster(x, y, 6); }
+      } },
+    yoyo: { name: 'Speelt met een jojo', dur: 5.6, idle: 1, mood: 'happy', msg: 'Jojo!',
+      upd: function (g, tt) { g.d = Math.abs(Math.sin(tt * 2.6)); dir(.3, -.2 + g.d * .9); },
+      draw: function (g, tt) {
+        var x = 175, y = 40 + g.d * 120;
+        ctx.strokeStyle = EYE; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, 30); ctx.lineTo(x, y); ctx.stroke();
+        ctx.fillStyle = '#FF453A'; ctx.beginPath(); ctx.arc(x, y + 7, 8, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y + 7, 2.5, 0, TAU); ctx.fill();
+      } },
+    peek: { name: 'Gluurt om het hoekje', dur: 4.8, idle: 1, mood: 'anticipate', msg: '…',
+      upd: function (g, tt) {
+        if (tt < 1.2) fdx = tt / 1.2 * 150; else if (tt < 3.2) { fdx = 150 - Math.min(1, (tt - 1.2) / .5) * 60; dir(-1, 0); g.msg = 'Psst… ben je er nog?'; }
+        else { fdx = 90 * Math.max(0, 1 - (tt - 3.2) / .6); g.mood = 'happy'; g.msg = 'Daar ben ik weer!'; dir(0, 0); }
+      } },
+    shiver: { name: 'Heeft het koud', dur: 4.4, idle: 1, mood: 'worried', msg: 'Brrr… mag de verwarming aan?',
+      upd: function (g, tt) { fdx = Math.sin(tt * 60) * 2.2; fdy = Math.sin(tt * 47) * 1.2; dir(0, .2); if (tt > 3.4) { fdx = fdy = 0; g.mood = 'content'; g.msg = 'Ahh, lekker warm.'; } },
+      draw: function (g, tt) { if (tt > 3.4) return; ctx.strokeStyle = '#9fdcff'; ctx.lineWidth = 2; for (var i = 0; i < 3; i++) { var x = 40 + i * 80 + Math.sin(tt * 3 + i) * 4, y = 36; ctx.beginPath(); ctx.moveTo(x - 6, y); ctx.lineTo(x + 6, y); ctx.moveTo(x, y - 6); ctx.lineTo(x, y + 6); ctx.moveTo(x - 4, y - 4); ctx.lineTo(x + 4, y + 4); ctx.moveTo(x + 4, y - 4); ctx.lineTo(x - 4, y + 4); ctx.stroke(); } } },
+    wave: { name: 'Zwaait', dur: 3.6, idle: 1, drive: 1, mood: 'happy', msg: 'Hoi hoi!',
+      upd: function (g, tt) { dir(.2, 0); },
+      draw: function (g, tt) {
+        var a = Math.sin(tt * 9) * .45;
+        ctx.save(); ctx.translate(196, 150); ctx.rotate(a - .3); ctx.fillStyle = EYE;
+        rr(-6, -34, 12, 30, 6); ctx.fill(); ctx.beginPath(); ctx.arc(0, -36, 10, 0, TAU); ctx.fill();
+        for (var i = -1; i <= 1; i++) { rr(i * 5 - 2, -52, 4, 10, 2); ctx.fill(); }
+        ctx.restore();
+      } },
+    plane: { name: 'Ziet een vliegtuig', dur: 5.4, idle: 1, drive: 1, mood: 'alert', msg: 'Kijk, een vliegtuig!',
+      upd: function (g, tt) { g.x = -20 + tt / 5.4 * 280; dir((g.x - 120) / 120, -1); if (tt > 4.4) g.msg = 'Die gaat op vakantie. Wij ook een keer?'; },
+      draw: function (g, tt) {
+        var x = g.x, y = 30 + Math.sin(tt) * 3;
+        ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 70, y + 1); ctx.lineTo(x - 12, y + 1); ctx.stroke();
+        ctx.fillStyle = EYE; rr(x - 12, y - 3, 26, 7, 3.5); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x - 2, y); ctx.lineTo(x - 8, y + 11); ctx.lineTo(x + 3, y + 1); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x - 8, y); ctx.lineTo(x - 13, y - 8); ctx.lineTo(x - 6, y - 1); ctx.fill();
+      } },
+    drum: { name: 'Trommelt mee', dur: 5.2, drive: 1, idle: 1, mood: 'excited', msg: 'Ba-dum-tss!',
+      upd: function (g, tt) { var b = (tt * 4) % 1; fdy = b < .15 ? 4 : 0; frot = Math.sin(tt * 8) * .03; dir(Math.sin(tt * 4) * .4, .3); if (tt > (g.nn || 0)) { g.nn = (g.nn || 0) + .5; note(rand(30, 210), rand(150, 175)); } } },
+    blush: { name: 'Wordt verlegen', dur: 4, idle: 1, drive: 1, mood: 'love', msg: 'Jij bent echt mijn favoriete bestuurder.',
+      upd: function (g, tt) { dir(-.6, .4); fsc = 1 - Math.min(.06, tt * .03); if (tt > 2.8) { g.msg = 'Oeps, zei ik dat hardop?'; dir(.5, .5); } } },
+    bounce: { name: 'Stuitert', dur: 4.2, idle: 1, mood: 'excited', msg: 'Boing boing boing!',
+      upd: function (g, tt) { var h = Math.abs(Math.sin(tt * 5)) * Math.max(0, 1 - tt / 4.2); fdy = -h * 22; fsc = 1 + (h < .1 ? .06 : 0); dir(0, -h * .5); } },
+    think: { name: 'Denkt diep na', dur: 5.6, idle: 1, mood: 'focused', msg: 'Hmm… waarom heet het een parkeerplaats als je er niet mag rijden?',
+      upd: function (g, tt) { dir(.7, -.7); frot = .06; if (tt > 4.4) { g.mood = 'happy'; g.msg = 'Ik weet het! …nee, kwijt.'; frot = 0; dir(0, 0); } },
+      draw: function (g, tt) { if (tt > 4.4) return; ctx.fillStyle = EYE; ctx.globalAlpha = .8; [[178, 64, 3], [188, 50, 4.5], [200, 32, 8]].forEach(function (c, i) { if (tt > i * .4) { ctx.beginPath(); ctx.arc(c[0], c[1], c[2], 0, TAU); ctx.fill(); } }); ctx.globalAlpha = 1; } }
   };
+  function ster(x, y, r) { ctx.beginPath(); for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, rr0 = i % 2 ? r * .45 : r; ctx.lineTo(x + Math.cos(a) * rr0, y + Math.sin(a) * rr0); } ctx.closePath(); ctx.fill(); }
   function gagWeight(k) {
     var w = mem.gagW[k] === undefined ? 1 : mem.gagW[k], th = character().thrill;
     if (k === 'impatient') return S.trip ? w * 5 : w * 0.15;
@@ -4067,7 +4191,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v74';
+  var VERSION = 'v75';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6034,6 +6158,89 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }).catch(function () { toast('De kaart laadt nu niet, de lijst werkt wel.'); });
   });
   $('flKaartSluit').addEventListener('click', function () { $('flKaart').hidden = true; });
+
+  /* ---------- v75: koppeling met het Buddy-scherm (Waveshare) via Bluetooth ---------- */
+  (function () {
+    var SVC = '6e400001-b5a3-f393-e0a9-e50e24dcca9e', RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e', TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+    var dev = null, rx = null, timer = null, bezig = false;
+    function stat(t) { $('bleStat').textContent = t; }
+    function koppel() {
+      return dev.gatt.connect().then(function (sv) { return sv.getPrimaryService(SVC); })
+        .then(function (svc) { return Promise.all([svc.getCharacteristic(RX), svc.getCharacteristic(TX)]); })
+        .then(function (ch) {
+          rx = ch[0];
+          ch[1].startNotifications().then(function () { ch[1].addEventListener('characteristicvaluechanged', binnen); }).catch(function () {});
+          stat('✅ Verbonden met ' + (dev.name || 'Buddy-scherm') + '. Het schermpje krijgt nu elke seconde de info van je telefoon.');
+          lg('Buddy-scherm verbonden'); $('bleKnop').textContent = '📡 Buddy-scherm: verbonden';
+          if (!timer) timer = setInterval(stuur, 1000);
+        });
+    }
+    function weg() {
+      rx = null; stat('Verbinding met het schermpje weg, ik probeer het opnieuw…'); $('bleKnop').textContent = '📡 Verbind met het Buddy-scherm';
+      setTimeout(function () { if (dev && !rx) koppel().catch(function () { stat('Niet verbonden. Tik op de knop om opnieuw te verbinden.'); }); }, 2500);
+    }
+    function binnen(e) {
+      var t = new TextDecoder().decode(e.target.value); lg('van het Buddy-scherm: ' + t);
+      if (t === 'MELD:cam') $('bUcam').click(); else if (t === 'MELD:mob') $('bUmob').click();
+    }
+    function stuur() {
+      if (!rx || bezig) return;
+      var c = S.cam || null, f = S.fileVoor && T - S.fileVoor.t < 4 ? S.fileVoor : null, w = S.werkVoor && T - S.werkVoor.t < 4;
+      var txt = (($('thought') && $('thought').textContent) || '').replace(/[|\n\r]/g, ' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').trim().slice(0, 60);
+      var msg = ['B1', Math.round(S.speed || 0), S.roadLim == null ? 0 : S.roadLim, c && c.dist != null ? Math.round(c.dist) : -1, c && c.limit ? c.limit : 0,
+        f ? Math.round(f.d) : -1, f && f.dl ? Math.round(f.dl / 60) : 0, w ? 1 : 0, curKey || 'neutral', txt].join('|') + '\n';
+      var data = new TextEncoder().encode(msg), stukken = [];
+      for (var i = 0; i < data.length; i += 20) stukken.push(data.slice(i, i + 20));   /* kleine stukjes: werkt ook zonder grote MTU */
+      bezig = true;
+      stukken.reduce(function (p, st) { return p.then(function () { return rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(st) : rx.writeValue(st); }); }, Promise.resolve())
+        .catch(function () {}).then(function () { bezig = false; });
+    }
+    $('bleKnop').addEventListener('click', function () {
+      if (!navigator.bluetooth) { toast('Deze browser kan geen Bluetooth. Gebruik Chrome op Android.'); return; }
+      if (rx && dev) { try { dev.gatt.disconnect(); } catch (e) {} dev = null; rx = null; stat('Losgekoppeld.'); $('bleKnop').textContent = '📡 Verbind met het Buddy-scherm'; return; }
+      navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'Buddy' }], optionalServices: [SVC] }).then(function (d) {
+        dev = d; d.addEventListener('gattserverdisconnected', weg); stat('Verbinden…'); return koppel();
+      }).catch(function (e) { stat('Niet verbonden' + (e && e.message ? ' (' + e.message + ')' : '') + '.'); });
+    });
+  })();
+
+  /* ---------- v75: tabbalk (Buddy · Kaart · Groep · Meer) ---------- */
+  (function () {
+    var TABKEY = 'dashboardmaatje-tab-v1', DEVKEY = 'dashboardmaatje-dev-v1';
+    var zet = function (el, t) { if (el) el.setAttribute('data-in-tab', t); };
+    zet(document.querySelector('main > .stage'), 'buddy');
+    zet(document.querySelector('main > .topKnoppen'), 'buddy');
+    zet($('tabKaart'), 'kaart');
+    zet($('kopOnderweg'), 'kaart');
+    zet($('kopGroep'), 'groep');
+    ['kopRitten', 'kopPlezier', 'kopInst', 'kopBouw'].forEach(function (id) { zet($(id), 'meer'); });
+    zet($('verTxt'), 'meer');
+    var koppen = document.querySelector('main > .koppen'); if (koppen) koppen.removeAttribute('data-in-tab');
+    /* de flitserkaart en de meld-knoppen verhuizen naar de Kaart-tab */
+    var fk = $('flKaart'); $('kaartPlek').appendChild(fk);
+    ['bUcam', 'bUmob', 'grpDel'].forEach(function (id) { var b = $(id); if (b) $('kaartKnoppen').appendChild(b); });
+    $('kaartKnop').hidden = true;
+    /* "Voor het bouwen" alleen na 5x tikken op het versienummer */
+    var dev = false; try { dev = localStorage.getItem(DEVKEY) === '1'; } catch (e) {}
+    document.body.classList.toggle('dev', dev);
+    var tik = 0, tikT = 0;
+    $('verTxt').addEventListener('click', function () {
+      var nu = Date.now(); tik = nu - tikT < 800 ? tik + 1 : 1; tikT = nu;
+      if (tik >= 5) { tik = 0; dev = !dev; document.body.classList.toggle('dev', dev); try { localStorage.setItem(DEVKEY, dev ? '1' : '0'); } catch (e) {} toast(dev ? 'Bouw-menu zichtbaar (onder Meer).' : 'Bouw-menu weer verborgen.'); }
+    });
+    function toon(t) {
+      document.body.setAttribute('data-tab', t);
+      Array.prototype.forEach.call(document.querySelectorAll('#tabBar button'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-tab') === t ? 'true' : 'false'); });
+      try { localStorage.setItem(TABKEY, t); } catch (e) {}
+      if (t === 'kaart') { $('kaartKnop').click(); }
+      if (t === 'groep' && $('kopGroep')) $('kopGroep').open = true;
+      window.scrollTo(0, 0);
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('#tabBar button'), function (b) { b.addEventListener('click', function () { toon(b.getAttribute('data-tab')); }); });
+    var start = 'buddy'; try { start = localStorage.getItem(TABKEY) || 'buddy'; } catch (e) {}
+    if (start === 'kaart') start = 'buddy';  /* de kaart pas laden als je erop tikt */
+    toon(start);
+  })();
 
   /* ---------- 7. Outfits en feestdagen ---------- */
 
