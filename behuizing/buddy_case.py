@@ -90,15 +90,14 @@ for (x, y) in MOUNTS:
     rib = box(R_HOL - rp + 0.6, 1.8, z_back - ACHTER - (Z0 + L_PLUG + R_HOL - r_plug_in) + 0.01)
     achter += rib.translate([(rp + R_HOL + 0.6) / 2, 0, (Z0 + L_PLUG + R_HOL - r_plug_in) + (z_back - ACHTER - (Z0 + L_PLUG + R_HOL - r_plug_in)) / 2]).rotate([0, 0, ang])
     achter += cyl(1.45, 0.7, 0.85).translate([x, y, Z0 - 1.4])   # tapse pin, punt naar het bord
-# speakerrooster v7d: rechte sleufjes i.p.v. tientallen rondjes. Rondjes op de eerste laag werden pap
-# (elk gaatje een eigen klein rondje + terugtrekken); lange sleuven print hij in rechte, rustige banen.
-SLEUF_B, SLEUF_STAP, SLEUF_R = 2.0, 4.0, 12.5
-for k in range(-3, 4):
-    yk = k * SLEUF_STAP
-    half = math.sqrt(max(0.0, SLEUF_R ** 2 - yk ** 2)) - SLEUF_B / 2
-    if half < 2: continue
-    sleuf = Manifold.hull(cyl(ACHTER + 1, SLEUF_B / 2).translate([-half, 0, 0]) + cyl(ACHTER + 1, SLEUF_B / 2).translate([half, 0, 0]))
-    achter -= sleuf.translate([0, yk - 2, z_back - ACHTER - 0.5])
+# speakerrooster v7e: één groot rond gat aan de buitenkant (eerste lagen op het bed: niks kleins meer),
+# daarna overbrugt hij dat gat met lange rechte lijnen (bruggetjes) die samen het rooster vormen.
+ROOSTER_R, OPEN_DIK, LAT_B, LAT_GAT = 12.5, 1.2, 1.6, 1.6
+achter -= cyl(OPEN_DIK + 0.5, ROOSTER_R).translate([0, -2, z_back - OPEN_DIK])
+for k in range(-8, 9):
+    yk = k * (LAT_B + LAT_GAT) + LAT_B / 2 + LAT_GAT / 2
+    if abs(yk) > ROOSTER_R - 0.5: continue
+    achter -= (box(2 * ROOSTER_R, LAT_GAT, ACHTER - OPEN_DIK + 0.2) ^ cyl(5, ROOSTER_R).translate([0, -yk, -2])).translate([0, yk - 2, z_back - ACHTER + (ACHTER - OPEN_DIK) / 2 - 0.05])
 # nokjes die een rond speakertje (tot 30 mm) vasthouden
 for k in range(4):
     ang = math.radians(45 + 90 * k); r = 15.8
