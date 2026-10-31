@@ -27,6 +27,7 @@
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
 static const int FW_VERSIE = 37;
+struct Box { int16_t x0, y0, x1, y1; };   // v37: bovenaan i.v.m. automatische functie-koppen van Arduino
 static volatile int otaPct = -1;
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
 static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
@@ -716,7 +717,6 @@ static uint8_t frameIdx = 0;
 static constexpr int32_t QSPI_HZ = 80000000;  // bij strepen of flikkeren: 40000000
 
 // Alleen het stukje scherm dat echt veranderd is wordt opnieuw verstuurd (de "dirty box").
-struct Box { int16_t x0, y0, x1, y1; };
 static Box curBox = {32767, 32767, -32768, -32768}, prevBox = {0, 0, 465, 465};
 static Box drawnBox[2] = {{0, 0, 465, 465}, {0, 0, 465, 465}};  // wat er in elk beeld getekend staat (om te wissen)
 struct FlushJob { uint16_t *fb; Box b; };
