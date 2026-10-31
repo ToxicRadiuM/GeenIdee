@@ -24,7 +24,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 30;
+static const int FW_VERSIE = 31;
 static volatile int otaPct = -1;
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
 static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
