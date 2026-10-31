@@ -16,6 +16,8 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <esp_heap_caps.h>
+#include "driver/spi_master.h"   // v37: eigen, snellere verzending van het beeld
+#include "driver/gpio.h"
 #include <LittleFS.h>             // v24: logboek in het flashgeheugen
 #include <WiFi.h>                 // v25: zelfstandig via de hotspot van je telefoon
 #include <WiFiClientSecure.h>
@@ -24,7 +26,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 36;
+static const int FW_VERSIE = 37;
 static volatile int otaPct = -1;
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
 static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
@@ -688,7 +690,7 @@ static constexpr size_t BUDDY_CAMERA_COUNT = sizeof(buddyCameras)/sizeof(buddyCa
 
 
 // Waveshare ESP32-S3-Touch-AMOLED-1.75(-G), CO5300, 466x466
-Arduino_DataBus *bus = new Arduino_ESP32QSPI(LCD_CS, LCD_SCLK, LCD_SDIO0, LCD_SDIO1, LCD_SDIO2, LCD_SDIO3);
+Arduino_DataBus *bus = new Arduino_ESP32QSPI(LCD_CS, LCD_SCLK, LCD_SDIO0, LCD_SDIO1, LCD_SDIO2, LCD_SDIO3, true);   // v37: gedeelde bus, zodat onze snelle verzending er ook op mag
 Arduino_CO5300 *gfx = new Arduino_CO5300(bus, LCD_RESET, 0, LCD_WIDTH, LCD_HEIGHT, 6, 0, 0, 0);
 // v15: gewone 16-bit framebuffer, expliciet in PSRAM. De indexed versie van v14 zocht voor ELKE pixel de kleur op
 // in een palet van 256 kleuren; dat maakte het tekenen traag en schokkerig.
@@ -742,7 +744,7 @@ TouchDrvCST92xx buddyTouch;
 bool touchReady=false;
 int16_t touchX[2] = {0}, touchY[2] = {0};
 static const uint32_t AUDIO_RATE = 16000;
-static const uint32_t FRAME_INTERVAL_US = 20000; // v34: tot 50 FPS (was 30); animaties lopen op echte tijd, dus niet sneller
+static const uint32_t FRAME_INTERVAL_US = 16667; // v37: tot 60 FPS; animaties lopen op echte tijd, dus niet sneller
 static uint32_t serialHeartbeatMs = 0;
 static uint32_t idleMoodUntilMs = 0;
 static uint8_t idleMoodStep = 0;
@@ -2019,6 +2021,48 @@ void flushDirty(){
   xQueueSend(flushQueue, &job, portMAX_DELAY);
   frameIdx ^= 1; frame = frames[frameIdx];
 }
+// v37: snelle verzending. Twee stukjes geheugen in de chip zelf: terwijl het ene stukje via DMA naar het scherm gaat,
+// wordt het volgende al klaargezet. Grote stukken (8 KB) i.p.v. 2 KB, en rijen van een smal vak achter elkaar geplakt.
+static spi_device_handle_t snelSpi = nullptr;
+static uint8_t *snelBuf[2] = {nullptr, nullptr};
+static spi_transaction_ext_t snelTr[2];
+static constexpr size_t SNEL_STUK = 8192;
+static bool snelInit() {
+  spi_device_interface_config_t dc = {};
+  dc.command_bits = 8; dc.address_bits = 24; dc.mode = 0;
+  dc.clock_source = SPI_CLK_SRC_DEFAULT; dc.clock_speed_hz = QSPI_HZ;
+  dc.spics_io_num = -1; dc.flags = SPI_DEVICE_HALFDUPLEX; dc.queue_size = 2;
+  if (spi_bus_add_device(SPI2_HOST, &dc, &snelSpi) != ESP_OK) { snelSpi = nullptr; return false; }
+  for (int i = 0; i < 2; i++) {
+    snelBuf[i] = (uint8_t *)heap_caps_aligned_alloc(16, SNEL_STUK, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+    if (!snelBuf[i]) { spi_bus_remove_device(snelSpi); snelSpi = nullptr; return false; }
+  }
+  return true;
+}
+static void snelVerstuur(const uint16_t *fb, const Box &b) {
+  const size_t rij = (size_t)(b.x1 - b.x0 + 1) * 2;
+  int y = b.y0; size_t inRij = 0; int bezig = 0, idx = 0; bool eerste = true;
+  spi_transaction_t *klaar;
+  spi_device_acquire_bus(snelSpi, portMAX_DELAY);
+  gpio_set_level((gpio_num_t)LCD_CS, 0);
+  while (y <= b.y1) {
+    if (bezig == 2) { spi_device_get_trans_result(snelSpi, &klaar, portMAX_DELAY); bezig--; }   // dit stukje is weer vrij
+    uint8_t *dst = snelBuf[idx]; size_t n = 0;
+    while (n < SNEL_STUK && y <= b.y1) {
+      size_t neem = rij - inRij; if (neem > SNEL_STUK - n) neem = SNEL_STUK - n;
+      memcpy(dst + n, (const uint8_t *)(fb + (int32_t)y * LCD_WIDTH + b.x0) + inRij, neem);
+      n += neem; inRij += neem; if (inRij == rij) { inRij = 0; y++; }
+    }
+    spi_transaction_ext_t &t = snelTr[idx]; memset(&t, 0, sizeof t);
+    if (eerste) { t.base.flags = SPI_TRANS_MODE_QIO; t.base.cmd = 0x32; t.base.addr = 0x003C00; eerste = false; }
+    else t.base.flags = SPI_TRANS_MODE_QIO | SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_VARIABLE_DUMMY;
+    t.base.tx_buffer = dst; t.base.length = n * 8;
+    spi_device_queue_trans(snelSpi, &t.base, portMAX_DELAY); bezig++; idx ^= 1;
+  }
+  while (bezig) { spi_device_get_trans_result(snelSpi, &klaar, portMAX_DELAY); bezig--; }
+  gpio_set_level((gpio_num_t)LCD_CS, 1);
+  spi_device_release_bus(snelSpi);
+}
 void flushTask(void *) {
   FlushJob job;
   for (;;) {
@@ -2026,6 +2070,10 @@ void flushTask(void *) {
     if (wilLicht && wilLicht != isLicht) { isLicht = wilLicht; gfx->setBrightness(isLicht); }
     uint32_t t0 = micros();
     uint16_t w = job.b.x1 - job.b.x0 + 1, h = job.b.y1 - job.b.y0 + 1;
+    if (snelSpi) {
+      gfx->startWrite(); gfx->writeAddrWindow(job.b.x0, job.b.y0, w, h); gfx->endWrite();
+      snelVerstuur(job.fb, job.b);
+    } else {
     gfx->startWrite();
     if (w * 10 >= LCD_WIDTH * 6) {
       // v35: breed vak -> hele rijen in één keer versturen (één lange stroom i.p.v. honderden losse rijtjes)
@@ -2036,6 +2084,7 @@ void flushTask(void *) {
       for (int16_t y = job.b.y0; y <= job.b.y1; y++) bus->writeBytes((uint8_t *)(job.fb + (int32_t)y * LCD_WIDTH + job.b.x0), (uint32_t)w * 2);
     }
     gfx->endWrite();
+    }
     flushLastUs = micros() - t0;
     vTaskDelay(1);   // v22: core 0 even vrijgeven (anders slaat de waakhond aan als Bluetooth ook bezig is)
     xSemaphoreGive(flushIdle);
@@ -2295,6 +2344,7 @@ void setup(){
  frames[1]->fillScreen(BG); frame->fillScreen(BG); frame->flush();
  frames[1]->setTextColor(EYE); frames[1]->setTextSize(1);
  flushQueue = xQueueCreate(1, sizeof(FlushJob)); flushIdle = xSemaphoreCreateBinary(); xSemaphoreGive(flushIdle);
+ if (snelInit()) Serial.println("Buddy beeld: snelle verzending (DMA, 2x8 KB) aan"); else Serial.println("Buddy beeld: snelle verzending niet gelukt, gewone verzending");
  xTaskCreatePinnedToCore(flushTask, "BuddyFlush", 8192, nullptr, 1, nullptr, 0);   // v36: weer prioriteit 1 (met 2 kreeg core 0 geen adem -> waakhond)
  Serial.printf("Buddy beeld klaar | framebuffer=16-bit PSRAM | QSPI=%ld Hz | PSRAM over: %u | heap over: %u\n", (long)QSPI_HZ, (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  frame->setTextColor(EYE); frame->setTextSize(1);
