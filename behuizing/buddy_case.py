@@ -123,7 +123,19 @@ H = 3.0 + 15 * math.tan(t_) + pod_r / math.cos(t_)
 pod_vorm = pod_vorm.translate([0, 0, H])
 zadel = voet_basis + Manifold.hull(box(50, 30, 1).translate([0, 0, 0.5]) + box(44, 26, 1).translate([0, 0, 15]))
 zadel = zadel - pod_vorm
-zadel = zadel ^ box(80, 80, 40).translate([0, 0, 20])
+# v6: klemmetje aan de achterkant van het zadel. De zijwanden lopen 12 graden voorbij het midden van de buis door,
+# dus de opening is ~0,7 mm smaller dan de behuizing: je drukt hem erin en hij klikt vast (PETG veert mee).
+KLEM_W, KLEM_DIK, KLEM_GRAAD = 9.0, 2.4, 12.0
+KLEM_Y0 = 5.0                                     # van y=5 tot y=14 (achterste deel, achter de klikvenstertjes)
+kz = pod_r * math.sin(math.radians(KLEM_GRAAD))
+klem = box(2 * (pod_r + KLEM_DIK), KLEM_W, pod_r + kz + 30).translate([0, KLEM_Y0 + KLEM_W / 2, kz - (pod_r + kz + 30) / 2])
+klem -= cyl(lengte_pod + 30, pod_r, center=True).rotate([90, 0, 0])
+# afgeschuinde binnenrand bovenaan, zodat hij er makkelijk in glijdt
+for sx in (-1, 1):
+    klem -= box(3, KLEM_W + 2, 3).rotate([0, 45, 0]).translate([sx * (pod_r * math.cos(math.radians(KLEM_GRAAD)) + 0.3), KLEM_Y0 + KLEM_W / 2, kz])
+klem = klem.rotate([-KANTEL, 0, 0]).translate([0, 0, H])
+zadel = zadel + klem
+zadel = zadel ^ box(80, 80, 80).translate([0, 0, 40])
 # tape-vlak onder is vlak; rubberen dopjes optioneel
 
 def save(m, naam):
