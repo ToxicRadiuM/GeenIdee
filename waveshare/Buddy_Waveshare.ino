@@ -25,7 +25,10 @@
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
 static const int FW_VERSIE = 29;
-static volatile int otaPct = -1;   // voortgang van een update via wifi (-1 = geen)   // ophogen bij elke nieuwe versie (de update via wifi kijkt hiernaar)
+static volatile int otaPct = -1;
+static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
+static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
+   // voortgang van een update via wifi (-1 = geen)   // ophogen bij elke nieuwe versie (de update via wifi kijkt hiernaar)
 #define FW_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/firmware/"
 #define DATA_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/snelheden/"
 struct JP { const char *p, *e; };   // mini-JSON-lezer (staat bovenaan i.v.m. de automatische prototypes van Arduino)
@@ -1099,7 +1102,6 @@ class BuddyRxCb : public BLECharacteristicCallbacks {
     }
   }
 };
-static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
 static void bleStart() {
   BLEDevice::init("Buddy-scherm");
   BLEDevice::setMTU(185);
@@ -2050,7 +2052,6 @@ bool codecWrite(uint8_t reg, uint8_t value) {
 
 // v29: microfoons (ES7210 op 0x40) voor geluid horen. Experimenteel: reageert op muziek, harde knallen en 2x klappen.
 // Echt Nederlands verstaan ("hé Buddy") kan dit chipje zelf niet; dat doet de Buddy-app op je telefoon.
-static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
 static bool es7210W(uint8_t r, uint8_t v) { Wire.beginTransmission(0x40); Wire.write(r); Wire.write(v); return Wire.endTransmission() == 0; }
 static bool es7210Init() {
   const uint8_t regs[][2] = {
