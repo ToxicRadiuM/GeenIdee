@@ -591,6 +591,10 @@ async function groep(url, env, g, json) {
     const w = getal(q(k), 1e7), max = k === 'gm' ? 150 : 1e7;
     if (w > 0 && w <= max) lid[k] = w; else if (oud && oud[k]) lid[k] = oud[k];
   }
+  // v74: lijntje van de record-sprint (G x100 en km/h per halve seconde, gescheiden door punten)
+  const nk = String(q('nk') || ''), nv = String(q('nv') || ''), kre = /^\d{1,3}(\.\d{1,3}){2,30}$/;
+  if (kre.test(nk) && kre.test(nv) && nk.split('.').length === nv.split('.').length) { lid.nk = nk; lid.nv = nv; }
+  else if (oud && oud.nk && oud.nv) { lid.nk = oud.nk; lid.nv = oud.nv; }
   const ww = getal(q('ww'), 1e5), wv = getal(q('wv'), 1e6);
   if (ww) {
     lid.week = { w: ww, v: wv };

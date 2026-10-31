@@ -1226,7 +1226,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (S.ritStart && (!S.ritStart.nul || tt < S.ritStart.nul)) { S.ritStart.nul = tt; S.ritStart.nulTelt = magHier; S.ritStart.nulWaarom = magHier ? '' : 'hier geldt ' + S.roadLim; }
       if (magHier) {
         mem.launchLive = (mem.launchLive || 0) + 1;
-        if (!mem.best100Live || tt < mem.best100Live) { mem.best100Live = tt; mem.best100LiveD = Date.now(); save(); if (typeof grLid === 'function') setTimeout(function () { grLid(true); }, 1500); }
+        if (S.sprintKurve) mem.last100Kurve = S.sprintKurve;
+        if (!mem.best100Live || tt < mem.best100Live) { mem.best100Live = tt; mem.best100LiveD = Date.now(); if (S.sprintKurve) mem.best100Kurve = S.sprintKurve; save(); if (typeof grLid === 'function') setTimeout(function () { grLid(true); }, 1500); }
       } else lg('0-100 niet voor het leaderboard: hier geldt zeker ' + S.roadLim);
     }
     S.flagUntil = T + 9; S.starUntil = T + 7; S.flagMsg = fmt1(tt) + ' s'; S.flagRec = rec;
@@ -2116,20 +2117,57 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     else if (lr.arm && lr.t0 === null) {
       var f = lr.vPrev < 1 && v > lr.vPrev ? (1 - lr.vPrev) / (v - lr.vPrev) : 0;
       lr.t0 = lr.tStil !== null ? lr.tStil + (t - lr.tStil) * Math.min(1, Math.max(0, f)) : t; lr.arm = false;
-      lr.t1 = t; lr.v1 = v; lr.fijn = false;
+      lr.t1 = t; lr.v1 = v; lr.fijn = false; lr.kv = [];
     } else if (lr.t0 !== null && !lr.fijn && lr.t1 !== null && t > lr.t1) {
       /* tweede meting tijdens het optrekken: terugrekenen wanneer je precies begon te rijden */
       lr.fijn = true;
       var helling = (v - lr.v1) / (t - lr.t1);
       if (helling > 0) { var start = lr.t1 - lr.v1 / helling; if (lr.tStil !== null) start = Math.max(start, lr.tStil); lr.t0 = Math.min(start, lr.t1); }
     }
+    if (lr.t0 !== null && lr.kv && lr.kv.length < 400) lr.kv.push([t, v, (typeof voelOk === 'function' && voelOk()) ? V.lon / 9.81 : null]);
     if (lr.t0 !== null) {
       var kruis = function (doel) { return v > lr.vPrev ? lr.tPrev + (t - lr.tPrev) * (doel - lr.vPrev) / (v - lr.vPrev) : t; };
       if (!lr.d80 && v >= 80 && lr.vPrev < 80) { lr.d80 = true; tachtigDone((kruis(80) - lr.t0) / 1000); }
-      if (v >= 100 && lr.vPrev < 100) { var tt = (kruis(100) - lr.t0) / 1000; lr.t0 = null; launchDone(tt); }
+      if (v >= 100 && lr.vPrev < 100) { var tt = (kruis(100) - lr.t0) / 1000; try { S.sprintKurve = maakKurve(lr.kv || [], lr.t0, tt); } catch (e) { S.sprintKurve = null; } lr.t0 = null; launchDone(tt); }
       else if (t - lr.t0 > 15000) lr.t0 = null;
     }
     lr.vPrev = v; lr.tPrev = t;
+  }
+  /* v74: de sprint als lijntje: snelheid en G-kracht per halve seconde (G uit de bewegingssensor, anders uit de GPS-snelheid) */
+  function maakKurve(kv, t0, tt) {
+    if (kv.length < 3) return null;
+    var vAt = function (ts) {
+      if (ts <= t0) return 0;
+      for (var i = 1; i < kv.length; i++) if (kv[i][0] >= ts) { var a = kv[i - 1], b = kv[i]; return a[1] + (b[1] - a[1]) * (ts - a[0]) / Math.max(1, b[0] - a[0]); }
+      return kv[kv.length - 1][1];
+    };
+    var vs = [], gs = [], n = Math.min(30, Math.ceil(tt / .5));
+    for (var k = 0; k <= n; k++) {
+      var ts = t0 + k * 500, v = Math.max(0, Math.min(130, vAt(ts))), som = 0, m = 0;
+      kv.forEach(function (x) { if (x[2] != null && Math.abs(x[0] - ts) <= 250) { som += x[2]; m++; } });
+      var g = m ? som / m : (vAt(ts + 500) - vAt(ts - 500)) / 3.6 / 9.81;
+      vs.push(Math.round(v)); gs.push(Math.max(0, Math.min(150, Math.round(g * 100))));
+    }
+    vs[vs.length - 1] = Math.max(vs[vs.length - 1], 100);
+    return { v: vs, g: gs, tt: Math.round(tt * 10) / 10, bron: kv.some(function (x) { return x[2] != null; }) ? 'sensor' : 'gps' };
+  }
+  /* tekent een sprintlijn: blauw = snelheid (0-100), oranje = G-kracht */
+  function kurveCanvas(kv) {
+    var c = document.createElement('canvas'), W = 280, H = 120, r = window.devicePixelRatio || 1;
+    c.width = W * r; c.height = H * r; c.style.width = '100%'; c.style.maxWidth = W + 'px'; c.style.height = 'auto'; c.style.display = 'block'; c.style.margin = '6px 0 2px';
+    var x = c.getContext('2d'); x.scale(r, r);
+    var L = 30, R = W - 30, Tp = 10, B = H - 20, n = kv.v.length - 1, gMax = Math.max(60, Math.ceil(Math.max.apply(null, kv.g) / 20) * 20);
+    var px = function (i) { return L + (R - L) * i / Math.max(1, n); };
+    x.strokeStyle = 'rgba(255,255,255,.12)'; x.lineWidth = 1;
+    for (var j = 0; j <= 4; j++) { var yy = Tp + (B - Tp) * j / 4; x.beginPath(); x.moveTo(L, yy); x.lineTo(R, yy); x.stroke(); }
+    x.font = '10px sans-serif'; x.fillStyle = '#7fb8ff'; x.textAlign = 'right'; x.fillText('100', L - 4, Tp + 4); x.fillText('0', L - 4, B + 3);
+    x.fillStyle = '#ffb35c'; x.textAlign = 'left'; x.fillText((gMax / 100).toFixed(1).replace('.', ',') + 'G', R + 4, Tp + 4); x.fillText('0', R + 4, B + 3);
+    x.fillStyle = 'rgba(255,255,255,.55)'; x.textAlign = 'center';
+    for (var s0 = 0; s0 <= n / 2; s0 += 2) x.fillText(s0 + 's', px(s0 * 2), H - 5);
+    var lijn = function (arr, max, kl, dik) { x.strokeStyle = kl; x.lineWidth = dik; x.lineJoin = 'round'; x.beginPath(); arr.forEach(function (w, i) { var yy = B - (B - Tp) * Math.min(1, w / max); if (i) x.lineTo(px(i), yy); else x.moveTo(px(i), yy); }); x.stroke(); };
+    lijn(kv.v, 100, '#0a84ff', 2.5); lijn(kv.g, gMax, '#ff9f0a', 2);
+    var top = kv.g.indexOf(Math.max.apply(null, kv.g)); x.fillStyle = '#ff9f0a'; x.beginPath(); x.arc(px(top), B - (B - Tp) * Math.min(1, kv.g[top] / gMax), 3.5, 0, Math.PI * 2); x.fill();
+    return c;
   }
   window.__launch = function (t, v, acc) { launchFix(t, v, acc == null ? 5 : acc); };
   function onPos(pos) {
@@ -4980,7 +5018,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   var grLidT = -9999, grLidLaatst = '', bordData = [], bordSoort = 'week';
   function grLid(nu) {
     if (!grp || !pbase()) return;
-    var st = 'km=' + Math.round(mem.kmLive || 0) + '&netjes=' + (mem.netjes || 0) + '&gemeld=' + (mem.gemeld || 0) + '&stijl=' + Math.round(mem.stijlLive || 0) + '&ritten=' + (mem.ritLive || 0) + '&nul=' + (mem.best100Live ? Math.round(mem.best100Live * 10) : 0) + '&tachtig=' + (mem.best80Live ? Math.round(mem.best80Live * 10) : 0) + '&ww=' + weekIdx() + '&wv=' + weekWaarde() + '&bd=' + badgeCodes() + '&lv=' + lvVan(lvXp()) + '&jr=' + mijnJr() + '&zw=' + weekIdx() + '&zv=' + weekZacht() + (function () { var dg = function (t) { return t ? Math.floor(t / 864e5) : 0; }; return '&nd=' + dg(mem.best100LiveD) + '&td=' + dg(mem.best80LiveD) + '&gm=' + Math.round((mem.gmaxLive || 0) * 100) + '&gd=' + dg(mem.gmaxLiveD); })();
+    var st = 'km=' + Math.round(mem.kmLive || 0) + '&netjes=' + (mem.netjes || 0) + '&gemeld=' + (mem.gemeld || 0) + '&stijl=' + Math.round(mem.stijlLive || 0) + '&ritten=' + (mem.ritLive || 0) + '&nul=' + (mem.best100Live ? Math.round(mem.best100Live * 10) : 0) + '&tachtig=' + (mem.best80Live ? Math.round(mem.best80Live * 10) : 0) + '&ww=' + weekIdx() + '&wv=' + weekWaarde() + '&bd=' + badgeCodes() + '&lv=' + lvVan(lvXp()) + '&jr=' + mijnJr() + '&zw=' + weekIdx() + '&zv=' + weekZacht() + (function () { var dg = function (t) { return t ? Math.floor(t / 864e5) : 0; }; return '&nd=' + dg(mem.best100LiveD) + '&td=' + dg(mem.best80LiveD) + '&gm=' + Math.round((mem.gmaxLive || 0) * 100) + '&gd=' + dg(mem.gmaxLiveD) + (mem.best100Kurve ? '&nk=' + mem.best100Kurve.g.join('.') + '&nv=' + mem.best100Kurve.v.join('.') : ''); })();
     var sleutel = st + '|' + myWho() + '|' + mijnAuto();
     if (!nu && (T - grLidT < 900 || sleutel === grLidLaatst)) return;
     grLidT = T; grLidLaatst = sleutel;
@@ -5034,6 +5072,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
           ['🧘 Rijstijl', (l.ritten || 0) >= 3 ? (l.stijl || 0) + '/100' : 'nog te weinig ritten'],
           ['📸 Netjes langs flitsers', (l.netjes || 0) + '×  ·  meldingen: ' + (l.gemeld || 0)]];
         rg.forEach(function (x) { var pr = document.createElement('p'); pr.style.margin = '2px 0'; var b0 = document.createElement('b'); b0.textContent = x[0] + ': '; pr.appendChild(b0); pr.appendChild(document.createTextNode(x[1])); inf.appendChild(pr); });
+        var kv0 = l.van === mijnId && mem.best100Kurve ? mem.best100Kurve : (l.nk && l.nv ? { g: String(l.nk).split('.').map(Number), v: String(l.nv).split('.').map(Number) } : null);
+        if (kv0 && kv0.v.length > 2 && kv0.g.length === kv0.v.length) {
+          var kt = document.createElement('p'); kt.style.margin = '8px 0 0'; kt.innerHTML = '<b>📈 Record-sprint</b> <span style="color:#0a84ff">━ snelheid</span>  <span style="color:#ff9f0a">━ G-kracht</span>'; inf.appendChild(kt);
+          inf.appendChild(kurveCanvas(kv0));
+          var piek = Math.max.apply(null, kv0.g); var kp = document.createElement('p'); kp.className = 'foot'; kp.style.margin = '0';
+          kp.textContent = 'Hardste duw: ' + (piek / 100).toFixed(2).replace('.', ',') + ' G na ' + (kv0.g.indexOf(piek) / 2).toFixed(1).replace('.', ',') + ' s'; inf.appendChild(kp);
+        }
         if (l.van === mijnId) { var pj = document.createElement('p'); pj.className = 'foot'; pj.textContent = 'Datums en G-kracht komen er vanaf nu bij; oudere records hebben nog geen datum.'; inf.appendChild(pj); }
         ol.appendChild(inf);
       }
