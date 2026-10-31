@@ -24,6 +24,7 @@
 static const int FW_VERSIE = 25;   // ophogen bij elke nieuwe versie (de update via wifi kijkt hiernaar)
 #define FW_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/firmware/"
 #define DATA_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/snelheden/"
+struct JP { const char *p, *e; };   // mini-JSON-lezer (staat bovenaan i.v.m. de automatische prototypes van Arduino)
 #include <FFat.h>
 #include <esp_system.h>
 #include <stdarg.h>
@@ -1439,7 +1440,6 @@ static Traject *trajecten = nullptr; static int trajN = 0;
 static volatile bool trajActief = false; static volatile float trajGem = 0; static volatile int trajLim = 0;
 static volatile int otaPct = -1;
 
-struct JP { const char *p, *e; };   // mini-JSON-lezer (genoeg voor onze eigen bestanden)
 static void jWs(JP &j) { while (j.p < j.e && (*j.p == ' ' || *j.p == '\n' || *j.p == '\r' || *j.p == '\t')) j.p++; }
 static bool jIs(JP &j, char c) { jWs(j); if (j.p < j.e && *j.p == c) { j.p++; return true; } return false; }
 static double jNum(JP &j) { jWs(j); char *q; double v = strtod(j.p, &q); if (q == j.p) { if (!strncmp(j.p, "null", 4)) j.p += 4; return 0; } j.p = q; return v; }
