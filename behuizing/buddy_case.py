@@ -90,12 +90,15 @@ for (x, y) in MOUNTS:
     rib = box(R_HOL - rp + 0.6, 1.8, z_back - ACHTER - (Z0 + L_PLUG + R_HOL - r_plug_in) + 0.01)
     achter += rib.translate([(rp + R_HOL + 0.6) / 2, 0, (Z0 + L_PLUG + R_HOL - r_plug_in) + (z_back - ACHTER - (Z0 + L_PLUG + R_HOL - r_plug_in)) / 2]).rotate([0, 0, ang])
     achter += cyl(1.45, 0.7, 0.85).translate([x, y, Z0 - 1.4])   # tapse pin, punt naar het bord
-# speakerrooster: grotere gaatjes (2,6 mm), recht omhoog geprint = strak
-for i in range(-6, 7):
-    for j in range(-6, 7):
-        x = i * 4.2 + (2.1 if j % 2 else 0); y = j * 3.64
-        if math.hypot(x, y + 2) < 13.0:
-            achter -= cyl(ACHTER + 1, 1.3).translate([x, y - 2, z_back - ACHTER - 0.5])
+# speakerrooster v7d: rechte sleufjes i.p.v. tientallen rondjes. Rondjes op de eerste laag werden pap
+# (elk gaatje een eigen klein rondje + terugtrekken); lange sleuven print hij in rechte, rustige banen.
+SLEUF_B, SLEUF_STAP, SLEUF_R = 2.0, 4.0, 12.5
+for k in range(-3, 4):
+    yk = k * SLEUF_STAP
+    half = math.sqrt(max(0.0, SLEUF_R ** 2 - yk ** 2)) - SLEUF_B / 2
+    if half < 2: continue
+    sleuf = Manifold.hull(cyl(ACHTER + 1, SLEUF_B / 2).translate([-half, 0, 0]) + cyl(ACHTER + 1, SLEUF_B / 2).translate([half, 0, 0]))
+    achter -= sleuf.translate([0, yk - 2, z_back - ACHTER - 0.5])
 # nokjes die een rond speakertje (tot 30 mm) vasthouden
 for k in range(4):
     ang = math.radians(45 + 90 * k); r = 15.8
