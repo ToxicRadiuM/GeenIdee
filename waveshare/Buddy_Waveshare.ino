@@ -9,6 +9,7 @@
 #include <BLEDevice.h>          // v19: koppeling met de Buddy-app op je telefoon
 #include <BLEServer.h>
 #include <BLE2902.h>
+#include <BLESecurity.h>
 
 #include <pgmspace.h>
 #include <freertos/FreeRTOS.h>
@@ -23,7 +24,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 28;
+static const int FW_VERSIE = 29;
 static volatile int otaPct = -1;   // voortgang van een update via wifi (-1 = geen)   // ophogen bij elke nieuwe versie (de update via wifi kijkt hiernaar)
 #define FW_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/firmware/"
 #define DATA_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/snelheden/"
@@ -1048,8 +1049,8 @@ static WerkerCfg wCfg = {"", "", "", ""}, wNieuw = {"", "", "", ""}; static vola
 static char grpTekst[40] = ""; static volatile uint32_t grpTot = 0;
 static volatile int setLicht = -1, setVol = -1; static volatile float animFactor = 1.0f; static char outfitK[16] = ""; static volatile uint32_t outfitT = 0;
 static char wifiNaam[33] = "", wifiPass[65] = "", wifiNaamNieuw[33] = "", wifiPassNieuw[65] = ""; static volatile bool wifiNieuw = false, wifiHerstart = false;
-struct PhoneData { int v, lim, camD, camLim, fileD, fileMin; bool werk; int mood; char txt[64]; uint32_t ms; };
-static PhoneData phone = {0, 0, -1, 0, -1, 0, false, -1, "", 0};
+struct PhoneData { int v, lim, camD, camLim, fileD, fileMin; bool werk; int mood; char txt[64]; uint32_t ms; char nav; int navD; char msi[6]; };
+static PhoneData phone = {0, 0, -1, 0, -1, 0, false, -1, "", 0, 0, 0, ""};
 static BLECharacteristic *bleTx = nullptr;
 static volatile bool bleConnected = false;
 static char bleBuf[256]; static size_t bleLen = 0;
@@ -1072,23 +1073,25 @@ static void parsePhone(char *line) {
     return;
   }
   if (!strncmp(line, "WIFI:", 5)) { char *tab = strchr(line + 5, '\t'); if (tab) { *tab = 0; strncpy(wifiNaamNieuw, line + 5, 32); wifiNaamNieuw[32] = 0; strncpy(wifiPassNieuw, tab + 1, 64); wifiPassNieuw[64] = 0; wifiNieuw = true; } return; }
-  char *f[12] = {0}; int n = 0; f[n++] = line;
-  for (char *q = line; *q && n < 12; ++q) if (*q == '|') { *q = 0; f[n++] = q + 1; }
+  char *f[14] = {0}; int n = 0; f[n++] = line;
+  for (char *q = line; *q && n < 14; ++q) if (*q == '|') { *q = 0; f[n++] = q + 1; }
   if (n < 9 || strcmp(f[0], "B1") != 0) return;
   PhoneData d = phone;
   d.v = atoi(f[1]); d.lim = atoi(f[2]); d.camD = atoi(f[3]); d.camLim = atoi(f[4]);
   d.fileD = atoi(f[5]); d.fileMin = atoi(f[6]); d.werk = atoi(f[7]) == 1; d.mood = -1;
   for (int i = 0; i < MOOD_COUNT; i++) if (strcmp(f[8], moodKeys[i]) == 0) d.mood = i;
   strncpy(d.txt, n > 9 ? f[9] : "", sizeof(d.txt) - 1); d.txt[sizeof(d.txt) - 1] = 0;
+  d.nav = (n > 10 && f[10][0]) ? f[10][0] : 0; d.navD = d.nav ? atoi(f[10] + 1) : 0;   // v29: navigatiepijl, bv. R350
+  strncpy(d.msi, n > 11 ? f[11] : "", sizeof(d.msi) - 1); d.msi[sizeof(d.msi) - 1] = 0;  // v29: matrixbord: x of 70
   d.ms = millis(); phone = d;
 }
 class BuddySrvCb : public BLEServerCallbacks {
-  void onConnect(BLEServer *) override { bleConnected = true; logRegel("BLE: telefoon verbonden"); }
+  void onConnect(BLEServer *) override { bleConnected = true; if (!gekoppeld) pinTot = millis() + 60000; logRegel("BLE: telefoon verbonden"); }
   void onDisconnect(BLEServer *) override { bleConnected = false; logRegel("BLE: telefoon weg"); BLEDevice::startAdvertising(); }
 };
 class BuddyRxCb : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *c) override {
-    auto v = c->getValue();
+    auto v = c->getValue(); if (!gekoppeld) { gekoppeld = true; pinTot = 0; }
     for (size_t i = 0; i < v.length(); i++) {
       char ch = v[i];
       if (ch == '\n') { bleBuf[bleLen] = 0; parsePhone(bleBuf); bleLen = 0; }
@@ -1096,6 +1099,7 @@ class BuddyRxCb : public BLECharacteristicCallbacks {
     }
   }
 };
+static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
 static void bleStart() {
   BLEDevice::init("Buddy-scherm");
   BLEDevice::setMTU(185);
@@ -1103,6 +1107,8 @@ static void bleStart() {
   BLEService *svc = srv->createService(NUS_SVC);
   BLECharacteristic *rx = svc->createCharacteristic(NUS_RX, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
   rx->setCallbacks(new BuddyRxCb());
+  rx->setAccessPermissions(ESP_GATT_PERM_WRITE_ENC_MITM);   // v29: alleen na koppelen met de koppelcode
+  BLESecurity *sec = new BLESecurity(); sec->setStaticPIN(koppelPin);
   bleTx = svc->createCharacteristic(NUS_TX, BLECharacteristic::PROPERTY_NOTIFY); bleTx->addDescriptor(new BLE2902());
   svc->start();
   BLEAdvertising *adv = BLEDevice::getAdvertising(); adv->addServiceUUID(NUS_SVC); adv->setScanResponse(true);
@@ -1188,7 +1194,7 @@ static void drawInfo() {
   char r[48]; int y = 46;
   snprintf(r, sizeof r, "Buddy v%d | %s", FW_VERSIE, netStatus); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
   snprintf(r, sizeof r, "GPS: %s %d sat", gpsFix ? "FIX" : (gpsDataOk ? "zoekt" : "geen data"), (int)gpsSatellites); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
-  snprintf(r, sizeof r, "Telefoon: %s", bleConnected ? (phoneFresh() ? "verbonden" : "stil") : "niet"); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
+  snprintf(r, sizeof r, "Tel: %s  code %06lu", bleConnected ? (phoneFresh() ? "OK" : "stil") : "niet", (unsigned long)koppelPin); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
   snprintf(r, sizeof r, "Volume %d%%  Licht %d", buddyVolume, helderheid * 100 / 255); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
   snprintf(r, sizeof r, "Bocht %.2f G", fabsf(leanX)); frame->setCursor(X(40), Y(y)); frame->print(r); y += 20;
   frame->setTextColor(GOLD);
@@ -1721,6 +1727,24 @@ static const char *grpZin(const char *s) {
   if (!strcmp(s, "hart")) return "stuurt een hartje"; if (!strcmp(s, "thuis")) return "is thuis"; if (!strcmp(s, "mijlpaal")) return ": mijlpaal!"; if (!strcmp(s, "feli")) return "feliciteert!";
   return "test de groep";
 }
+// v29: weer en waarschuwingen (Open-Meteo, gratis, geen sleutel nodig)
+static volatile float wxTemp = -99; static volatile int wxCode = -1, wxRegenOver = -1; static volatile uint32_t wxT = 0;
+static void haalWeer() {
+  char url[220]; snprintf(url, sizeof url, "https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f&current=temperature_2m,weather_code,precipitation&minutely_15=precipitation&forecast_minutely_15=4&timezone=auto", (double)gpsLat, (double)gpsLon);
+  size_t n; uint8_t *b = haalUrl(url, n); if (!b) return;
+  JP j{(const char *)b, (const char *)b + n};
+  if (jZoek(j, "\"current\":{")) {
+    JP c = j; if (jZoek(c, "\"temperature_2m\":")) wxTemp = jNum(c);
+    c = j; if (jZoek(c, "\"weather_code\":")) wxCode = (int)jNum(c);
+  }
+  JP m{(const char *)b, (const char *)b + n}; int over = -1;
+  if (jZoek(m, "\"minutely_15\":{") && jZoek(m, "\"precipitation\":[")) { for (int i = 0; i < 4; i++) { float v = jNum(m); jIs(m, ','); if (v >= 0.2f && over < 0) over = i * 15; } }
+  wxRegenOver = over; wxT = millis();
+  logRegel("weer: %.1f graden, code %d, regen over %d min", (double)wxTemp, (int)wxCode, over);
+  free(b);
+}
+static bool wxVers() { return wxT && millis() - wxT < 45UL * 60000; }
+static bool wxGlad() { return wxVers() && wxTemp <= 1.0f && (wxCode >= 45 || wxRegenOver >= 0); }   // vorst + neerslag/mist
 static void haalPakket() {
   if (!wCfg.url[0]) return;
   char url[256]; snprintf(url, sizeof url, "%s/scherm?lat=%.5f&lon=%.5f&g=%s&van=%s&sinds=%lu", wCfg.url, (double)gpsLat, (double)gpsLon, wCfg.grp, wCfg.van, (unsigned long)pakketSinds);
@@ -1792,6 +1816,7 @@ static void netTaak(void *) {
     netStatus = "wifi OK";
     if (!ntpAan) { ntpAan = true; configTzTime("CET-1CEST,M3.5.0,M10.5.0/3", "pool.ntp.org", "time.google.com"); logRegel("wifi verbonden (%s), IP %s", wifiNaam, WiFi.localIP().toString().c_str()); }
     if (!flitsT || millis() - flitsT > 24UL * 3600000 || flitsOud) { flitsOud = false; flitsT = millis(); laadFlitsers(true); }
+    { static uint32_t wxHaalT = 0; if (gpsFix && (!wxHaalT || millis() - wxHaalT > 15UL * 60000)) { wxHaalT = millis(); haalWeer(); } }
     { static uint32_t pakT = 0; uint32_t elk = (gpsFix && gpsSpeedKmh > 5) ? 45000 : 120000; if (wCfg.url[0] && (!pakT || millis() - pakT > elk)) { pakT = millis(); haalPakket(); } }
     if (zwaaiVraag && !bleConnected) { zwaaiVraag = false; stuurZwaai(); } else if (zwaaiVraag) zwaaiVraag = false;
     if (gpsFix && tegelNu[0] == 0) { char key[16]; tegelKey(gpsLat, gpsLon, key, sizeof key); laadTegel(key, true); }
@@ -1843,6 +1868,15 @@ void drawFace(){
    char ct[24]; snprintf(ct, sizeof ct, "UPDATE %d%%", otaPct);
    boxAdd(40, 26, 200, 50); roundRect(44, 28, 152, 20, 10, 0x0418);
    frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - strlen(ct) * 6, Y(32)); frame->print(ct);
+ } else if ((int32_t)(pinTot - millis()) > 0) {   // v29: koppelcode laten zien bij de eerste keer verbinden
+   char ct[28]; snprintf(ct, sizeof ct, "CODE %06lu", (unsigned long)koppelPin);
+   boxAdd(40, 26, 200, 50); roundRect(44, 28, 152, 20, 10, 0x0451);
+   frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - strlen(ct) * 6, Y(32)); frame->print(ct);
+ } else if (tel && phone.msi[0]) {   // v29: matrixbord boven de weg
+   boxAdd(70, 18, 170, 76); roundRect(72, 20, 96, 54, 7, 0x0841); frame->drawRoundRect(X(72), Y(20), S(96), S(54), S(7), EYE);
+   bool kn = (millis() / 250) % 2; circle(80, 27, 3, kn ? 0xFD80 : 0x4200); circle(160, 27, 3, kn ? 0xFD80 : 0x4200); circle(80, 67, 3, kn ? 0x4200 : 0xFD80); circle(160, 67, 3, kn ? 0x4200 : 0xFD80);
+   if (phone.msi[0] == 'x') { dikLijn(104, 32, 136, 62, 6, 0xF800); dikLijn(136, 32, 104, 62, 6, 0xF800); }
+   else { circle(120, 47, 19, 0xF800); circle(120, 47, 15, 0xFFFF); segTekst(phone.msi, 120, 47, strlen(phone.msi) >= 3 ? 10.f : 13.f, 0x0000); }
  } else if (camM >= 0 && camM < 1000) {
    char ct[24]; snprintf(ct, sizeof ct, "FLITSER %dm", (camM / 10) * 10);
    boxAdd(40, 26, 200, 50); roundRect(44, 28, 152, 20, 10, 0x8000);
@@ -1854,6 +1888,23 @@ void drawFace(){
    boxAdd(50, 26, 190, 50); roundRect(52, 28, 136, 20, 10, 0x3082);
    bool aan = (millis() / 400) % 2; circle(64, 38, 3, aan ? 0xF8A6 : 0x7800); circle(73, 38, 3, aan ? 0x7800 : 0xF8A6);
    frame->setTextColor(0xFEDB); frame->setTextSize(2); frame->setCursor(X(82), Y(31)); frame->print(ft);
+ } else if (tel && phone.nav) {   // v29: navigatiepijl met afstand
+   float cx = 120, cy = 34; uint16_t c = EYE;
+   boxAdd(70, 14, 170, 72);
+   if (phone.nav == 'A') { line(cx - 2, cy - 14, cx - 2, cy + 14, c, 3); triF(cx, cy - 14, cx + 16, cy - 8, cx, cy - 2, 0xF800); }
+   else if (phone.nav == 'O') { for (int i = 0; i < 14; i++) { float a1 = .6f + i * .38f, a2 = a1 + .38f; line(cx + cosf(a1) * 11, cy + sinf(a1) * 11, cx + cosf(a2) * 11, cy + sinf(a2) * 11, c, 3); } triF(cx + 11, cy - 10, cx + 3, cy - 3, cx + 16, cy - 2, c); }
+   else {
+     float a = 0; switch (phone.nav) { case 'L': a = -90; break; case 'R': a = 90; break; case 'l': a = -45; break; case 'r': a = 45; break; case 'U': a = 180; break; default: a = 0; }
+     float rad = a * .0174533f, dx = sinf(rad), dy = -cosf(rad);
+     if (phone.nav == 'L' || phone.nav == 'R' || phone.nav == 'U') { dikLijn(cx, cy + 14, cx, cy - 2, 5, c); dikLijn(cx, cy - 2, cx + dx * 12, cy - 2 + dy * 12, 5, c); float ex = cx + dx * 14, ey = cy - 2 + dy * 14; triF(ex + dx * 8, ey + dy * 8, ex - dy * 7, ey + dx * 7, ex + dy * 7, ey - dx * 7, c); }
+     else { dikLijn(cx - dx * 12, cy - dy * 12 + 4, cx + dx * 6, cy + dy * 6, 5, c); float ex = cx + dx * 8, ey = cy + dy * 8; triF(ex + dx * 9, ey + dy * 9, ex - dy * 8, ey + dx * 8, ex + dy * 8, ey - dx * 8, c); }
+   }
+   char nd[16]; if (phone.navD >= 950) snprintf(nd, sizeof nd, "%d,%d km", phone.navD / 1000, (phone.navD % 1000) / 100); else snprintf(nd, sizeof nd, "%d m", (phone.navD / 10) * 10);
+   frame->setTextColor(EYE); frame->setTextSize(2); frame->setCursor(X(120) - strlen(nd) * 6, Y(56)); frame->print(nd);
+ } else if (wxGlad() || (wxVers() && wxRegenOver >= 0 && wxRegenOver <= 15 && spdNow() > 20)) {   // v29: gladheid of regen
+   char ct[28]; bool gl = wxGlad(); if (gl) snprintf(ct, sizeof ct, "GLAD? %d GRADEN", (int)lroundf(wxTemp)); else if (wxRegenOver == 0) snprintf(ct, sizeof ct, "HET REGENT"); else snprintf(ct, sizeof ct, "REGEN OVER %d MIN", wxRegenOver);
+   boxAdd(24, 26, 216, 50); roundRect(28, 28, 184, 20, 10, gl ? 0xC300 : 0x0318);
+   frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - strlen(ct) * 6, Y(32)); frame->print(ct);
  } else if ((int32_t)(grpTot - millis()) > 0 && grpTekst[0]) {   // v28: groepsbericht
    char tx[27]; strncpy(tx, grpTekst, 26); tx[26] = 0; int tw = strlen(tx) * 12;
    boxAdd(18, 26, 222, 50); roundRect(120 - tw / 2.f / 1.94f - 8, 28, tw / 1.94f + 16, 20, 10, 0x0451);
@@ -1882,7 +1933,16 @@ void drawFace(){
  char limTxt[6]; if (limit > 0) snprintf(limTxt, sizeof limTxt, "%d", limit); else snprintf(limTxt, sizeof limTxt, "-");
  segTekst(limTxt, sx, sy, strlen(limTxt) >= 3 ? 12.5f : 17.f, 0x0000);
  char spdTxt[8];
- if (rust) { int hh, mm; lokaleTijd(hh, mm); snprintf(spdTxt, sizeof spdTxt, "%02d:%02d", hh, mm); segTekst(spdTxt, 152, 197, 22, EYE); }
+ if (rust) { int hh, mm; lokaleTijd(hh, mm); snprintf(spdTxt, sizeof spdTxt, "%02d:%02d", hh, mm); segTekst(spdTxt, 152, 197, 22, EYE);
+   if (wxVers()) {   // v29: temperatuur en een weericoontje onder de klok
+     char tg[8]; snprintf(tg, sizeof tg, "%d", (int)lroundf(wxTemp)); segTekst(tg, 160, 222, 11, 0xBDF7); circle(160 + strlen(tg) * 4.2f + 3, 217, 1.6f, 0xBDF7);
+     float ix = 132, iy = 222; int c = wxCode;
+     if (c <= 1) circle(ix, iy, 5, GOLD);
+     else { if (c <= 3) circle(ix - 3, iy - 3, 4, GOLD); circle(ix - 3, iy + 1, 4.5f, 0xC618); circle(ix + 3, iy, 5, 0xC618); roundRect(ix - 7, iy + 1, 15, 4, 2, 0xC618);
+       if (c >= 51 && c < 70) for (int i = -1; i <= 1; i++) line(ix + i * 4, iy + 7, ix + i * 4 - 1, iy + 10, 0x7E5F, 1);
+       if (c >= 71 && c < 80) for (int i = -1; i <= 1; i++) circle(ix + i * 4, iy + 9, 1.2f, 0xFFFF);
+       if (c >= 95) triF(ix, iy + 5, ix - 3, iy + 11, ix + 2, iy + 9, GOLD); }
+   } }
  else { if (ownSpeed >= 0) snprintf(spdTxt, sizeof spdTxt, "%d", ownSpeed); else snprintf(spdTxt, sizeof spdTxt, "--");
    segTekst(spdTxt, 150, 196, 30, teHard ? 0xFB2C : EYE);
    frame->setTextColor(0x8C71); frame->setTextSize(2); frame->setCursor(X(150) - 24, Y(216)); frame->print("km/u"); }
@@ -1942,6 +2002,11 @@ void updateMood(float dt){
  // v19: als de telefoon verbonden is, neemt hij de stemming van de app over (die weet veel meer)
  if (phoneFresh() && phone.mood >= 0 && millis() > idleMoodUntilMs) mood = phone.mood;
  if (gagAct >= 0 && gagMood >= 0) mood = gagMood;
+ { static uint32_t glT = 0; if (wxGlad() && spdNow() > 10 && millis() - glT > 900000) { glT = millis(); schrikTot = millis() + 1200; } }
+ { static uint32_t kl0 = 0, kn0 = 0, mu0 = 0;
+   if (klapT && klapT != kl0) { kl0 = klapT; aaiTot = millis() + 2000; laatsteActie = millis(); if (gagAct < 0) { startGag(7); gagMsg = "Ja? Ik ben er!"; } }
+   if (knalT && knalT != kn0 && millis() - knalT < 300) { kn0 = knalT; if (millis() > schrikTot + 4000) schrikTot = millis() + 900; }
+   if (muziekSinds && millis() - muziekSinds > 8000 && gagAct < 0 && millis() - mu0 > 90000 && !slaapt) { mu0 = millis(); startGag(random(2) ? 8 : 24); gagMsg = "Muziek! Dansje!"; } }
  if (slaapt) mood = SLEEPING;
  if ((int32_t)(grpTot - millis()) > 0) mood = HAPPY;
  if ((int32_t)(flagTot - millis()) > 0) mood = EXCITED;
@@ -1983,6 +2048,44 @@ bool codecWrite(uint8_t reg, uint8_t value) {
   return Wire.endTransmission() == 0;
 }
 
+// v29: microfoons (ES7210 op 0x40) voor geluid horen. Experimenteel: reageert op muziek, harde knallen en 2x klappen.
+// Echt Nederlands verstaan ("hé Buddy") kan dit chipje zelf niet; dat doet de Buddy-app op je telefoon.
+static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
+static bool es7210W(uint8_t r, uint8_t v) { Wire.beginTransmission(0x40); Wire.write(r); Wire.write(v); return Wire.endTransmission() == 0; }
+static bool es7210Init() {
+  const uint8_t regs[][2] = {
+    {0x00, 0xFF}, {0x00, 0x41}, {0x01, 0x3F}, {0x09, 0x30}, {0x0A, 0x30}, {0x23, 0x2A}, {0x22, 0x0A}, {0x20, 0x0A}, {0x21, 0x2A},
+    {0x08, 0x10},                // slave-stand
+    {0x40, 0x43}, {0x41, 0x70}, {0x42, 0x70},
+    {0x07, 0x20}, {0x02, 0x81}, {0x04, 0x01}, {0x05, 0x00},   // MCLK 4,096 MHz, 16 kHz
+    {0x11, 0x60}, {0x12, 0x00},  // I2S, 16 bit, geen TDM
+    {0x43, 0x1A}, {0x44, 0x1A}, {0x45, 0x00}, {0x46, 0x00},   // MIC1+2 aan, ~30 dB versterking
+    {0x47, 0x08}, {0x48, 0x08}, {0x49, 0xFF}, {0x4A, 0xFF}, {0x4B, 0x00}, {0x4C, 0xFF},
+    {0x01, 0x14}, {0x00, 0x71}, {0x00, 0x41}
+  };
+  for (auto &r : regs) if (!es7210W(r[0], r[1])) return false;
+  return true;
+}
+static void oorTaak(void *) {
+  int16_t buf[512]; uint32_t laatst = millis();
+  for (;;) {
+    size_t n = buddyI2S.readBytes((char *)buf, sizeof buf);
+    if (n < 64) { vTaskDelay(pdMS_TO_TICKS(20)); continue; }
+    int cnt = n / 2; double som = 0; for (int i = 0; i < cnt; i++) { float v = buf[i] / 32768.0f; som += v * v; }
+    float rms = sqrtf(som / cnt); oorNiveau = rms; oorOk = true;
+    uint32_t nu = millis(); float dt = (nu - laatst) / 1000.f; laatst = nu;
+    if (oorBasis <= 0) oorBasis = rms; oorBasis += (rms - oorBasis) * fminf(1, dt / 8.f);   // achtergrond (wegdek, ventilator)
+    bool luid = rms > oorBasis * 2.2f + .004f;
+    static uint32_t luidSinds = 0, stilSinds = 0, piekT = 0; static int pieken = 0;
+    if (luid) { stilSinds = 0; if (!luidSinds) luidSinds = nu; } else { if (!stilSinds) stilSinds = nu; if (stilSinds && nu - stilSinds > 1500) luidSinds = 0; }
+    if (luidSinds && nu - luidSinds > 6000 && !audioBusy) muziekSinds = luidSinds;   // lang achter elkaar geluid = muziek/praten
+    if (!luid && stilSinds && nu - stilSinds > 4000) muziekSinds = 0;
+    if (rms > oorBasis * 6 + .03f) {   // korte harde piek
+      if (nu - piekT > 120) { if (nu - piekT < 700) pieken++; else pieken = 1; piekT = nu; }
+      if (pieken == 2) { klapT = nu; pieken = 0; } else if (!audioBusy) knalT = nu;
+    }
+  }
+}
 bool initBuddyAudio() {
   pinMode(PA, OUTPUT);
   digitalWrite(PA, HIGH);
@@ -2011,6 +2114,8 @@ bool initBuddyAudio() {
   }
   applyCodecVolume(buddyVolume);
   Serial.println("Buddy audio: ES8311 klaar");
+  if (es7210Init()) { xTaskCreatePinnedToCore(oorTaak, "BuddyOor", 6144, nullptr, 1, nullptr, 0); Serial.println("Buddy oor: ES7210 microfoons klaar"); }
+  else Serial.println("Buddy oor: ES7210 niet gevonden");
   return true;
 }
 
@@ -2108,7 +2213,7 @@ void setup(){
  delay(200);
  Serial.println();
  Serial.println("========================================");
- Serial.println("BUDDY v28 BOOT - USB SERIAL ACTIEF");
+ Serial.println("BUDDY v29 BOOT - USB SERIAL ACTIEF");
  Serial.println("Baudrate: 115200 | USB CDC check");
  Serial.printf("PSRAM: %u bytes vrij | heap: %u bytes\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  buddyPrefs.begin("buddy", false); buddyVolume=buddyPrefs.getUChar("volume", 85);
@@ -2159,6 +2264,7 @@ void setup(){
  rec80 = buddyPrefs.getFloat("b80", 0); rec100 = buddyPrefs.getFloat("b100", 0); recG = buddyPrefs.getFloat("gmax", 0);
  totKm = buddyPrefs.getFloat("km", 0); totRit = buddyPrefs.getUInt("rit", 0);
  buddyPrefs.getString("d80", dat80, sizeof dat80); buddyPrefs.getString("d100", dat100, sizeof dat100);
+ koppelPin = buddyPrefs.getUInt("pin", 0); if (koppelPin < 100000) { koppelPin = 100000 + esp_random() % 900000; buddyPrefs.putUInt("pin", koppelPin); }
  bleStart();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
  logStart();
@@ -2168,7 +2274,7 @@ void setup(){
  xTaskCreatePinnedToCore(netTaak, "BuddyNet", 12288, nullptr, 1, nullptr, 0);
  logRegel("===== OPSTART v%d | reden: %s | heap %u =====", FW_VERSIE, resetReden(), (unsigned)ESP.getFreeHeap());
  if (wakkerDoorBeweging) { logRegel("wakker geworden door beweging (instappen?)"); startGag(22); gagMsg = "Hoi! Daar ben je!"; nextGagT = 20; }
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v28: files/werk/groep zonder telefoon, zwaaien | outfits, instellen vanuit de app | uit/aan met de auto | wifi, eigen limieten, trajecten, updates | logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy v29: koppelcode, navigatie, matrixborden, weer, oor | files/werk/groep zonder telefoon, zwaaien | outfits, instellen vanuit de app | uit/aan met de auto | wifi, eigen limieten, trajecten, updates | logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
@@ -2196,7 +2302,7 @@ void loop(){
  }
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();
-   Serial.printf("BUDDY v28 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
+   Serial.printf("BUDDY v29 ALIVE | scherm=OK | GPS=%s | heap=%u\n",gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
  if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
@@ -2226,7 +2332,7 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v28 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   Serial.printf("Buddy v29 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){

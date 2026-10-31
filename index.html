@@ -4286,7 +4286,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v79';
+  var VERSION = 'v80';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6329,12 +6329,24 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         .then(function () { stat('📶 Wifi gestuurd. Het schermpje verbindt nu met "' + n + '" (zet je hotspot aan).'); lg('wifi naar scherm gestuurd: ' + n); })
         .catch(function () { toast('Versturen lukte niet, probeer opnieuw.'); }).then(function () { bezig = false; });
     });
+    /* v80: navigatiepijl en matrixbord voor het schermpje */
+    function navCode() {
+      try {
+        if (!nav || !S.live || nav.d == null) return '';
+        var st = nav.steps[nav.idx]; if (!st || navStil(st) || nav.d > 1500) return '';
+        var m = st.mod || '', c = 'S';
+        if (st.type === 'arrive') c = 'A'; else if (st.type === 'roundabout' || st.type === 'rotary') c = 'O'; else if (m === 'uturn') c = 'U';
+        else if (/slight left/.test(m)) c = 'l'; else if (/slight right/.test(m)) c = 'r'; else if (/left/.test(m)) c = 'L'; else if (/right/.test(m)) c = 'R';
+        return c + Math.round(nav.d);
+      } catch (e) { return ''; }
+    }
+    function msiCode() { var g = S.gag; if (!g || g.k !== 'matrix') return ''; return g.mt === 'x' ? 'x' : String(g.mv || ''); }
     function stuur() {
       if (!rx || bezig) return;
       var c = S.cam || null, f = S.fileVoor && T - S.fileVoor.t < 4 ? S.fileVoor : null, w = S.werkVoor && T - S.werkVoor.t < 4;
       var txt = (($('thought') && $('thought').textContent) || '').replace(/[|\n\r]/g, ' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').trim().slice(0, 60);
       var msg = ['B1', Math.round(S.speed || 0), S.roadLim == null ? 0 : S.roadLim, c && c.dist != null ? Math.round(c.dist) : -1, c && c.limit ? c.limit : 0,
-        f ? Math.round(f.d) : -1, f && f.dl ? Math.round(f.dl / 60) : 0, w ? 1 : 0, curKey || 'neutral', txt].join('|') + '\n';
+        f ? Math.round(f.d) : -1, f && f.dl ? Math.round(f.dl / 60) : 0, w ? 1 : 0, curKey || 'neutral', txt, navCode(), msiCode()].join('|') + '\n';
       var data = new TextEncoder().encode(msg), stukken = [];
       for (var i = 0; i < data.length; i += 20) stukken.push(data.slice(i, i + 20));   /* kleine stukjes: werkt ook zonder grote MTU */
       bezig = true;
