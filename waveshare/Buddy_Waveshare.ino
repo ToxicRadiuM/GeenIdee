@@ -24,7 +24,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 33;
+static const int FW_VERSIE = 34;
 static volatile int otaPct = -1;
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
 static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
@@ -728,13 +728,14 @@ static uint32_t lastVolumeChange = 0;
 static uint32_t lastRenderUs = 0;
 static uint32_t fpsWindowUs = 0;
 static uint16_t fpsFrames = 0;
+static float laatsteFps = 0, laatsteDrawMs = 0, laatsteFlushMs = 0;   // v34: voor logboek en INFO
 static uint32_t volumeUiUntil = 0;
 static uint32_t lastTouchPoll = 0;
 TouchDrvCST92xx buddyTouch;
 bool touchReady=false;
 int16_t touchX[2] = {0}, touchY[2] = {0};
 static const uint32_t AUDIO_RATE = 16000;
-static const uint32_t FRAME_INTERVAL_US = 33333; // stabiele 30 FPS als startpunt
+static const uint32_t FRAME_INTERVAL_US = 20000; // v34: tot 50 FPS (was 30); animaties lopen op echte tijd, dus niet sneller
 static uint32_t serialHeartbeatMs = 0;
 static uint32_t idleMoodUntilMs = 0;
 static uint8_t idleMoodStep = 0;
@@ -1195,7 +1196,7 @@ static void drawInfo() {
   snprintf(r, sizeof r, "GPS %s %d sat", gpsFix ? "FIX" : (gpsDataOk ? "zoekt" : "geen data"), (int)gpsSatellites); infoRegel(y, r); y += 16;
   snprintf(r, sizeof r, "Tel %s code %06lu", bleConnected ? (phoneFresh() ? "OK" : "stil") : "niet", (unsigned long)koppelPin); infoRegel(y, r); y += 16;
   snprintf(r, sizeof r, "Volume %d%% Licht %d%%", buddyVolume, helderheid * 100 / 255); infoRegel(y, r); y += 16;
-  snprintf(r, sizeof r, "Bocht %.2f G", fabsf(leanX)); infoRegel(y, r); y += 16;
+  snprintf(r, sizeof r, "Bocht %.2fG %.0f fps", fabsf(leanX), laatsteFps); infoRegel(y, r); y += 16;
   frame->setTextColor(GOLD);
   if (rec100 > 0) snprintf(r, sizeof r, "0-100 %.1fs %s", rec100, dat100); else snprintf(r, sizeof r, "0-100 nog niet"); infoRegel(y, r); y += 16;
   if (rec80 > 0) snprintf(r, sizeof r, "0-80 %.1fs %s", rec80, dat80); else snprintf(r, sizeof r, "0-80 nog niet"); infoRegel(y, r); y += 16;
@@ -2315,9 +2316,9 @@ void loop(){
    if (millis() - logStatusMs > 60000) {
      logStatusMs = millis(); int hh = -1, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
      bool ok; float v = spdNow(&ok);
-     logRegel("status | klok %02d:%02d | gps %s sat=%d zicht=%d nmea=%lu/%lu | %.0f km/u | tel %s | heap %u | licht %d%s",
+     logRegel("status | klok %02d:%02d | gps %s sat=%d zicht=%d nmea=%lu/%lu | %.0f km/u | tel %s | heap %u | licht %d | fps %.0f teken %.1fms stuur %.1fms%s",
        hh, mm, fixNu ? "FIX" : "zoekt", (int)gpsSatellites, (int)gpsInZicht, (unsigned long)nmeaOk, (unsigned long)nmeaBad, v,
-       bleConnected ? (phoneFresh() ? "data" : "stil") : "nee", (unsigned)ESP.getFreeHeap(), (int)huidigLicht, slaapt ? " | SLAAPT" : "");
+       bleConnected ? (phoneFresh() ? "data" : "stil") : "nee", (unsigned)ESP.getFreeHeap(), (int)huidigLicht, laatsteFps, laatsteDrawMs, laatsteFlushMs, slaapt ? " | SLAAPT" : "");
    }
    if (Serial.available()) {
      static char cmd[16]; static uint8_t cl = 0; char c = Serial.read();
@@ -2362,7 +2363,8 @@ void loop(){
    float fps=fpsFrames*1000000.0f/(float)(nowUs-fpsWindowUs);
    float avgDrawMs=fpsFrames ? (drawAccumUs/(float)fpsFrames)/1000.0f : 0;
    float avgFlushMs=fpsFrames ? (flushAccumUs/(float)fpsFrames)/1000.0f : 0;
-   Serial.printf("Buddy v29 render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
+   laatsteFps=fps; laatsteDrawMs=avgDrawMs; laatsteFlushMs=avgFlushMs;
+   Serial.printf("Buddy render: %.1f FPS | draw=%.1f ms | flush=%.1f ms | framebuffer=16bit+dirty | heap=%u | PSRAM=%u\n",fps,avgDrawMs,avgFlushMs,(unsigned)ESP.getFreeHeap(),(unsigned)ESP.getFreePsram());
    fpsFrames=0; fpsWindowUs=nowUs; drawAccumUs=0; flushAccumUs=0;
  }
  if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){
