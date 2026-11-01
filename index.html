@@ -4476,7 +4476,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v94';
+  var VERSION = 'v95';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8729,8 +8729,12 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   var SPKKEY = 'dashboardmaatje-spk-v1', RIDEKEY = 'dashboardmaatje-ride-v1', spkOn = false, lastSay = -99, spkSt = { prev: null, a: false, b: false, o: false, oT: -99 };
   try { spkOn = localStorage.getItem(SPKKEY) === '1'; } catch (e) {}
   $('spkOn').checked = spkOn;
+  /* v95: rustig opstarten: de eerste 45 seconden na het openen praat Buddy niet hardop (tekst zie je wel), tenzij je al rijdt */
+  var stilTot = Date.now() + 45e3;
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') stilTot = Math.max(stilTot, Date.now() + 20e3); });
   function say(txt, force) {
     if (!spkOn || !('speechSynthesis' in window)) return;
+    if (Date.now() < stilTot && !(S.live && S.speed > 15)) { lg('stil bij openen (niet uitgesproken): ' + txt); return; }
     if (!force && T - lastSay < 3) return;
     lastSay = T;
     try {
