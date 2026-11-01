@@ -28,7 +28,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 56;
+static const int FW_VERSIE = 57;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -1654,7 +1654,7 @@ static void driveStep(float dt) {
     if (tripBest <= 0 || tt < tripBest) tripBest = tt;
     for (int i = 0; i < 10; i++) addParticleAt(1, frand(30, 210), frand(40, 120), frand(-20, 20), frand(-30, 10), 1.2f, frand(5, 9));
     char m[24]; snprintf(m, sizeof m, "SPRINT:%.1f", tt); bleSend(m); logRegel("0-100: %.1f s%s", tt, flagRec ? " RECORD" : "");
-    if (!(meterStart && nu - meterStart < 30000)) { if (sprintI % 5 == 0) sprintI++; showSoort = sprintI % 5; showNa = flagTot; sprintI++; buddyPrefs.putUChar("spri", sprintI); } }   // v56: elke sprint een andere show
+    showSoort = 1 + sprintI % 4; showNa = flagTot; sprintI++; buddyPrefs.putUChar("spri", sprintI); }   // v57: na de vlag om de beurt een van de vier shows
   if (!ok) return;
   if (v > 5) { stilSinds = 0; if (!rijdtSinds) rijdtSinds = nu; } else { rijdtSinds = 0; if (!stilSinds) stilSinds = nu; }
   if (!tripActief && rijdtSinds && nu - rijdtSinds > 5000) { tripActief = true; tripKm = tripMax = tripG = tripBest = 0; tripStart = nu; logRegel("Rit begonnen"); }
@@ -2196,7 +2196,7 @@ static void robotStap(float dt) {
     else if (d == 4) { startGag(22); playGeluid(GL_HOI); }
     else if (d == 5) { startGag(44); gagMsg = "Hmpf! Ons record is verbroken..."; playGeluid(GL_OEPS); }   // v54: iemand verbrak je record
     else if (d == 6) { startGag(38); gagMsg = "WRAAK! Record terug!"; playGeluid(GL_TADA); }   // v54: record teruggepakt
-    else if (d == 7) { if (sprintI % 5 == 0) sprintI++; showSoort = sprintI % 5; sprintI++; buddyPrefs.putUChar("spri", sprintI); showNa = millis(); } }   // v56: sprint-show testen vanuit de app
+    else if (d == 7) { showSoort = 1 + sprintI % 4; sprintI++; buddyPrefs.putUChar("spri", sprintI); showNa = millis(); } }   // v56: sprint-show testen vanuit de app
   if (!robotModus) { koekjeZichtbaar = false; return; }
   // schudden of oppakken
   { static uint32_t piekT[6] = {0}; static int pi = 0; static uint32_t duizT = 0;
@@ -2605,7 +2605,7 @@ void updateParticles(float dt){
 // ES8311 DAC-volume (register 0x32): officiële schaal 0..100 -> 0..255.
 bool codecWrite(uint8_t reg, uint8_t value);
 void applyCodecVolume(uint8_t volume) {
-  uint8_t reg = volume == 0 ? 0 : (uint8_t)(((uint16_t)volume * 256U / 100U) - 1U);
+  uint8_t reg = volume == 0 ? 0 : (uint8_t)(0x70 + (uint16_t)volume * (0xD8 - 0x70) / 100U);   // v57: 100% = wat vroeger 85% was (hoger stuurt het versterkertje over en dan valt het geluid weg)
   if (!i2cLock(30)) return;
   codecWrite(0x32, reg);
   i2cUnlock();
@@ -2974,9 +2974,9 @@ void loop(){
    { // v40: flink optrekken (>= 12 km/u erbij in 1,5 s) -> ouderwetse snelheidsmeter
      static uint32_t vT = 0; static float vH[4] = {0, 0, 0, 0}; float vn = spdNow();
      if (nu - vT >= 500) { vT = nu; vH[0] = vH[1]; vH[1] = vH[2]; vH[2] = vH[3]; vH[3] = vn; }
-     if (vn > 8 && vH[3] - vH[0] >= 12 && !menuOpen && !venster && (int32_t)(showTot - nu) <= 0 && !showNa) {
+     if (vn > 8 && vH[3] - vH[0] >= 12 && !menuOpen && !venster && (int32_t)(showTot - nu) <= 0) {
        if ((int32_t)(meterTot - nu) > 0) { meterTot = nu + 2500; if (meterTot < meterStart + 6000) meterTot = meterStart + 6000; }
-       else if (sprintI % 5 == 0) { meterStart = nu; naald = 0; naaldV = 0; meterTot = nu + 6000; sprintI++; buddyPrefs.putUChar("spri", sprintI); playGeluid(GL_VROEM); logRegel("retro meter: optrekken %.0f -> %.0f", vH[0], vH[3]); }
+       else { meterStart = nu; naald = 0; naaldV = 0; meterTot = nu + 6000; playGeluid(GL_VROEM); logRegel("retro meter: optrekken %.0f -> %.0f", vH[0], vH[3]); }   // v57: de vuurwijzer komt altijd
      }
      if (showNa && (int32_t)(nu - showNa) >= 0) {   // v56: na de vlag de sprint-show
        static const uint16_t DUUR[5] = {0, 9500, 7000, 7500, 8000};

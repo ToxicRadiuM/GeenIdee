@@ -1451,7 +1451,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       } else lg('0-100 niet voor het leaderboard: hier geldt zeker ' + S.roadLim);
     }
     S.flagUntil = T + 9; S.starUntil = T + 7; S.flagMsg = fmt1(tt) + ' s'; S.flagRec = rec;
-    if (!(S.meterT && T - S.meterT < 30)) { var nk = sprintBeurt(); if (nk === 'retroMeter') { sprintVolgende(); nk = sprintBeurt(); } S.ruimteNa = T + 9.3; S.naGag = nk; sprintVolgende(); }   /* v97: elke sprint een andere animatie (was de meter er net al, dan niet nog een) */
+    S.ruimteNa = T + 9.3; S.naGag = sprintBeurt(); sprintVolgende();   /* v97: elke sprint een andere animatie (was de meter er net al, dan niet nog een) */
     setEv('excited', 9, m, true); S.evLock = T + 9; S.lastExc = T; S.love = Math.min(100, S.love + 10);
     save(); beep('race');
   }
@@ -2092,8 +2092,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function retroCheck() {
     if (T - retroT >= .5) { retroT = T; retroH.shift(); retroH.push(S.speed || 0); }
     var v = S.speed || 0;
-    if (v > 8 && retroH[3] - retroH[0] >= 12 && !(S.flagUntil > T) && !(S.gag && S.gag.k === 'ruimte') && !S.ruimteNa) {
-      if (!S.gag || S.gag.k !== 'retroMeter') { if (sprintBeurt() !== 'retroMeter') return; if (S.gag) endGag(true); startGag('retroMeter'); S.meterT = T; sprintVolgende(); lg('retro meter: optrekken ' + Math.round(retroH[0]) + ' -> ' + Math.round(retroH[3])); }
+    if (v > 8 && retroH[3] - retroH[0] >= 12 && !(S.flagUntil > T) && !(S.gag && SPRINTRIJ.indexOf(S.gag.k) >= 0)) {
+      if (!S.gag || S.gag.k !== 'retroMeter') { if (S.gag) endGag(true); startGag('retroMeter'); lg('retro meter: optrekken ' + Math.round(retroH[0]) + ' -> ' + Math.round(retroH[3])); }
       else S.gag.end = Math.max(S.gag.end, T + 2.5);
     }
   }
@@ -4478,7 +4478,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v98';
+  var VERSION = 'v99';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8445,7 +8445,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       ctx.restore();
     } };
   /* v97: welke sprint-animatie is aan de beurt? Elke sprint de volgende uit het rijtje */
-  var SPRINTRIJ = ['retroMeter', 'ruimte', 'turbo', 'podium', 'tijdreis'];
+  var SPRINTRIJ = ['ruimte', 'turbo', 'podium', 'tijdreis'];   /* v99: de vuurwijzer komt altijd bij het optrekken, deze vier om de beurt na de vlag */
   function sprintBeurt() { return SPRINTRIJ[((mem.sprintI || 0) % SPRINTRIJ.length + SPRINTRIJ.length) % SPRINTRIJ.length]; }
   function sprintVolgende() { mem.sprintI = (mem.sprintI || 0) + 1; save(); }
   GAGS.rainbow = { name: 'Regenboog', dur: 5.6, idle: 1, mood: 'happy', msg: 'Kijk, een regenboog!',
