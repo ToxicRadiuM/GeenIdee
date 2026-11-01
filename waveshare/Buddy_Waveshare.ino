@@ -27,7 +27,9 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 51;
+static const int FW_VERSIE = 52;
+static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
+static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
 static uint8_t energie = 100; static bool koekjeZichtbaar = false; static uint32_t focusTot = 0; static uint8_t auKant = 0;
 static float gRefX = 0, gRefY = 0, gRefZ = 1; static bool gRefOk = false; static volatile float laatsteSchok = 0; static bool slaapMuts = false;
@@ -900,6 +902,7 @@ static void launchFix(uint32_t ms, float v) {
     fijn = true; float helling = (v - v1) / (float)(ms - t1);
     if (helling > 0) { float st = t1 - v1 / helling; if (st < tStil) st = tStil; if (st < t1) t0 = (uint32_t)st; }
   }
+  sprintT0 = t0;
   if (t0) {
     auto kruis = [&](float doel) -> float { return v > vPrev ? tPrev + (ms - tPrev) * (doel - vPrev) / (v - vPrev) : (float)ms; };
     if (!d80 && v >= 80 && vPrev < 80) { d80 = true; float tt = (kruis(80) - t0) / 1000.f; if (tt > 2.5f && tt < 9) { res80 = tt; new80 = true; } }
@@ -1119,6 +1122,7 @@ static void parsePhone(char *line) {
     return;
   }
   if (!strcmp(line, "ZOEK")) { zoekNu = true; return; }
+  if (!strncmp(line, "DOE:", 4)) { const char *d = line + 4; doeOpdracht = !strcmp(d, "koekje") ? 1 : !strcmp(d, "focus") ? 2 : !strcmp(d, "weer") ? 3 : !strcmp(d, "zwaai") ? 4 : 0; return; }
   if (!strcmp(line, "UPD")) { otaNu = true; return; }
   if (!strcmp(line, "STAT?")) { statVraag = true; return; }
   if (!strncmp(line, "SET:", 4)) {   // v27: instellingen uit de app, bv. SET:l=65;v=80;a=1;o=pet
@@ -2167,6 +2171,11 @@ static void robotStap(float dt) {
     if (!gRefOk && nu - bootT > 5000) { if (buddyPrefs.isKey("grefz")) { gRefX = buddyPrefs.getFloat("grefx", 0); gRefY = buddyPrefs.getFloat("grefy", 0); gRefZ = buddyPrefs.getFloat("grefz", 1); } else { gRefX = gX; gRefY = gY; gRefZ = gZ; } gRefOk = true; }
     if (v > 15) { rijS += dt; if (rijS > 60) { rijS = -1e9; gRefX = gX; gRefY = gY; gRefZ = gZ; buddyPrefs.putFloat("grefx", gRefX); buddyPrefs.putFloat("grefy", gRefY); buddyPrefs.putFloat("grefz", gRefZ); } } }
   float sch = laatsteSchok; laatsteSchok = 0;
+  if (doeOpdracht) { int d = doeOpdracht; doeOpdracht = 0; laatsteActie = nu; slaapt = false;   // v52: knoppen in de app
+    if (d == 1) { koekjeZichtbaar = false; energie = 100; startGag(51); playGeluid(GL_PLING); vriendPlus(1); }
+    else if (d == 2) { if (focusTot) { focusTot = 0; startGag(7); gagMsg = "Focus gestopt. Even pauze?"; } else { focusTot = nu + 25UL * 60000; startGag(7); gagMsg = "Focus! 25 minuten, ik doe mee."; playGeluid(GL_PLING); } }
+    else if (d == 3) { startGag(53); }
+    else if (d == 4) { startGag(22); playGeluid(GL_HOI); } }
   if (!robotModus) { koekjeZichtbaar = false; return; }
   // schudden of oppakken
   { static uint32_t piekT[6] = {0}; static int pi = 0; static uint32_t duizT = 0;
@@ -2212,6 +2221,8 @@ static void drawMeter() {
       frame->setCursor(X(cx + c * 74) - (int)strlen(t) * 6, Y(cy - sn * 74) - 7); frame->print(t); } }
   frame->setTextColor(0xB000); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(84)); frame->print("BUDDY");
   frame->setTextColor(0x4208); frame->setTextSize(2); frame->setCursor(X(120) - 24, Y(150)); frame->print("km/h");
+  if (imuReady) { char gt[10]; snprintf(gt, sizeof gt, "%.2fG", fabsf(pushZ)); frame->setTextColor(0x7A00); frame->setTextSize(2); frame->setCursor(X(84) - (int)strlen(gt) * 6, Y(118)); frame->print(gt); }   // v52: G-kracht
+  if (sprintT0) { char st[10]; snprintf(st, sizeof st, "%.1fs", (millis() - sprintT0) / 1000.f); frame->setTextColor(0x0254); frame->setTextSize(2); frame->setCursor(X(156) - (int)strlen(st) * 6, Y(118)); frame->print(st); }   // 0-100-klok
   roundRect(88, 170, 64, 18, 3, 0x0000); roundRect(90, 172, 60, 14, 2, 0x2104);   // kilometerteller
   char od[10]; snprintf(od, sizeof od, "%06d", (int)totKm % 1000000);
   frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 36, Y(179) - 7); frame->print(od);
@@ -2233,7 +2244,7 @@ void drawFace(){
  if ((int32_t)(zoekTot - millis()) > 0) {   // v42: zoek mijn Buddy
    boxAdd(0, 0, 240, 240); bool aan = (millis() / 350) % 2; circle(120, 120, 118, aan ? 0xFFE0 : 0xF800); circle(120, 120, 96, BG);
    frame->setTextColor(0xFFFF); frame->setTextSize(4); frame->setCursor(X(120) - 60, Y(120) - 16); frame->print("HIER!"); return; }
- if ((int32_t)(meterTot - millis()) > 0) { drawMeter(); return; }   // v40: retro meter bij flink optrekken
+ if ((int32_t)(meterTot - millis()) > 0 && (int32_t)(flagTot - millis()) <= 0) { drawMeter(); return; }   // v52: de 0-100-vlag gaat voor   // v40: retro meter bij flink optrekken
  if (wxVers() && !slaapt) {   // v46: echt regen- of sneeuwweer -> druppels of vlokjes achter het gezicht
    int c = wxCode; bool regen = (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95, sneeuw = (c >= 71 && c <= 77) || c == 85 || c == 86;
    if (regen) for (int i = 0; i < 12; i++) { float x = 30 + i * 16 + sinf(i * 7.3f) * 5, y = fmodf(t * 140 + i * 37, 200) + 20; dikLijn(x, y, x - 2, y + 7, 1.6f, 0x3A9F); }

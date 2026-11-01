@@ -535,11 +535,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     <button class="btn" id="bInstall" type="button" hidden>Installeer als app</button>
   </section>
   <div class="koppen">
-  <details class="kop" id="kopScherm"><summary><span class="kopT">🖥️ Mijn Buddy-schermpje</span><span class="kopS">verbinden, wifi, instellen, gezondheid</span></summary>
+  <details class="kop" id="kopScherm"><summary><span class="kopT">🤖 Buddy+</span><span class="kopS">het echte robotje: verbinden, spelen, instellen</span></summary>
     <div class="kopIn">
       <div class="limitrow"><label for="hebScherm">Heb je een los Buddy-schermpje?</label><select id="hebScherm"><option value="1">Ja</option><option value="0">Nee, alleen de app</option></select></div>
       <div id="schermIn">
-      <p class="foot">Het ronde schermpje (Waveshare) op je dashboard. Je telefoon geeft hem limieten, flitsers, files en Buddy’s stemming door; met wifi doet hij veel ook zelf.</p>
+      <p class="foot"><b>De app helpt je rijden, Buddy+ leeft met je mee.</b> Buddy+ is Buddy in het echt: het ronde schermpje op je dashboard. Tijdens het rijden laat hij limieten, flitsers, files en navigatie zien (met wifi ook zonder telefoon). Sta je stil, dan is hij gewoon een robotje: aaien, kietelen, in zijn oog prikken, schudden, klappen, koekje geven, focussen of het weer laten zien.</p>
+      <p class="sub">Met Buddy+ spelen</p>
+      <div class="btns"><button class="btn" id="bpKoekje" type="button">🍪 Geef een koekje</button><button class="btn" id="bpFocus" type="button">🤓 Focus 25 min</button><button class="btn" id="bpWeer" type="button">⛅ Weer laten zien</button><button class="btn" id="bpZwaai" type="button">👋 Laat hem zwaaien</button></div>
       <button class="btn" id="bleKnop" type="button">📡 Verbind met het Buddy-scherm</button>
       <button class="btn" id="bleLog" type="button">📥 Logboek van het schermpje ophalen</button>
       <p class="sub">Schermpje instellen</p>
@@ -1426,6 +1428,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         }
         ctx.fillStyle = '#b00000'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('BUDDY', 120, 92);
         ctx.fillStyle = '#444'; ctx.font = '10px system-ui, sans-serif'; ctx.fillText('km/h', 120, 140);
+        try {   /* v89: G-kracht en de 0-100-klok blijven zichtbaar in de meter */
+          if (typeof voelOk === 'function' && voelOk()) { ctx.fillStyle = '#7a4a00'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.fillText((Math.abs(V.lon) / 9.81).toFixed(2).replace('.', ',') + ' G', 84, 122); }
+          if (window.__lrT0) { ctx.fillStyle = '#004a99'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.fillText('0–100 ' + ((Date.now() - window.__lrT0) / 1000).toFixed(1).replace('.', ',') + 's', 156, 122); }
+        } catch (e) {}
         ctx.fillStyle = '#000'; ctx.fillRect(92, 150, 56, 16); ctx.fillStyle = '#222'; ctx.fillRect(94, 152, 52, 12);
         ctx.fillStyle = '#fff'; ctx.font = '11px ui-monospace, monospace'; ctx.fillText(('000000' + Math.floor(mem.km || 0)).slice(-6), 120, 158.5);
         var a2 = hoek(g.n || 0), c2 = Math.cos(a2), s2 = Math.sin(a2);
@@ -2024,7 +2030,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function retroCheck() {
     if (T - retroT >= .5) { retroT = T; retroH.shift(); retroH.push(S.speed || 0); }
     var v = S.speed || 0;
-    if (v > 8 && retroH[3] - retroH[0] >= 12) {
+    if (v > 8 && retroH[3] - retroH[0] >= 12 && !(S.flagUntil > T)) {
       if (!S.gag || S.gag.k !== 'retroMeter') { if (S.gag) endGag(true); startGag('retroMeter'); lg('retro meter: optrekken ' + Math.round(retroH[0]) + ' -> ' + Math.round(retroH[3])); }
       else S.gag.end = Math.max(S.gag.end, T + 2.5);
     }
@@ -2477,6 +2483,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var helling = (v - lr.v1) / (t - lr.t1);
       if (helling > 0) { var start = lr.t1 - lr.v1 / helling; if (lr.tStil !== null) start = Math.max(start, lr.tStil); lr.t0 = Math.min(start, lr.t1); }
     }
+    window.__lrT0 = lr.t0;   /* v89: loopt er een 0-100? (voor de retro meter) */
     if (lr.t0 !== null && lr.kv && lr.kv.length < 400) lr.kv.push([t, v, (typeof voelOk === 'function' && voelOk()) ? V.lon / 9.81 : null]);
     if (lr.t0 !== null) {
       var kruis = function (doel) { return v > lr.vPrev ? lr.tPrev + (t - lr.tPrev) * (doel - lr.vPrev) / (v - lr.vPrev) : t; };
@@ -4407,7 +4414,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v88';
+  var VERSION = 'v89';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5808,9 +5815,18 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       ['🧘', 'Zen-ritten (rijstijl 90+): ' + (mem.zenRitten || 0)],
       ['😇', 'Netjes langs een flitser: ' + (mem.netjes || 0) + '×'],
       ['📡', 'Meldingen voor de groep: ' + (mem.gemeld || 0)],
+      ['🌀', 'Hoogste G-kracht: ' + (mem.gmaxLive ? fmt1(mem.gmaxLive) + ' G' : 'nog niet gemeten')],
       ['📆', 'Langste reeks dagen achter elkaar: ' + (mem.streakMax || 0)]
     ];
     L.forEach(function (x) { var li = document.createElement('li'); li.textContent = x[0] + ' ' + x[1]; ul.appendChild(li); });
+    try {   /* v89: je record-sprint als lijntje (snelheid + G-kracht) ook hier */
+      var kv = mem.best100Kurve;
+      if (kv && kv.v && kv.v.length > 2 && kv.g && kv.g.length === kv.v.length) {
+        var li2 = document.createElement('li'); var kt = document.createElement('p'); kt.style.margin = '4px 0'; kt.innerHTML = '<b>📈 Record-sprint 0–100</b> <span style="color:#0a84ff">━ snelheid</span>  <span style="color:#ff9f0a">━ G-kracht</span>';
+        li2.appendChild(kt); li2.appendChild(kurveCanvas(kv)); var piek = Math.max.apply(null, kv.g);
+        var kp = document.createElement('p'); kp.className = 'foot'; kp.style.margin = '0'; kp.textContent = 'Hardste duw: ' + (piek / 100).toFixed(2).replace('.', ',') + ' G na ' + (kv.g.indexOf(piek) / 2).toFixed(1).replace('.', ',') + ' s'; li2.appendChild(kp); ul.appendChild(li2);
+      }
+    } catch (e) {}
   }
   function badgeCodes() { return (mem.badges || []).filter(function (k) { return BADGEMAP[k]; }).join('.'); }
 
@@ -6510,7 +6526,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     function stuurInst() { clearTimeout(scT); scT = setTimeout(function () { if (!rx) return; bezig = true; stuurTekst('SET:l=' + sc.l + ';v=' + sc.v + ';a=' + sc.a + ';w=' + (sc.w == null ? '1' : sc.w) + ';o=' + (typeof huidigOutfit === 'function' ? huidigOutfit() : 'geen')).catch(function () {}).then(function () { bezig = false; }); }, 400); }
     ['scLicht', 'scVol', 'scAnim', 'scWarn'].forEach(function (id) { $(id).addEventListener('change', function () { sc.l = +$('scLicht').value; sc.v = +$('scVol').value; sc.a = $('scAnim').value; sc.w = $('scWarn').value; try { localStorage.setItem(SCKEY, JSON.stringify(sc)); } catch (e) {} stuurInst(); }); });
     window.__scStuur = function () { stuurInst(); setTimeout(persStuur, 900); };
-    function vraagLog() { if (!rx) { toast('Verbind eerst met het Buddy-scherm.'); return; } var d = new TextEncoder().encode('LOG?\n'); (rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(d) : rx.writeValue(d)).catch(function () {}); stat('Logboek van het schermpje wordt opgehaald…'); }
+    function vraagLog() { if (!rx) { toast('Verbind eerst met het Buddy-scherm.'); return; } var d = new TextEncoder().encode('LOG?\n'); (rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(d) : rx.writeValue(d)).catch(function () {}); stat('Logboek van Buddy+ wordt opgehaald…'); }
     $('bleLog').addEventListener('click', vraagLog);
     /* v76: wifi-gegevens naar het schermpje */
     try { $('wfNaam').value = localStorage.getItem('dashboardmaatje-wfnaam-v1') || ''; } catch (e) {}
@@ -6551,6 +6567,9 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (schS.fr) { d.push('vriendschap ' + schS.fr); window.__schVriend = +schS.fr; }
       $('schStat').textContent = d.join(' · ');
     }
+    [['bpKoekje', 'DOE:koekje', '🍪 Nom nom! Buddy+ eet zijn koekje.'], ['bpFocus', 'DOE:focus', '🤓 Buddy+ focust 25 minuten met je mee (nog eens tikken = stoppen).'], ['bpWeer', 'DOE:weer', '⛅ Buddy+ laat het weer zien (als hij wifi heeft).'], ['bpZwaai', 'DOE:zwaai', '👋 Buddy+ zwaait!']].forEach(function (k) {
+      $(k[0]).addEventListener('click', function () { if (!rx) { toast('Verbind eerst met Buddy+.'); return; } klein(k[1]); toast(k[2]); });
+    });
     $('schZoek').addEventListener('click', function () { if (!rx) { toast('Verbind eerst met het schermpje.'); return; } klein('ZOEK'); toast('🔔 Het schermpje piept en knippert.'); });
     $('schUpd').addEventListener('click', function () { if (!rx) { toast('Verbind eerst met het schermpje.'); return; } klein('UPD'); toast('⬇️ Het schermpje kijkt nu naar updates (als hij wifi heeft).'); });
     /* v80: navigatiepijl en matrixbord voor het schermpje */
@@ -6861,7 +6880,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       }, true]]);
     }
     function nieuw2() {
-      scherm('🖥️ Heb je een los Buddy-schermpje?', 'Het ronde schermpje op je dashboard. Heb je dat niet, dan werkt alles gewoon in deze app.', null, [['Nee', function () { zetScherm('0'); nieuw3(); }], ['Ja, heb ik', function () { zetScherm('1'); nieuw3(); }, true]]);
+      scherm('🤖 Heb je Buddy+?', 'Buddy+ is Buddy in het echt: een rond schermpje op je dashboard dat ook buiten het rijden een robotje is. Heb je dat niet, dan werkt alles gewoon in deze app.', null, [['Nee', function () { zetScherm('0'); nieuw3(); }], ['Ja, heb ik', function () { zetScherm('1'); nieuw3(); }, true]]);
     }
     function zetScherm(v) { try { localStorage.setItem('dashboardmaatje-hebscherm-v1', v); } catch (e) {} if ($('hebScherm')) { $('hebScherm').value = v; $('hebScherm').dispatchEvent(new Event('change')); } }
     function nieuw3() {
