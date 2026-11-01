@@ -810,6 +810,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <details><summary>Waarom ziet Buddy geen flitsers of limieten?</summary><p>Zet de telefoon-GPS aan (Buddy-tab) en zorg dat je internet hebt. Zonder GPS weet hij niet waar je bent. Flitsers en limieten komen uit openbare lijsten en worden elke dag ververst.</p></details>
       <details><summary>Hoe koppel ik het ronde schermpje?</summary><p>Buddy-tab → 🖥️ Mijn Buddy-schermpje → Verbind. Gebruik Chrome op Android. De eerste keer vraagt je telefoon een code van 6 cijfers: die staat bovenin het schermpje.</p></details>
       <details><summary>Wat doet de groep?</summary><p>Iedereen met dezelfde groepscode ziet elkaars meldingen (flitsers, files, controles), berichten en het leaderboard. Je precieze plek wordt nooit gedeeld.</p></details>
+      <details><summary>🔒 Wat deel ik met de groep, en wat niet?</summary><p><b>Wel gedeeld:</b> je naam en auto · flitsers en controles die je meldt · files · berichten (zwaaien, koffie, hartjes, reacties, uitdagingen, bijna thuis) · je leaderboard-cijfers (km, ritten, rijstijl per week, netjes, sprinttijden, G-kracht, badges, level) · “collega in de buurt” (alleen afgerond op hele km, nooit je precieze plek) · Buddy's bijnamen (gaten, drempels, rotondes, stoplichten; kun je uitzetten bij Kaart) · plekjes die je zelf met 📤 deelt.</p><p><b>Niet gedeeld:</b> je ritten en routes · waar en wanneer je reed · je parkeerplek · je thuisadres · je eigen plekjes (tenzij je er één deelt) · je dagboek en logboek · je back-up (die staat los op de server onder je eigen herstelcode).</p></details>
       <details><summary>Hoe krijg ik meer punten en levels?</summary><p>Rijden met de GPS aan (1 punt per km), netjes langs flitsers (5), meldingen voor de groep (10), elke rit (3) en laadpauzes (2). Kijk bij 🏁 Ritten voor je level en badges.</p></details>
       <details><summary>Wat betekent rijstijl?</summary><p>Elke rit begin je op 100. Schrikmomenten kosten punten (hard remmen, flink optrekken, te snel in een bocht, langer te hard, geflitst). Rustig rijden geeft punten terug. Hoger = rustiger.</p></details>
       <details><summary>Wat onthoudt Buddy van mij en waar staat dat?</summary><p>Alles staat alleen op je eigen telefoon (en het schermpje): je naam, ritten, gewoontes en badges. Alleen wat je in de groep deelt gaat naar de groep. Back-up maken kan bij Instellingen.</p></details>
@@ -874,9 +875,16 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     <div class="kaartKop"><b>🗺️ Flitsers en meldingen</b><span class="foot">Blauw = van jou · Rood = vast · Oranje = mobiel. Tik op een stip om hem te verwijderen.</span></div>
     <div id="kaartPlek"></div>
     <div class="btns kaartKnoppen" id="kaartKnoppen"></div>
-    <div class="kaartKop" style="margin-top:6px"><b>📍 Mijn plekjes</b><span class="foot">Tik op “Wat was dat?” (of zeg “onthoud dit”) en Buddy bewaart de plek. Paarse stippen op de kaart.</span></div>
+    <div class="kaartKop" style="margin-top:6px"><b>📍 Mijn plekjes</b><span class="foot">Tik op “Wat was dat?” (of zeg “onthoud dit”) en Buddy bewaart de plek, met straat en plaats. Daarna kies je wat het was. Paarse stippen op de kaart.</span></div>
+    <p class="chip" style="text-align:left">🔒 <b>Privé.</b> Je plekjes blijven op jouw telefoon. Alleen als je bij een plekje op 📤 tikt, ziet je groep dát ene plekje: de plek, wat het is, de naam die je erbij zet en jouw naam.</p>
     <button class="btn" id="plekKnop2" type="button">📍 Wat was dat? Plek onthouden</button>
     <ul id="plekLijst" class="v77lijst"></ul>
+    <div class="kaartKop" style="margin-top:10px"><b>🗺️ Buddy's bijnamen</b><span class="foot">Plekken waar Buddy iets voelde: een gat, een drempel, een rotonde of een stoplicht waar je lang stond. Gebeurt het twee keer op dezelfde plek, dan krijgt die plek een bijnaam en waarschuwt Buddy je de volgende keer.</span></div>
+    <p class="chip" style="text-align:left">👥 <b>Gedeeld met je groep</b> (als het vinkje hieronder aan staat): de plek, de soort (gat, drempel, rotonde of stoplicht), de bijnaam en je naam. Pas vanaf de tweede keer op dezelfde plek, en nooit binnen 500 m van je huis (als je thuis hebt ingesteld). <b>Niet gedeeld:</b> wanneer je er was, hoe hard je reed en je route.</p>
+    <div class="switchrow"><input type="checkbox" id="bijDeelOn" checked><label for="bijDeelOn">Deel Buddy's bijnamen met mijn groep</label></div>
+    <ul id="bijLijst" class="v77lijst"></ul>
+    <div class="kaartKop" style="margin-top:10px"><b>📤 Gedeeld door de groep</b><span class="foot">Plekjes die iemand uit je groep zelf heeft gedeeld, bijvoorbeeld een goede lunchplek.</span></div>
+    <ul id="deelLijst" class="v77lijst"></ul>
     <div class="kaartKop" style="margin-top:6px"><b>⚡ Laden in de buurt</b><span class="foot">Laadpalen en Superchargers rond je plek (OpenStreetMap). Tik op 🧭 om te navigeren.</span></div>
     <button class="btn" id="laadZoekKnop" type="button">⚡ Zoek laadpalen in de buurt</button>
     <ul id="laadLijst" class="v77lijst"></ul>
@@ -5959,6 +5967,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     } catch (e) {}
     save();
     var m = 'Rit klaar: ' + String(r.km).replace('.', ',') + ' km in ' + r.min + ' min, rijstijl ' + r.stijl + (r.netjes ? ', ' + r.netjes + '× netjes langs een flitser' : '') + '.';
+    setTimeout(function () { try { if (window.__plekHerinner) window.__plekHerinner(r.t0); } catch (e) {} }, 15000);
     try { var bm = besteMoment(r); if (bm) { r.bm = bm; m += ' ⭐ Beste moment: ' + bm; setTimeout(function () { queueCheer('⭐ Beste moment: ' + bm); }, 7000); } } catch (e) {}
     toast(m); lg('rit: ' + JSON.stringify(r)); ritToon(); ritKaart(r); routeOverzicht();
     if (typeof grLid === 'function') grLid(true);
@@ -6605,16 +6614,54 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   } catch (e) {}
   var PLEKNAAM = { gat: ['de Grote Boing', 'het Kraterpad', 'de Gatenkaas'], stoplicht: ['het Eeuwige Stoplicht', 'de Wachtkamer', 'Rood-Rood-Rood'], rotonde: ['de Draaimolen', 'het Rondje Pret', 'de Carrousel'], drempel: ['de Hobbelberg', 'de Schansspringer', 'Boingstraat'] };
   var PLEKZEG = { gat: 'Voorzichtig!', stoplicht: 'Hopelijk is hij groen…', rotonde: 'Wiee!', drempel: 'Hou je vast!' };
+  /* v93: bijnamen delen met de groep (vanaf de 2e keer, nooit vlak bij huis) */
+  var BIJDEELKEY = 'dashboardmaatje-bijdeel-v1', GPLEKKEY = 'dashboardmaatje-gplekken-v1', GPLGEZKEY = 'dashboardmaatje-gplekgezien-v1', bijDeelOn = true, gPlekken = [], gPlekGezien = null, gPlekT = 0, gZei = {};
+  try { bijDeelOn = localStorage.getItem(BIJDEELKEY) !== '0'; gPlekken = JSON.parse(localStorage.getItem(GPLEKKEY)) || []; gPlekGezien = JSON.parse(localStorage.getItem(GPLGEZKEY)); } catch (e) {}
+  function bijBewaar() { try { localStorage.setItem(PLEKKEY, JSON.stringify(plekken)); } catch (e) {} }
+  function gBijZoek(soort, la, lo) { for (var i = 0; i < gPlekken.length; i++) { var g = gPlekken[i]; if (g.s === soort && gdist(la, lo, g.lat, g.lon) < 60) return g; } return null; }
+  function bijnaamDeel(p, nu) {
+    if (!bijDeelOn || !grp || !pbase() || (p.n || 0) < 2) return;
+    if (thuis && gdist(p.la, p.lo, thuis.lat, thuis.lon) < 500) return;
+    if (!nu && p.gd && Date.now() - p.gd < 6 * 3600e3) return;
+    p.gd = Date.now(); if (!p.gid) p.gid = 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); bijBewaar();
+    fetch(gUrl('/plek', '&s=' + p.s + '&id=' + p.gid + '&lat=' + p.la.toFixed(5) + '&lon=' + p.lo.toFixed(5) + '&wie=' + encodeURIComponent(myWho() || '') + (p.naam ? '&naam=' + encodeURIComponent(p.naam) : '') + '&van=' + mijnId))
+      .then(function (r) { return r.json(); }).then(function (j) { if (j && j.id && j.id !== p.gid) { p.gid = j.id; bijBewaar(); } gPlekPull(true); }).catch(function () {});
+  }
+  function gPlekPull(nu) {
+    if (!grp || !pbase() || (!nu && Date.now() - gPlekT < 10 * 60e3)) return; gPlekT = Date.now();
+    fetch(gUrl('/plekken')).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !Array.isArray(j.plekken)) return;
+      gPlekken = j.plekken.filter(function (x) { return x && isFinite(x.lat) && isFinite(x.lon); });
+      try { localStorage.setItem(GPLEKKEY, JSON.stringify(gPlekken)); } catch (e) {}
+      var eerst = !gPlekGezien; if (eerst) gPlekGezien = {};
+      gPlekken.forEach(function (x) {
+        if (gPlekGezien[x.id]) return; gPlekGezien[x.id] = 1;
+        if (eerst || x.s !== 'deel' || x.van === mijnId) return;
+        var m = '📍 ' + ((x.wie && x.wie[0]) || 'Een collega') + ' deelde een plekje: ' + (WATI[x.wat] || '📍') + ' ' + (x.naam || WATN[x.wat] || 'plekje') + (x.p ? ' in ' + x.p : '') + '. Kijk bij Kaart.';
+        grLijstAdd('in', m); toast(m);
+      });
+      try { localStorage.setItem(GPLGEZKEY, JSON.stringify(gPlekGezien)); } catch (e) {}
+      if (window.__bijToon) window.__bijToon();
+    }).catch(function () {});
+  }
+  setInterval(function () { if (document.visibilityState === 'visible') gPlekPull(false); }, 60e3); setTimeout(function () { gPlekPull(true); }, 6000);
+  var WATI = { huis: '🏠', eten: '🍔', mooi: '🌳', werk: '🚧', winkel: '🛍️', anders: '❓' }, WATN = { huis: 'Huis', eten: 'Eten en drinken', mooi: 'Mooi plekje', werk: 'Wegwerk', winkel: 'Winkel', anders: 'Iets anders' };
+  var BIJI = { gat: '🕳️', drempel: '⛰️', rotonde: '🔄', stoplicht: '🚦' }, BIJN = { gat: 'gat in de weg', drempel: 'drempel', rotonde: 'rotonde', stoplicht: 'stoplicht waar je lang stond' };
+  window.__bij = { eigen: function () { return plekken; }, groep: function () { return gPlekken; }, bewaar: bijBewaar, deel: bijnaamDeel, pull: gPlekPull, aan: function (v) { if (v != null) { bijDeelOn = !!v; try { localStorage.setItem(BIJDEELKEY, v ? '1' : '0'); } catch (e) {} } return bijDeelOn; }, WATI: WATI, WATN: WATN, BIJI: BIJI, BIJN: BIJN };
   function plekMerk(soort) {
     if (!S.live || !lastPos) return;
     var la = lastPos.lat, lo = lastPos.lon, p = null;
     for (var i = 0; i < plekken.length; i++) if (plekken[i].s === soort && gdist(la, lo, plekken[i].la, plekken[i].lo) < 60) { p = plekken[i]; break; }
-    if (!p) { plekken.push({ s: soort, la: +la.toFixed(5), lo: +lo.toFixed(5), n: 1, t: Date.now() }); if (plekken.length > 80) plekken.shift(); }
+    if (!p) {
+      var gp = gBijZoek(soort, la, lo);   /* v93: kent de groep deze plek al? Dan dezelfde bijnaam */
+      p = { s: soort, la: +la.toFixed(5), lo: +lo.toFixed(5), n: 1, t: Date.now() }; if (gp) { p.gid = gp.id; if (gp.naam) p.naam = gp.naam; }
+      plekken.push(p); if (plekken.length > 80) plekken.shift();
+    }
     else {
       p.n++; p.t = Date.now();
-      if (!p.naam && p.n >= 2) { p.naam = pick(PLEKNAAM[soort]); p.zei = Date.now(); lg('plek kreeg een naam: ' + p.naam); if (freeEv()) setEv('excited', 3, 'Deze plek noem ik vanaf nu ' + p.naam + '!'); }
+      if (!p.naam && p.n >= 2) { var gp2 = gBijZoek(soort, p.la, p.lo); p.naam = gp2 && gp2.naam ? gp2.naam : pick(PLEKNAAM[soort]); p.zei = Date.now(); lg('plek kreeg een naam: ' + p.naam); if (freeEv()) setEv('excited', 3, 'Deze plek noem ik vanaf nu ' + p.naam + '!'); }
     }
-    try { localStorage.setItem(PLEKKEY, JSON.stringify(plekken)); } catch (e) {}
+    bijBewaar(); try { bijnaamDeel(p); } catch (e) {} if (window.__bijToon) window.__bijToon();
   }
   function plekStap(lat, lon) {
     if (!S.live || S.speed < 15 || lastHdg == null || !freeEv() || S.gag || (S.cam && S.cam.dist <= 600)) return;
@@ -6624,6 +6671,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (adiff(gbearing(lat, lon, p.la, p.lo), lastHdg) > 35) continue;
       p.zei = Date.now(); try { localStorage.setItem(PLEKKEY, JSON.stringify(plekken)); } catch (e) {}
       setEv('happy', 2.6, 'Daar is weer ' + p.naam + '! ' + PLEKZEG[p.s]); dagTel('plek'); lg('bekende plek: ' + p.naam); return;
+    }
+    for (var j = 0; j < gPlekken.length; j++) {   /* v93: bijnamen van de groep */
+      var g = gPlekken[j]; if (g.s === 'deel' || !g.naam || !PLEKZEG[g.s] || Date.now() - (gZei[g.id] || 0) < 6 * 3600e3) continue;
+      if (plekken.some(function (q) { return q.s === g.s && gdist(q.la, q.lo, g.lat, g.lon) < 60; })) continue;
+      var d2 = gdist(lat, lon, g.lat, g.lon); if (d2 > 250 || d2 < 30) continue;
+      if (adiff(gbearing(lat, lon, g.lat, g.lon), lastHdg) > 35) continue;
+      gZei[g.id] = Date.now(); var wie2 = (g.wie || []).filter(function (w) { return w && w !== myWho(); });
+      setEv('happy', 2.8, 'Daar komt ' + g.naam + '! ' + PLEKZEG[g.s] + (wie2.length ? ' (' + wie2[0] + ' voelde hem ook)' : '')); dagTel('plek'); lg('bekende groepsplek: ' + g.naam); return;
     }
   }
 
@@ -7092,32 +7147,120 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     try { plekken = JSON.parse(localStorage.getItem(PLEKKEY)) || []; } catch (e) { plekken = []; }
     plekken = plekken.filter(function (p) { return p && isFinite(p.lat) && isFinite(p.lon); });   /* v93: alleen echte "Wat was dat?"-plekjes */
     function plekBewaar() { try { localStorage.setItem(PLEKKEY, JSON.stringify(plekken.slice(-60))); } catch (e) {} }
+    var WI = window.__bij.WATI, WN = window.__bij.WATN, BI = window.__bij.BIJI, BN = window.__bij.BIJN;
+    function knop(tx, lbl, fn) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = tx; b.setAttribute('aria-label', lbl); b.style.minWidth = '44px'; b.addEventListener('click', fn); return b; }
+    function rij(li, sp, knoppen) { li.style.flexWrap = 'wrap'; sp.style.flex = '1 1 100%'; sp.style.whiteSpace = 'pre-line'; li.appendChild(sp); var r = document.createElement('div'); r.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap'; knoppen.forEach(function (k) { r.appendChild(k); }); li.appendChild(r); }
+    function opKaart(la, lo) { var tab = document.querySelector('[data-tab="kaart"]'); if (typeof flMap !== 'undefined' && flMap) { flMap.setView([la, lo], 16); try { $('flKaartMap').scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} } else if (tab) tab.click(); }
+    function streetview(la, lo) { window.open('https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + la + ',' + lo, '_blank', 'noopener'); }
+    function navi(la, lo) { window.open('https://www.google.com/maps/search/?api=1&query=' + la + ',' + lo, '_blank', 'noopener'); }
+    function deelStuur(p, uit) {
+      if (!grp || !pbase()) { toast('Vul eerst een groepscode in (👥 Groep).'); return; }
+      if (uit) { fetch(gUrl('/plekweg', '&id=' + p.gedeeld + '&van=' + mijnId)).catch(function () {}); delete p.gedeeld; plekBewaar(); plekToon(); toast('Dit plekje is weer privé.'); window.__bij.pull(true); return; }
+      p.gedeeld = p.gedeeld || 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); plekBewaar(); plekToon();
+      fetch(gUrl('/plek', '&s=deel&id=' + p.gedeeld + '&lat=' + p.lat + '&lon=' + p.lon + '&wat=' + (p.wat || 'anders') + '&wie=' + encodeURIComponent(myWho() || '') + '&van=' + mijnId + (p.naam ? '&naam=' + encodeURIComponent(p.naam) : '') + (p.p ? '&p=' + encodeURIComponent(p.p) : '')))
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); toast('📤 Gedeeld met je groep.'); window.__bij.pull(true); })
+        .catch(function () { delete p.gedeeld; plekBewaar(); plekToon(); toast('Delen lukte niet. Staat de nieuwste Worker in Cloudflare?'); });
+    }
+    function watKies(p, metNaam) {   /* grote knoppen: wat was het? */
+      var el = $('watKies'); if (el) el.remove();
+      el = document.createElement('div'); el.id = 'watKies'; el.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(88px + env(safe-area-inset-bottom));z-index:9999;background:#1c1c1e;border:2px solid #bf5af2;border-radius:18px;padding:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;color:#fff;box-shadow:0 8px 28px rgba(0,0,0,.55)';
+      var t = document.createElement('b'); t.style.gridColumn = '1/-1'; t.textContent = '📍 Wat was het?'; el.appendChild(t);
+      Object.keys(WI).forEach(function (k) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.style.minHeight = '56px'; b.textContent = WI[k] + ' ' + WN[k]; if (p.wat === k) b.style.borderColor = '#bf5af2'; b.addEventListener('click', function () { p.wat = k; klaar(); }); el.appendChild(b); });
+      var bn = document.createElement('button'); bn.type = 'button'; bn.className = 'btn'; bn.style.gridColumn = '1/3'; bn.textContent = '✏️ Eigen naam' + (p.naam ? ': ' + p.naam : '');
+      bn.addEventListener('click', function () { var v = prompt('Naam voor dit plekje (bijvoorbeeld “leuk café”):', p.naam || ''); if (v != null) { p.naam = v.trim().slice(0, 40); } klaar(); }); el.appendChild(bn);
+      var bx = document.createElement('button'); bx.type = 'button'; bx.className = 'btn'; bx.textContent = 'Later'; bx.addEventListener('click', function () { el.remove(); }); el.appendChild(bx);
+      function klaar() { el.remove(); clearTimeout(el.__t); plekBewaar(); plekToon(); plekOpKaart(); if (p.gedeeld) deelStuur(p); }
+      document.body.appendChild(el); if (!metNaam) el.__t = setTimeout(function () { el.remove(); }, 25e3);
+    }
     function plekToon() {
       var ol = $('plekLijst'); if (!ol) return; while (ol.firstChild) ol.removeChild(ol.firstChild);
       if (!plekken.length) { var e0 = document.createElement('li'); e0.textContent = 'Nog geen plekjes onthouden.'; ol.appendChild(e0); }
-      plekken.slice().reverse().slice(0, 15).forEach(function (p) {
+      plekken.slice().reverse().slice(0, 20).forEach(function (p) {
         var li = document.createElement('li'), sp = document.createElement('span');
-        sp.textContent = '📍 ' + dagStr(p.t) + ' ' + tijdStr(p.t) + (p.v ? ' · ' + p.v + ' km/h' : '') + (p.n ? '\n' + p.n : ''); sp.style.whiteSpace = 'pre-line';
-        var bn = document.createElement('button'); bn.type = 'button'; bn.className = 'btn'; bn.textContent = '🧭';
-        bn.addEventListener('click', function () { window.open('https://www.google.com/maps/search/?api=1&query=' + p.lat + ',' + p.lon, '_blank', 'noopener'); });
-        var bx = document.createElement('button'); bx.type = 'button'; bx.className = 'btn'; bx.textContent = '🗑️';
-        bx.addEventListener('click', function () { plekken = plekken.filter(function (q) { return q !== p; }); plekBewaar(); plekToon(); plekOpKaart(); });
-        li.appendChild(sp); li.appendChild(bn); li.appendChild(bx); ol.appendChild(li);
+        sp.textContent = (WI[p.wat] || '📍') + ' ' + (p.naam || (p.wat ? WN[p.wat] : 'Wat was het? Tik op ✏️')) + '\n' + (p.p ? p.p + ' · ' : '') + dagStr(p.t) + ' ' + tijdStr(p.t) + (p.v ? ' · ' + p.v + ' km/h' : '') + (p.gedeeld ? ' · 📤 gedeeld met de groep' : ' · 🔒 privé');
+        var bd = knop(p.gedeeld ? '🔒' : '📤', p.gedeeld ? 'Weer privé maken' : 'Delen met de groep', function () {
+          if (p.gedeeld) { deelStuur(p, true); return; }
+          if (bd.dataset.arm !== '1') { bd.dataset.arm = '1'; bd.textContent = '📤 Delen? Tik nog eens'; setTimeout(function () { bd.dataset.arm = ''; bd.textContent = '📤'; }, 4000); return; }
+          deelStuur(p);
+        });
+        rij(li, sp, [knop('✏️', 'Wat was het', function () { watKies(p, true); }), knop('📍', 'Op de kaart', function () { opKaart(p.lat, p.lon); }), knop('👁️', 'Streetview', function () { streetview(p.lat, p.lon); }), knop('🧭', 'Navigeer', function () { navi(p.lat, p.lon); }), bd,
+          knop('🗑️', 'Weggooien', function () { if (p.gedeeld) fetch(gUrl('/plekweg', '&id=' + p.gedeeld + '&van=' + mijnId)).catch(function () {}); plekken = plekken.filter(function (q) { return q !== p; }); plekBewaar(); plekToon(); plekOpKaart(); })]);
+        ol.appendChild(li);
       });
     }
+    function bijToon() {
+      var ol = $('bijLijst'), dl = $('deelLijst'); if (!ol) return; while (ol.firstChild) ol.removeChild(ol.firstChild); while (dl.firstChild) dl.removeChild(dl.firstChild);
+      var eigen = window.__bij.eigen(), groep = window.__bij.groep(), items = [], los = 0;
+      eigen.forEach(function (p) {
+        if (!p.naam) { los++; return; }
+        var g = groep.filter(function (x) { return x.s === p.s && gdist(p.la, p.lo, x.lat, x.lon) < 60; })[0];
+        items.push({ eigen: p, g: g, s: p.s, la: p.la, lo: p.lo, naam: (g && g.naam) || p.naam, n: g ? Math.max(g.n || 1, p.n) : p.n, wie: g ? (g.wie || []) : [] });
+      });
+      groep.forEach(function (x) { if (x.s === 'deel' || !BI[x.s]) return; if (eigen.some(function (p) { return p.s === x.s && gdist(p.la, p.lo, x.lat, x.lon) < 60; })) return; items.push({ g: x, s: x.s, la: x.lat, lo: x.lon, naam: x.naam || 'nog zonder bijnaam', n: x.n || 1, wie: x.wie || [] }); });
+      if (!items.length) { var e0 = document.createElement('li'); e0.textContent = 'Nog geen bijnamen. Die komen vanzelf als Buddy twee keer iets voelt op dezelfde plek.'; ol.appendChild(e0); }
+      items.sort(function (a, b) { return b.n - a.n; }).slice(0, 25).forEach(function (it) {
+        var li = document.createElement('li'), sp = document.createElement('span'), anderen = it.wie.filter(function (w) { return w && w !== myWho(); });
+        var door = it.eigen ? 'door jou' + (anderen.length ? ' en ' + anderen.join(', ') : '') : 'door ' + (anderen.join(', ') || 'de groep');
+        var deelTx = it.eigen ? (it.g ? ' · 👥 gedeeld' : ' · 🔒 alleen bij jou') : ' · 👥 van de groep';
+        sp.textContent = (BI[it.s] || '📍') + ' ' + it.naam + '\n' + BN[it.s] + ' · ' + it.n + '× gevoeld ' + door + deelTx;
+        var bh = knop('✏️', 'Hernoemen', function () {
+          var v = prompt('Nieuwe bijnaam:', it.naam); if (v == null || !v.trim()) return; v = v.trim().slice(0, 40);
+          if (it.eigen) { it.eigen.naam = v; window.__bij.bewaar(); }
+          var gid = (it.g && it.g.id) || (it.eigen && it.eigen.gid);
+          if (gid && grp && pbase()) fetch(gUrl('/plek', '&s=' + it.s + '&id=' + gid + '&lat=' + (+it.la).toFixed(5) + '&lon=' + (+it.lo).toFixed(5) + '&naam=' + encodeURIComponent(v) + '&alleenNaam=1&van=' + mijnId)).then(function () { window.__bij.pull(true); }).catch(function () {});
+          if (it.g) it.g.naam = v; bijToon(); plekOpKaart();
+        });
+        var bx = knop('🗑️', 'Weggooien', function () {
+          if (bx.dataset.arm !== '1') { bx.dataset.arm = '1'; bx.textContent = it.g ? '🗑️ Ook voor de groep? Tik nog eens' : '🗑️ Zeker?'; setTimeout(function () { bx.dataset.arm = ''; bx.textContent = '🗑️'; }, 4000); return; }
+          var lijst = window.__bij.eigen(); if (it.eigen) { var i = lijst.indexOf(it.eigen); if (i >= 0) lijst.splice(i, 1); window.__bij.bewaar(); }
+          var gid = (it.g && it.g.id) || (it.eigen && it.eigen.gid); if (gid && grp && pbase()) fetch(gUrl('/plekweg', '&id=' + gid + '&van=' + mijnId)).then(function () { window.__bij.pull(true); }).catch(function () {});
+          bijToon(); plekOpKaart(); toast('Bijnaam weggegooid. Gerepareerd? Fijn!');
+        });
+        rij(li, sp, [knop('📍', 'Op de kaart', function () { opKaart(it.la, it.lo); }), knop('👁️', 'Streetview', function () { streetview(it.la, it.lo); }), bh, bx]);
+        ol.appendChild(li);
+      });
+      if (los) { var lf = document.createElement('li'); lf.style.opacity = '.7'; lf.textContent = 'Nog ' + los + ' plek' + (los === 1 ? '' : 'ken') + ' waar Buddy één keer iets voelde. Bij de tweede keer krijgen ze een bijnaam.'; ol.appendChild(lf); }
+      var gedeeld = groep.filter(function (x) { return x.s === 'deel'; });
+      if (!gedeeld.length) { var d0 = document.createElement('li'); d0.textContent = 'Nog niemand heeft een plekje gedeeld.'; dl.appendChild(d0); }
+      gedeeld.slice().reverse().forEach(function (x) {
+        var li = document.createElement('li'), sp = document.createElement('span'), mijn = x.van === mijnId;
+        sp.textContent = (WI[x.wat] || '📍') + ' ' + (x.naam || WN[x.wat] || 'Plekje') + '\n' + (x.p ? x.p + ' · ' : '') + 'gedeeld door ' + (mijn ? 'jou' : ((x.wie && x.wie[0]) || 'een collega'));
+        var k = [knop('📍', 'Op de kaart', function () { opKaart(x.lat, x.lon); }), knop('👁️', 'Streetview', function () { streetview(x.lat, x.lon); }), knop('🧭', 'Navigeer', function () { navi(x.lat, x.lon); })];
+        if (mijn) k.push(knop('🔒', 'Niet meer delen', function () { fetch(gUrl('/plekweg', '&id=' + x.id + '&van=' + mijnId)).then(function () { window.__bij.pull(true); }).catch(function () {}); plekken.forEach(function (p) { if (p.gedeeld === x.id) delete p.gedeeld; }); plekBewaar(); plekToon(); }));
+        rij(li, sp, k); dl.appendChild(li);
+      });
+    }
+    window.__bijToon = function () { try { bijToon(); plekOpKaart(); } catch (e) {} };
+    $('bijDeelOn').checked = window.__bij.aan();
+    $('bijDeelOn').addEventListener('change', function () { var aan = $('bijDeelOn').checked; window.__bij.aan(aan); toast(aan ? '👥 Bijnamen worden weer gedeeld met je groep.' : '🔒 Bijnamen blijven nu alleen op je telefoon. Wat al gedeeld is, kun je weggooien met 🗑️.'); if (aan) window.__bij.eigen().forEach(function (p) { window.__bij.deel(p, true); }); bijToon(); });
     var plekLaag = null;
     function plekOpKaart() {
       if (!window.L || typeof flMap === 'undefined' || !flMap) return;
       if (plekLaag) plekLaag.remove(); plekLaag = L.layerGroup().addTo(flMap);
-      plekken.forEach(function (p) { L.circleMarker([p.lat, p.lon], { radius: 8, color: '#fff', weight: 2, fillColor: '#bf5af2', fillOpacity: 1 }).addTo(plekLaag).bindPopup('📍 ' + dagStr(p.t) + ' ' + tijdStr(p.t)); });
+      var ico = function (t, rand) { return L.divIcon({ className: '', html: '<div style="font-size:20px;line-height:28px;width:28px;height:28px;text-align:center;border-radius:50%;background:rgba(20,20,24,.85);border:2px solid ' + rand + '">' + t + '</div>', iconSize: [28, 28], iconAnchor: [14, 14] }); };
+      plekken.forEach(function (p) { L.marker([p.lat, p.lon], { icon: ico(WI[p.wat] || '📍', '#bf5af2') }).addTo(plekLaag).bindPopup((p.naam || (p.wat ? WN[p.wat] : 'Plekje')) + '<br>' + dagStr(p.t) + ' ' + tijdStr(p.t) + (p.gedeeld ? ' · gedeeld' : ' · privé')); });
+      window.__bij.eigen().forEach(function (p) { if (p.naam) L.marker([p.la, p.lo], { icon: ico(BI[p.s] || '📍', '#ffd60a') }).addTo(plekLaag).bindPopup(p.naam + '<br>' + BN[p.s] + ' · ' + p.n + '×'); });
+      window.__bij.groep().forEach(function (x) {
+        if (x.s === 'deel') { L.marker([x.lat, x.lon], { icon: ico(WI[x.wat] || '📍', '#30d158') }).addTo(plekLaag).bindPopup((x.naam || WN[x.wat] || 'Plekje') + '<br>gedeeld door ' + ((x.wie && x.wie[0]) || 'de groep')); return; }
+        if (!BI[x.s] || window.__bij.eigen().some(function (p) { return p.s === x.s && gdist(p.la, p.lo, x.lat, x.lon) < 60; })) return;
+        L.marker([x.lat, x.lon], { icon: ico(BI[x.s], '#ff9f0a') }).addTo(plekLaag).bindPopup((x.naam || 'Bijnaam') + '<br>' + BN[x.s] + ' · door ' + ((x.wie || []).join(', ') || 'de groep'));
+      });
     }
     window.__plekOpKaart = plekOpKaart;
     function plekNu(bron) {
       if (!lastPos) { toast('Ik weet nog niet waar we zijn. Zet de GPS aan.'); return false; }
-      plekken.push({ lat: +lastPos.lat.toFixed(5), lon: +lastPos.lon.toFixed(5), t: Date.now(), v: Math.round(S.speed || 0) }); mem.plekN = (mem.plekN || 0) + 1; save();
+      var p = { lat: +lastPos.lat.toFixed(5), lon: +lastPos.lon.toFixed(5), t: Date.now(), v: Math.round(S.speed || 0) };
+      plekken.push(p); mem.plekN = (mem.plekN || 0) + 1; save();
       plekBewaar(); plekToon(); plekOpKaart(); setEv('happy', 2.5, 'Plek onthouden! Kijk later bij Kaart.'); beep('pet'); lg('plek onthouden (' + bron + ')');
+      placeOf(p.lat, p.lon).then(function (pl) { if (pl) { p.p = pl; plekBewaar(); plekToon(); } });
+      if ((S.speed || 0) < 10) watKies(p);   /* tijdens het rijden niet: dan vraagt Buddy het na de rit */
       return true;
     }
+    window.__plekHerinner = function (t0) {
+      var n = plekken.filter(function (p) { return p.t >= t0 && !p.wat && !p.naam; }).length; if (!n) return;
+      var m = 'Je bewaarde ' + n + ' plekje' + (n === 1 ? '' : 's') + ' onderweg. Wat was het? Kijk bij Kaart → Mijn plekjes.'; queueCheer(m); toast(m);
+    };
+    setTimeout(bijToon, 500);
     window.__plekNu = plekNu;
     $('plekKnop').addEventListener('click', function () { plekNu('knop'); });
     $('plekKnop2').addEventListener('click', function () { plekNu('knop'); });

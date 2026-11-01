@@ -50,6 +50,47 @@ export default {
   },
 };
 
+// v93: Buddy's bijnamen (gat, drempel, rotonde, stoplicht) en zelf gedeelde plekjes voor de groep. Geen tijden van ritten, geen snelheid.
+const PLEK_SOORTEN = ['gat', 'stoplicht', 'rotonde', 'drempel', 'deel'];
+async function plekGroep(url, env, g, json) {
+  const q = (k) => url.searchParams.get(k) || '';
+  const key = 'pl:' + g, nu = Date.now(), p = url.pathname;
+  let lijst = [];
+  try { lijst = (await env.FLITS.get(key, 'json')) || []; } catch (e) { lijst = []; }
+  lijst = lijst.filter((x) => x && nu - x.t < (x.s === 'deel' ? 90 : 180) * 864e5);
+  if (p === '/cams/plekken') return json({ plekken: lijst.map((x) => { const { t, ...rest } = x; return rest; }), nu });
+  const id = q('id').replace(/[^a-zA-Z0-9]/g, '').slice(0, 24), van = q('van').replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
+  if (!id) return json({ error: 'id ontbreekt.' }, 400);
+  if (p === '/cams/plekweg') {
+    const e = lijst.find((x) => x.id === id);
+    if (e && e.s === 'deel' && e.van && e.van !== van) return json({ error: 'Alleen wie het plekje deelde kan het weghalen.' }, 403);
+    lijst = lijst.filter((x) => x.id !== id);
+    await env.FLITS.put(key, JSON.stringify(lijst));
+    return json({ ok: true });
+  }
+  const s = q('s'); if (!PLEK_SOORTEN.includes(s)) return json({ error: 'Onbekende soort plek.' }, 400);
+  const lat = parseFloat(q('lat')), lon = parseFloat(q('lon'));
+  if (!(lat > 50.6 && lat < 53.7 && lon > 3.0 && lon < 7.4)) return json({ error: 'Ongeldige plek.' }, 400);
+  const tekst = (v, n) => v.replace(/[^A-Za-z0-9\u00C0-\u017F '\-.,!?&()]/g, '').trim().slice(0, n);
+  const wie = tekst(q('wie'), 20), naam = tekst(q('naam'), 40), wat = q('wat').replace(/[^a-z]/g, '').slice(0, 12), pl = tekst(q('p'), 30);
+  const afst = (a) => Math.hypot((a.lat - lat) * 111195, (a.lon - lon) * 111195 * Math.cos(lat * Math.PI / 180));
+  let e = lijst.find((x) => x.id === id) || (s !== 'deel' ? lijst.find((x) => x.s === s && afst(x) < 60) : null);
+  if (e && q('alleenNaam') === '1') { if (naam) e.naam = naam; }
+  else if (e) {
+    if (s !== 'deel') { e.n = Math.min((e.n || 1) + 1, 9999); if (wie && !(e.wie || []).includes(wie)) e.wie = (e.wie || []).concat(wie).slice(-6); if (naam && !e.naam) e.naam = naam; }
+    else { if (e.van && e.van !== van) return json({ error: 'Niet jouw plekje.' }, 403); e.naam = naam; if (wat) e.wat = wat; if (pl) e.p = pl; }
+    e.t = nu;
+  } else {
+    e = { id, s, lat: +lat.toFixed(5), lon: +lon.toFixed(5), t: nu, wie: wie ? [wie] : [] };
+    if (naam) e.naam = naam;
+    if (s !== 'deel') e.n = 2; else { e.wat = wat || 'anders'; e.van = van; if (pl) e.p = pl; }
+    lijst.push(e);
+  }
+  if (lijst.length > 300) lijst = lijst.slice(-300);
+  await env.FLITS.put(key, JSON.stringify(lijst));
+  return json({ ok: true, id: e.id });
+}
+
 // Gedeelde flitsers voor een groepje (bijvoorbeeld jij en collega's). Heeft een KV-opslag nodig met de naam FLITS.
 const MOBIEL_UREN = 3, MAX_PER_GROEP = 800;
 async function cams(url, env, cors) {
@@ -58,6 +99,7 @@ async function cams(url, env, cors) {
   const g = (url.searchParams.get('g') || '').toLowerCase();
   if (!/^[a-z0-9]{6,32}$/.test(g)) return json({ error: 'Groepscode moet 6 tot 32 letters of cijfers zijn.' }, 400);
   const p0 = url.pathname;
+  if (p0 === '/cams/plek' || p0 === '/cams/plekken' || p0 === '/cams/plekweg') return plekGroep(url, env, g, json);   // v93: bijnamen en gedeelde plekjes
   if (p0 === '/cams/ping' || p0 === '/cams/pings' || p0 === '/cams/lid' || p0 === '/cams/bord' || p0 === '/cams/hier' || p0 === '/cams/weg') return groep(url, env, g, json);
   const key = 'g:' + g, nu = Date.now();
   let lijst = [];
