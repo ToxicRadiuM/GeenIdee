@@ -540,26 +540,34 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <div class="limitrow"><label for="hebScherm">Heb je een los Buddy-schermpje?</label><select id="hebScherm"><option value="1">Ja</option><option value="0">Nee, alleen de app</option></select></div>
       <div id="schermIn">
       <p class="foot"><b>De app helpt je rijden, Buddy+ leeft met je mee.</b> Buddy+ is Buddy in het echt: het ronde schermpje op je dashboard. Tijdens het rijden laat hij limieten, flitsers, files en navigatie zien (met wifi ook zonder telefoon). Sta je stil, dan is hij gewoon een robotje: aaien, kietelen, in zijn oog prikken, schudden, klappen, koekje geven, focussen of het weer laten zien.</p>
-      <p class="sub">Met Buddy+ spelen</p>
+
+      <p class="sub">Stap 1 · Verbinden via Bluetooth</p>
+      <ol class="foot" style="text-align:left;padding-left:18px;margin:0 0 6px">
+        <li>Zet Buddy+ aan (USB in de auto of aan je lader) en zet <b>Bluetooth</b> op je telefoon aan.</li>
+        <li>Gebruik <b>Chrome op Android</b> (een iPhone kan niet verbinden via Bluetooth vanuit een website).</li>
+        <li>Tik hieronder op <b>Verbind</b> en kies <b>Buddy-scherm</b> in de lijst.</li>
+        <li>De eerste keer vraagt je telefoon een <b>code van 6 cijfers</b>: die staat bovenin op het schermpje. Daarna hoeft dat nooit meer.</li>
+      </ol>
+      <button class="btn primary" id="bleKnop" type="button">📡 Verbind met Buddy+</button>
+      <p class="chip" id="bleStat">Niet verbonden.</p>
+      <p class="sub">Stap 2 · Wifi geven (één keer, wel aanraden)</p>
+      <p class="foot" style="text-align:left">Dit kan pas als stap 1 gelukt is: de app geeft de wifi via Bluetooth door. Gebruik de <b>hotspot van je telefoon</b>. Buddy+ onthoudt het en verbindt daarna elke rit vanzelf zodra je hotspot aan staat. Met wifi haalt hij zelf limieten, flitsers, files, het weer en nieuwe versies op, ook als de app dicht is.</p>
+      <div class="mobrow"><input type="text" id="wfNaam" autocomplete="off" placeholder="Naam van je hotspot (precies zo geschreven)"></div>
+      <div class="mobrow"><input type="password" id="wfPass" autocomplete="off" placeholder="Wachtwoord van je hotspot"></div>
+      <button class="btn" id="wfStuur" type="button">📶 Wifi naar Buddy+ sturen</button>
+      <p class="foot" style="text-align:left">Gelukt? Kijk hieronder bij Gezondheid: daar komt “wifi verbonden” te staan (zet je hotspot dan wel even aan).</p>
+      <p class="sub">Stap 3 · Spelen en instellen</p>
       <div class="btns"><button class="btn" id="bpKoekje" type="button">🍪 Geef een koekje</button><button class="btn" id="bpFocus" type="button">🤓 Focus 25 min</button><button class="btn" id="bpWeer" type="button">⛅ Weer laten zien</button><button class="btn" id="bpZwaai" type="button">👋 Laat hem zwaaien</button></div>
-      <button class="btn" id="bleKnop" type="button">📡 Verbind met het Buddy-scherm</button>
-      <button class="btn" id="bleLog" type="button">📥 Logboek van het schermpje ophalen</button>
-      <p class="sub">Schermpje instellen</p>
       <div class="limitrow"><label for="scLicht">Helderheid</label><input type="range" id="scLicht" min="10" max="100" step="5" value="65"></div>
       <div class="limitrow"><label for="scVol">Volume</label><input type="range" id="scVol" min="0" max="100" step="5" value="80"></div>
       <div class="limitrow"><label for="scAnim">Animaties</label><select id="scAnim"><option value="2">Rustig</option><option value="1" selected>Normaal</option><option value="0.5">Veel</option></select></div>
       <div class="limitrow"><label for="scWarn">Waarschuwen bij ruim te hard</label><select id="scWarn"><option value="1" selected>Aan (boos kijken + piepje)</option><option value="0">Uit</option></select></div>
       <p class="foot">Het schermpje draagt vanzelf hetzelfde outfit als Buddy hier (ook de feestdag-outfits).</p>
-      <p class="sub">Wifi voor het schermpje (hotspot van je telefoon)</p>
-      <div class="mobrow"><input type="text" id="wfNaam" autocomplete="off" placeholder="Naam van je hotspot"></div>
-      <div class="mobrow"><input type="password" id="wfPass" autocomplete="off" placeholder="Wachtwoord van je hotspot"></div>
-      <button class="btn" id="wfStuur" type="button">📶 Wifi naar het schermpje sturen</button>
-      <p class="foot">Met wifi haalt het schermpje zelf de maximumsnelheden, alle vaste flitsers en trajectcontroles op, zet hij de klok goed en installeert hij nieuwe versies vanzelf (alleen als hij stilstaat). Hij onthoudt de wegen waar je rijdt, dus daar werkt het daarna ook zonder internet. Het wachtwoord gaat alleen via Bluetooth naar het schermpje.</p>
-      <p class="chip" id="bleStat">Niet verbonden. Werkt met Chrome op Android. Het schermpje krijgt dan de limiet, flitsers, files, wegwerk en Buddy’s stemming van je telefoon. Lang drukken op het schermpje → FLITSER meldt via je telefoon.</p>
-      <p class="sub">Gezondheid van het schermpje</p>
-      <p class="chip" id="schStat">Nog niets gehoord. Verbind eerst met het schermpje.</p>
+      <p class="sub">Gezondheid en onderhoud</p>
+      <p class="chip" id="schStat">Nog niets gehoord. Verbind eerst (stap 1).</p>
       <div class="mobrow"><button class="btn" id="schZoek" type="button">🔔 Zoek mijn Buddy</button><button class="btn" id="schUpd" type="button">⬇️ Update nu</button></div>
-      <p class="foot">Zoek mijn Buddy laat het schermpje piepen en knipperen. Update nu laat hem meteen kijken of er een nieuwe versie is (hij moet dan wifi hebben).</p>
+      <button class="btn" id="bleLog" type="button">📥 Logboek van Buddy+ ophalen</button>
+      <p class="foot">Zoek mijn Buddy laat hem piepen en knipperen. Update nu laat hem meteen kijken of er een nieuwe versie is (daarvoor heeft hij wifi nodig). Het logboek gaat automatisch mee bij elke verbinding.</p>
       </div>
     </div>
   </details>
@@ -4414,7 +4422,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v89';
+  var VERSION = 'v90';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6483,7 +6491,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
           rx = ch[0];
           ch[1].startNotifications().then(function () { ch[1].addEventListener('characteristicvaluechanged', binnen); }).catch(function () {});
           stat('✅ Verbonden met ' + (dev.name || 'Buddy-scherm') + '. Het schermpje krijgt nu elke seconde de info van je telefoon.');
-          lg('Buddy-scherm verbonden'); $('bleKnop').textContent = '📡 Buddy-scherm: verbonden';
+          lg('Buddy-scherm verbonden'); $('bleKnop').textContent = '✅ Buddy+ verbonden (tik om los te koppelen)';
           if (!timer) timer = setInterval(stuur, 1000);
           setTimeout(vraagLog, 4000);   /* elke keer bij verbinden het logboek even meenemen */
           setTimeout(persStuur, 5000); setTimeout(function () { klein('STAT?'); }, 6500);   /* v83: wie je bent + gezondheid */
@@ -6496,7 +6504,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         });
     }
     function weg() {
-      rx = null; stat('Verbinding met het schermpje weg, ik probeer het opnieuw…'); $('bleKnop').textContent = '📡 Verbind met het Buddy-scherm';
+      rx = null; stat('Verbinding met het schermpje weg, ik probeer het opnieuw…'); $('bleKnop').textContent = '📡 Verbind met Buddy+';
       setTimeout(function () { if (dev && !rx) koppel().catch(function () { stat('Niet verbonden. Tik op de knop om opnieuw te verbinden.'); }); }, 2500);
     }
     var logBuf = null;
@@ -6543,7 +6551,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         .catch(function () { toast('Versturen lukte niet, probeer opnieuw.'); }).then(function () { bezig = false; });
     });
     /* v83: persoonlijke dingen naar het schermpje: PERS:naam<TAB>karakter<TAB>vriendschap<TAB>level<TAB>km<TAB>stijl laatste rit<TAB>gem. stijl */
-    function klein(t) { if (!rx || bezig || (t === 'STAT?' && logBuf != null)) return; bezig = true; stuurTekst(t).catch(function () {}).then(function () { bezig = false; }); }
+    function klein(t, poging) {   /* v90: is de verbinding net bezig? Dan even wachten en opnieuw (eerst raakten knoppen zo kwijt) */
+      if (!rx || (t === 'STAT?' && logBuf != null)) return;
+      if (bezig) { if ((poging || 0) < 12) setTimeout(function () { klein(t, (poging || 0) + 1); }, 250); else lg('scherm: kon niet versturen: ' + t); return; }
+      bezig = true; stuurTekst(t).catch(function () {}).then(function () { bezig = false; });
+    }
     function persStuur() {
       try {
         var nm = ((window.bijnaam && window.bijnaam()) || myWho() || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9 '\-]/g, '').slice(0, 14);
@@ -6603,7 +6615,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     $('bleKnop').addEventListener('click', function () {
       if (!navigator.bluetooth) { toast('Deze browser kan geen Bluetooth. Gebruik Chrome op Android.'); return; }
-      if (rx && dev) { try { dev.gatt.disconnect(); } catch (e) {} dev = null; rx = null; stat('Losgekoppeld.'); $('bleKnop').textContent = '📡 Verbind met het Buddy-scherm'; return; }
+      if (rx && dev) { try { dev.gatt.disconnect(); } catch (e) {} dev = null; rx = null; stat('Losgekoppeld.'); $('bleKnop').textContent = '📡 Verbind met Buddy+'; return; }
       navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'Buddy' }], optionalServices: [SVC] }).then(function (d) {
         dev = d; d.addEventListener('gattserverdisconnected', weg); stat('Verbinden…'); return koppel();
       }).catch(function (e) { stat('Niet verbonden' + (e && e.message ? ' (' + e.message + ')' : '') + '.'); });
