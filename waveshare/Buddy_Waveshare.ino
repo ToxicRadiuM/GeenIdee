@@ -27,7 +27,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 42;
+static const int FW_VERSIE = 43;
 // v42: persoonlijkheid
 static char persNaam[16] = "", persNaamNieuw[16] = ""; static volatile char persKar = 'E'; static volatile int persLv = 0, persStijl = -1; static volatile uint32_t persEpoch = 0; static volatile bool persNieuw = false;
 static uint8_t vriend = 40; static uint8_t gagLike[48] = {0}; static uint8_t vertrekH[24] = {0};
@@ -1170,6 +1170,7 @@ static void bleStart() {
   BLEDevice::startAdvertising();
   Serial.println("BLE: zichtbaar als 'Buddy-scherm'");
 }
+static volatile bool logBezig = false;   // v43: tijdens het versturen van het logboek niets anders over Bluetooth (anders raakt het door elkaar)
 static void logNaarTelefoonTaak(void *) {
   // laatste ~12 KB van het logboek in kleine stukjes naar de app (die zet het in zijn eigen log -> buddy-logs)
   if (logFs && bleConnected && bleTx) {
@@ -1180,9 +1181,10 @@ static void logNaarTelefoonTaak(void *) {
       f.close(); }
     bleTx->setValue((uint8_t *)"LOGEND", 6); bleTx->notify();
   }
+  logBezig = false;
   vTaskDelete(NULL);
 }
-static void bleSend(const char *t) { if (bleTx && bleConnected) { bleTx->setValue((uint8_t *)t, strlen(t)); bleTx->notify(); } }
+static void bleSend(const char *t) { if (bleTx && bleConnected && !logBezig) { bleTx->setValue((uint8_t *)t, strlen(t)); bleTx->notify(); } }
 
 // ===================== v19: meehangen in bochten (QMI8658) =====================
 // v20: de QMI8658 rechtstreeks via registers (de SensorLib-versie liet v19 crashen bij het opstarten)
@@ -2047,7 +2049,7 @@ static void persStap(float dt) {
       else if (persStijl >= 92) { startGag(17); gagMsg = "Vorige rit: zen-modus. Top!"; } }
   }
   if (!gegroet && nu > groetVanaf && gagAct < 0 && !menuOpen && !venster && (klokOk() || nu > groetVanaf + 12000)) doeGroet();
-  if (statVraag) { statVraag = false; stuurStat(); }
+  if (statVraag && !logBezig) { statVraag = false; stuurStat(); }
   if (zoekNu) { zoekNu = false; zoekTot = nu + 6000; laatsteActie = nu; slaapt = false; }
   { static uint32_t zb = 0; if ((int32_t)(zoekTot - nu) > 0 && nu - zb > 700) { zb = nu; playMoodSound(ALERT); } }
   // samen rijden: vriendschap groeit, laatste-ritmoment bijhouden
@@ -2632,7 +2634,7 @@ void loop(){
    if (setLicht >= 0) { helderheid = (uint8_t)constrain(setLicht * 255 / 100, 20, 255); buddyPrefs.putUChar("licht", helderheid); setLicht = -1; }
    if (setVol >= 0) { buddyVolume = (uint8_t)constrain((int)setVol, 0, 100); if (audioReady) applyCodecVolume(buddyVolume); buddyPrefs.putUChar("volume", buddyVolume); setVol = -1; }
    if (wifiNieuw) { wifiNieuw = false; strcpy(wifiNaam, wifiNaamNieuw); strcpy(wifiPass, wifiPassNieuw); buddyPrefs.putString("ssid", wifiNaam); buddyPrefs.putString("pass", wifiPass); wifiHerstart = true; logRegel("wifi ingesteld: %s", wifiNaam); }
-   if (logVraag) { logVraag = false; xTaskCreatePinnedToCore(logNaarTelefoonTaak, "BuddyLogBLE", 4096, nullptr, 1, nullptr, 0); }
+   if (logVraag) { logVraag = false; if (!logBezig) { logBezig = true; xTaskCreatePinnedToCore(logNaarTelefoonTaak, "BuddyLogBLE", 4096, nullptr, 1, nullptr, 0); } }
  }
  if(millis()-serialHeartbeatMs>=3000){
    serialHeartbeatMs=millis();

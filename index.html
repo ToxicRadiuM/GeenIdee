@@ -4407,7 +4407,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v85';
+  var VERSION = 'v86';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6489,6 +6489,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       /* v76: logboek van het schermpje komt in stukjes binnen en gaat in de gewone Buddy-log (-> buddy-logs) */
       if (t === 'LOGBEGIN') { logBuf = ''; return; }
       if (t === 'LOGEND') { if (logBuf != null) { var r = logBuf.split('\n').filter(function (x) { return x.trim(); }); r.forEach(function (x) { lg('scherm| ' + x.slice(0, 220)); }); stat('✅ Logboek van het schermpje opgehaald (' + r.length + ' regels). Het gaat mee met de gewone log.'); if (typeof logStuur === 'function') setTimeout(logStuur, 1500); } logBuf = null; return; }
+      if (t.indexOf('S:') === 0 && t.length < 20 && t.indexOf('\n') < 0 && /^S:[a-z]+=/.test(t)) { schStatZet(t.slice(2)); return; }   /* v86: gezondheid nooit in het logboek mengen */
       if (logBuf != null) { logBuf += t; return; }
       if (t.indexOf('S:') === 0) { schStatZet(t.slice(2)); return; }   /* v83: gezondheid van het schermpje */
       lg('van het Buddy-scherm: ' + t);
@@ -6526,7 +6527,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         .catch(function () { toast('Versturen lukte niet, probeer opnieuw.'); }).then(function () { bezig = false; });
     });
     /* v83: persoonlijke dingen naar het schermpje: PERS:naam<TAB>karakter<TAB>vriendschap<TAB>level<TAB>km<TAB>stijl laatste rit<TAB>gem. stijl */
-    function klein(t) { if (!rx || bezig) return; bezig = true; stuurTekst(t).catch(function () {}).then(function () { bezig = false; }); }
+    function klein(t) { if (!rx || bezig || (t === 'STAT?' && logBuf != null)) return; bezig = true; stuurTekst(t).catch(function () {}).then(function () { bezig = false; }); }
     function persStuur() {
       try {
         var nm = ((window.bijnaam && window.bijnaam()) || myWho() || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9 '\-]/g, '').slice(0, 14);
