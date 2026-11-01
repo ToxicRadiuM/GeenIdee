@@ -4478,7 +4478,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v100';
+  var VERSION = 'v101';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7008,17 +7008,21 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         .then(function (svc) { return Promise.all([svc.getCharacteristic(RX), svc.getCharacteristic(TX)]); })
         .then(function (ch) {
           rx = ch[0];
-          (function proef(keer) {   /* v94: één bericht MET bevestiging, zodat de telefoon merkt dat er gekoppeld moet worden en om de code vraagt */
+          function luister(keer) {   /* v101: eerst meldingen van het schermpje aanzetten, pas daarna de proef (twee tegelijk mag niet in Chrome) */
+            return ch[1].startNotifications().then(function () { ch[1].removeEventListener('characteristicvaluechanged', binnen); ch[1].addEventListener('characteristicvaluechanged', binnen); lg('scherm: meldingen aan'); })
+              .catch(function (e) { lg('scherm: meldingen aanzetten mislukt (' + ((e && e.message) || e) + ')'); if (keer < 5) return new Promise(function (ok) { setTimeout(ok, 1500); }).then(function () { if (rx === ch[0]) return luister(keer + 1); }); });
+          }
+          luister(0).then(function () { proef(0); });
+          function proef(keer) {   /* v94: één bericht MET bevestiging, zodat de telefoon merkt dat er gekoppeld moet worden en om de code vraagt */
             var e0 = new TextEncoder().encode('STAT?\n'), r0 = rx; if (!r0) return;
             (r0.writeValueWithResponse ? r0.writeValueWithResponse(e0) : r0.writeValue(e0)).then(function () { lg('scherm: koppeling in orde'); })
               .catch(function (e) {
                 lg('scherm: bericht geweigerd (' + ((e && e.message) || e) + '), koppelen nodig');
                 stat('🔑 Je telefoon vraagt nu om de koppelcode. Vul de 6 cijfers van het schermpje in. Zie je geen venster? Kijk in je meldingenbalk (trek hem naar beneden).');
                 toast('🔑 Vul de code van het schermpje in op je telefoon.');
-                if (keer < 4) setTimeout(function () { if (rx === r0) proef(keer + 1); }, 15000);
+                if (keer < 4) setTimeout(function () { if (rx === r0) { proef(keer + 1); luister(0); } }, 15000);
               });
-          })(0);
-          ch[1].startNotifications().then(function () { ch[1].addEventListener('characteristicvaluechanged', binnen); }).catch(function () {});
+          }
           stat('✅ Verbonden met ' + (dev.name || 'Buddy-scherm') + '. Het schermpje krijgt nu elke seconde de info van je telefoon.');
           lg('Buddy-scherm verbonden'); $('bleKnop').textContent = '✅ Buddy+ verbonden (tik om los te koppelen)';
           if (!timer) timer = setInterval(stuur, 1000);
