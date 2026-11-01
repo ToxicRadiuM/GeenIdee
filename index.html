@@ -6593,8 +6593,16 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }, 60e3);
 
   /* Bijnamen voor plekken: gebeurt er twee keer iets op dezelfde plek, dan krijgt die plek een naam */
-  var PLEKKEY = 'dashboardmaatje-plekken-v1', plekken = [];
+  var PLEKKEY = 'dashboardmaatje-bijnaamplekken-v1', plekken = [];   /* v93: eigen sleutel; zat eerst in dezelfde lijst als "Mijn plekjes" */
   try { plekken = JSON.parse(localStorage.getItem(PLEKKEY)) || []; } catch (e) { plekken = []; }
+  try {
+    var plOud = JSON.parse(localStorage.getItem('dashboardmaatje-plekken-v1')) || [], plMijn = plOud.filter(function (p) { return p && p.s; });
+    if (plMijn.length) {
+      plMijn.forEach(function (p) { if (!plekken.some(function (q) { return q.s === p.s && q.la === p.la && q.lo === p.lo; })) plekken.push(p); });
+      localStorage.setItem(PLEKKEY, JSON.stringify(plekken.slice(-80)));
+      localStorage.setItem('dashboardmaatje-plekken-v1', JSON.stringify(plOud.filter(function (p) { return p && !p.s; })));
+    }
+  } catch (e) {}
   var PLEKNAAM = { gat: ['de Grote Boing', 'het Kraterpad', 'de Gatenkaas'], stoplicht: ['het Eeuwige Stoplicht', 'de Wachtkamer', 'Rood-Rood-Rood'], rotonde: ['de Draaimolen', 'het Rondje Pret', 'de Carrousel'], drempel: ['de Hobbelberg', 'de Schansspringer', 'Boingstraat'] };
   var PLEKZEG = { gat: 'Voorzichtig!', stoplicht: 'Hopelijk is hij groen…', rotonde: 'Wiee!', drempel: 'Hou je vast!' };
   function plekMerk(soort) {
@@ -7082,6 +7090,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     /* --- "Wat was dat?": plek onthouden --- */
     var PLEKKEY = 'dashboardmaatje-plekken-v1', plekken = [];
     try { plekken = JSON.parse(localStorage.getItem(PLEKKEY)) || []; } catch (e) { plekken = []; }
+    plekken = plekken.filter(function (p) { return p && isFinite(p.lat) && isFinite(p.lon); });   /* v93: alleen echte "Wat was dat?"-plekjes */
     function plekBewaar() { try { localStorage.setItem(PLEKKEY, JSON.stringify(plekken.slice(-60))); } catch (e) {} }
     function plekToon() {
       var ol = $('plekLijst'); if (!ol) return; while (ol.firstChild) ol.removeChild(ol.firstChild);
