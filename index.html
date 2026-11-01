@@ -4407,7 +4407,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v87';
+  var VERSION = 'v88';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6534,7 +6534,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         var ch = character(), kc = /Waaghals/.test(ch.label) ? 'W' : /Rustige/.test(ch.label) ? 'R' : /kennismaken/.test(ch.label) ? 'K' : 'E';
         var lvm = (($('lvStat') && $('lvStat').textContent) || '').match(/Level (\d+)/), lv = lvm ? +lvm[1] : 1;
         var lr = (typeof ritten !== 'undefined' && ritten.length) ? ritten[ritten.length - 1] : null;
-        klein('PERS:' + [nm, kc, Math.round(S.love || 0), lv, Math.round(mem.km || 0), lr ? lr.stijl : -1, Math.round(mem.styleAvg || 0), Math.floor(Date.now() / 1000)].join('\t'));   /* v83: + de tijd, dan kent het schermpje de klok ook zonder GPS of wifi */
+        klein('PERS:' + [nm, kc, Math.round(S.love || 0), lv, Math.round(mem.km || 0), lr ? lr.stijl : -1, Math.round(mem.styleAvg || 0), Math.floor(Date.now() / 1000), (function () { var d = new Date(); return mem.bday && mem.bday.d === d.getDate() && mem.bday.m === d.getMonth() + 1 ? 1 : 0; })()].join('\t'));   /* v83: + de tijd, dan kent het schermpje de klok ook zonder GPS of wifi */
       } catch (e) {}
     }
     window.__persStuur = persStuur;
@@ -6829,20 +6829,80 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     document.querySelectorAll('#bordGroep button').forEach(function (b) { b.addEventListener('click', function () { kies(b.dataset.g); }); });
     setTimeout(function () { var a = document.querySelector('#bordTabs button[aria-pressed="true"]'), s0 = a ? a.dataset.soort : 'week', g0 = 'week'; Object.keys(G).forEach(function (k) { if (G[k].indexOf(s0) >= 0) g0 = k; }); kies(g0); }, 0);
   })();
-  /* ---------- v85: korte rondleiding bij de eerste keer ---------- */
+  /* ---------- v88: welkom voor NIEUWE gebruikers: nieuw (naam, auto, schermpje) of 'ik heb al een Buddy' ---------- */
   (function () {
-    var KEY = 'dashboardmaatje-tour-v1'; try { if (localStorage.getItem(KEY)) return; } catch (e) { return; }
-    var S1 = [
-      ['👋 Hoi, ik ben Buddy!', 'Ik rijd met je mee: ik ken de limiet, waarschuw voor flitsers en files, en houd contact met je collega’s.'],
-      ['📍 Zet de GPS aan', 'Tik op het Buddy-tabblad op “Telefoon-GPS”. Zonder GPS weet ik niet waar we zijn.'],
-      ['🗂️ Alles op zijn plek', 'Onderin: 🙂 Buddy (ik en mijn schermpje) · 🗺️ Kaart (flitsers, plekjes, laden) · 🏁 Ritten (ritten, records, badges) · 👥 Groep (berichten, leaderboard) · ☰ Meer (instellingen en hulp).'],
-      ['ⓘ Uitleg', 'Zie je een ⓘ, tik erop voor uitleg. En bij ☰ Meer → ❓ Hoe werkt Buddy? staan de meest gestelde vragen.']
-    ], i = 0;
-    var o = document.createElement('div'); o.id = 'tour'; o.innerHTML = '<div class="tk" role="dialog" aria-modal="true"><h3></h3><p></p><div class="mobrow"><button class="btn" type="button" data-a="sla">Overslaan</button><button class="btn primary" type="button" data-a="ok">Volgende</button></div></div>';
-    function toon() { o.querySelector('h3').textContent = S1[i][0]; o.querySelector('p').textContent = S1[i][1]; o.querySelector('[data-a="ok"]').textContent = i === S1.length - 1 ? 'Aan de slag!' : 'Volgende'; }
+    var KEY = 'dashboardmaatje-tour-v1';
+    try { if (localStorage.getItem(KEY)) return; } catch (e) { return; }
+    if (mem.me || (mem.trips || 0) > 0 || (mem.ritLive || 0) > 0 || (mem.kmLive || 0) > 1) { try { localStorage.setItem(KEY, '1'); } catch (e) {} return; }   /* bestaande gebruiker: niet lastigvallen */
+    var o = document.createElement('div'); o.id = 'tour';
+    var tk = document.createElement('div'); tk.className = 'tk'; tk.setAttribute('role', 'dialog'); tk.setAttribute('aria-modal', 'true'); o.appendChild(tk);
     function klaar() { try { localStorage.setItem(KEY, '1'); } catch (e) {} o.remove(); }
-    o.addEventListener('click', function (e) { var a = e.target && e.target.dataset && e.target.dataset.a; if (a === 'sla') klaar(); else if (a === 'ok') { i++; if (i >= S1.length) klaar(); else toon(); } });
-    toon(); setTimeout(function () { document.body.appendChild(o); }, 1200);
+    function scherm(titel, tekst, inhoud, knoppen) {
+      while (tk.firstChild) tk.removeChild(tk.firstChild);
+      var h = document.createElement('h3'); h.textContent = titel; tk.appendChild(h);
+      if (tekst) { var p = document.createElement('p'); p.textContent = tekst; tk.appendChild(p); }
+      if (inhoud) tk.appendChild(inhoud);
+      var r = document.createElement('div'); r.className = 'mobrow'; r.style.marginTop = '10px';
+      knoppen.forEach(function (k) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn' + (k[2] ? ' primary' : ''); b.textContent = k[0]; b.addEventListener('click', k[1]); r.appendChild(b); });
+      tk.appendChild(r);
+    }
+    function veld(ph, max, waarde) { var i = document.createElement('input'); i.type = 'text'; i.maxLength = max; i.placeholder = ph; i.value = waarde || ''; i.style.width = '100%'; i.style.marginBottom = '8px'; return i; }
+    function start() {
+      scherm('👋 Hoi, ik ben Buddy!', 'Ik rijd met je mee: ik ken de limiet, waarschuw voor flitsers en files, en houd contact met je collega’s. Ben je nieuw, of had je al een Buddy (bijvoorbeeld op een andere telefoon)?', null,
+        [['Ik heb al een Buddy', alGehad], ['Ik ben nieuw', nieuw1, true]]);
+    }
+    function nieuw1() {
+      var w = document.createElement('div'), n = veld('Jouw naam', 18, mem.me), au = veld('Je auto, bv. witte Model Y', 30, mem.auto); w.appendChild(n); w.appendChild(au);
+      scherm('Hoe heet je?', 'Je collega’s zien je naam en auto, zo herkennen jullie elkaar onderweg. Geen kenteken nodig.', w, [['Terug', start], ['Volgende', function () {
+        var nm = n.value.trim().replace(/\s+/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }).slice(0, 18), a2 = au.value.replace(/[^A-Za-z0-9À-ſ '\-]/g, '').trim().slice(0, 30);
+        if (!nm) { toast('Typ eerst je naam.'); n.focus(); return; }
+        mem.me = nm; if (a2) mem.auto = a2; save(); if ($('meIn')) $('meIn').value = nm; if ($('autoIn') && a2) $('autoIn').value = a2;
+        if (typeof grLid === 'function') grLid(true); nieuw2();
+      }, true]]);
+    }
+    function nieuw2() {
+      scherm('🖥️ Heb je een los Buddy-schermpje?', 'Het ronde schermpje op je dashboard. Heb je dat niet, dan werkt alles gewoon in deze app.', null, [['Nee', function () { zetScherm('0'); nieuw3(); }], ['Ja, heb ik', function () { zetScherm('1'); nieuw3(); }, true]]);
+    }
+    function zetScherm(v) { try { localStorage.setItem('dashboardmaatje-hebscherm-v1', v); } catch (e) {} if ($('hebScherm')) { $('hebScherm').value = v; $('hebScherm').dispatchEvent(new Event('change')); } }
+    function nieuw3() {
+      scherm('🗂️ Waar staat wat?', 'Onderin: 🙂 Buddy (ik en mijn schermpje) · 🗺️ Kaart (flitsers, plekjes, laden) · 🏁 Ritten (ritten, records, badges) · 👥 Groep (berichten, leaderboard) · ☰ Meer (instellingen en ❓ hulp). Zie je een ⓘ, tik erop voor uitleg. Zet als laatste de telefoon-GPS aan op het Buddy-tabblad.', null,
+        [['Aan de slag!', function () { klaar(); setEv('love', 3.6, 'Aangenaam, ' + (mem.me || 'maatje') + '! Zet de GPS aan, dan gaan we rijden.'); }, true]]);
+    }
+    function alGehad() {
+      var w = document.createElement('div'), code = veld('Herstelcode, bv. ABCD-EFGH-JK23', 16, ''); code.style.textTransform = 'uppercase'; w.appendChild(code);
+      var p = document.createElement('p'); p.className = 'foot'; p.textContent = 'Met je herstelcode komt álles terug: ritten, badges, level, dagboek. Je vindt hem op je oude telefoon bij ☰ Meer → Instellingen → Back-up. Geen code? Kies dan jezelf uit de groep.'; w.appendChild(p);
+      scherm('Welkom terug!', '', w, [['Terug', start], ['Kies uit de groep', kiesUitGroep], ['Terugzetten', function () {
+        var c = code.value.trim().toUpperCase(); if (c.length < 8) { toast('Vul je herstelcode in.'); code.focus(); return; }
+        if ($('bkIn') && $('bkTerug')) { $('bkIn').value = c; klaar(); $('bkTerug').click(); }
+      }, true]]);
+    }
+    function kiesUitGroep() {
+      var w = document.createElement('div'); w.textContent = 'Groep laden…';
+      scherm('Wie ben jij?', 'Tik op je naam. Dan ga ik verder als jou: je plek op het leaderboard, je km en badges blijven van jou.', w, [['Terug', alGehad]]);
+      if (typeof gUrl !== 'function' || !grp) { w.textContent = 'Geen groep gevonden. Gebruik je herstelcode of begin als nieuw.'; return; }
+      fetch(gUrl('/bord')).then(function (r) { return r.json(); }).then(function (j) {
+        var l = Array.isArray(j.leden) ? j.leden.filter(function (x) { return x && x.van && x.n; }) : [];
+        while (w.firstChild) w.removeChild(w.firstChild);
+        if (!l.length) { w.textContent = 'Nog niemand in de groep. Begin als nieuw.'; return; }
+        l.sort(function (a, b) { return String(a.n).localeCompare(String(b.n)); }).forEach(function (x) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.style.width = '100%'; b.style.marginBottom = '6px';
+          b.textContent = x.n + (x.a ? ' · ' + x.a : '') + (x.km ? ' · ' + x.km + ' km' : '');
+          b.addEventListener('click', function () {
+            if (!confirmTekst(x)) return;
+            try { localStorage.setItem('dashboardmaatje-lid-v1', x.van); } catch (e) {}
+            mem.me = String(x.n).slice(0, 18); if (x.a) mem.auto = String(x.a).slice(0, 30);
+            mem.kmLive = Math.max(mem.kmLive || 0, +x.km || 0); mem.netjes = Math.max(mem.netjes || 0, +x.netjes || 0); mem.gemeld = Math.max(mem.gemeld || 0, +x.gemeld || 0);
+            mem.ritLive = Math.max(mem.ritLive || 0, +x.ritten || 0); if (x.stijl) mem.stijlLive = +x.stijl;
+            if (x.nul) mem.best100Live = (+x.nul) / 10; if (x.tachtig) mem.best80Live = (+x.tachtig) / 10;
+            if (x.bd) mem.badges = String(x.bd).split('.').filter(Boolean);
+            save(); klaar(); toast('Welkom terug, ' + mem.me + '! Even opnieuw laden…'); setTimeout(function () { location.reload(); }, 1200);
+          });
+          w.appendChild(b);
+        });
+      }).catch(function () { w.textContent = 'De groep laden lukte nu niet. Probeer je herstelcode of begin als nieuw.'; });
+    }
+    function confirmTekst(x) { return true; }
+    start(); setTimeout(function () { document.body.appendChild(o); }, 1000);
   })();
 
   /* ---------- v75: tabbalk (Buddy · Kaart · Groep · Meer) ---------- */

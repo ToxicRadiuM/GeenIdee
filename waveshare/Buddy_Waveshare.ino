@@ -27,7 +27,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 44;
+static const int FW_VERSIE = 45;
+static volatile bool persJarig = false;   // v45: vandaag jarig (van de app)
 // v42: persoonlijkheid
 static char persNaam[16] = "", persNaamNieuw[16] = ""; static volatile char persKar = 'E'; static volatile int persLv = 0, persStijl = -1; static volatile uint32_t persEpoch = 0; static volatile bool persNieuw = false;
 static uint8_t vriend = 40; static uint8_t gagLike[48] = {0}; static uint8_t vertrekH[24] = {0};
@@ -825,10 +826,11 @@ void circle(float x,float y,float r,uint16_t c){boxAdd(x-r,y-r,x+r,y+r);frame->f
 void roundRect(float x,float y,float w,float h,float r,uint16_t c){boxAdd(x,y,x+w,y+h);frame->fillRoundRect(X(x),Y(y),S(w),S(h),S(r),c);} 
 void heart(float x,float y,float s,uint16_t c){
   boxAdd(x-s*.8f,y-s*.6f,x+s*.8f,y+s*.95f);
-  circle(x-s*.34f,y-s*.12f,s*.38f,c); circle(x+s*.34f,y-s*.12f,s*.38f,c);
-  // V-shaped lower point; deliberately chunky at this display scale.
-  int16_t ax=X(x-s*.68f), ay=Y(y-s*.05f), bx=X(x+s*.68f), by=Y(y-s*.05f), px=X(x), py=Y(y+s*.82f);
-  for(int k=-2;k<=2;k++){frame->drawLine(ax,Y(y-s*.05f+k),px,Y(y+s*.82f+k),c);frame->drawLine(bx,Y(y-s*.05f+k),px,Y(y+s*.82f+k),c);}
+  // v45: echt hartje: twee bollen die elkaar overlappen + een gevulde punt (eerst alleen lijntjes -> leek op billen)
+  float r=s*.36f, cy=y-s*.18f;
+  circle(x-s*.3f,cy,r,c); circle(x+s*.3f,cy,r,c);
+  frame->fillTriangle(X(x-s*.64f),Y(cy+r*.28f),X(x+s*.64f),Y(cy+r*.28f),X(x),Y(y+s*.78f),c);
+  frame->fillTriangle(X(x-s*.3f),Y(cy-r*.2f),X(x+s*.3f),Y(cy-r*.2f),X(x),Y(cy+r*.9f),c);
 }
 void star(float x,float y,float r,uint16_t c){
   for(int i=0;i<4;i++){float a=i*PI2/4;line(x-cosf(a)*r*.25f,y-sinf(a)*r*.25f,x+cosf(a)*r,y+sinf(a)*r,c,3);}
@@ -1101,7 +1103,7 @@ static void parsePhone(char *line) {
   if (!strncmp(line, "PERS:", 5)) {   // v42: PERS:naam<TAB>karakter<TAB>vriendschap<TAB>level<TAB>km<TAB>stijl laatste rit<TAB>gem stijl<TAB>epoch
     char *f[9] = {0}; int n = 0; f[n++] = line + 5; for (char *q = line + 5; *q && n < 9; q++) if (*q == '\t') { *q = 0; f[n++] = q + 1; }
     if (n >= 7) { strncpy(persNaamNieuw, f[0], sizeof persNaamNieuw - 1); persNaamNieuw[sizeof persNaamNieuw - 1] = 0; persKar = f[1][0]; persLv = atoi(f[3]); persStijl = atoi(f[5]);
-      if (n >= 8) persEpoch = strtoul(f[7], nullptr, 10); persNieuw = true; }
+      if (n >= 8) persEpoch = strtoul(f[7], nullptr, 10); persJarig = n >= 9 && f[8][0] == '1'; persNieuw = true; }
     return;
   }
   if (!strcmp(line, "ZOEK")) { zoekNu = true; return; }
@@ -1455,6 +1457,8 @@ static void gagStep(float dt) {
     int som = 0; for (int i = 0; i < n; i++) som += 4 + min(12, gagLike[kies[i]] * 2);   // v42: wat jij leuk vindt komt vaker
     int r = random(som), k = kies[0]; for (int i = 0; i < n; i++) { r -= 4 + min(12, gagLike[kies[i]] * 2); if (r < 0) { k = kies[i]; break; } }
     if (klokOk()) { int hh, mm; lokaleTijd(hh, mm); if (hh >= 22 && stil && random(3) == 0) k = 11; }   // laat: knikkebollen
+    { int fav = -1, fl = 2; for (int i = 0; i < n; i++) if (gagLike[kies[i]] > fl) { fl = gagLike[kies[i]]; fav = kies[i]; }   // v45: af en toe zijn lievelingstrucje
+      if (fav >= 0 && random(8) == 0) { k = fav; startGag(k); gagMsg = "Mijn lievelingstrucje! (dankzij jou)"; nextGagT = t + GAGS[k].dur + frand(10, 20) * animFactor * karFactor; return; } }
     if (halloween && random(3) == 0) k = random(2) ? 34 : 35;   // op Halloween vaker het spookje en de pompoen
     if (sint && random(4) == 0) k = 36;
     if (kerst && random(4) == 0) k = 37;
@@ -1521,7 +1525,11 @@ static void gagDraw() {
   float tt = t - gagT0;
   switch (gagAct) {
     case 1: if (tt < 4.8f) { circle(g_fx, g_fy, 2.6f, EYE); float f = sinf(tt * 60) > 0 ? 4 : 2; ellipseF(g_fx - 4, g_fy - 3, 4, f, 0x9CF3); ellipseF(g_fx + 4, g_fy - 3, 4, f, 0x9CF3); } break;
-    case 2: if (g_r > 0) { float x = 120 + sinf(tt * 3) * 2, y = 182 - g_r * .4f + faceOy * .5f; boxAdd(x - g_r, y - g_r, x + g_r, y + g_r); for (int i = 0; i < 4; i++) frame->drawCircle(X(x), Y(y), S(g_r) - i, EYE); } break;
+    case 2: if (g_r > 0) { float x = 120 + sinf(tt * 3) * 2, y = 182 - g_r * .4f + faceOy * .5f;   // v45: gevulde bel, mondje verdwijnt erachter
+      circle(x, y, g_r, 0x1A4B); circle(x, y, g_r * .88f, 0x0C2A);
+      for (int i = 0; i < 3; i++) frame->drawCircle(X(x), Y(y), S(g_r) - i, EYE);
+      circle(x - g_r * .38f, y - g_r * .4f, fmaxf(1.5f, g_r * .16f), 0xFFFF); circle(x - g_r * .12f, y - g_r * .55f, fmaxf(1.f, g_r * .07f), 0xDFFF);
+      circle(x, y + g_r + 2, 3.5f, EYE); } break;
     case 9: if (fxTongue) { float y = 174 + faceOy * .5f; roundRect(112 + faceOx * .5f, y, 16, 13, 6, 0xF986); line(120 + faceOx * .5f, y + 2, 120 + faceOx * .5f, y + 9, 0xB000, 1); } break;
     case 13: if (tt <= 5) for (int i = 0; i < 3; i++) { float a = tt * 4.2f + i * PI2 / 3; circle(120 + cosf(a) * 46, 52 - fabsf(sinf(a)) * 26, 5, i == 1 ? GOLD : EYE); } break;
     case 15: { float x = 120 + sinf(tt) * 6;
@@ -1715,7 +1723,9 @@ static void slaapStap() {
   if (geparkeerd && laatsteDeur && nu - laatsteDeur > 60000 && nu - laatsteDeur < 120000 && nu - laatsteBeweging > 45000
       && nu - laatsteActie > 45000 && !bleConnected && !menuOpen && otaPct < 0) {
     static uint32_t afscheidT = 0;   // v42: eerst even zwaaien
-    if (!afscheidT) { afscheidT = nu; static char tt[40]; char nm[20]; naamDeel(nm, sizeof nm); snprintf(tt, sizeof tt, "Tot later%s!", nm); startGag(22); gagMsg = tt; }
+    if (!afscheidT) { afscheidT = nu; static char tt[44]; char nm[20]; naamDeel(nm, sizeof nm); int hh = -1, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
+      const char *w = hh < 0 ? "Tot later%s!" : (hh >= 22 || hh < 5) ? "Slaap lekker%s!" : (hh < 10) ? "Fijne dag%s!" : (hh >= 17) ? "Fijne avond%s!" : "Tot straks%s!";
+      snprintf(tt, sizeof tt, w, nm); startGag(22); gagMsg = tt; }
     else if (nu - afscheidT > 3200) { afscheidT = 0; diepSlapen("deur dicht en daarna stil"); }
   }
   if (geparkeerd && nu - laatsteActie > 10UL * 60000 && nu - laatsteBeweging > 60000 && !menuOpen && otaPct < 0) diepSlapen("10 minuten niets");
@@ -2074,6 +2084,18 @@ static void persStap(float dt) {
     if (oorSoort == 1 && nextGagT < t + 8) nextGagT = t + 8;   // tijdens een gesprek geen gekke dingen
   }
   { static uint32_t bT = 0; if (nu - bT > 300000) { bT = nu; persBewaar(); } }
+  // v45: jarig, pauze na 2 uur, weer, lievelingstrucje
+  { static bool jarigGedaan = false; static char jt[40];
+    if (persJarig && !jarigGedaan && gegroet && gagAct < 0 && !menuOpen && !venster) { jarigGedaan = true; char nm[20]; naamDeel(nm, sizeof nm);
+      snprintf(jt, sizeof jt, "Gefeliciteerd%s! Hoera!", nm); startGag(40); gagMsg = jt; playMoodSound(LOVE); vriendPlus(5); } }
+  { static float rijAan = 0, stilS = 0; static uint32_t pauzeT = 0;
+    if (v > 10) { rijAan += dt; stilS = 0; } else { stilS += dt; if (stilS > 600) rijAan = 0; }
+    if (rijAan > 7200 && (!pauzeT || nu - pauzeT > 1800000) && gagAct < 0 && v < 60) { pauzeT = nu; startGag(45); gagMsg = "Al 2 uur onderweg. Pauze? Koffie!"; } }
+  { static bool wxGezegd = false; static char wt[44];
+    if (!wxGezegd && gegroet && wxVers() && gagAct < 0 && !menuOpen && !venster && nu > groetVanaf + 20000) { wxGezegd = true;
+      if (wxRegenOver >= 0 && wxRegenOver <= 30) { snprintf(wt, sizeof wt, "Over %d min regen. Wissers klaar!", (int)wxRegenOver); startGag(15); gagMsg = wt; }
+      else if (wxTemp < 3) { snprintf(wt, sizeof wt, "Brrr, %d graden! Verwarming aan?", (int)lroundf(wxTemp)); startGag(21); gagMsg = wt; }
+      else if (wxTemp > 25) { snprintf(wt, sizeof wt, "Pfoe, %d graden! Airco aan!", (int)lroundf(wxTemp)); startGag(17); gagMsg = wt; } } }
 }
 
 // v40: retro snelheidsmeter (crème wijzerplaat, chromen rand, rode naald die doorschiet en natrilt)
