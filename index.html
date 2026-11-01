@@ -1426,26 +1426,34 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       draw: function (g) {
         var cx = 120, cy = 122, hoek = function (v) { return (225 - Math.min(200, Math.max(0, v)) / 200 * 270) * Math.PI / 180; };
         var rond = function (r, kl) { ctx.fillStyle = kl; ctx.beginPath(); ctx.arc(120, 120, r, 0, TAU); ctx.fill(); };
-        rond(102, '#5a5a5a'); rond(99, '#c8c8c8'); rond(95, '#8c8c8c'); rond(92, '#fff3d6');
+        rond(102, '#2a2a2e'); rond(99, '#6a6a70'); rond(95, '#16161a'); rond(92, '#08090c');   /* v91: donker, past bij het zwarte scherm */
         ctx.lineCap = 'butt'; ctx.strokeStyle = '#d40000'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(cx, cy, 82, -hoek(160), -hoek(200)); ctx.stroke();
-        ctx.strokeStyle = '#000';
         for (var v = 0; v <= 200; v += 10) {
           var a = hoek(v), c = Math.cos(a), sn = Math.sin(a), groot = v % 20 === 0;
-          ctx.lineWidth = groot ? 2.8 : 1.4; ctx.beginPath(); ctx.moveTo(cx + c * (groot ? 74 : 79), cy - sn * (groot ? 74 : 79)); ctx.lineTo(cx + c * 87, cy - sn * 87); ctx.stroke();
-          if (groot) { ctx.fillStyle = v >= 160 ? '#b00000' : '#000'; ctx.font = 'bold 12px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(v), cx + c * 62, cy - sn * 62); }
+          ctx.strokeStyle = groot ? EYE : '#5a6a70'; ctx.lineWidth = groot ? 2.8 : 1.4; ctx.beginPath(); ctx.moveTo(cx + c * (groot ? 74 : 79), cy - sn * (groot ? 74 : 79)); ctx.lineTo(cx + c * 87, cy - sn * 87); ctx.stroke();
+          if (groot) { ctx.fillStyle = v >= 160 ? '#ff4040' : '#fff'; ctx.font = 'bold 12px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(v), cx + c * 62, cy - sn * 62); }
         }
-        ctx.fillStyle = '#b00000'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('BUDDY', 120, 92);
-        ctx.fillStyle = '#444'; ctx.font = '10px system-ui, sans-serif'; ctx.fillText('km/h', 120, 140);
+        ctx.fillStyle = '#ff4040'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('BUDDY', 120, 92);
+        ctx.fillStyle = '#8a8a90'; ctx.font = '10px system-ui, sans-serif'; ctx.fillText('km/h', 120, 140);
         try {   /* v89: G-kracht en de 0-100-klok blijven zichtbaar in de meter */
-          if (typeof voelOk === 'function' && voelOk()) { ctx.fillStyle = '#7a4a00'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.fillText((Math.abs(V.lon) / 9.81).toFixed(2).replace('.', ',') + ' G', 84, 122); }
-          if (window.__lrT0) { ctx.fillStyle = '#004a99'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.fillText('0–100 ' + ((Date.now() - window.__lrT0) / 1000).toFixed(1).replace('.', ',') + 's', 156, 122); }
+          if (typeof voelOk === 'function' && voelOk()) { ctx.fillStyle = '#ffa020'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.fillText((Math.abs(V.lon) / 9.81).toFixed(2).replace('.', ',') + ' G', 84, 122); }
+          if (window.__lrT0) { ctx.fillStyle = '#5ab8ff'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.fillText('0–100 ' + ((Date.now() - window.__lrT0) / 1000).toFixed(1).replace('.', ',') + 's', 156, 122); }
         } catch (e) {}
         ctx.fillStyle = '#000'; ctx.fillRect(92, 150, 56, 16); ctx.fillStyle = '#222'; ctx.fillRect(94, 152, 52, 12);
-        ctx.fillStyle = '#fff'; ctx.font = '11px ui-monospace, monospace'; ctx.fillText(('000000' + Math.floor(mem.km || 0)).slice(-6), 120, 158.5);
+        ctx.fillStyle = '#80ff80'; ctx.font = '11px ui-monospace, monospace'; ctx.fillText(('000000' + Math.floor(mem.km || 0)).slice(-6), 120, 158.5);
         var a2 = hoek(g.n || 0), c2 = Math.cos(a2), s2 = Math.sin(a2);
-        ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx + 2, cy + 2); ctx.lineTo(cx + c2 * 84 + 2, cy - s2 * 84 + 2); ctx.stroke();
+        try {   /* vlammetjes die achter de naald aan waaien zolang je flink optrekt */
+          var vuur = Math.min(1, Math.max(0, ((g.nv || 0) - 8) / 40) + ((typeof voelOk === 'function' && voelOk()) ? Math.max(0, Math.abs(V.lon) / 9.81 - .1) * 3 : 0));
+          for (var fi = 0; fi < 4 && vuur > .05; fi++) {
+            var b = 84 - fi * 9, px = cx + c2 * b, py = cy - s2 * b, l = (10 + Math.random() * 14) * vuur * (1 - fi * .15), w = 2.5 + Math.random() * 2;
+            ctx.fillStyle = ['#ffe000', '#ffa020', '#ff5010'][(fi + Math.floor(Date.now() / 60)) % 3];
+            ctx.beginPath(); ctx.moveTo(px + c2 * w, py - s2 * w); ctx.lineTo(px - c2 * w, py + s2 * w); ctx.lineTo(px - s2 * l, py - c2 * l); ctx.closePath(); ctx.fill();
+          }
+        } catch (e) {}
+        ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255,0,0,.25)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(cx - c2 * 14, cy + s2 * 14); ctx.lineTo(cx + c2 * 84, cy - s2 * 84); ctx.stroke();
         ctx.strokeStyle = '#e00000'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - c2 * 14, cy + s2 * 14); ctx.lineTo(cx + c2 * 84, cy - s2 * 84); ctx.stroke();
-        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(cx, cy, 8, 0, TAU); ctx.fill(); ctx.fillStyle = '#c8c8c8'; ctx.beginPath(); ctx.arc(cx, cy, 4, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#ffe000'; ctx.beginPath(); ctx.arc(cx + c2 * 83, cy - s2 * 83, 1.8, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(cx, cy, 8, 0, TAU); ctx.fill(); ctx.fillStyle = '#c8c8c8'; ctx.beginPath(); ctx.arc(cx, cy, 4, 0, TAU); ctx.fill();
       } },
     impatient: { name: 'Wordt ongeduldig', dur: 5.6, idle: 1, mood: 'bored', msg: 'Rood\u2026 nog steeds rood\u2026',
       upd: function (g, tt) { dir(0, tt < 3.6 ? -.7 : .2); fdy = tt > 1.5 ? Math.abs(Math.sin(tt * 6)) * 3 : 0; if (tt > 3.6) { g.msg = 'Kom op, groen!'; g.mood = 'anticipate'; } } },
@@ -4422,7 +4430,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v90';
+  var VERSION = 'v91';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {

@@ -27,7 +27,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 52;
+static const int FW_VERSIE = 53;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -2211,25 +2211,34 @@ static inline float meterHoek(float v) { return (225.f - fminf(fmaxf(v, 0.f), 20
 static void drawMeter() {
   const float cx = 120, cy = 122;
   boxAdd(0, 0, 240, 240);
-  circle(120, 120, 119, 0x6B4D); circle(120, 120, 116, 0xC618); circle(120, 120, 112, 0x8C51);
-  circle(120, 120, 109, 0xFF9A);                                   // crème wijzerplaat
+  // v53: donkere wijzerplaat (past bij het zwarte scherm) met lichtgevende cijfers
+  circle(120, 120, 119, 0x2945); circle(120, 120, 116, 0x632C); circle(120, 120, 112, 0x10A2);
+  circle(120, 120, 109, 0x0841);
   for (int v = 160; v < 200; v += 2) { float a0 = meterHoek(v), a1 = meterHoek(v + 2.4f);   // rode zone
     dikLijn(cx + cosf(a0) * 99, cy - sinf(a0) * 99, cx + cosf(a1) * 99, cy - sinf(a1) * 99, 6, 0xD800); }
   for (int v = 0; v <= 200; v += 10) { float a = meterHoek(v), c = cosf(a), sn = sinf(a); bool groot = v % 20 == 0;
-    dikLijn(cx + c * (groot ? 88 : 94), cy - sn * (groot ? 88 : 94), cx + c * 103, cy - sn * 103, groot ? 3.2f : 1.6f, 0x0000);
-    if (groot) { char t[4]; snprintf(t, sizeof t, "%d", v); frame->setTextColor(v >= 160 ? 0xB000 : 0x0000); frame->setTextSize(2);
+    dikLijn(cx + c * (groot ? 88 : 94), cy - sn * (groot ? 88 : 94), cx + c * 103, cy - sn * 103, groot ? 3.2f : 1.6f, groot ? EYE : 0x6B6D);
+    if (groot) { char t[4]; snprintf(t, sizeof t, "%d", v); frame->setTextColor(v >= 160 ? 0xF9A6 : 0xFFFF); frame->setTextSize(2);
       frame->setCursor(X(cx + c * 74) - (int)strlen(t) * 6, Y(cy - sn * 74) - 7); frame->print(t); } }
-  frame->setTextColor(0xB000); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(84)); frame->print("BUDDY");
-  frame->setTextColor(0x4208); frame->setTextSize(2); frame->setCursor(X(120) - 24, Y(150)); frame->print("km/h");
-  if (imuReady) { char gt[10]; snprintf(gt, sizeof gt, "%.2fG", fabsf(pushZ)); frame->setTextColor(0x7A00); frame->setTextSize(2); frame->setCursor(X(84) - (int)strlen(gt) * 6, Y(118)); frame->print(gt); }   // v52: G-kracht
-  if (sprintT0) { char st[10]; snprintf(st, sizeof st, "%.1fs", (millis() - sprintT0) / 1000.f); frame->setTextColor(0x0254); frame->setTextSize(2); frame->setCursor(X(156) - (int)strlen(st) * 6, Y(118)); frame->print(st); }   // 0-100-klok
+  frame->setTextColor(0xF9A6); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(84)); frame->print("BUDDY");
+  frame->setTextColor(0x8410); frame->setTextSize(2); frame->setCursor(X(120) - 24, Y(150)); frame->print("km/h");
+  if (imuReady) { char gt[10]; snprintf(gt, sizeof gt, "%.2fG", fabsf(pushZ)); frame->setTextColor(0xFD20); frame->setTextSize(2); frame->setCursor(X(84) - (int)strlen(gt) * 6, Y(118)); frame->print(gt); }   // v52: G-kracht
+  if (sprintT0) { char st[10]; snprintf(st, sizeof st, "%.1fs", (millis() - sprintT0) / 1000.f); frame->setTextColor(0x5DFF); frame->setTextSize(2); frame->setCursor(X(156) - (int)strlen(st) * 6, Y(118)); frame->print(st); }   // 0-100-klok
   roundRect(88, 170, 64, 18, 3, 0x0000); roundRect(90, 172, 60, 14, 2, 0x2104);   // kilometerteller
   char od[10]; snprintf(od, sizeof od, "%06d", (int)totKm % 1000000);
-  frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 36, Y(179) - 7); frame->print(od);
+  frame->setTextColor(0x87F0); frame->setTextSize(2); frame->setCursor(X(120) - 36, Y(179) - 7); frame->print(od);
   float a = meterHoek(naald), c = cosf(a), sn = sinf(a);
-  dikLijn(cx + 2, cy + 2, cx + c * 98 + 2, cy - sn * 98 + 2, 3.2f, 0xBDD7);       // schaduwtje
-  dikLijn(cx - c * 16, cy + sn * 16, cx + c * 98, cy - sn * 98, 3.4f, 0xE000);     // rode naald
-  circle(cx, cy, 10, 0x0000); circle(cx, cy, 5, 0xC618);                          // naaf
+  // vlammetjes achter de naaldpunt zolang je flink optrekt (flikkeren mee met de G-kracht)
+  float vuur = fminf(1.f, fmaxf(0.f, (fabsf(pushZ) - .05f) * 4.f) + (naaldV > 15 ? .5f : 0));
+  if (vuur > .05f) for (int i = 0; i < 4; i++) {
+    float b = 94 - i * 10, px = cx + c * b, py = cy - sn * b;              // punt op de naald
+    float l = (12 + random(16)) * vuur * (1 - i * .15f), w = 3 + random(3);  // vlam waait achter de naald aan (tegen de draairichting in)
+    uint16_t kl = (i + (millis() / 60)) % 3 == 0 ? 0xFFE0 : ((i + (millis() / 60)) % 3 == 1 ? 0xFD20 : 0xF9A0);
+    triF(px + c * w, py - sn * w, px - c * w, py + sn * w, px - sn * l, py - c * l, kl); }
+  dikLijn(cx - c * 16, cy + sn * 16, cx + c * 98, cy - sn * 98, 6.0f, 0x6000);     // gloed
+  dikLijn(cx - c * 16, cy + sn * 16, cx + c * 98, cy - sn * 98, 3.0f, 0xF800);     // rode naald
+  circle(cx + c * 96, cy - sn * 96, 2.2f, 0xFFE0);                                 // gloeiend puntje
+  circle(cx, cy, 10, 0x2104); circle(cx, cy, 5, 0xC618);                           // naaf
 }
 void drawFace(){
  // v15: alleen wissen wat er vorige keer getekend is, in plaats van het hele scherm
