@@ -279,6 +279,27 @@ body.car #carGroep { display: block; }
 #bordLijst .lidMeer { min-width: 40px; min-height: 40px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: 700 18px/1 var(--f-body); cursor: pointer; }
 #bordLijst li.lidOpties { display: flex; flex-direction: column; gap: 8px; border-style: dashed; }
 #bordLijst li.lidOpties p { margin: 0; font-size: 14px; color: var(--muted); }
+/* v92: sprinttabel */
+#sprintTabel { overflow-x: auto; }
+#sprintTabel table { width: 100%; border-collapse: separate; border-spacing: 0 6px; font-variant-numeric: tabular-nums; }
+#sprintTabel th { font: 700 12px/1.2 var(--f-body); color: var(--muted); text-align: right; padding: 0 6px 2px; white-space: nowrap; }
+#sprintTabel th:nth-child(-n+2) { text-align: left; }
+#sprintTabel th button { all: unset; cursor: pointer; padding: 6px 4px; border-radius: 8px; }
+#sprintTabel th button[aria-pressed="true"] { color: var(--ink); background: rgba(255,159,10,.18); }
+#sprintTabel td { padding: 10px 6px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; font-weight: 600; background-image: linear-gradient(90deg, transparent calc(100% - var(--p, 0%)), rgba(10,132,255,.16) 0); background-repeat: no-repeat; }
+#sprintTabel td:first-child { border-left: 1px solid var(--line); border-radius: 12px 0 0 12px; text-align: center; width: 2em; }
+#sprintTabel td:nth-child(2) { text-align: left; white-space: normal; font-weight: 700; }
+#sprintTabel td:last-child { border-right: 1px solid var(--line); border-radius: 0 12px 12px 0; }
+#sprintTabel tr.ik td { border-color: #5ac8fa; }
+#sprintTabel tr.rij { cursor: pointer; }
+#sprintTabel td.top { color: #ffd60a; }
+#sprintTabel td.leeg { color: var(--muted); font-weight: 400; }
+#sprintTabel td.det { text-align: left; white-space: normal; border: 1px dashed var(--line); border-radius: 12px; font-weight: 400; color: var(--muted); background: none; }
+#sprintTabel .reactKnop { font-size: 22px; min-width: 44px; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: transparent; cursor: pointer; margin: 4px 4px 0 0; }
+#badgeLijst .badge { cursor: pointer; }
+#badgeInfo { text-align: left; margin-top: 8px; }
+.bProg { display: block; height: 6px; border-radius: 3px; background: var(--line); margin-top: 6px; overflow: hidden; }
+.bProg i { display: block; height: 100%; background: #ffb02e; border-radius: 3px; }
 #carStart { display: none; position: fixed; left: 2vw; top: 33%; transform: translateY(-50%); z-index: 50; width: min(19vw, 170px); min-height: min(24vh, 120px); border-radius: 22px; border: 3px solid #34c759; background: #0b2414; color: #8ff0a8; font: 700 clamp(15px, 2.4vw, 24px)/1.2 var(--f-body); text-align: center; }
 #carStart:active { background: #34c759; color: #000; }
 #carStart .vlag { width: min(70%, 84px); height: auto; display: block; margin: 0 auto; }
@@ -439,7 +460,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 
 </head>
 <body>
-<div id="flKaart" hidden role="dialog" aria-label="Flitsers op de kaart"><div class="fkKop"><b>Gemelde flitsers</b><button type="button" id="flKaartSluit" class="btn">Sluiten</button></div><div id="flKaartMap"></div><ol id="flKaartLijst"></ol></div>
+<div id="flKaart" hidden role="dialog" aria-label="Flitsers op de kaart"><div class="fkKop"><b>Gemelde flitsers</b><button type="button" id="flKaartSluit" class="btn">Sluiten</button></div><div id="flKaartMap"></div><p class="foot" style="margin:6px 4px">Tip: tik ergens op de kaart om daar zelf een flitser of controle toe te voegen.</p><ol id="flKaartLijst"></ol></div>
 <div id="ritOv" hidden role="dialog" aria-label="Rit op de kaart"><div class="fkKop"><b id="ritOvTitel">Rit op de kaart</b><button type="button" id="ritOvSluit" class="btn">Sluiten</button></div><div id="ritOvMap"></div><p id="ritOvUitleg" class="foot" style="padding:8px 14px 16px;margin:0"></p></div>
 <div id="rondRing" aria-label="Menu"><div class="rrVlak"></div></div>
 <button id="carBack" type="button">Terug</button>
@@ -628,14 +649,17 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="foot">Jouw groep, op basis van echte ritten met de GPS aan. De groepscode en je auto stel je hieronder in, bij Groepsinstellingen. Elke week is er een nieuwe challenge; de winnaar hoort iedereen op maandag.</p>
       <div id="bordGroep" class="btns" role="group" aria-label="Soort leaderboard"><button type="button" class="btn" data-g="week" aria-pressed="true">🏆 Deze week</button><button type="button" class="btn" data-g="netjes" aria-pressed="false">🧘 Netjes</button><button type="button" class="btn" data-g="rec" aria-pressed="false">🚀 Records</button></div>
       <div id="bordTabs" role="group" aria-label="Soort ranglijst">
-      <button type="button" class="btn" data-soort="week" aria-pressed="true">🏁 Week</button><button type="button" class="btn" data-soort="km" aria-pressed="false">Km</button><button type="button" class="btn" data-soort="netjes" aria-pressed="false">Netjes</button><button type="button" class="btn" data-soort="gemeld" aria-pressed="false">Meldingen</button><button type="button" class="btn" data-soort="tachtig" aria-pressed="false">0–80</button><button type="button" class="btn" data-soort="nul" aria-pressed="false">0–100</button><button type="button" class="btn" data-soort="stijl" aria-pressed="false">Rijstijl</button><button type="button" class="btn" data-soort="zacht" aria-pressed="false">🧘 Soepel</button>
+      <button type="button" class="btn" data-soort="week" aria-pressed="true">🏁 Week</button><button type="button" class="btn" data-soort="km" aria-pressed="false">Km</button><button type="button" class="btn" data-soort="netjes" aria-pressed="false">Netjes</button><button type="button" class="btn" data-soort="gemeld" aria-pressed="false">Meldingen</button><button type="button" class="btn" data-soort="sprint" aria-pressed="false">⏱️ Sprinttabel</button><button type="button" class="btn" data-soort="tachtig" aria-pressed="false">0–80</button><button type="button" class="btn" data-soort="nul" aria-pressed="false">0–100</button><button type="button" class="btn" data-soort="stijl" aria-pressed="false">Rijstijl</button><button type="button" class="btn" data-soort="zacht" aria-pressed="false">🧘 Soepel</button>
       </div>
       <p class="foot" id="bordUitleg" style="text-align:left"></p>
       <ol id="bordLijst"></ol>
+      <div id="sprintTabel" hidden></div>
       <p class="chip" id="bordStat">Nog niet geladen.</p>
       <button class="btn" id="bordVervers" type="button">Leaderboard verversen</button>
       <p class="sub">Jouw badges</p>
       <div id="badgeLijst" aria-label="Jouw badges"></div>
+      <p class="chip" id="badgeInfo" hidden></p>
+      <p class="foot">Tik op een badge om te zien hoe je hem haalt.</p>
       <p class="sub">Groepsinstellingen</p>
       <div class="switchrow"><input type="checkbox" id="grSignaalOn" checked><label for="grSignaalOn">Geluidje en trillen bij een groepsbericht (ook als het geluid van Buddy uit staat)</label></div>
       <div class="switchrow"><input type="checkbox" id="grGezienOn" checked><label for="grGezienOn">Laat collega’s zien dat ik hun bericht heb gezien (✓)</label></div>
@@ -4430,7 +4454,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v91';
+  var VERSION = 'v92';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5113,9 +5137,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     beep('excited'); setEv('excited', 5, m); toast(m); lg('groepsmelding: ' + m);
     try { grInRondje({ s: 'flits', n: c.n, p: c.p }); } catch (e) {}
   }
-  function addUcam(kind, fromCar) {
-    if (!S.live || !lastPos) { toast('Zet eerst de telefoon-GPS aan en rij erlangs.'); return false; }
-    var u = { id: 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), lat: lastPos.lat, lon: lastPos.lon, limit: kind === 'mobile' ? null : (S.roadEst ? null : S.roadLim), k: kind, t: Date.now() };
+  function addUcam(kind, fromCar, pos) {   /* v92: pos = zelf aangetikte plek op de kaart */
+    if (!pos && (!S.live || !lastPos)) { toast('Zet eerst de telefoon-GPS aan en rij erlangs. Of tik op de kaart om er zelf een neer te zetten.'); return false; }
+    var bron = pos || lastPos;
+    var u = { id: 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), lat: bron.lat, lon: bron.lon, limit: pos || kind === 'mobile' ? null : (S.roadEst ? null : S.roadLim), k: kind, t: Date.now() };
     ucams.push(u);
     try { localStorage.setItem(UCKEY, JSON.stringify(ucams)); } catch (e) {}
     applyCamData(); lg('eigen flitser opgeslagen (' + kind + ', ' + ucams.length + ')');
@@ -5126,7 +5151,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         return fetch(gUrl('/add', '&id=' + u.id + '&lat=' + u.lat.toFixed(6) + '&lon=' + u.lon.toFixed(6) + '&k=' + kind + (u.limit != null ? '&lim=' + u.limit : '') + '&n=' + encodeURIComponent(myWho()) + '&p=' + encodeURIComponent(pl)));
       }).then(function () { gPull(); }).catch(function () { lg('FOUT groep delen'); });
     }
-    if (!fromCar) toast((kind === 'mobile' ? 'Mobiele flitser onthouden voor 3 uur.' : 'Vaste flitser onthouden.') + (grp ? ' Wordt gedeeld met je groep.' : '') + ' (Niet tikken tijdens het rijden.)');
+    if (!fromCar) toast((kind === 'mobile' ? 'Mobiele flitser onthouden voor 3 uur.' : 'Vaste flitser onthouden.') + (grp ? ' Wordt gedeeld met je groep.' : '') + (pos ? '' : ' (Niet tikken tijdens het rijden.)'));
     return true;
   }
   function carBtn(id, kind, label) {
@@ -5228,7 +5253,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         }
         if (b.van === mijnId || grVerstuurd[b.id]) return; /* eigen berichten niet melden */
         if (grEerste && Date.now() - b.t > 10 * 60e3) return; /* bij openen: alleen berichten van de laatste 10 minuten laten zien */
-        if ((b.s === 'koffieJa' || b.s === 'koffieStraks' || b.s === 'gezien' || b.s === 'feli') && b.aan && b.aan !== mijnId) return;
+        if ((b.s === 'koffieJa' || b.s === 'koffieStraks' || b.s === 'gezien' || b.s === 'feli' || b.s === 'reactie') && b.aan && b.aan !== mijnId) return;
         grRij.push(b);
       });
       grFiles = grFiles.filter(function (f) { return Date.now() - f.t < 60 * 60e3; });
@@ -5325,6 +5350,12 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     else if (s === 'hart') { m = wie(b) + ' stuurt je hartjes!'; S.love = Math.min(100, S.love + 10); setEv('love', 4.5, m); beep('pet'); }
     else if (s === 'thuis') { m = wie(b) + ' is bijna thuis!'; cheer(m); }
     else if (s === 'mijlpaal') { m = wie(b) + ' heeft ' + (b.w || 0) + ' km met Buddy gereden!'; cheer(m); }
+    else if (s === 'reactie') {
+      var rk = SPRK[b.r] || SPRK.nul, rv = b.r === 'tachtig' ? mem.best80Live : b.r === 'gm' ? mem.gmaxLive : mem.best100Live;
+      m = wie(b) + ' geeft ' + (REACT[b.w] || '🔥') + ' op jouw ' + rk.n + (rv ? ' van ' + (b.r === 'gm' ? rv.toFixed(2).replace('.', ',') + ' G' : rv.toFixed(1).replace('.', ',') + ' s') : '') + '!';
+      mem.reactieIn = (mem.reactieIn || 0) + 1; save(); try { badgeCheck(); } catch (e) {}
+      setEv(b.w === 4 ? 'content' : 'happy', 4.5, m); beep(b.w === 4 ? 'wake' : 'excited');
+    }
     else if (s === 'feli') { m = '🎉 ' + wie(b) + ' feliciteert je met je verjaardag!'; cheer(m); }
     else if (s === 'gezien') {
       var wat = GR_GEZIEN_VOOR[grMijn[b.r]] || 'bericht';
@@ -5406,6 +5437,67 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (!grp || !pbase()) { bordToon(); return; }
     fetch(gUrl('/bord')).then(function (r) { return r.json(); }).then(function (j) { bordData = Array.isArray(j.leden) ? j.leden : []; bordToon(); try { weekWinnaar(); } catch (e) {} }).catch(function () { bordToon('Leaderboard ophalen mislukt.'); });
   }
+  /* v92: sprinttabel 0-80 / 0-100 / G-kracht voor de hele groep, met reacties */
+  var REACT = ['🔥', '👏', '😮', '🚀', '🐢'], REACTTXT = ['vuur', 'applaus', 'wauw', 'raket', 'slakje'], sprintSort = 'nul', sprintOpen = null;
+  var SPRK = { tachtig: { n: '0–80', v: function (l) { return l.tachtig || 0; }, laag: true, f: function (v) { return (v / 10).toFixed(1).replace('.', ',') + ' s'; }, d: 'td' },
+    nul: { n: '0–100', v: function (l) { return l.nul || 0; }, laag: true, f: function (v) { return (v / 10).toFixed(1).replace('.', ',') + ' s'; }, d: 'nd' },
+    gm: { n: 'Max G', v: function (l) { return l.gm || 0; }, laag: false, f: function (v) { return (v / 100).toFixed(2).replace('.', ',') + ' G'; }, d: 'gd' } };
+  function sprintTabel() {
+    var box = $('sprintTabel'), st = $('bordStat'); if (!box) return; box.innerHTML = '';
+    var K = SPRK[sprintSort], lijst = bordData.filter(function (l) { return l.nul || l.tachtig || l.gm; });
+    lijst.sort(function (a, b) { var x = K.v(a), y = K.v(b); if (!x) return 1; if (!y) return -1; return K.laag ? x - y : y - x; });
+    var best = {}; Object.keys(SPRK).forEach(function (k) { bordData.forEach(function (l) { var v = SPRK[k].v(l); if (v && (!best[k] || (SPRK[k].laag ? v < best[k] : v > best[k]))) best[k] = v; }); });
+    st.textContent = lijst.length ? 'Sprinttabel · ' + lijst.length + ' met een tijd. Tik op een kolomkop om te sorteren, tik op een naam voor de grafiek en om te reageren.' : 'Nog niemand heeft een sprint gereden. Trek vanaf stilstand flink op tot 80 of 100 km/h (alleen waar dat mag).';
+    if (!lijst.length) return;
+    var tb = document.createElement('table'), th = document.createElement('tr');
+    ['#', 'Naam'].forEach(function (t) { var c = document.createElement('th'); c.textContent = t; th.appendChild(c); });
+    ['tachtig', 'nul', 'gm'].forEach(function (k) { var c = document.createElement('th'), b = document.createElement('button'); b.type = 'button'; b.textContent = SPRK[k].n + (sprintSort === k ? ' ▾' : ''); b.setAttribute('aria-pressed', sprintSort === k ? 'true' : 'false'); b.addEventListener('click', function () { sprintSort = k; sprintTabel(); }); c.appendChild(b); th.appendChild(c); });
+    var thd = document.createElement('thead'); thd.appendChild(th); tb.appendChild(thd);
+    var bd = document.createElement('tbody');
+    lijst.forEach(function (l, i) {
+      var tr = document.createElement('tr'); tr.className = 'rij' + (l.van === mijnId ? ' ik' : '');
+      var c0 = document.createElement('td'); c0.textContent = !K.v(l) ? '–' : i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.'; tr.appendChild(c0);
+      var c1 = document.createElement('td'); c1.textContent = (l.n || 'Naamloos') + (l.van === mijnId ? ' (jij)' : ''); tr.appendChild(c1);
+      ['tachtig', 'nul', 'gm'].forEach(function (k) {
+        var c = document.createElement('td'), v = SPRK[k].v(l);
+        if (!v) { c.textContent = '–'; c.className = 'leeg'; }
+        else { c.textContent = SPRK[k].f(v); if (v === best[k]) { c.className = 'top'; c.textContent += ' 👑'; } c.style.setProperty('--p', Math.round(100 * (SPRK[k].laag ? best[k] / v : v / best[k])) + '%'); }
+        tr.appendChild(c);
+      });
+      tr.addEventListener('click', function () { sprintOpen = sprintOpen === l.van ? null : l.van; sprintTabel(); });
+      bd.appendChild(tr);
+      if (sprintOpen === l.van) {
+        var dr = document.createElement('tr'), dc = document.createElement('td'); dc.colSpan = 5; dc.className = 'det';
+        var dagT = function (dn) { if (!dn) return ''; var d0 = new Date(dn * 864e5 + 12 * 3600e3); return ' · ' + DAGEN[d0.getDay()] + ' ' + d0.getDate() + ' ' + MAANDEN[d0.getMonth()] + ' ' + d0.getFullYear(); };
+        ['tachtig', 'nul', 'gm'].forEach(function (k) { var v = SPRK[k].v(l); var p = document.createElement('p'); p.style.margin = '2px 0'; var b0 = document.createElement('b'); b0.textContent = (k === 'gm' ? '🌀 ' : '🏁 ') + SPRK[k].n + ': '; p.appendChild(b0); p.appendChild(document.createTextNode(v ? SPRK[k].f(v) + dagT(l[SPRK[k].d]) + (best[k] && v !== best[k] ? '  (' + (SPRK[k].laag ? '+' + ((v - best[k]) / 10).toFixed(1).replace('.', ',') + ' s' : '−' + ((best[k] - v) / 100).toFixed(2).replace('.', ',') + ' G') + ' op de snelste)' : '') : 'nog niets')); dc.appendChild(p); });
+        var kv0 = l.van === mijnId && mem.best100Kurve ? mem.best100Kurve : (l.nk && l.nv ? { g: String(l.nk).split('.').map(Number), v: String(l.nv).split('.').map(Number) } : null);
+        if (kv0 && kv0.v.length > 2 && kv0.g.length === kv0.v.length) {
+          var kt = document.createElement('p'); kt.style.margin = '8px 0 0'; kt.innerHTML = '<b>📈 Record-sprint 0–100</b> <span style="color:#0a84ff">━ snelheid</span>  <span style="color:#ff9f0a">━ G-kracht</span>'; dc.appendChild(kt);
+          dc.appendChild(kurveCanvas(kv0));
+        }
+        if (l.van !== mijnId) {
+          var rp = document.createElement('p'); rp.style.margin = '10px 0 0'; rp.innerHTML = '<b>Reageer op de ' + SPRK[sprintSort].n + ' van ' + (l.n || 'deze collega').replace(/[<>&]/g, '') + ':</b>'; dc.appendChild(rp);
+          REACT.forEach(function (e, ri) {
+            var b = document.createElement('button'); b.type = 'button'; b.className = 'reactKnop'; b.textContent = e; b.setAttribute('aria-label', REACTTXT[ri]);
+            b.addEventListener('click', function (ev) { ev.stopPropagation(); sprintReageer(l, ri, sprintSort, b); });
+            dc.appendChild(b);
+          });
+        }
+        dc.addEventListener('click', function (ev) { ev.stopPropagation(); });
+        dr.appendChild(dc); bd.appendChild(dr);
+      }
+    });
+    tb.appendChild(bd); box.appendChild(tb);
+  }
+  function sprintReageer(l, ri, rec, knop) {
+    if (!grKan()) return;
+    knop.disabled = true;
+    grStuur('reactie', '&aan=' + encodeURIComponent(l.van) + '&w=' + ri + '&r=' + rec).then(function () {
+      mem.reactieUit = (mem.reactieUit || 0) + 1; save(); badgeCheck();
+      var m = 'Je gaf ' + REACT[ri] + ' op de ' + SPRK[rec].n + ' van ' + (l.n || 'je collega') + '.';
+      toast(m); grLijstAdd('uit', m); knop.textContent = '✓';
+    }).catch(function (e) { knop.disabled = false; toast('Reageren mislukt: ' + ((e && e.message) || e) + '. Staat de nieuwste Worker in Cloudflare?'); });
+  }
   function weekZacht() { var w = wk(); return w.zKm >= 20 ? Math.round(w.zSom / w.zKm) : 0; }
   var BORD = { zacht: { naam: 'Soepelste rijder van de week (bochten, remmen en optrekken, gemeten met de bewegingssensor)', w: function (l) { return l.zacht && l.zacht.w === weekIdx() && l.zacht.v > 0 ? l.zacht.v : -1; }, f: function (l) { return l.zacht && l.zacht.w === weekIdx() && l.zacht.v > 0 ? l.zacht.v + '/100' : 'nog niet genoeg km'; } },
     week: { naam: 'Weekchallenge', w: function (l) { return l.week && l.week.w === weekIdx() && l.week.v > 0 ? l.week.v : -1; }, f: function (l) { return l.week && l.week.w === weekIdx() && l.week.v > 0 ? l.week.v + chal(weekIdx()).eenh : 'nog niets'; } },
@@ -5414,11 +5506,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     gemeld: { naam: 'Meldingen voor de groep', w: function (l) { return l.gemeld || 0; }, f: function (l) { return (l.gemeld || 0) + '×'; } },
     tachtig: { naam: '0–80 (vanaf stilstand)', w: function (l) { return l.tachtig ? -l.tachtig : -1e9; }, f: function (l) { return l.tachtig ? (l.tachtig / 10).toFixed(1).replace('.', ',') + ' s' : 'nog geen tijd'; } },
     nul: { naam: '0–100 (vanaf stilstand)', w: function (l) { return l.nul ? -l.nul : -1e9; }, f: function (l) { return l.nul ? (l.nul / 10).toFixed(1).replace('.', ',') + ' s' : 'nog geen tijd'; } },
+    sprint: { naam: 'Sprinttabel', w: function (l) { return l.nul ? -l.nul : -1e9; }, f: function () { return ''; } },
     stijl: { naam: 'Rijstijl', w: function (l) { return (l.ritten || 0) >= 3 ? l.stijl || 0 : -1; }, f: function (l) { return (l.ritten || 0) >= 3 ? (l.stijl || 0) + '/100' : 'nog te weinig ritten'; } } };
   function bordToon(fout) {
     var ol = $('bordLijst'), st = $('bordStat'); if (!ol) return;
     document.querySelectorAll('#bordTabs button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.soort === bordSoort ? 'true' : 'false'); });
     while (ol.firstChild) ol.removeChild(ol.firstChild);
+    var stb = $('sprintTabel'); if (stb) { stb.hidden = bordSoort !== 'sprint'; ol.hidden = bordSoort === 'sprint'; }
+    if (bordSoort === 'sprint' && grp && !fout) { sprintTabel(); return; }
     if (!grp) { st.textContent = 'Vul een groepscode in om samen een leaderboard te hebben.'; return; }
     if (fout) { st.textContent = fout; return; }
     var B = BORD[bordSoort], lijst = bordData.slice().sort(function (a, b) { return B.w(b) - B.w(a); });
@@ -5599,6 +5694,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (r0.h >= 5 && r0.h < 6.5) mem.vroegRit = 1;
     try {   /* v85: weekend, feestdag, dagen-op-rij */
       var dnu = new Date(r.t0), dg = dnu.getDay(); if (dg === 0 || dg === 6) mem.weekendRit = 1;
+      var mnd = dnu.getMonth(); mem.seizoenen = (mem.seizoenen || 0) | (mnd >= 2 && mnd <= 4 ? 1 : mnd >= 5 && mnd <= 7 ? 2 : mnd >= 8 && mnd <= 10 ? 4 : 8);
       if (typeof feestdag === 'function' && feestdag()) mem.feestRit = 1;
       var dk = dnu.getFullYear() + '-' + dnu.getMonth() + '-' + dnu.getDate(), gis = new Date(r.t0 - 864e5), gk = gis.getFullYear() + '-' + gis.getMonth() + '-' + gis.getDate();
       if (mem.laatsteDag !== dk) { mem.streak = mem.laatsteDag === gk ? (mem.streak || 0) + 1 : 1; mem.laatsteDag = dk; mem.streakMax = Math.max(mem.streakMax || 0, mem.streak); }
@@ -5781,8 +5877,54 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     { k: 'feest', i: '🎉', n: 'Feestrijder', u: 'Een rit op een feestdag', ok: function (m) { return !!m.feestRit; } },
     { k: 'streak7', i: '📆', n: 'Week aan één stuk', u: '7 dagen achter elkaar gereden', ok: function (m) { return (m.streakMax || 0) >= 7; } },
     { k: 'lv10', i: '⭐', n: 'Level 10', u: 'Buddy bereikt level 10', ok: function (m) { return (m.level || 0) >= 10; } },
-    { k: 'lv20', i: '💫', n: 'Level 20', u: 'Buddy bereikt level 20', ok: function (m) { return (m.level || 0) >= 20; } }
+    { k: 'lv20', i: '💫', n: 'Level 20', u: 'Buddy bereikt level 20', ok: function (m) { return (m.level || 0) >= 20; } },
+    /* v92: badges voor de lange adem */
+    { k: 'km25000', i: '🛸', n: '25.000 km', u: '25.000 km met Buddy', ok: function (m) { return m.kmLive >= 25000; } },
+    { k: 'km50000', i: '🌌', n: 'Halve ton', u: '50.000 km met Buddy', ok: function (m) { return m.kmLive >= 50000; } },
+    { k: 'rit500', i: '🧱', n: 'Vijfhonderd', u: '500 ritten met GPS', ok: function (m) { return m.ritLive >= 500; } },
+    { k: 'rit1000', i: '🏛️', n: 'Duizendpoot', u: '1000 ritten met GPS', ok: function (m) { return m.ritLive >= 1000; } },
+    { k: 'netjes500', i: '🕊️', n: 'Heilig verklaard', u: '500× netjes langs een flitser', ok: function (m) { return m.netjes >= 500; } },
+    { k: 'sat', i: '🛰️', n: 'Satelliet', u: '100 meldingen voor de groep', ok: function (m) { return m.gemeld >= 100; } },
+    { k: 'zen100', i: '🪷', n: 'Verlicht', u: '100 ritten met rijstijl 90 of hoger', ok: function (m) { return (m.zenRitten || 0) >= 100; } },
+    { k: 'streak30', i: '🔥', n: 'Maand aan één stuk', u: '30 dagen achter elkaar gereden', ok: function (m) { return (m.streakMax || 0) >= 30; } },
+    { k: 'streak100', i: '💎', n: 'Onbreekbaar', u: '100 dagen achter elkaar gereden', ok: function (m) { return (m.streakMax || 0) >= 100; } },
+    { k: 'jaar', i: '🎂', n: 'Een jaar samen', u: 'Een jaar lang met Buddy (vanaf je eerste rit)', ok: function (m) { return m.geboren && Date.now() - m.geboren >= 365 * 864e5; } },
+    { k: 'jaar2', i: '🎖️', n: 'Oude rot', u: 'Twee jaar met Buddy', ok: function (m) { return m.geboren && Date.now() - m.geboren >= 730 * 864e5; } },
+    { k: 'seizoen', i: '🍂', n: 'Vier seizoenen', u: 'Gereden in de lente, zomer, herfst én winter', ok: function (m) { return seizoenN(m) >= 4; } },
+    { k: 'ontmoet50', i: '🫶', n: 'Onafscheidelijk', u: '50 keer een collega vlakbij', ok: function (m) { return (m.ontmoet || 0) >= 50; } },
+    { k: 'laad50', i: '🔋', n: 'Stekkerkoning', u: '50 laadpauzes', ok: function (m) { return (m.laadPauzes || 0) >= 50; } },
+    { k: 'aai1000', i: '💞', n: 'Beste vriendjes', u: 'Buddy 1000× geaaid', ok: function (m) { return (m.taps || 0) >= 1000; } },
+    { k: 'plek50', i: '🗺️', n: 'Wereldreiziger', u: '50 plekjes onthouden met “Wat was dat?”', ok: function (m) { return (m.plekN || 0) >= 50; } },
+    { k: 'sociaal250', i: '📣', n: 'Groepsdier', u: '250 berichten naar de groep', ok: function (m) { return (m.grBerichten || 0) >= 250; } },
+    { k: 'kampioen5', i: '🏰', n: 'Dynastie', u: '5 weekchallenges gewonnen', ok: function (m) { return kampN(m) >= 5; } },
+    { k: 'fan', i: '🙌', n: 'Fanclub', u: '25 reacties gekregen op je sprints', ok: function (m) { return (m.reactieIn || 0) >= 25; } },
+    { k: 'supporter', i: '🎺', n: 'Supporter', u: '25 reacties gegeven op sprints van collega’s', ok: function (m) { return (m.reactieUit || 0) >= 25; } },
+    { k: 'raket', i: '🚀', n: 'Raket', u: '0–100 onder de 4,5 seconden (waar het mag)', ok: function (m) { return m.best100Live > 0 && m.best100Live < 4.5; } },
+    { k: 'gforce', i: '🌀', n: 'G-forcer', u: 'Een G-kracht van 0,60 G of meer gemeten', ok: function (m) { return (m.gmaxLive || 0) >= .6; } },
+    { k: 'lv25', i: '👑', n: 'Legende', u: 'Buddy bereikt level 25, het hoogste level', ok: function (m) { return (m.level || 0) >= 25; } }
   ];
+  function seizoenN(m) { var s = m.seizoenen || 0, n = 0; while (s) { n += s & 1; s >>= 1; } return n; }
+  function kampN(m) { return Math.max(m.kampioenN || 0, m.kampioen ? 1 : 0); }
+  /* v92: voortgang per badge: [hoe ver je bent, doel, eenheid] */
+  var BPROG = { km100: ['kmLive', 100, ' km'], km250: ['kmLive', 250, ' km'], km1000: ['kmLive', 1000, ' km'], km2500: ['kmLive', 2500, ' km'], km5000: ['kmLive', 5000, ' km'], km10000: ['kmLive', 10000, ' km'], km25000: ['kmLive', 25000, ' km'], km50000: ['kmLive', 50000, ' km'],
+    rit1: ['ritLive', 1, ' ritten'], rit10: ['ritLive', 10, ' ritten'], rit50: ['ritLive', 50, ' ritten'], rit250: ['ritLive', 250, ' ritten'], rit500: ['ritLive', 500, ' ritten'], rit1000: ['ritLive', 1000, ' ritten'],
+    spotter: ['gemeld', 10, ' meldingen'], radar: ['gemeld', 50, ' meldingen'], sat: ['gemeld', 100, ' meldingen'], netjes: ['netjes', 25, '×'], heilig: ['netjes', 100, '×'], netjes500: ['netjes', 500, '×'],
+    zen: ['zenRitten', 10, ' zen-ritten'], zen25: ['zenRitten', 25, ' zen-ritten'], zen100: ['zenRitten', 100, ' zen-ritten'], sociaal: ['grBerichten', 25, ' berichten'], sociaal250: ['grBerichten', 250, ' berichten'],
+    ontmoet: ['ontmoet', 1, '×'], ontmoet10: ['ontmoet', 10, '×'], ontmoet50: ['ontmoet', 50, '×'], laad10: ['laadPauzes', 10, ' pauzes'], laad50: ['laadPauzes', 50, ' pauzes'], aai: ['taps', 100, '× geaaid'], aai1000: ['taps', 1000, '× geaaid'],
+    plek10: ['plekN', 10, ' plekjes'], plek50: ['plekN', 50, ' plekjes'], streak7: ['streakMax', 7, ' dagen op rij'], streak30: ['streakMax', 30, ' dagen op rij'], streak100: ['streakMax', 100, ' dagen op rij'],
+    lv10: ['level', 10, ''], lv20: ['level', 20, ''], lv25: ['level', 25, ''], fan: ['reactieIn', 25, ' reacties'], supporter: ['reactieUit', 25, ' reacties'],
+    jaar: [function (m) { return m.geboren ? Math.floor((Date.now() - m.geboren) / 864e5) : 0; }, 365, ' dagen'], jaar2: [function (m) { return m.geboren ? Math.floor((Date.now() - m.geboren) / 864e5) : 0; }, 730, ' dagen'],
+    seizoen: [seizoenN, 4, ' seizoenen'], kampioen5: [kampN, 5, '× gewonnen'] };
+  function badgeVoortgang(b, m) {
+    var p = BPROG[b.k]; if (!p) return null;
+    var nu = typeof p[0] === 'function' ? p[0](m) : (m[p[0]] || 0);
+    return { nu: Math.min(Math.floor(nu), p[1]), doel: p[1], e: p[2], f: Math.max(0, Math.min(1, nu / p[1])) };
+  }
+  function badgeTekst(b) {
+    var heb = (mem.badges || []).indexOf(b.k) >= 0, vg = badgeVoortgang(b, mem);
+    return b.i + ' ' + b.n + (heb ? ' ✓ Gehaald!' : '') + '\n' + (heb ? 'Daarvoor deed je: ' : 'Zo haal je hem: ') + b.u + '.' +
+      (!heb && vg ? '\nJe staat op ' + vg.nu.toLocaleString('nl-NL') + ' van de ' + vg.doel.toLocaleString('nl-NL') + vg.e + ' (' + Math.floor(vg.f * 100) + '%).' : '');
+  }
   var BADGEMAP = {}; BADGES.forEach(function (b) { BADGEMAP[b.k] = b; });
   function badgeCheck(stil) {
     if (!Array.isArray(mem.badges)) mem.badges = [];
@@ -5804,7 +5946,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         var li = document.createElement('li'); li.className = heb ? '' : 'nee';
         var ic = document.createElement('span'); ic.className = 'bi'; ic.textContent = b.i; li.appendChild(ic);
         var t = document.createElement('b'); t.textContent = b.n + (heb ? ' ✓' : ''); li.appendChild(t);
-        li.appendChild(document.createTextNode(b.u)); gr.appendChild(li);
+        li.appendChild(document.createTextNode(b.u));
+        var vg = heb ? null : badgeVoortgang(b, mem);
+        if (vg) { var pr = document.createElement('small'); pr.style.display = 'block'; pr.textContent = vg.nu.toLocaleString('nl-NL') + ' / ' + vg.doel.toLocaleString('nl-NL') + vg.e; li.appendChild(pr); var bar = document.createElement('span'); bar.className = 'bProg'; var bi = document.createElement('i'); bi.style.width = Math.round(vg.f * 100) + '%'; bar.appendChild(bi); li.appendChild(bar); }
+        gr.appendChild(li);
       });
       if ($('badgeStat')) $('badgeStat').textContent = 'Je hebt ' + n + ' van de ' + BADGES.length + ' badges. Grijze badges heb je nog niet: eronder staat hoe je ze haalt.';
     }
@@ -5813,7 +5958,9 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     BADGES.forEach(function (b) {
       var heb = (mem.badges || []).indexOf(b.k) >= 0, s = document.createElement('span');
       s.className = 'badge' + (heb ? ' heb' : ''); s.title = b.n + ': ' + b.u + (heb ? '' : ' (nog niet)');
-      s.textContent = b.i; s.setAttribute('aria-label', s.title); el.appendChild(s);
+      s.textContent = b.i; s.setAttribute('aria-label', s.title); s.setAttribute('role', 'button'); s.tabIndex = 0;
+      s.addEventListener('click', function () { var bi = $('badgeInfo'); if (!bi) return; if (bi.dataset.k === b.k && !bi.hidden) { bi.hidden = true; return; } bi.dataset.k = b.k; bi.style.whiteSpace = 'pre-line'; bi.textContent = badgeTekst(b); bi.hidden = false; });
+      el.appendChild(s);
     });
   }
   /* v85: mijn records */
@@ -6481,7 +6628,18 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   $('kaartKnop').addEventListener('click', function () {
     $('flKaart').hidden = false; flKaartVul();
     laadLeaflet().then(function () {
-      if (!flMap) { flMap = L.map('flKaartMap', { zoomControl: true }).setView(lastPos ? [lastPos.lat, lastPos.lon] : [52.1, 5.1], 10); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap-bijdragers' }).addTo(flMap); }
+      if (!flMap) { flMap = L.map('flKaartMap', { zoomControl: true }).setView(lastPos ? [lastPos.lat, lastPos.lon] : [52.1, 5.1], 10); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap-bijdragers' }).addTo(flMap); 
+        flMap.on('click', function (e) {   /* v92: zelf een flitser op de kaart zetten */
+          var ll = e.latlng, div = document.createElement('div'); div.style.textAlign = 'center';
+          var t = document.createElement('b'); t.textContent = 'Hier een flitser melden?'; div.appendChild(t); div.appendChild(document.createElement('br'));
+          [['fixed', '📸 Vaste flitser'], ['mobile', '🚓 Mobiele controle']].forEach(function (x) {
+            var b = document.createElement('button'); b.type = 'button'; b.textContent = x[1]; b.style.margin = '6px 3px 0'; b.style.padding = '8px 10px';
+            b.addEventListener('click', function () { flMap.closePopup(); if (addUcam(x[0], false, { lat: ll.lat, lon: ll.lng })) setTimeout(flKaartVul, 300); });
+            div.appendChild(b);
+          });
+          L.popup().setLatLng(ll).setContent(div).openOn(flMap);
+        });
+      }
       setTimeout(function () { flMap.invalidateSize(); flKaartVul(); }, 100);
     }).catch(function () { toast('De kaart laadt nu niet, de lijst werkt wel.'); });
   });
@@ -6857,7 +7015,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 
   /* ---------- v85: leaderboard in 3 groepjes ---------- */
   (function () {
-    var G = { week: ['week', 'zacht'], netjes: ['stijl', 'netjes', 'gemeld'], rec: ['nul', 'tachtig', 'km'] };
+    var G = { week: ['week', 'zacht'], netjes: ['stijl', 'netjes', 'gemeld'], rec: ['sprint', 'nul', 'tachtig', 'km'] };
     function kies(g) {
       document.querySelectorAll('#bordGroep button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.g === g ? 'true' : 'false'); });
       var eerste = null;
@@ -7161,7 +7319,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (!kand.length) return;
     kand.sort(function (a, b) { return b.v - a.v; });
     var w = kand[0];
-    if (w.l.van === mijnId) { mem.kampioen = 1; save(); queueCheer('Jij hebt de weekchallenge “' + c.naam + '” gewonnen! 👑'); }
+    if (w.l.van === mijnId) { mem.kampioen = 1; mem.kampioenN = (mem.kampioenN || 0) + 1; save(); queueCheer('Jij hebt de weekchallenge “' + c.naam + '” gewonnen! 👑'); }
     else queueCheer('Winnaar weekchallenge “' + c.naam + '”: ' + (w.l.n || 'een collega') + ' met ' + w.v + c.eenh + '!');
   }
   function ritBegonnen() { vcRitStart = T; }
