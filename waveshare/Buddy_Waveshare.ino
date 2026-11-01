@@ -32,6 +32,8 @@ static const int FW_VERSIE = 48;
 static uint8_t energie = 100; static bool koekjeZichtbaar = false; static uint32_t focusTot = 0; static uint8_t auKant = 0;
 static float gRefX = 0, gRefY = 0, gRefZ = 1; static bool gRefOk = false; static volatile float laatsteSchok = 0; static bool slaapMuts = false;
 static char robotTxt[40] = "";
+static volatile float wxTemp = -99; static volatile int wxCode = -1, wxRegenOver = -1; static volatile uint32_t wxT = 0;
+static bool wxVers();
 static bool robotModus = false;
 static bool klokOk(); static void lokaleTijd(int &hh, int &mm);   // v47: stilstaan = gewoon een mini-robotje (geen snelheid/bord), rijden = alles terug
 // v46: echte geluidjes, weer in beeld, vliegen vangen
@@ -1948,7 +1950,7 @@ static const char *grpZin(const char *s) {
   return "test de groep";
 }
 // v29: weer en waarschuwingen (Open-Meteo, gratis, geen sleutel nodig)
-static volatile float wxTemp = -99; static volatile int wxCode = -1, wxRegenOver = -1; static volatile uint32_t wxT = 0;
+// (weer-variabelen staan bovenaan, v48)
 static void haalWeer() {
   char url[220]; snprintf(url, sizeof url, "https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f&current=temperature_2m,weather_code,precipitation&minutely_15=precipitation&forecast_minutely_15=4&timezone=auto", (double)gpsLat, (double)gpsLon);
   size_t n; uint8_t *b = haalUrl(url, n); if (!b) return;
