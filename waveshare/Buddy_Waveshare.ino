@@ -28,7 +28,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 58;
+static const int FW_VERSIE = 59;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -782,6 +782,7 @@ static constexpr bool GPS_RESET_PULSE = false;
 I2SClass buddyI2S;
 static bool audioReady = false;
 static volatile bool audioBusy = false;
+static bool nachtStil = true; static uint32_t testPiepT = 0;   // v59: stil tussen 22 en 7 (aan/uit in het volume-venster)
 static volatile uint32_t audioBusyT = 0; static char audioStatus[20] = "start"; static volatile uint16_t audioGespeeld = 0;   // v58: wat doet het geluid?
 static volatile uint8_t buddyVolume = 85;
 Preferences buddyPrefs;
@@ -1309,7 +1310,15 @@ static void drawVenster() {
   frame->fillCircle(X(120), Y(120), S(119), 0x0841);
   frame->drawCircle(X(120), Y(120), S(118), EYE);
   if (venster == 1) drawInfo();
-  else if (venster == 2) drawSlider(buddyVolume, "VOLUME", EYE);
+  else if (venster == 2) { drawSlider(buddyVolume, "VOLUME", EYE);   // v59: geluid testen en nachtstand, ook zonder telefoon
+    char fb[28]; snprintf(fb, sizeof fb, "FOUT: %s", audioStatus);
+    const char *st = !audioReady ? fb : audioBusy ? "SPEELT" : (testPiepT && millis() - testPiepT < 2500) ? "PIEP!" : "GELUID OK";
+    frame->setTextColor(audioReady ? 0x87F0 : 0xF9A6); frame->setTextSize(2); frame->setCursor(X(120) - (int)strlen(st) * 6, Y(101)); frame->print(st);
+    roundRect(42, 150, 74, 22, 11, 0x18E3); frame->drawRoundRect(X(42), Y(150), S(74), S(22), S(11), EYE);
+    frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(79) - 24, Y(161) - 7); frame->print("TEST");
+    roundRect(124, 150, 74, 22, 11, nachtStil ? 0x2104 : 0x18E3); frame->drawRoundRect(X(124), Y(150), S(74), S(22), S(11), nachtStil ? 0x8410 : EYE);
+    frame->setTextColor(0xFFFF); frame->setTextSize(1); frame->setCursor(X(161) - 27, Y(156)); frame->print(nachtStil ? "22-7 STIL" : "22-7 GELUID");
+    frame->setCursor(X(161) - 24, Y(164)); frame->print(nachtStil ? "tik: aan" : "tik: stil"); }
   else drawSlider(helderheid * 100 / 255, "HELDER", GOLD);
   // TERUG-knop onderaan
   roundRect(70, 182, 100, 32, 16, 0x18E3); frame->drawRoundRect(X(70), Y(182), S(100), S(32), S(16), EYE);
@@ -1471,7 +1480,7 @@ static void startGag(int k) {
   if (k == 1) { vliegGevangen = false; }
   if (robotModus && k >= 0 && GAGS[k].flags) {   // v47: als robotje bij elk trucje een geluidje (niet 's nachts)
     int hh = 12, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
-    if (hh >= 7 && hh < 22 && random(3) == 0) { int m = GAGS[k].mood; playGeluid(m == EXCITED ? GL_TADA : m == LOVE ? GL_GIECHEL : (m == HAPPY || m == CONTENT) ? GL_HOI : (m == SLEEPY || m == YAWN || m == BORED) ? GL_SLAAP : (m == ALERT || m == WORRIED || m == STARTLED) ? GL_OEPS : GL_PLING); }
+    if ((!nachtStil || (hh >= 7 && hh < 22)) && random(3) == 0) { int m = GAGS[k].mood; playGeluid(m == EXCITED ? GL_TADA : m == LOVE ? GL_GIECHEL : (m == HAPPY || m == CONTENT) ? GL_HOI : (m == SLEEPY || m == YAWN || m == BORED) ? GL_SLAAP : (m == ALERT || m == WORRIED || m == STARTLED) ? GL_OEPS : GL_PLING); }
   }
   gagAct = k; gagT0 = t; gagMood = GAGS[k].mood; gagMsg = GAGS[k].msg; g_b = false; g_nn = 0; g_r = 0;
 }
@@ -2080,6 +2089,7 @@ static void persLaad() {
   String nm = buddyPrefs.getString("naam", ""); strncpy(persNaam, nm.c_str(), sizeof persNaam - 1);
   vriend = buddyPrefs.getUChar("vriend", 40);
   sprintI = buddyPrefs.getUChar("spri", 0);   // v56
+  nachtStil = buddyPrefs.getBool("nstil", true);   // v59
   if (buddyPrefs.isKey("likes")) buddyPrefs.getBytes("likes", gagLike, sizeof gagLike);
   if (buddyPrefs.isKey("vertrek")) buddyPrefs.getBytes("vertrek", vertrekH, sizeof vertrekH);
   vorigeRitT = lastRitT = buddyPrefs.getUInt("lastT", 0); eerstT = buddyPrefs.getUInt("eerst", 0);
@@ -2791,7 +2801,10 @@ void handleTouch(){
  if(!n) {
    // loslaten = een tik afhandelen
    if (down && !lang && now - downMs < 600) {
-     if (venster) { if (lY > 172.0f && fabsf(lX - 120.0f) < 62.0f) sluitVenster(); }   // TERUG
+     if (venster) { if (lY > 177.0f && fabsf(lX - 120.0f) < 62.0f) sluitVenster();   // TERUG
+       else if (venster == 2 && lY > 146.0f && lY < 176.0f) { vensterTot = now + 30000;   // v59: TEST of nachtstand
+         if (lX < 120) { if (audioBusy) { audioBusy = false; logRegel("geluid: los gemaakt via TEST"); } testPiepT = now; playGeluid(GL_PLING); logRegel("geluid test (scherm): klaar=%d volume=%d status=%s", (int)audioReady, (int)buddyVolume, audioStatus); }
+         else { nachtStil = !nachtStil; buddyPrefs.putBool("nstil", nachtStil); logRegel("nachtstand: %s", nachtStil ? "stil 22-7" : "geluid ook 's nachts"); } } }
      else if (menuOpen) menuKies(lX, lY);
      else if (lY > 188.0f && !(koekjeZichtbaar && robotModus && fabsf(lX - 196) < 24)) openVenster(2);   // onderaan tikken = volume
      else if (koekjeZichtbaar && robotModus && fabsf(lX - 196) < 24 && fabsf(lY - 176) < 24) {   // v48: koekje!
