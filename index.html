@@ -499,6 +499,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <div><small>Vriendschap <button type="button" class="infoKnop" data-uitleg="vriend" aria-label="Uitleg vriendschap">ⓘ</button></small><b id="bsVriend">0</b></div>
       <div><small>Karakter <button type="button" class="infoKnop" data-uitleg="kar" aria-label="Uitleg karakter">ⓘ</button></small><b id="bsKar">…</b></div>
     </div>
+    <p class="foot" style="margin:6px 0 0;text-align:left">Tik op <b>ⓘ</b> voor uitleg. Rijstijl 100 = superrustig gereden, elke schrikactie kost punten.</p>
     <p class="foot bsUitleg" id="bsUitleg" hidden></p>
   </section>
   <section class="topKnoppen" aria-label="Rijden">
@@ -604,6 +605,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <div id="bordTabs" role="group" aria-label="Soort ranglijst">
       <button type="button" class="btn" data-soort="week" aria-pressed="true">🏁 Week</button><button type="button" class="btn" data-soort="km" aria-pressed="false">Km</button><button type="button" class="btn" data-soort="netjes" aria-pressed="false">Netjes</button><button type="button" class="btn" data-soort="gemeld" aria-pressed="false">Meldingen</button><button type="button" class="btn" data-soort="tachtig" aria-pressed="false">0–80</button><button type="button" class="btn" data-soort="nul" aria-pressed="false">0–100</button><button type="button" class="btn" data-soort="stijl" aria-pressed="false">Rijstijl</button><button type="button" class="btn" data-soort="zacht" aria-pressed="false">🧘 Soepel</button>
       </div>
+      <p class="foot" id="bordUitleg" style="text-align:left"></p>
       <ol id="bordLijst"></ol>
       <p class="chip" id="bordStat">Nog niet geladen.</p>
       <button class="btn" id="bordVervers" type="button">Leaderboard verversen</button>
@@ -4370,7 +4372,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v83';
+  var VERSION = 'v84';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5362,6 +5364,17 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (!grp) { st.textContent = 'Vul een groepscode in om samen een leaderboard te hebben.'; return; }
     if (fout) { st.textContent = fout; return; }
     var B = BORD[bordSoort], lijst = bordData.slice().sort(function (a, b) { return B.w(b) - B.w(a); });
+    var UITB = {   /* v84: per categorie in gewone woorden wat het is */
+      stijl: 'Rijstijl: elke rit begin je op 100. Flink optrekken −3, hard remmen −8, te snel door een bocht −6, langer ruim te hard −2 per 10 s, geflitst −15, traject te hard −10. Rustig rijden geeft +1 per 2 minuten terug. Hier staat je gemiddelde over je ritten (vanaf 3 ritten). Hoger = rustiger.',
+      zacht: 'Soepelste rijder: de bewegingssensor van je telefoon meet hoe zacht je remt, optrekt en door bochten gaat. 100 = boterzacht.',
+      week: 'Weekchallenge: elke week een ander doel. De winnaar krijgt de wisselbeker 🏆.',
+      km: 'Km met Buddy: alle kilometers die je met de GPS aan hebt gereden.',
+      netjes: 'Netjes langs flitsers: hoe vaak je niet te hard langs een flitser reed.',
+      gemeld: 'Meldingen voor de groep: hoe vaak je een flitser, file of controle voor de anderen meldde.',
+      tachtig: '0–80: je snelste sprint vanaf stilstand tot 80 km/h (alleen waar dat mag).',
+      nul: '0–100: je snelste sprint vanaf stilstand tot 100 km/h (alleen waar dat mag).'
+    };
+    if ($('bordUitleg')) $('bordUitleg').textContent = UITB[bordSoort] || '';
     st.textContent = lijst.length ? (bordSoort === 'week' ? 'Deze week: ' + chal(weekIdx()).naam + '. De winnaar hoor je maandag. ' : B.naam + ' · ') + lijst.length + ' in de groep. Alleen echte ritten met GPS tellen mee.' : 'Nog niemand op het leaderboard. Rij een stukje met de GPS aan.';
     var vw = weekIdx() - 1, beker = null, bekerV = 0;   /* v77: wisselbeker voor de winnaar van vorige week */
     bordData.forEach(function (l) { var v = l.week && l.week.w === vw ? l.week.v : (l.vorige && l.vorige.w === vw ? l.vorige.v : 0); if (v > bekerV) { bekerV = v; beker = l.van; } });
