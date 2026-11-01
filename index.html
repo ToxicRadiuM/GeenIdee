@@ -588,7 +588,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         <p>Geen hotspot aan? Geen ramp: Buddy+ werkt dan met de flitsers die hij het laatst heeft opgehaald, en de app geeft via Bluetooth nog steeds alles door.</p></details>
       <p class="foot" style="text-align:left">Gelukt? Kijk hieronder bij Gezondheid: daar komt “wifi verbonden” te staan (zet je hotspot dan wel even aan).</p>
       <p class="sub">Stap 3 · Spelen en instellen</p>
-      <div class="btns"><button class="btn" id="bpKoekje" type="button">🍪 Geef een koekje</button><button class="btn" id="bpFocus" type="button">🤓 Focus 25 min</button><button class="btn" id="bpWeer" type="button">⛅ Weer laten zien</button><button class="btn" id="bpZwaai" type="button">👋 Laat hem zwaaien</button><button class="btn" id="bpSprint" type="button">🚀 Sprint-show testen</button></div>
+      <div class="btns"><button class="btn" id="bpKoekje" type="button">🍪 Geef een koekje</button><button class="btn" id="bpFocus" type="button">🤓 Focus 25 min</button><button class="btn" id="bpWeer" type="button">⛅ Weer laten zien</button><button class="btn" id="bpZwaai" type="button">👋 Laat hem zwaaien</button><button class="btn" id="bpSprint" type="button">🚀 Sprint-show testen</button><button class="btn" id="bpPiep" type="button">🔊 Geluid testen</button></div>
       <div class="limitrow"><label for="scLicht">Helderheid</label><input type="range" id="scLicht" min="10" max="100" step="5" value="65"></div>
       <div class="limitrow"><label for="scVol">Volume</label><input type="range" id="scVol" min="0" max="100" step="5" value="80"></div>
       <div class="limitrow"><label for="scAnim">Animaties</label><select id="scAnim"><option value="2">Rustig</option><option value="1" selected>Normaal</option><option value="0.5">Veel</option></select></div>
@@ -4478,7 +4478,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v99';
+  var VERSION = 'v100';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7107,9 +7107,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (schS.w) d.push(schS.w === '1' ? 'wifi verbonden' : 'geen wifi');
       if (schS.t) d.push('chip ' + schS.t + ' °C');
       if (schS.fr) { d.push('vriendschap ' + schS.fr); window.__schVriend = +schS.fr; }
+      if (schS.au) { var au = schS.au.split('/'); d.push('geluid ' + (au[0] === 'ok' ? 'werkt' : au[0] === 'bezig' ? 'speelt' : 'FOUT (' + au[0] + ')') + ', volume ' + au[1] + '%, ' + au[2] + ' geluidjes gespeeld'); lg('scherm geluid: ' + schS.au); }
       $('schStat').textContent = d.join(' · ');
     }
-    [['bpSprint', 'DOE:sprint', '🚀 Buddy+ laat de volgende sprint-show zien.'], ['bpKoekje', 'DOE:koekje', '🍪 Nom nom! Buddy+ eet zijn koekje.'], ['bpFocus', 'DOE:focus', '🤓 Buddy+ focust 25 minuten met je mee (nog eens tikken = stoppen).'], ['bpWeer', 'DOE:weer', '⛅ Buddy+ laat het weer zien (als hij wifi heeft).'], ['bpZwaai', 'DOE:zwaai', '👋 Buddy+ zwaait!']].forEach(function (k) {
+    [['bpPiep', 'DOE:piep', '🔊 Buddy+ piept. Kijk hieronder bij Gezondheid wat hij over zijn geluid zegt.'], ['bpSprint', 'DOE:sprint', '🚀 Buddy+ laat de volgende sprint-show zien.'], ['bpKoekje', 'DOE:koekje', '🍪 Nom nom! Buddy+ eet zijn koekje.'], ['bpFocus', 'DOE:focus', '🤓 Buddy+ focust 25 minuten met je mee (nog eens tikken = stoppen).'], ['bpWeer', 'DOE:weer', '⛅ Buddy+ laat het weer zien (als hij wifi heeft).'], ['bpZwaai', 'DOE:zwaai', '👋 Buddy+ zwaait!']].forEach(function (k) {
       $(k[0]).addEventListener('click', function () { if (!rx) { toast('Verbind eerst met Buddy+.'); return; } klein(k[1]); toast(k[2]); });
     });
     $('schZoek').addEventListener('click', function () { if (!rx) { toast('Verbind eerst met het schermpje.'); return; } klein('ZOEK'); toast('🔔 Het schermpje piept en knippert.'); });

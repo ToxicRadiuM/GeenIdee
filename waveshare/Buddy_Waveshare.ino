@@ -28,7 +28,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 57;
+static const int FW_VERSIE = 58;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -782,6 +782,7 @@ static constexpr bool GPS_RESET_PULSE = false;
 I2SClass buddyI2S;
 static bool audioReady = false;
 static volatile bool audioBusy = false;
+static volatile uint32_t audioBusyT = 0; static char audioStatus[20] = "start"; static volatile uint16_t audioGespeeld = 0;   // v58: wat doet het geluid?
 static volatile uint8_t buddyVolume = 85;
 Preferences buddyPrefs;
 static bool volumeNeedsSave = false;
@@ -1127,7 +1128,7 @@ static void parsePhone(char *line) {
     return;
   }
   if (!strcmp(line, "ZOEK")) { zoekNu = true; return; }
-  if (!strncmp(line, "DOE:", 4)) { const char *d = line + 4; doeOpdracht = !strcmp(d, "koekje") ? 1 : !strcmp(d, "focus") ? 2 : !strcmp(d, "weer") ? 3 : !strcmp(d, "zwaai") ? 4 : !strcmp(d, "mok") ? 5 : !strcmp(d, "juich") ? 6 : !strcmp(d, "sprint") ? 7 : 0; return; }
+  if (!strncmp(line, "DOE:", 4)) { const char *d = line + 4; doeOpdracht = !strcmp(d, "koekje") ? 1 : !strcmp(d, "focus") ? 2 : !strcmp(d, "weer") ? 3 : !strcmp(d, "zwaai") ? 4 : !strcmp(d, "mok") ? 5 : !strcmp(d, "juich") ? 6 : !strcmp(d, "sprint") ? 7 : !strcmp(d, "piep") ? 8 : 0; return; }
   if (!strcmp(line, "UPD")) { otaNu = true; return; }
   if (!strcmp(line, "STAT?")) { statVraag = true; return; }
   if (!strncmp(line, "SET:", 4)) {   // v27: instellingen uit de app, bv. SET:l=65;v=80;a=1;o=pet
@@ -2128,7 +2129,8 @@ static void stuurStat() {
   snprintf(b, sizeof b, "S:s=%d/%d", sats, zicht); bleSend(b); delay(15);
   snprintf(b, sizeof b, "S:w=%d", WiFi.status() == WL_CONNECTED ? 1 : 0); bleSend(b); delay(15);
   snprintf(b, sizeof b, "S:t=%.0f", temperatureRead()); bleSend(b); delay(15);
-  snprintf(b, sizeof b, "S:fr=%d", (int)vriend); bleSend(b);
+  snprintf(b, sizeof b, "S:fr=%d", (int)vriend); bleSend(b); delay(15);
+  snprintf(b, sizeof b, "S:au=%s/%d/%d", audioReady ? (audioBusy ? "bezig" : "ok") : audioStatus, (int)buddyVolume, (int)audioGespeeld); bleSend(b);   // v58: geluid
 }
 static void persStap(float dt) {
   uint32_t nu = millis(); float v = spdNow();
@@ -2196,7 +2198,8 @@ static void robotStap(float dt) {
     else if (d == 4) { startGag(22); playGeluid(GL_HOI); }
     else if (d == 5) { startGag(44); gagMsg = "Hmpf! Ons record is verbroken..."; playGeluid(GL_OEPS); }   // v54: iemand verbrak je record
     else if (d == 6) { startGag(38); gagMsg = "WRAAK! Record terug!"; playGeluid(GL_TADA); }   // v54: record teruggepakt
-    else if (d == 7) { showSoort = 1 + sprintI % 4; sprintI++; buddyPrefs.putUChar("spri", sprintI); showNa = millis(); } }   // v56: sprint-show testen vanuit de app
+    else if (d == 7) { showSoort = 1 + sprintI % 4; sprintI++; buddyPrefs.putUChar("spri", sprintI); showNa = millis(); }
+    else if (d == 8) { playGeluid(GL_PLING); logRegel("geluid test: klaar=%d bezig=%d volume=%d status=%s", (int)audioReady, (int)audioBusy, (int)buddyVolume, audioStatus); statVraag = true; } }   // v58: geluid testen   // v56: sprint-show testen vanuit de app
   if (!robotModus) { koekjeZichtbaar = false; return; }
   // schudden of oppakken
   { static uint32_t piekT[6] = {0}; static int pi = 0; static uint32_t duizT = 0;
@@ -2675,7 +2678,7 @@ bool initBuddyAudio() {
   buddyI2S.setPins(BCLKPIN, WSPIN, DIPIN, DOPIN, MCLKPIN);
   if (!buddyI2S.begin(I2S_MODE_STD, AUDIO_RATE, I2S_DATA_BIT_WIDTH_16BIT,
                       I2S_SLOT_MODE_STEREO, I2S_STD_SLOT_BOTH)) {
-    Serial.println("Buddy audio: I2S start mislukt");
+    Serial.println("Buddy audio: I2S start mislukt"); strcpy(audioStatus, "i2s-fout"); logRegel("geluid: I2S start mislukt");
     return false;
   }
 
@@ -2690,13 +2693,13 @@ bool initBuddyAudio() {
   };
   for (size_t i=0; i<sizeof(regs)/sizeof(regs[0]); ++i) {
     if (!codecWrite(regs[i][0], regs[i][1])) {  // (draait voor de GPS-taak start, dus zonder mutex)
-      Serial.printf("Buddy audio: ES8311 fout bij register 0x%02X\n", regs[i][0]);
+      Serial.printf("Buddy audio: ES8311 fout bij register 0x%02X\n", regs[i][0]); snprintf(audioStatus, sizeof audioStatus, "codec-%02X", regs[i][0]); logRegel("geluid: ES8311 fout bij register 0x%02X", regs[i][0]);
       return false;
     }
     if (i==0) delay(20);
   }
   applyCodecVolume(buddyVolume);
-  Serial.println("Buddy audio: ES8311 klaar");
+  Serial.println("Buddy audio: ES8311 klaar"); strcpy(audioStatus, "ok"); logRegel("geluid: ES8311 klaar, volume %d", (int)buddyVolume);
   if (es7210Init()) { xTaskCreatePinnedToCore(oorTaak, "BuddyOor", 6144, nullptr, 1, nullptr, 0); Serial.println("Buddy oor: ES7210 microfoons klaar"); }
   else Serial.println("Buddy oor: ES7210 niet gevonden");
   return true;
@@ -2737,7 +2740,9 @@ void soundTask(void *arg) {
 }
 
 void playGeluid(int g) {   // v46: echte Buddy-geluidjes met glijtonen
-  if (!audioReady || audioBusy) return;
+  if (audioBusy && millis() - audioBusyT > 8000) { audioBusy = false; logRegel("geluid: hing vast, losgemaakt"); }   // v58: vangnet
+  if (!audioReady) { static uint32_t gemeld = 0; if (!gemeld || millis() - gemeld > 60000) { gemeld = millis(); logRegel("geluid: niet klaar (%s)", audioStatus); } return; }
+  if (audioBusy) return;
   SoundJob *j = new SoundJob(); uint8_t n = 0;
   auto z = [&](uint16_t a, uint16_t ms, uint16_t b) { if (n < 8) j->notes[n++] = {a, ms, b}; };
   switch (g) {
@@ -2755,8 +2760,8 @@ void playGeluid(int g) {   // v46: echte Buddy-geluidjes met glijtonen
     case GL_TIJD:    z(200, 1200, 1600); z(1600, 900, 150); z(10, 200, 0); z(880, 180, 0); z(1109, 180, 0); z(1319, 500, 0); break;                   // v56: tijdreis
     default: delete j; return;
   }
-  j->count = n; audioBusy = true;
-  if (xTaskCreatePinnedToCore(soundTask, "BuddySound", 4096, j, 1, nullptr, 1) != pdPASS) { audioBusy = false; delete j; }
+  j->count = n; audioBusy = true; audioBusyT = millis(); audioGespeeld++;
+  if (xTaskCreatePinnedToCore(soundTask, "BuddySound", 4096, j, 1, nullptr, 1) != pdPASS) { audioBusy = false; delete j; logRegel("geluid: taak starten mislukt, vrij %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL)); }
 }
 void playMoodSound(int m) {
   if (!audioReady || audioBusy) return;
