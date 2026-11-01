@@ -31,6 +31,11 @@ export default {
     else if (url.pathname === '/msi') { target = 'https://opendata.ndw.nu/Matrixsignaalinformatie.xml.gz'; ttl = 60; }
     else if (url.pathname.startsWith('/pdok/rws/nationaal-wegenbestand-wegen/')) { target = 'https://api.pdok.nl' + url.pathname.slice(5) + url.search; ttl = 604800; }
     // Navigatie: adres zoeken (PDOK Locatieserver) en route met afslagen (OSRM)
+    else if (url.pathname === '/regen') {   // v96: Buienradar, regen per 5 minuten voor de komende 2 uur
+      const la = Number(url.searchParams.get('lat')), lo = Number(url.searchParams.get('lon'));
+      if (!(la > 50 && la < 54 && lo > 2.5 && lo < 8)) return new Response('Ongeldige plek', { status: 400, headers: cors });
+      target = 'https://gpsgadget.buienradar.nl/data/raintext?lat=' + la.toFixed(2) + '&lon=' + lo.toFixed(2); ttl = 300;
+    }
     else if (url.pathname === '/zoek') { target = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free' + url.search; ttl = 86400; }
     else if (/^\/route\/[-\d.]+,[-\d.]+;[-\d.]+,[-\d.]+$/.test(url.pathname)) { target = 'https://router.project-osrm.org/route/v1/driving' + url.pathname.slice(6) + url.search; ttl = 60; }
     else return new Response('Onbekend adres', { status: 404, headers: cors });
