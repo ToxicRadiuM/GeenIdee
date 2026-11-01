@@ -27,7 +27,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 49;
+static const int FW_VERSIE = 50;
 // v48: robotje voor op tafel
 static uint8_t energie = 100; static bool koekjeZichtbaar = false; static uint32_t focusTot = 0; static uint8_t auKant = 0;
 static float gRefX = 0, gRefY = 0, gRefZ = 1; static bool gRefOk = false; static volatile float laatsteSchok = 0; static bool slaapMuts = false;
@@ -2673,7 +2673,7 @@ void handleTouch(){
  uint32_t now=millis();
  if (venster && (int32_t)(now - vensterTot) > 0) sluitVenster();   // 30 s niks gedaan: venster dicht
  if(!touchReady || now-lastTouchPoll<12) return; lastTouchPoll=now;
- if(i2cMutex && xSemaphoreTake(i2cMutex,0)!=pdTRUE) return; uint8_t n=buddyTouch.getPoint(touchX,touchY,1);   // v49: weer 1 punt (2 punten verstoorde de I2C-bus -> GPS-fouten en crashes) if(i2cMutex) xSemaphoreGive(i2cMutex);
+ if(i2cMutex && xSemaphoreTake(i2cMutex,0)!=pdTRUE) return; uint8_t n=buddyTouch.getPoint(touchX,touchY,1); if(i2cMutex) xSemaphoreGive(i2cMutex);   // v50: het vrijgeven stond per ongeluk in commentaar -> I2C bleef bezet (touch dood, GPS-fouten, crashes)
  if(!n) {
    // loslaten = een tik afhandelen
    if (down && !lang && now - downMs < 600) {
