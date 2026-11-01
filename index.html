@@ -2000,9 +2000,9 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }
 
   function heart(x, y, s) {
-    ctx.beginPath(); ctx.moveTo(x, y + s * .35);
-    ctx.bezierCurveTo(x - s, y - s * .3, x - s * .5, y - s * 1.1, x, y - s * .5);
-    ctx.bezierCurveTo(x + s * .5, y - s * 1.1, x + s, y - s * .3, x, y + s * .35);
+    ctx.beginPath(); ctx.moveTo(x, y + s * .72);   /* v88: duidelijker hartje met een echte punt */
+    ctx.bezierCurveTo(x - s * 1.15, y - s * .02, x - s * .6, y - s * .95, x, y - s * .38);
+    ctx.bezierCurveTo(x + s * .6, y - s * .95, x + s * 1.15, y - s * .02, x, y + s * .72);
     ctx.fill();
   }
   function spark(x, y, s) {
