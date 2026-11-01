@@ -489,7 +489,7 @@ function puntOpLijn(c, t) {
 // Alles in dezelfde KV-opslag FLITS: 'p:<groep>' voor berichten, 'l:<groep>' voor het leaderboard.
 // Er wordt geen exacte plek gedeeld, behalve bij 'file' (die moet op de kaart om te waarschuwen).
 // ---------------------------------------------------------------------------
-const GR_SOORTEN = ['zwaai', 'koffie', 'koffieJa', 'koffieStraks', 'file', 'pech', 'hart', 'thuis', 'mijlpaal', 'gezien', 'feli', 'test', 'reactie'];
+const GR_SOORTEN = ['zwaai', 'koffie', 'koffieJa', 'koffieStraks', 'file', 'pech', 'hart', 'thuis', 'mijlpaal', 'gezien', 'feli', 'test', 'reactie', 'uitdaging'];
 const GR_BEWAAR_MS = 2 * 3600e3, GR_MAX = 100, GR_LEDEN = 50, GR_PAUZE_MS = 120e3; // elk soort bericht hooguit eens per 2 minuten
 
 async function groep(url, env, g, json) {
@@ -514,8 +514,8 @@ async function groep(url, env, g, json) {
     if (!van || !id) return json({ error: 'Afzender of id ontbreekt.' }, 400);
     if (lijst.some((x) => x.id === id)) return json({ ok: true, dubbel: true, nu });
     // Niet spammen: dezelfde soort van dezelfde afzender hooguit eens per 2 minuten
-    if (s === 'reactie' && lijst.some((x) => x.van === van && x.s === s && x.aan === idv(q('aan')) && nu - x.t < 15e3)) return json({ ok: true, te_snel: true, nu });
-    if (s !== 'koffieJa' && s !== 'koffieStraks' && s !== 'gezien' && s !== 'feli' && s !== 'reactie' && lijst.some((x) => x.van === van && x.s === s && nu - x.t < GR_PAUZE_MS)) return json({ ok: true, te_snel: true, nu }); // antwoorden op koffie mogen altijd
+    if ((s === 'reactie' || s === 'uitdaging') && lijst.some((x) => x.van === van && x.s === s && x.aan === idv(q('aan')) && nu - x.t < 15e3)) return json({ ok: true, te_snel: true, nu });
+    if (s !== 'koffieJa' && s !== 'koffieStraks' && s !== 'gezien' && s !== 'feli' && s !== 'reactie' && s !== 'uitdaging' && lijst.some((x) => x.van === van && x.s === s && nu - x.t < GR_PAUZE_MS)) return json({ ok: true, te_snel: true, nu }); // antwoorden op koffie mogen altijd
     const b = { id, van, s, t: nu, n: naam(q('n')), a: auto(q('a')), p: naam(q('p')) };
     const aan = idv(q('aan')); if (aan) b.aan = aan;
     if (s === 'gezien') { const r = idv(q('r')); if (!aan || !r) return json({ error: 'Gezien zonder ontvanger of bericht.' }, 400); b.r = r; }
@@ -525,7 +525,7 @@ async function groep(url, env, g, json) {
       b.lat = +lat.toFixed(5); b.lon = +lon.toFixed(5);
     }
     if (s === 'mijlpaal') b.w = getal(q('w'), 1e6);
-    if (s === 'reactie') { if (!aan) return json({ error: 'Reactie zonder ontvanger.' }, 400); b.w = getal(q('w'), 9); const r = q('r'); b.r = ['nul', 'tachtig', 'gm'].includes(r) ? r : 'nul'; }
+    if (s === 'reactie' || s === 'uitdaging') { if (!aan) return json({ error: 'Bericht zonder ontvanger.' }, 400); b.w = getal(q('w'), 9); const r = q('r'); b.r = ['nul', 'tachtig', 'gm'].includes(r) ? r : 'nul'; }
     lijst.push(b);
     if (lijst.length > GR_MAX) lijst = lijst.slice(-GR_MAX);
     await env.FLITS.put(key, JSON.stringify(lijst));
@@ -604,7 +604,10 @@ async function groep(url, env, g, json) {
     if (oud && oud.week && oud.week.w < ww) lid.vorige = oud.week;
     else if (oud && oud.vorige) lid.vorige = oud.vorige;
   } else if (oud) { if (oud.week) lid.week = oud.week; if (oud.vorige) lid.vorige = oud.vorige; }
-  lid.bd = q('bd').replace(/[^a-z0-9.]/g, '').slice(0, 80);
+  lid.bd = q('bd').replace(/[^a-z0-9.]/g, '').slice(0, 500);
+  // v93: rijstijl per week (laatste 12 weken), voor de grafiek met de hele groep
+  const swb = getal(q('swb'), 1e5), sw = String(q('sw') || '');
+  if (swb && /^\d{1,3}(\.\d{1,3}){0,15}$/.test(sw)) { lid.swb = swb; lid.sw = sw; } else if (oud && oud.sw) { lid.swb = oud.swb; lid.sw = oud.sw; }
   lid.lv = getal(q('lv'), 999);
   lid.jr = /^(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/.test(q('jr')) ? q('jr') : '';
   leden = leden.filter((x) => x && x.van !== van);
