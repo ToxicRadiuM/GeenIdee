@@ -26,7 +26,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 40;
+static const int FW_VERSIE = 41;
 // v40: ouderwetse snelheidsmeter bij flink optrekken
 static uint32_t meterTot = 0, meterStart = 0; static float naald = 0, naaldV = 0;
 // v39: te-hard-waarschuwing, thuis-tijd, collega in de buurt, wisselbeker
@@ -2445,7 +2445,7 @@ void setup(){
  xTaskCreatePinnedToCore(netTaak, "BuddyNet", 12288, nullptr, 1, nullptr, 0);
  logRegel("===== OPSTART v%d | reden: %s | heap %u =====", FW_VERSIE, resetReden(), (unsigned)ESP.getFreeHeap());
  if (wakkerDoorBeweging) { logRegel("wakker geworden door beweging (instappen?)"); startGag(22); gagMsg = "Hoi! Daar ben je!"; nextGagT = 20; }
- nextBlink=2;nextGaze=.5f;Serial.println("Buddy v29: koppelcode, navigatie, matrixborden, weer, oor | files/werk/groep zonder telefoon, zwaaien | outfits, instellen vanuit de app | uit/aan met de auto | wifi, eigen limieten, trajecten, updates | logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
+ nextBlink=2;nextGaze=.5f;Serial.println("Buddy: koppelcode, navigatie, matrixborden, weer, oor | files/werk/groep zonder telefoon, zwaaien | outfits, instellen vanuit de app | uit/aan met de auto | wifi, eigen limieten, trajecten, updates | logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
 void loop(){
  handleTouch();
@@ -2477,7 +2477,7 @@ void loop(){
    Serial.printf("BUDDY v%d ALIVE | scherm=OK | GPS=%s | heap=%u\n",FW_VERSIE,gpsDataOk?gpsLastStage:"GEEN DATA",(unsigned)ESP.getFreeHeap());
  }
  uint32_t nowUs=micros();
- if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<FRAME_INTERVAL_US){
+ if(lastRenderUs && (uint32_t)(nowUs-lastRenderUs)<(slaapt ? 100000u : FRAME_INTERVAL_US)){   // v41: in slaapstand maar 10 fps (scheelt stroom en warmte)
    if(volumeNeedsSave && (uint32_t)(millis()-lastVolumeChange)>700){
      buddyPrefs.putUChar("volume", buddyVolume); volumeNeedsSave=false;
    }
