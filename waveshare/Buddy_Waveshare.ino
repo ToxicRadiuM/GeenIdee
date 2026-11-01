@@ -34,7 +34,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 60;
+static const int FW_VERSIE = 61;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -1189,7 +1189,7 @@ static void bleStart() {
   BLEDevice::setMTU(185);
   BLEServer *srv = BLEDevice::createServer(); srv->setCallbacks(new BuddySrvCb());
   BLEService *svc = srv->createService(NUS_SVC);
-  BLECharacteristic *rx = svc->createCharacteristic(NUS_RX, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
+  BLECharacteristic *rx = svc->createCharacteristic(NUS_RX, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR | BLECharacteristic::PROPERTY_WRITE_ENC | BLECharacteristic::PROPERTY_WRITE_AUTHEN);   // v61: met NimBLE (core 3.3) moet de koppelcode zo; met Bluedroid zijn deze twee 0
   rx->setCallbacks(new BuddyRxCb());
   rx->setAccessPermissions(ESP_GATT_PERM_WRITE_ENC_MITM);   // v29: alleen na koppelen met de koppelcode
   BLESecurity *sec = new BLESecurity();
@@ -1198,7 +1198,10 @@ static void bleStart() {
 #else
   sec->setStaticPIN(koppelPin);
 #endif
-  bleTx = svc->createCharacteristic(NUS_TX, BLECharacteristic::PROPERTY_NOTIFY); bleTx->addDescriptor(new BLE2902());
+  bleTx = svc->createCharacteristic(NUS_TX, BLECharacteristic::PROPERTY_NOTIFY);
+#if !defined(CONFIG_NIMBLE_ENABLED)
+  bleTx->addDescriptor(new BLE2902());   // NimBLE maakt dit zelf aan
+#endif
   svc->start();
   BLEAdvertising *adv = BLEDevice::getAdvertising(); adv->addServiceUUID(NUS_SVC); adv->setScanResponse(true);
   BLEDevice::startAdvertising();
