@@ -10,6 +10,7 @@
 #include <BLEServer.h>
 #include <BLE2902.h>
 #include <BLESecurity.h>
+#include <esp_gap_ble_api.h>   // v55: oude koppelingen kunnen wissen
 
 #include <pgmspace.h>
 #include <freertos/FreeRTOS.h>
@@ -27,7 +28,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 54;
+static const int FW_VERSIE = 55;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -60,6 +61,7 @@ static volatile bool buurNieuw = false; static char buurTxt[40] = ""; static boo
 struct Box { int16_t x0, y0, x1, y1; };   // v37: bovenaan i.v.m. automatische functie-koppen van Arduino
 static volatile int otaPct = -1;
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
+static volatile uint32_t verbindT = 0; static volatile uint8_t koppelMislukt = 0;   // v55: mislukte koppelingen tellen
 static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
    // voortgang van een update via wifi (-1 = geen)   // ophogen bij elke nieuwe versie (de update via wifi kijkt hiernaar)
 #define FW_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/firmware/"
@@ -1158,8 +1160,8 @@ static void parsePhone(char *line) {
   d.ms = millis(); phone = d;
 }
 class BuddySrvCb : public BLEServerCallbacks {
-  void onConnect(BLEServer *) override { bleConnected = true; if (!gekoppeld) pinTot = millis() + 60000; logRegel("BLE: telefoon verbonden"); }
-  void onDisconnect(BLEServer *) override { bleConnected = false; logRegel("BLE: telefoon weg"); BLEDevice::startAdvertising(); }
+  void onConnect(BLEServer *) override { bleConnected = true; verbindT = millis(); if (!gekoppeld) pinTot = millis() + 60000; logRegel("BLE: telefoon verbonden"); }
+  void onDisconnect(BLEServer *) override { bleConnected = false; if (!gekoppeld && verbindT && millis() - verbindT > 8000 && koppelMislukt < 250) koppelMislukt++; verbindT = 0; pinTot = 0; logRegel("BLE: telefoon weg"); BLEDevice::startAdvertising(); }
 };
 class BuddyRxCb : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *c) override {
@@ -2817,8 +2819,22 @@ void setup(){
  if (wakkerDoorBeweging) logRegel("wakker geworden door beweging (instappen?)");
  nextBlink=2;nextGaze=.5f;Serial.println("Buddy: koppelcode, navigatie, matrixborden, weer, oor | files/werk/groep zonder telefoon, zwaaien | outfits, instellen vanuit de app | uit/aan met de auto | wifi, eigen limieten, trajecten, updates | logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
+// v55: lukt koppelen steeds niet (bijvoorbeeld na een weggedrukt koppelvenster), dan oude koppelingen wissen zodat de telefoon opnieuw kan koppelen
+static void koppelHerstel() {
+  static uint32_t laatst = 0; uint32_t nu = millis(); if (nu - laatst < 1000) return; laatst = nu;
+  if (bleConnected && !gekoppeld && verbindT && nu - verbindT > 40000) { verbindT = nu; if (koppelMislukt < 250) koppelMislukt++; }
+  if (gekoppeld) koppelMislukt = 0;
+  if (koppelMislukt < 2) return;
+  koppelMislukt = 0;
+  int n = esp_ble_get_bond_device_num();
+  if (n > 0) { esp_ble_bond_dev_t *l = (esp_ble_bond_dev_t *)malloc(sizeof(esp_ble_bond_dev_t) * n);
+    if (l) { esp_ble_get_bond_device_list(&n, l); for (int i = 0; i < n; i++) esp_ble_remove_bond_device(l[i].bd_addr); free(l); } }
+  logRegel("BLE: koppelen lukte niet, %d oude koppeling(en) gewist", n);
+  if (bleConnected) pinTot = millis() + 60000;
+}
 void loop(){
  handleTouch();
+ koppelHerstel();
  {
    static uint32_t logStatusMs = 0; static bool hadFix = false; static int fpsLog = 0;
    bool fixNu = gpsFix && millis() - gpsLastFixMs < 5000;
