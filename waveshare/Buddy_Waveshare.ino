@@ -27,7 +27,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 48;
+static const int FW_VERSIE = 49;
 // v48: robotje voor op tafel
 static uint8_t energie = 100; static bool koekjeZichtbaar = false; static uint32_t focusTot = 0; static uint8_t auKant = 0;
 static float gRefX = 0, gRefY = 0, gRefZ = 1; static bool gRefOk = false; static volatile float laatsteSchok = 0; static bool slaapMuts = false;
@@ -2673,7 +2673,7 @@ void handleTouch(){
  uint32_t now=millis();
  if (venster && (int32_t)(now - vensterTot) > 0) sluitVenster();   // 30 s niks gedaan: venster dicht
  if(!touchReady || now-lastTouchPoll<12) return; lastTouchPoll=now;
- if(i2cMutex && xSemaphoreTake(i2cMutex,0)!=pdTRUE) return; uint8_t n=buddyTouch.getPoint(touchX,touchY,2);   // v48: 2 punten = hand erop if(i2cMutex) xSemaphoreGive(i2cMutex);
+ if(i2cMutex && xSemaphoreTake(i2cMutex,0)!=pdTRUE) return; uint8_t n=buddyTouch.getPoint(touchX,touchY,1);   // v49: weer 1 punt (2 punten verstoorde de I2C-bus -> GPS-fouten en crashes) if(i2cMutex) xSemaphoreGive(i2cMutex);
  if(!n) {
    // loslaten = een tik afhandelen
    if (down && !lang && now - downMs < 600) {
@@ -2685,6 +2685,7 @@ void handleTouch(){
      else if (gagAct != 1 && (hypotf(lX - (73 + faceOx), lY - (106 + faceOy)) < 22 || hypotf(lX - (167 + faceOx), lY - (106 + faceOy)) < 22)) {   // v48: in zijn oog
        auKant = lX > 120 ? 1 : 0; startGag(47); playGeluid(GL_OEPS); }
      else if (gagAct != 1 && lY > 132 && lY < 172 && (lX < 72 || lX > 168)) { startGag(48); playGeluid(GL_GIECHEL); aaiTot = now + 2000; }   // op zijn wang
+     else if ([&]() { static uint32_t tk[3] = {0}; tk[0] = tk[1]; tk[1] = tk[2]; tk[2] = now; return tk[0] && now - tk[0] < 1300; }() && gagAct != 1 && robotModus) { startGag(50); playGeluid(GL_HOI); }   // v49: 3x snel tikken = kiekeboe
      else { aaiTot = now + 2200; idleMoodUntilMs = now + 2200;    // op zijn gezicht tikken = aaien
        static uint32_t aaiPlusT = 0; if (now - aaiPlusT > 20000) { aaiPlusT = now; vriendPlus(1); }   // v42: aaien = vriendschap (max 3 per minuut)
        if (vriend > 70) { addParticleAt(0, frand(90, 150), 70, frand(-10, 10), -25, 1.4f, 10); static uint32_t gT = 0; if (now - gT > 15000) { gT = now; playGeluid(GL_GIECHEL); } }
@@ -2702,7 +2703,6 @@ void handleTouch(){
  float y=240.0f-(float)touchY[0]*240.0f/(float)LCD_HEIGHT;
  if (!down) { down = true; downMs = now; dX = x; dY = y; lang = false; laatsteActie = now; if (slaapt) { slaapt = false; laatsteActie = now; } }
  { // v48: hand erop (2 vingers) = kiekeboe; snel heen en weer vegen = kietelen
-   static uint32_t handT = 0; if (n >= 2 && now - handT > 5000 && !menuOpen && !venster) { handT = now; lang = true; startGag(50); playGeluid(GL_HOI); }
    static float vx = 0; static int rich = 0, keer = 0; static uint32_t keerT = 0;
    float ddx = x - vx; vx = x;
    if (fabsf(ddx) > 4) { int r2 = ddx > 0 ? 1 : -1; if (rich && r2 != rich) { if (now - keerT > 1200) keer = 0; keer++; keerT = now; } rich = r2; }
