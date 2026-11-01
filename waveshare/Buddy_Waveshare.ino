@@ -10,7 +10,13 @@
 #include <BLEServer.h>
 #include <BLE2902.h>
 #include <BLESecurity.h>
-#include <esp_gap_ble_api.h>   // v55: oude koppelingen kunnen wissen
+#if __has_include(<esp_gap_ble_api.h>)   // v55/v60: oude koppelingen kunnen wissen (Bluedroid of NimBLE, afhankelijk van de ESP32-versie)
+#include <esp_gap_ble_api.h>
+#define BOND_BLUEDROID 1
+#elif __has_include("host/ble_store.h")
+#include "host/ble_store.h"
+#define BOND_NIMBLE 1
+#endif
 
 #include <pgmspace.h>
 #include <freertos/FreeRTOS.h>
@@ -2929,9 +2935,14 @@ static void koppelHerstel() {
   if (gekoppeld) koppelMislukt = 0;
   if (koppelMislukt < 2) return;
   koppelMislukt = 0;
-  int n = esp_ble_get_bond_device_num();
+  int n = -1;
+#if defined(BOND_BLUEDROID)
+  n = esp_ble_get_bond_device_num();
   if (n > 0) { esp_ble_bond_dev_t *l = (esp_ble_bond_dev_t *)malloc(sizeof(esp_ble_bond_dev_t) * n);
     if (l) { esp_ble_get_bond_device_list(&n, l); for (int i = 0; i < n; i++) esp_ble_remove_bond_device(l[i].bd_addr); free(l); } }
+#elif defined(BOND_NIMBLE)
+  ble_store_clear();
+#endif
   logRegel("BLE: koppelen lukte niet, %d oude koppeling(en) gewist", n);
   if (bleConnected) pinTot = millis() + 60000;
 }
