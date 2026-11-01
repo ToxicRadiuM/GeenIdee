@@ -28,7 +28,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 55;
+static const int FW_VERSIE = 56;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -40,7 +40,7 @@ static bool wxVers();
 static bool robotModus = false;
 static bool klokOk(); static void lokaleTijd(int &hh, int &mm);   // v47: stilstaan = gewoon een mini-robotje (geen snelheid/bord), rijden = alles terug
 // v46: echte geluidjes, weer in beeld, vliegen vangen
-enum { GL_HOI, GL_GIECHEL, GL_VROEM, GL_DINGDONG, GL_PLING, GL_OEPS, GL_SLAAP, GL_TADA };
+enum { GL_HOI, GL_GIECHEL, GL_VROEM, GL_DINGDONG, GL_PLING, GL_OEPS, GL_SLAAP, GL_TADA, GL_RUIMTE, GL_TURBO, GL_PODIUM, GL_TIJD };
 void playGeluid(int g);
 static bool vliegGevangen = false; static uint16_t vliegTotaal = 0; static char vliegTxt[32] = "";
 static volatile bool persJarig = false;   // v45: vandaag jarig (van de app)
@@ -55,6 +55,9 @@ static float karFactor = 1.0f;
 static int trucjesOpen(); static bool gagOntgrendeld(int k);
 // v40: ouderwetse snelheidsmeter bij flink optrekken
 static uint32_t meterTot = 0, meterStart = 0; static float naald = 0, naaldV = 0;
+// v56: sprint-shows die elkaar afwisselen (0 meter, 1 ruimte, 2 turbo, 3 podium, 4 tijdreis)
+static uint32_t showTot = 0, showStart = 0, showNa = 0; static uint8_t showSoort = 0, sprintI = 0;
+static float wxPrecip = 0, wxRadarNu = -1; static uint32_t wxRadarT = 0;   // v56: regen van de Buienradar
 // v39: te-hard-waarschuwing, thuis-tijd, collega in de buurt, wisselbeker
 static volatile int setWarn = -1; static bool waarschuwAan = true; static int hudLimiet = 0, hudSnelheid = -1;
 static volatile bool buurNieuw = false; static char buurTxt[40] = ""; static bool bekerGetoond = false;
@@ -1124,7 +1127,7 @@ static void parsePhone(char *line) {
     return;
   }
   if (!strcmp(line, "ZOEK")) { zoekNu = true; return; }
-  if (!strncmp(line, "DOE:", 4)) { const char *d = line + 4; doeOpdracht = !strcmp(d, "koekje") ? 1 : !strcmp(d, "focus") ? 2 : !strcmp(d, "weer") ? 3 : !strcmp(d, "zwaai") ? 4 : !strcmp(d, "mok") ? 5 : !strcmp(d, "juich") ? 6 : 0; return; }
+  if (!strncmp(line, "DOE:", 4)) { const char *d = line + 4; doeOpdracht = !strcmp(d, "koekje") ? 1 : !strcmp(d, "focus") ? 2 : !strcmp(d, "weer") ? 3 : !strcmp(d, "zwaai") ? 4 : !strcmp(d, "mok") ? 5 : !strcmp(d, "juich") ? 6 : !strcmp(d, "sprint") ? 7 : 0; return; }
   if (!strcmp(line, "UPD")) { otaNu = true; return; }
   if (!strcmp(line, "STAT?")) { statVraag = true; return; }
   if (!strncmp(line, "SET:", 4)) {   // v27: instellingen uit de app, bv. SET:l=65;v=80;a=1;o=pet
@@ -1650,7 +1653,8 @@ static void driveStep(float dt) {
     if (flagRec) { rec100 = tt; snprintf(dat100, sizeof dat100, "%.2s-%.2s-%.2s", gpsDate, gpsDate + 2, gpsDate + 4); buddyPrefs.putFloat("b100", rec100); buddyPrefs.putString("d100", dat100); }
     if (tripBest <= 0 || tt < tripBest) tripBest = tt;
     for (int i = 0; i < 10; i++) addParticleAt(1, frand(30, 210), frand(40, 120), frand(-20, 20), frand(-30, 10), 1.2f, frand(5, 9));
-    char m[24]; snprintf(m, sizeof m, "SPRINT:%.1f", tt); bleSend(m); logRegel("0-100: %.1f s%s", tt, flagRec ? " RECORD" : ""); }
+    char m[24]; snprintf(m, sizeof m, "SPRINT:%.1f", tt); bleSend(m); logRegel("0-100: %.1f s%s", tt, flagRec ? " RECORD" : "");
+    if (!(meterStart && nu - meterStart < 30000)) { if (sprintI % 5 == 0) sprintI++; showSoort = sprintI % 5; showNa = flagTot; sprintI++; buddyPrefs.putUChar("spri", sprintI); } }   // v56: elke sprint een andere show
   if (!ok) return;
   if (v > 5) { stilSinds = 0; if (!rijdtSinds) rijdtSinds = nu; } else { rijdtSinds = 0; if (!stilSinds) stilSinds = nu; }
   if (!tripActief && rijdtSinds && nu - rijdtSinds > 5000) { tripActief = true; tripKm = tripMax = tripG = tripBest = 0; tripStart = nu; logRegel("Rit begonnen"); }
@@ -1964,12 +1968,23 @@ static void haalWeer() {
   if (jZoek(j, "\"current\":{")) {
     JP c = j; if (jZoek(c, "\"temperature_2m\":")) wxTemp = jNum(c);
     c = j; if (jZoek(c, "\"weather_code\":")) wxCode = (int)jNum(c);
+    c = j; if (jZoek(c, "\"precipitation\":")) wxPrecip = jNum(c);   // v56: hoeveel valt er nu
   }
   JP m{(const char *)b, (const char *)b + n}; int over = -1;
   if (jZoek(m, "\"minutely_15\":{") && jZoek(m, "\"precipitation\":[")) { for (int i = 0; i < 4; i++) { float v = jNum(m); jIs(m, ','); if (v >= 0.2f && over < 0) over = i * 15; } }
   wxRegenOver = over; wxT = millis();
-  logRegel("weer: %.1f graden, code %d, regen over %d min", (double)wxTemp, (int)wxCode, over);
   free(b);
+  if (wCfg.url[0]) {   // v56: de Buienradar (echte radar, per 5 minuten) weet beter of en wanneer het regent
+    char ru[200]; snprintf(ru, sizeof ru, "%s/regen?lat=%.2f&lon=%.2f", wCfg.url, (double)gpsLat, (double)gpsLon);
+    size_t rn; uint8_t *rb = haalUrl(ru, rn);
+    if (rb) { float nu = -1; int rov = -1, regel = 0; const char *q = (const char *)rb, *e = q + rn;
+      while (q < e) { int v = 0; bool cijfer = false; while (q < e && *q >= '0' && *q <= '9') { v = v * 10 + (*q - '0'); q++; cijfer = true; }
+        if (cijfer && q < e && *q == '|') { float mm = v > 0 ? powf(10.f, (v - 109) / 32.f) : 0; if (regel < 2) nu = fmaxf(nu, mm); if (mm >= .3f && rov < 0) rov = regel * 5; regel++; }
+        while (q < e && *q != '\n') q++; if (q < e) q++; }
+      free(rb);
+      if (regel >= 6) { wxRadarNu = nu; wxRadarT = millis(); wxRegenOver = nu >= .1f ? 0 : rov; } }
+  }
+  logRegel("weer: %.1f graden, code %d, regen over %d min%s", (double)wxTemp, (int)wxCode, (int)wxRegenOver, wxRadarT && millis() - wxRadarT < 60000 ? " (buienradar)" : "");
 }
 static bool wxVers() { return wxT && millis() - wxT < 45UL * 60000; }
 static bool wxGlad() { return wxVers() && wxTemp <= 1.0f && (wxCode >= 45 || wxRegenOver >= 0); }   // vorst + neerslag/mist
@@ -2063,6 +2078,7 @@ static uint32_t nuEpoch() { time_t e = time(nullptr); return e > 1700000000 ? (u
 static void persLaad() {
   String nm = buddyPrefs.getString("naam", ""); strncpy(persNaam, nm.c_str(), sizeof persNaam - 1);
   vriend = buddyPrefs.getUChar("vriend", 40);
+  sprintI = buddyPrefs.getUChar("spri", 0);   // v56
   if (buddyPrefs.isKey("likes")) buddyPrefs.getBytes("likes", gagLike, sizeof gagLike);
   if (buddyPrefs.isKey("vertrek")) buddyPrefs.getBytes("vertrek", vertrekH, sizeof vertrekH);
   vorigeRitT = lastRitT = buddyPrefs.getUInt("lastT", 0); eerstT = buddyPrefs.getUInt("eerst", 0);
@@ -2179,7 +2195,8 @@ static void robotStap(float dt) {
     else if (d == 3) { startGag(53); }
     else if (d == 4) { startGag(22); playGeluid(GL_HOI); }
     else if (d == 5) { startGag(44); gagMsg = "Hmpf! Ons record is verbroken..."; playGeluid(GL_OEPS); }   // v54: iemand verbrak je record
-    else if (d == 6) { startGag(38); gagMsg = "WRAAK! Record terug!"; playGeluid(GL_TADA); } }   // v54: record teruggepakt
+    else if (d == 6) { startGag(38); gagMsg = "WRAAK! Record terug!"; playGeluid(GL_TADA); }   // v54: record teruggepakt
+    else if (d == 7) { if (sprintI % 5 == 0) sprintI++; showSoort = sprintI % 5; sprintI++; buddyPrefs.putUChar("spri", sprintI); showNa = millis(); } }   // v56: sprint-show testen vanuit de app
   if (!robotModus) { koekjeZichtbaar = false; return; }
   // schudden of oppakken
   { static uint32_t piekT[6] = {0}; static int pi = 0; static uint32_t duizT = 0;
@@ -2212,6 +2229,68 @@ static void robotStap(float dt) {
 
 // v40: retro snelheidsmeter (crème wijzerplaat, chromen rand, rode naald die doorschiet en natrilt)
 static inline float meterHoek(float v) { return (225.f - fminf(fmaxf(v, 0.f), 200.f) / 200.f * 270.f) * (float)M_PI / 180.f; }
+// v56: de sprint-shows
+static uint16_t kl565(uint8_t r, uint8_t g, uint8_t b) { return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3); }
+static uint16_t hsv565(float h, float s, float v) { h = fmodf(h, 360.f) / 60.f; int i = (int)h; float f = h - i, p = v * (1 - s), q = v * (1 - s * f), t = v * (1 - s * (1 - f)); float r, g, b;
+  switch (i) { case 0: r = v; g = t; b = p; break; case 1: r = q; g = v; b = p; break; case 2: r = p; g = v; b = t; break; case 3: r = p; g = q; b = v; break; case 4: r = t; g = p; b = v; break; default: r = v; g = p; b = q; }
+  return kl565(r * 255, g * 255, b * 255); }
+static void showRect(float x, float y, float w, float h, uint16_t c) { boxAdd(x, y, x + w, y + h); frame->fillRect(X(x), Y(y), S(w), S(h), c); }
+static void showTekst(const char *t, float x, float y, int sz, uint16_t c) { frame->setTextColor(c); frame->setTextSize(sz); frame->setCursor(X(x) - (int)strlen(t) * 3 * sz, Y(y) - 4 * sz); frame->print(t); }
+static void miniBuddy(float x, float y, float s, bool vlam, int ogen) {
+  if (vlam) { float l = (14 + random(14)) * s; triF(x - 10 * s, y + 26 * s, x + 10 * s, y + 26 * s, x, y + 26 * s + l, 0xFD20); triF(x - 5 * s, y + 26 * s, x + 5 * s, y + 26 * s, x, y + 26 * s + l * .6f, 0xFFE0); }
+  roundRect(x - 31 * s, y - 27 * s, 62 * s, 54 * s, 16 * s, EYE); roundRect(x - 28 * s, y - 24 * s, 56 * s, 48 * s, 13 * s, 0x0000);
+  if (ogen == 1) { for (int e = -1; e <= 1; e += 2) for (int k = 0; k < 10; k++) { float an = k * .7f + millis() / 150.f, r = k * .5f * s; circle(x + e * 12 * s + cosf(an) * r, y - 4 * s + sinf(an) * r, 1.3f * s + .4f, EYE); } }
+  else if (ogen == 2) { for (int e = -1; e <= 1; e += 2) for (int k = 0; k < 7; k++) { float an = 3.1416f + k * .52f; circle(x + e * 11 * s + cosf(an) * 6 * s, y - 2 * s + sinf(an) * 6 * s, 1.6f * s + .4f, EYE); } }
+  else { circle(x - 12 * s, y - 4 * s, 6 * s, EYE); circle(x + 12 * s, y - 4 * s, 6 * s, EYE); }
+  for (int k = 0; k < 7; k++) { float an = k * .52f; circle(x + cosf(an) * 7 * s, y + 9 * s + sinf(an) * 7 * s, 1.4f * s + .4f, EYE); }
+}
+static void drawShow() {
+  boxAdd(0, 0, 240, 240); circle(120, 120, 119, 0x0000);
+  float tt = (millis() - showStart) / 1000.f; uint32_t ms = millis();
+  if (showSoort == 1) {   // de ruimte in
+    if (tt < 1.3f) { showRect(0, 150, 240, 90, 0x2104); for (int i = 0; i < 6; i++) { float lx = 240 - fmodf(tt * 600 + i * 70, 300); dikLijn(lx, 70 + i * 14, lx + 40, 70 + i * 14, 2, 0x8410); }
+      for (int i = 0; i < 9; i++) { float dx = fmodf(i * 30 - tt * 400, 270); if (dx < 0) dx += 270; showRect(dx - 15, 194, 16, 3, 0xFEA0); }
+      miniBuddy(110 + sinf(tt * 60) * 2, 130, 1, false, 0); showTekst("VROEEEM!", 120, 60, 3, 0xFFE0); return; }
+    float k = tt - 1.3f, sn = fminf(1, k / 1.2f) * (k < 3 ? 1 : .35f);
+    for (int i = 0; i < 40; i++) { float an = i * 2.39996f, sp = .4f + (i % 7) * .15f, r = fmodf(i * 37 + k * 160 * sp, 140), r2 = r + 4 + 30 * sn * sp;
+      dikLijn(120 + cosf(an) * r, 120 + sinf(an) * r, 120 + cosf(an) * r2, 120 + sinf(an) * r2, 1.2f, r > 50 ? 0xFFFF : 0x8410); }
+    if (k > 1.6f && k < 5) { float e = fmaxf(4, 70 - (k - 1.6f) * 26), ey = 150 + (k - 1.6f) * 8; circle(120, ey, e + 3, 0x4A9F); circle(120, ey, e, 0x1C9F); circle(120 - e * .3f, ey - e * .2f, e * .35f, 0x35E6); circle(120 + e * .35f, ey + e * .25f, e * .25f, 0x35E6); }
+    if (k > 3.2f && k < 6.3f) { float sa = fmaxf(3, 30 - (k - 3.2f) * 9), sx = 60 + (k - 3.2f) * 6; for (int j = 0; j < 24; j++) { float a0 = j * .2618f, a1 = a0 + .2618f; dikLijn(sx + cosf(a0) * sa * 1.9f, 70 + sinf(a0) * sa * .5f - cosf(a0) * sa * .5f, sx + cosf(a1) * sa * 1.9f, 70 + sinf(a1) * sa * .5f - cosf(a1) * sa * .5f, 2, 0xD58D); } circle(sx, 70, sa, 0xEE4F); }
+    if (k > 4.7f) { float gs = fminf(1, (k - 4.7f) / 1.2f), rot = k * .8f; for (int arm = 0; arm < 2; arm++) for (int i = 0; i < 40; i++) { float t2 = i / 40.f, an = rot + arm * 3.1416f + t2 * 5, r = t2 * 70 * gs; circle(120 + cosf(an) * r, 120 + sinf(an) * r * .6f, 1.4f + (1 - t2) * 1.4f, hsv565(230 + i, .35f, 1 - t2 * .6f)); } circle(120, 120, 8 * gs, 0xFF79); }
+    float bs = fmaxf(.25f, 1 - k * .14f); miniBuddy(120 + sinf(k * 1.7f) * 40 * (1 - bs), 120 - fminf(40, k * 30) + 30 * (1 - bs), bs, true, 0);
+    const char *lab = k < 1.6f ? "" : k < 3.3f ? "NEDERLAND" : k < 4.7f ? "AARDE" : k < 6.2f ? "ZONNESTELSEL" : k < 7.4f ? "MELKWEG" : "OEPS, TE HARD";
+    if (lab[0]) showTekst(lab, 120, 196, 2, 0xFFFF);
+  } else if (showSoort == 2) {   // turbo
+    showRect(0, 140, 240, 100, 0x2104); for (int i = 0; i < 9; i++) { float dx = fmodf(i * 30 - tt * 500, 270); if (dx < 0) dx += 270; showRect(dx - 15, 194, 16, 3, 0xFEA0); }
+    float x = tt < 1.4f ? -60 + tt * 130 : tt < 4.6f ? 122 + sinf(tt * 40) * 2 : 122 + (tt - 4.6f) * 260, y = 150;
+    if (tt > 1 && tt < 5.4f) for (int i = 0; i < 10; i++) { float a = fmodf(tt * 3 + i * .37f, 1.2f); circle(x - 34 - a * 90, y + 20 - a * 25 + sinf(i) * 6, 4 + a * 10, a < .6f ? 0x9CF3 : 0x6B4D); }
+    if (tt > 1.3f) { float l = 18 + random(20); triF(x - 40, y + 4, x - 40, y + 16, x - 40 - l, y + 10, 0xFD20); triF(x - 40, y + 7, x - 40, y + 13, x - 40 - l * .6f, y + 10, 0xFFE0); }
+    roundRect(x - 40, y - 6, 80, 26, 10, 0xF8A6); roundRect(x - 23, y - 29, 46, 28, 10, EYE); roundRect(x - 21, y - 27, 42, 24, 9, 0x0000);
+    circle(x - 8, y - 16, 4, EYE); circle(x + 8, y - 16, 4, EYE);
+    for (int i = -1; i <= 1; i += 2) { circle(x + i * 24, y + 22, 10, 0x18E3); float wa = tt * 40; dikLijn(x + i * 24, y + 22, x + i * 24 + cosf(wa) * 8, y + 22 + sinf(wa) * 8, 2, 0x8410); }
+    if (tt > 1.4f && tt < 4.8f) showTekst("TURBO!", 120, 70, 4, 0xFEA0);
+    if (tt > 4.8f) { char m[20]; snprintf(m, sizeof m, "0-100 %.1fs", flagTijd); showTekst(m, 120, 70, 2, 0xFFFF); }
+  } else if (showSoort == 3) {   // podium
+    triF(120, 0, 60, 200, 180, 200, 0x2100);
+    const float P[3][4] = {{50, 168, 2, 0}, {120, 150, 1, 1}, {190, 176, 3, 2}}; const uint16_t PK[3] = {0xC618, 0xFEA0, 0xCC06};
+    for (int i = 0; i < 3; i++) { showRect(P[i][0] - 32, P[i][1], 64, 240 - P[i][1], 0x29A7); char n[2] = {(char)('0' + (int)P[i][2]), 0}; showTekst(n, P[i][0], P[i][1] + 20, 3, PK[(int)P[i][3]]); }
+    float by = 120 - (tt > 2.4f && tt < 5 ? fabsf(sinf(tt * 6)) * 6 : 0);
+    miniBuddy(120, by, .85f, false, tt > 2.4f ? 2 : 0);
+    if (tt > 2.4f) { float cy = by - 22; triF(103, cy, 137, cy, 120, cy - 4, 0xFEA0); triF(103, cy, 109, cy - 16, 115, cy, 0xFEA0); triF(115, cy, 120, cy - 20, 125, cy, 0xFEA0); triF(125, cy, 131, cy - 16, 137, cy, 0xFEA0);
+      for (int i = 0; i < 40; i++) { float cx = fmodf(i * 53.7f, 220) + 10, cyy = fmodf(i * 31 + (tt - 2.4f) * (50 + i % 5 * 15), 240); static const uint16_t CK[5] = {0xF8A6, 0xFEA0, 0x35E6, 0x1C9F, 0xBADF}; showRect(cx, cyy, 5, 3, CK[i % 5]); }
+      char m[20]; snprintf(m, sizeof m, "0-100 %.1fs", flagTijd); showTekst(m, 120, 40, 2, 0xFFFF); }
+    else showTekst("EN DE WINNAAR IS", 120, 40, 2, 0xFFFF);
+  } else if (showSoort == 4) {   // tijdreis
+    float kr = tt < 3.2f ? tt / 3.2f : tt < 5 ? 1 : fmaxf(0, 1 - (tt - 5) / 2);
+    for (int i = 11; i >= 0; i--) { float r = fmodf(i * 14 + tt * 90 * (.3f + kr), 168); if (r < 6) continue; circle(120, 120, fminf(118, r), hsv565(i * 30 + tt * 120, .9f, .25f + .6f * kr * (r / 168))); circle(120, 120, fminf(116, r - 3), 0x0000); }
+    struct tm tmn; int j0 = 2026; if (getLocalTime(&tmn, 0)) j0 = tmn.tm_year + 1900;
+    int jaar = tt < 3.2f ? j0 + (int)(powf(tt / 3.2f, 3) * 1000) : tt < 5 ? j0 + 1000 - (int)((tt - 3.2f) / 1.8f * 1000) : j0;
+    char js[8]; snprintf(js, sizeof js, "%d", jaar); showTekst(js, 120 + sinf(tt * 30) * kr * 2, 56, 4, 0xFFFF);
+    miniBuddy(120 + sinf(tt * 47) * 3 * kr, 145, .85f, false, kr > .5f ? 1 : 0);
+    if (tt > 5.2f) showTekst("GEWOON VANDAAG", 120, 200, 2, 0xFFFF);
+  }
+  (void)ms;
+}
 static void drawMeter() {
   const float cx = 120, cy = 122;
   boxAdd(0, 0, 240, 240);
@@ -2257,9 +2336,11 @@ void drawFace(){
  if ((int32_t)(zoekTot - millis()) > 0) {   // v42: zoek mijn Buddy
    boxAdd(0, 0, 240, 240); bool aan = (millis() / 350) % 2; circle(120, 120, 118, aan ? 0xFFE0 : 0xF800); circle(120, 120, 96, BG);
    frame->setTextColor(0xFFFF); frame->setTextSize(4); frame->setCursor(X(120) - 60, Y(120) - 16); frame->print("HIER!"); return; }
+ if ((int32_t)(showTot - millis()) > 0 && (int32_t)(flagTot - millis()) <= 0) { drawShow(); return; }   // v56: sprint-show
  if ((int32_t)(meterTot - millis()) > 0 && (int32_t)(flagTot - millis()) <= 0) { drawMeter(); return; }   // v52: de 0-100-vlag gaat voor   // v40: retro meter bij flink optrekken
  if (wxVers() && !slaapt) {   // v46: echt regen- of sneeuwweer -> druppels of vlokjes achter het gezicht
-   int c = wxCode; bool regen = (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95, sneeuw = (c >= 71 && c <= 77) || c == 85 || c == 86;
+   int c = wxCode; bool regen = ((c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95) && !(c >= 51 && c <= 57 && wxPrecip < .2f), sneeuw = (c >= 71 && c <= 77) || c == 85 || c == 86;
+   if (wxRadarT && millis() - wxRadarT < 20UL * 60000) regen = wxRadarNu >= .1f;   // v56: radar gaat voor
    if (regen) for (int i = 0; i < 12; i++) { float x = 30 + i * 16 + sinf(i * 7.3f) * 5, y = fmodf(t * 140 + i * 37, 200) + 20; dikLijn(x, y, x - 2, y + 7, 1.6f, 0x3A9F); }
    else if (sneeuw) for (int i = 0; i < 12; i++) { float x = 26 + i * 17 + sinf(t * 1.3f + i) * 6, y = fmodf(t * 28 + i * 31, 200) + 20; circle(x, y, (i % 3) ? 1.8f : 2.6f, 0xDEFB); }
  }
@@ -2668,6 +2749,10 @@ void playGeluid(int g) {   // v46: echte Buddy-geluidjes met glijtonen
     case GL_OEPS:    z(900, 120, 520); z(10, 30, 0); z(600, 180, 380); break;                                    // oeps (omlaag)
     case GL_SLAAP:   z(600, 260, 380); z(10, 60, 0); z(380, 380, 260); break;                                    // welterusten
     case GL_TADA:    z(523, 90, 0); z(659, 90, 0); z(784, 90, 0); z(1047, 260, 1100); break;                      // ta-da!
+    case GL_RUIMTE:  z(80, 900, 1400); z(587, 150, 0); z(740, 150, 0); z(880, 150, 0); z(1175, 300, 0); z(1480, 150, 0); z(1760, 500, 2349); break;   // v56: de ruimte in
+    case GL_TURBO:   z(110, 700, 900); z(900, 250, 300); z(523, 90, 0); z(659, 90, 0); z(784, 90, 0); z(1047, 400, 0); break;                        // v56: turbo
+    case GL_PODIUM:  z(392, 150, 0); z(523, 150, 0); z(659, 150, 0); z(784, 250, 0); z(10, 60, 0); z(659, 150, 0); z(784, 180, 0); z(1047, 600, 0); break;   // v56: podium
+    case GL_TIJD:    z(200, 1200, 1600); z(1600, 900, 150); z(10, 200, 0); z(880, 180, 0); z(1109, 180, 0); z(1319, 500, 0); break;                   // v56: tijdreis
     default: delete j; return;
   }
   j->count = n; audioBusy = true;
@@ -2889,9 +2974,13 @@ void loop(){
    { // v40: flink optrekken (>= 12 km/u erbij in 1,5 s) -> ouderwetse snelheidsmeter
      static uint32_t vT = 0; static float vH[4] = {0, 0, 0, 0}; float vn = spdNow();
      if (nu - vT >= 500) { vT = nu; vH[0] = vH[1]; vH[1] = vH[2]; vH[2] = vH[3]; vH[3] = vn; }
-     if (vn > 8 && vH[3] - vH[0] >= 12 && !menuOpen && !venster) {
-       if ((int32_t)(meterTot - nu) <= 0) { meterStart = nu; naald = 0; naaldV = 0; playGeluid(GL_VROEM); logRegel("retro meter: optrekken %.0f -> %.0f", vH[0], vH[3]); }
-       meterTot = nu + 2500; if (meterTot < meterStart + 6000) meterTot = meterStart + 6000;
+     if (vn > 8 && vH[3] - vH[0] >= 12 && !menuOpen && !venster && (int32_t)(showTot - nu) <= 0 && !showNa) {
+       if ((int32_t)(meterTot - nu) > 0) { meterTot = nu + 2500; if (meterTot < meterStart + 6000) meterTot = meterStart + 6000; }
+       else if (sprintI % 5 == 0) { meterStart = nu; naald = 0; naaldV = 0; meterTot = nu + 6000; sprintI++; buddyPrefs.putUChar("spri", sprintI); playGeluid(GL_VROEM); logRegel("retro meter: optrekken %.0f -> %.0f", vH[0], vH[3]); }
+     }
+     if (showNa && (int32_t)(nu - showNa) >= 0) {   // v56: na de vlag de sprint-show
+       static const uint16_t DUUR[5] = {0, 9500, 7000, 7500, 8000};
+       showNa = 0; showStart = nu; showTot = nu + DUUR[showSoort]; playGeluid(GL_RUIMTE + showSoort - 1); logRegel("sprint-show %d", (int)showSoort);
      }
      float doel = vn; naaldV += ((doel - naald) * 55.f - naaldV * 6.5f) * dt; naald += naaldV * dt;   // veer + demper: schiet door en trilt na
      if (naald < 0) { naald = 0; naaldV = 0; }
