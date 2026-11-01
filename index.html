@@ -175,7 +175,7 @@ body.rond .helmet::after { display: none; }
 body.rond .bezel { box-shadow: none; }
 body.rond #carBack, body.rond #carRit, body.rond #carSpel, body.rond #carAdd, body.rond #carAddM, body.rond #carGroep, body.rond #carStart { display: none !important; }
 /* v75: tabbalk onderin, zoals een gewone app */
-#tabBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--panel); border-top: 1px solid var(--line); padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); }
+#tabBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--panel); border-top: 1px solid var(--line); padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); }
 #tabBar button { background: none; border: 0; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; min-height: 52px; border-radius: 12px; cursor: pointer; }
 #tabBar button span { font-size: 21px; line-height: 1; }
 #tabBar button[aria-pressed="true"] { color: var(--ink); background: color-mix(in srgb, var(--ink) 8%, transparent); }
@@ -184,6 +184,7 @@ body:not(.car):not(.rond) main { padding-bottom: 84px; }
 body[data-tab="buddy"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="buddy"]),
 body[data-tab="kaart"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="kaart"]),
 body[data-tab="groep"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="groep"]),
+body[data-tab="ritten"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="ritten"]),
 body[data-tab="meer"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="meer"]) { display: none !important; }
 #tabKaart { display: flex; flex-direction: column; gap: 12px; }
 #tabKaart .kaartKop { display: flex; flex-direction: column; gap: 4px; }
@@ -403,6 +404,19 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 .buddyStatus .bsGrid b { font-size: 18px; font-variant-numeric: tabular-nums; }
 .infoKnop { background: none; border: 0; color: var(--muted); font-size: 14px; padding: 2px 4px; cursor: pointer; }
 .bsUitleg { text-align: left; margin: 8px 0 0; }
+.badgeGrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.badgeGrid li { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 13px; line-height: 1.3; }
+.badgeGrid li.nee { opacity: .45; }
+.badgeGrid li b { display: block; font-size: 14px; }
+.badgeGrid li .bi { font-size: 22px; float: right; margin-left: 6px; }
+.faq details { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; }
+.faq summary { cursor: pointer; font-weight: 600; }
+.faq p { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
+#tour { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; padding: 16px; }
+#tour .tk { background: var(--panel); color: var(--ink); border-radius: 16px; padding: 18px; max-width: 380px; width: 100%; }
+#tour .tk h3 { margin: 0 0 6px; }
+#tour .tk p { margin: 0 0 12px; }
+#tour .tk .mobrow { display: flex; gap: 8px; justify-content: space-between; }
 .grLijst { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .grLijst li { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
 .grLijst li.uit { border-style: dashed; }
@@ -602,6 +616,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <ol id="grLijst" class="grLijst"><li class="leeg">Nog geen berichten.</li></ol>
       <p class="sub">Leaderboard</p>
       <p class="foot">Jouw groep, op basis van echte ritten met de GPS aan. De groepscode en je auto stel je hieronder in, bij Groepsinstellingen. Elke week is er een nieuwe challenge; de winnaar hoort iedereen op maandag.</p>
+      <div id="bordGroep" class="btns" role="group" aria-label="Soort leaderboard"><button type="button" class="btn" data-g="week" aria-pressed="true">🏆 Deze week</button><button type="button" class="btn" data-g="netjes" aria-pressed="false">🧘 Netjes</button><button type="button" class="btn" data-g="rec" aria-pressed="false">🚀 Records</button></div>
       <div id="bordTabs" role="group" aria-label="Soort ranglijst">
       <button type="button" class="btn" data-soort="week" aria-pressed="true">🏁 Week</button><button type="button" class="btn" data-soort="km" aria-pressed="false">Km</button><button type="button" class="btn" data-soort="netjes" aria-pressed="false">Netjes</button><button type="button" class="btn" data-soort="gemeld" aria-pressed="false">Meldingen</button><button type="button" class="btn" data-soort="tachtig" aria-pressed="false">0–80</button><button type="button" class="btn" data-soort="nul" aria-pressed="false">0–100</button><button type="button" class="btn" data-soort="stijl" aria-pressed="false">Rijstijl</button><button type="button" class="btn" data-soort="zacht" aria-pressed="false">🧘 Soepel</button>
       </div>
@@ -644,6 +659,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <div class="lvBalk"><i id="lvBar"></i></div>
       <p class="foot">Buddy groeit mee met elke km, elke nette flitserpassage, elke melding voor de groep en elke laadpauze. Je level staat ook op het leaderboard.</p>
     </div>
+  </details>
+  <details class="kop" id="kopRecords"><summary><span class="kopT">🚀 Mijn records</span><span class="kopS">snelste sprint, langste rit, totalen</span></summary>
+    <div class="kopIn"><ul class="v77lijst" id="recLijst"></ul>
+      <p class="foot">Sprints tellen alleen met echte GPS en op wegen waar het mag. Alles telt vanaf de eerste rit met de telefoon-GPS aan.</p></div>
+  </details>
+  <details class="kop" id="kopBadges"><summary><span class="kopT">🏅 Badges</span><span class="kopS">wat je al hebt en hoe je de rest haalt</span></summary>
+    <div class="kopIn"><p class="chip" id="badgeStat"></p><ul class="badgeGrid" id="badgeGrid"></ul></div>
   </details>
   <details class="kop" id="kopPlezier"><summary><span class="kopT">🎲 Plezier</span><span class="kopS">spelletjes, praten, outfits</span></summary>
     <div class="kopIn">
@@ -736,6 +758,18 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <textarea id="logBox" rows="6" hidden readonly style="width:100%;font:12px monospace;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px"></textarea>
     </div>
   </details>
+  <details class="kop" id="kopHulp"><summary><span class="kopT">❓ Hoe werkt Buddy?</span><span class="kopS">korte antwoorden op veelgestelde vragen</span></summary>
+    <div class="kopIn faq">
+      <details><summary>Waarom ziet Buddy geen flitsers of limieten?</summary><p>Zet de telefoon-GPS aan (Buddy-tab) en zorg dat je internet hebt. Zonder GPS weet hij niet waar je bent. Flitsers en limieten komen uit openbare lijsten en worden elke dag ververst.</p></details>
+      <details><summary>Hoe koppel ik het ronde schermpje?</summary><p>Buddy-tab → 🖥️ Mijn Buddy-schermpje → Verbind. Gebruik Chrome op Android. De eerste keer vraagt je telefoon een code van 6 cijfers: die staat bovenin het schermpje.</p></details>
+      <details><summary>Wat doet de groep?</summary><p>Iedereen met dezelfde groepscode ziet elkaars meldingen (flitsers, files, controles), berichten en het leaderboard. Je precieze plek wordt nooit gedeeld.</p></details>
+      <details><summary>Hoe krijg ik meer punten en levels?</summary><p>Rijden met de GPS aan (1 punt per km), netjes langs flitsers (5), meldingen voor de groep (10), elke rit (3) en laadpauzes (2). Kijk bij 🏁 Ritten voor je level en badges.</p></details>
+      <details><summary>Wat betekent rijstijl?</summary><p>Elke rit begin je op 100. Schrikmomenten kosten punten (hard remmen, flink optrekken, te snel in een bocht, langer te hard, geflitst). Rustig rijden geeft punten terug. Hoger = rustiger.</p></details>
+      <details><summary>Wat onthoudt Buddy van mij en waar staat dat?</summary><p>Alles staat alleen op je eigen telefoon (en het schermpje): je naam, ritten, gewoontes en badges. Alleen wat je in de groep deelt gaat naar de groep. Back-up maken kan bij Instellingen.</p></details>
+      <details><summary>Het scherm van mijn telefoon gaat uit tijdens het rijden</summary><p>Tik op Autostand. Op iPhone: zet de energiebesparingsstand uit en tik één keer op het scherm na het opstarten.</p></details>
+      <details><summary>Hoe update ik het schermpje?</summary><p>Zet de hotspot aan, verbind de app, en tik bij Mijn Buddy-schermpje op ⬇️ Update nu. Hij doet het ook vanzelf als hij stilstaat.</p></details>
+    </div>
+  </details>
   <details class="kop" id="kopBouw"><summary><span class="kopT">🧪 Voor het bouwen</span><span class="kopS">simulator, geheugen, plan</span></summary>
     <div class="kopIn">
       <p class="foot">Hier probeer je alles uit zonder te rijden. Met telefoon-GPS aan gebruikt hij je echte rit en doen de rijknoppen niets.</p>
@@ -805,6 +839,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 <nav id="tabBar" aria-label="Hoofdmenu">
   <button type="button" data-tab="buddy" aria-pressed="true"><span>🙂</span>Buddy</button>
   <button type="button" data-tab="kaart" aria-pressed="false"><span>🗺️</span>Kaart</button>
+  <button type="button" data-tab="ritten" aria-pressed="false"><span>🏁</span>Ritten</button>
   <button type="button" data-tab="groep" aria-pressed="false"><span>👥</span>Groep</button>
   <button type="button" data-tab="meer" aria-pressed="false"><span>☰</span>Meer</button>
 </nav>
@@ -4260,7 +4295,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }
 
   /* ---------- Levels: Buddy groeit mee ---------- */
-  var LVNAMEN = ['Nieuwkomer', 'Ritmaatje', 'Wegwijs', 'Vaste rijder', 'Flitserspotter', 'Snelwegheld', 'Routekoning', 'Weg-legende', 'Buddy-meester', 'Grootmeester'];
+  var LVNAMEN = ['Nieuwkomer', 'Ritmaatje', 'Wegwijs', 'Vaste rijder', 'Flitserspotter', 'Rotonde-ridder', 'Snelwegheld', 'Filefluisteraar', 'Routekoning', 'Nachtnavigator', 'Weg-legende', 'Kilometervreter', 'Buddy-meester', 'Asfalt-artiest', 'Grootmeester', 'Wegwijze wijsgeer', 'Kaartkampioen', 'Snelweg-sensei', 'Horizon-held', 'Legende van de A12', 'Mythische maatje', 'Kosmische cruiser', 'Ster van de snelweg', 'Ultieme Buddy', 'Buddy-god'];   /* v85: 25 levels */
   function lvXp() { return Math.round((mem.kmLive || 0) + (mem.netjes || 0) * 5 + (mem.gemeld || 0) * 10 + (mem.ritLive || 0) * 3 + (mem.laadPauzes || 0) * 2); }
   function lvVan(xp) { return Math.floor(Math.sqrt(xp / 20)) + 1; }
   function lvGrens(l) { return 20 * (l - 1) * (l - 1); }
@@ -4372,7 +4407,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v84';
+  var VERSION = 'v85';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5539,6 +5574,12 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (r.stijl >= 90) mem.zenRitten = (mem.zenRitten || 0) + 1;
     if (r0.h < 5) mem.nachtRit = 1;
     if (r0.h >= 5 && r0.h < 6.5) mem.vroegRit = 1;
+    try {   /* v85: weekend, feestdag, dagen-op-rij */
+      var dnu = new Date(r.t0), dg = dnu.getDay(); if (dg === 0 || dg === 6) mem.weekendRit = 1;
+      if (typeof feestdag === 'function' && feestdag()) mem.feestRit = 1;
+      var dk = dnu.getFullYear() + '-' + dnu.getMonth() + '-' + dnu.getDate(), gis = new Date(r.t0 - 864e5), gk = gis.getFullYear() + '-' + gis.getMonth() + '-' + gis.getDate();
+      if (mem.laatsteDag !== dk) { mem.streak = mem.laatsteDag === gk ? (mem.streak || 0) + 1 : 1; mem.laatsteDag = dk; mem.streakMax = Math.max(mem.streakMax || 0, mem.streak); }
+    } catch (e) {}
     save();
     var m = 'Rit klaar: ' + String(r.km).replace('.', ',') + ' km in ' + r.min + ' min, rijstijl ' + r.stijl + (r.netjes ? ', ' + r.netjes + '× netjes langs een flitser' : '') + '.';
     toast(m); lg('rit: ' + JSON.stringify(r)); ritToon(); ritKaart(r); routeOverzicht();
@@ -5696,7 +5737,28 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     { k: 'nacht', i: '🌙', n: 'Nachtrijder', u: 'Een rit gestart tussen 0 en 5 uur', ok: function (m) { return !!m.nachtRit; } },
     { k: 'vroeg', i: '🐦', n: 'Vroege vogel', u: 'Een rit gestart tussen 5 en half 7', ok: function (m) { return !!m.vroegRit; } },
     { k: 'sociaal', i: '👋', n: 'Sociale Buddy', u: '25 berichten naar de groep', ok: function (m) { return (m.grBerichten || 0) >= 25; } },
-    { k: 'kampioen', i: '👑', n: 'Weekkampioen', u: 'Een weekchallenge gewonnen', ok: function (m) { return !!m.kampioen; } }
+    { k: 'kampioen', i: '👑', n: 'Weekkampioen', u: 'Een weekchallenge gewonnen', ok: function (m) { return !!m.kampioen; } },
+    /* v85: meer badges */
+    { k: 'km250', i: '🛣️', n: '250 km', u: '250 km met Buddy', ok: function (m) { return m.kmLive >= 250; } },
+    { k: 'km2500', i: '🌍', n: '2500 km', u: '2500 km met Buddy', ok: function (m) { return m.kmLive >= 2500; } },
+    { k: 'km10000', i: '🚀', n: '10.000 km', u: '10.000 km met Buddy', ok: function (m) { return m.kmLive >= 10000; } },
+    { k: 'rit10', i: '🔟', n: 'Tien ritten', u: '10 ritten met GPS', ok: function (m) { return m.ritLive >= 10; } },
+    { k: 'rit50', i: '🗓️', n: 'Vaste klant', u: '50 ritten met GPS', ok: function (m) { return m.ritLive >= 50; } },
+    { k: 'rit250', i: '💪', n: 'Onvermoeibaar', u: '250 ritten met GPS', ok: function (m) { return m.ritLive >= 250; } },
+    { k: 'heilig', i: '🌟', n: 'Flitser-heilige', u: '100× netjes langs een flitser', ok: function (m) { return m.netjes >= 100; } },
+    { k: 'radar', i: '📡', n: 'Menselijke radar', u: '50 meldingen voor de groep', ok: function (m) { return m.gemeld >= 50; } },
+    { k: 'zen25', i: '☯️', n: 'Boeddha achter het stuur', u: '25 ritten met rijstijl 90 of hoger', ok: function (m) { return (m.zenRitten || 0) >= 25; } },
+    { k: 'ontmoet', i: '🤝', n: 'Collega gespot', u: 'Een collega uit je groep kwam vlakbij', ok: function (m) { return (m.ontmoet || 0) >= 1; } },
+    { k: 'ontmoet10', i: '🫂', n: 'Wegvriendjes', u: '10 keer een collega vlakbij', ok: function (m) { return (m.ontmoet || 0) >= 10; } },
+    { k: 'laad10', i: '🔌', n: 'Laadkampioen', u: '10 laadpauzes', ok: function (m) { return (m.laadPauzes || 0) >= 10; } },
+    { k: 'aai', i: '🥰', n: 'Knuffelaar', u: 'Buddy 100× geaaid', ok: function (m) { return (m.taps || 0) >= 100; } },
+    { k: 'sprint', i: '⚡', n: 'Bliksem', u: '0–100 onder de 6 seconden (waar het mag)', ok: function (m) { return m.best100Live > 0 && m.best100Live < 6; } },
+    { k: 'plek10', i: '📍', n: 'Ontdekker', u: '10 plekjes onthouden met “Wat was dat?”', ok: function (m) { return (m.plekN || 0) >= 10; } },
+    { k: 'weekend', i: '🏖️', n: 'Weekendrijder', u: 'Een rit in het weekend', ok: function (m) { return !!m.weekendRit; } },
+    { k: 'feest', i: '🎉', n: 'Feestrijder', u: 'Een rit op een feestdag', ok: function (m) { return !!m.feestRit; } },
+    { k: 'streak7', i: '📆', n: 'Week aan één stuk', u: '7 dagen achter elkaar gereden', ok: function (m) { return (m.streakMax || 0) >= 7; } },
+    { k: 'lv10', i: '⭐', n: 'Level 10', u: 'Buddy bereikt level 10', ok: function (m) { return (m.level || 0) >= 10; } },
+    { k: 'lv20', i: '💫', n: 'Level 20', u: 'Buddy bereikt level 20', ok: function (m) { return (m.level || 0) >= 20; } }
   ];
   var BADGEMAP = {}; BADGES.forEach(function (b) { BADGEMAP[b.k] = b; });
   function badgeCheck(stil) {
@@ -5710,6 +5772,19 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
   }
   function badgeToon() {
+    var gr = $('badgeGrid');   /* v85: alle badges met uitleg, ook die je nog niet hebt */
+    if (gr) {
+      while (gr.firstChild) gr.removeChild(gr.firstChild);
+      var n = 0;
+      BADGES.forEach(function (b) {
+        var heb = (mem.badges || []).indexOf(b.k) >= 0; if (heb) n++;
+        var li = document.createElement('li'); li.className = heb ? '' : 'nee';
+        var ic = document.createElement('span'); ic.className = 'bi'; ic.textContent = b.i; li.appendChild(ic);
+        var t = document.createElement('b'); t.textContent = b.n + (heb ? ' ✓' : ''); li.appendChild(t);
+        li.appendChild(document.createTextNode(b.u)); gr.appendChild(li);
+      });
+      if ($('badgeStat')) $('badgeStat').textContent = 'Je hebt ' + n + ' van de ' + BADGES.length + ' badges. Grijze badges heb je nog niet: eronder staat hoe je ze haalt.';
+    }
     var el = $('badgeLijst'); if (!el) return;
     while (el.firstChild) el.removeChild(el.firstChild);
     BADGES.forEach(function (b) {
@@ -5717,6 +5792,25 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       s.className = 'badge' + (heb ? ' heb' : ''); s.title = b.n + ': ' + b.u + (heb ? '' : ' (nog niet)');
       s.textContent = b.i; s.setAttribute('aria-label', s.title); el.appendChild(s);
     });
+  }
+  /* v85: mijn records */
+  function recordsToon() {
+    var ul = $('recLijst'); if (!ul) return; while (ul.firstChild) ul.removeChild(ul.firstChild);
+    var rs = (typeof ritten !== 'undefined' && ritten) || [], lang = null, top = null;
+    rs.forEach(function (r) { if (!lang || r.km > lang.km) lang = r; if (!top || (r.vmax || 0) > (top.vmax || 0)) top = r; });
+    var d = function (t) { try { return new Date(t).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }); } catch (e) { return ''; } };
+    var L = [
+      ['⚡', '0–100: ' + (mem.best100Live ? fmt1(mem.best100Live) + ' s' : 'nog geen')],
+      ['🏎️', '0–80: ' + (mem.best80Live ? fmt1(mem.best80Live) + ' s' + (mem.best80LiveD ? ' (' + d(mem.best80LiveD) + ')' : '') : 'nog geen')],
+      ['🛣️', 'Langste rit: ' + (lang ? String(lang.km).replace('.', ',') + ' km (' + d(lang.t0) + ')' : 'nog geen')],
+      ['📈', 'Hoogste snelheid in een rit: ' + (top && top.vmax ? top.vmax + ' km/h' : 'nog geen')],
+      ['🌍', 'Totaal: ' + Math.round(mem.kmLive || 0) + ' km in ' + (mem.ritLive || 0) + ' ritten'],
+      ['🧘', 'Zen-ritten (rijstijl 90+): ' + (mem.zenRitten || 0)],
+      ['😇', 'Netjes langs een flitser: ' + (mem.netjes || 0) + '×'],
+      ['📡', 'Meldingen voor de groep: ' + (mem.gemeld || 0)],
+      ['📆', 'Langste reeks dagen achter elkaar: ' + (mem.streakMax || 0)]
+    ];
+    L.forEach(function (x) { var li = document.createElement('li'); li.textContent = x[0] + ' ' + x[1]; ul.appendChild(li); });
   }
   function badgeCodes() { return (mem.badges || []).filter(function (k) { return BADGEMAP[k]; }).join('.'); }
 
@@ -6522,7 +6616,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     window.__plekOpKaart = plekOpKaart;
     function plekNu(bron) {
       if (!lastPos) { toast('Ik weet nog niet waar we zijn. Zet de GPS aan.'); return false; }
-      plekken.push({ lat: +lastPos.lat.toFixed(5), lon: +lastPos.lon.toFixed(5), t: Date.now(), v: Math.round(S.speed || 0) });
+      plekken.push({ lat: +lastPos.lat.toFixed(5), lon: +lastPos.lon.toFixed(5), t: Date.now(), v: Math.round(S.speed || 0) }); mem.plekN = (mem.plekN || 0) + 1; save();
       plekBewaar(); plekToon(); plekOpKaart(); setEv('happy', 2.5, 'Plek onthouden! Kijk later bij Kaart.'); beep('pet'); lg('plek onthouden (' + bron + ')');
       return true;
     }
@@ -6719,6 +6813,35 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     $('hebScherm').addEventListener('change', function () { heb = $('hebScherm').value; $('schermIn').hidden = heb !== '1'; try { localStorage.setItem(HEBKEY, heb); } catch (e) {} });
   })();
 
+  /* ---------- v85: leaderboard in 3 groepjes ---------- */
+  (function () {
+    var G = { week: ['week', 'zacht'], netjes: ['stijl', 'netjes', 'gemeld'], rec: ['nul', 'tachtig', 'km'] };
+    function kies(g) {
+      document.querySelectorAll('#bordGroep button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.g === g ? 'true' : 'false'); });
+      var eerste = null;
+      document.querySelectorAll('#bordTabs button').forEach(function (b) { var in_ = G[g].indexOf(b.dataset.soort) >= 0; b.hidden = !in_; if (in_ && !eerste) eerste = b; });
+      var actief = document.querySelector('#bordTabs button[aria-pressed="true"]');
+      if (eerste && (!actief || actief.hidden)) eerste.click();
+    }
+    document.querySelectorAll('#bordGroep button').forEach(function (b) { b.addEventListener('click', function () { kies(b.dataset.g); }); });
+    setTimeout(function () { var a = document.querySelector('#bordTabs button[aria-pressed="true"]'), s0 = a ? a.dataset.soort : 'week', g0 = 'week'; Object.keys(G).forEach(function (k) { if (G[k].indexOf(s0) >= 0) g0 = k; }); kies(g0); }, 0);
+  })();
+  /* ---------- v85: korte rondleiding bij de eerste keer ---------- */
+  (function () {
+    var KEY = 'dashboardmaatje-tour-v1'; try { if (localStorage.getItem(KEY)) return; } catch (e) { return; }
+    var S1 = [
+      ['👋 Hoi, ik ben Buddy!', 'Ik rijd met je mee: ik ken de limiet, waarschuw voor flitsers en files, en houd contact met je collega’s.'],
+      ['📍 Zet de GPS aan', 'Tik op het Buddy-tabblad op “Telefoon-GPS”. Zonder GPS weet ik niet waar we zijn.'],
+      ['🗂️ Alles op zijn plek', 'Onderin: 🙂 Buddy (ik en mijn schermpje) · 🗺️ Kaart (flitsers, plekjes, laden) · 🏁 Ritten (ritten, records, badges) · 👥 Groep (berichten, leaderboard) · ☰ Meer (instellingen en hulp).'],
+      ['ⓘ Uitleg', 'Zie je een ⓘ, tik erop voor uitleg. En bij ☰ Meer → ❓ Hoe werkt Buddy? staan de meest gestelde vragen.']
+    ], i = 0;
+    var o = document.createElement('div'); o.id = 'tour'; o.innerHTML = '<div class="tk" role="dialog" aria-modal="true"><h3></h3><p></p><div class="mobrow"><button class="btn" type="button" data-a="sla">Overslaan</button><button class="btn primary" type="button" data-a="ok">Volgende</button></div></div>';
+    function toon() { o.querySelector('h3').textContent = S1[i][0]; o.querySelector('p').textContent = S1[i][1]; o.querySelector('[data-a="ok"]').textContent = i === S1.length - 1 ? 'Aan de slag!' : 'Volgende'; }
+    function klaar() { try { localStorage.setItem(KEY, '1'); } catch (e) {} o.remove(); }
+    o.addEventListener('click', function (e) { var a = e.target && e.target.dataset && e.target.dataset.a; if (a === 'sla') klaar(); else if (a === 'ok') { i++; if (i >= S1.length) klaar(); else toon(); } });
+    toon(); setTimeout(function () { document.body.appendChild(o); }, 1200);
+  })();
+
   /* ---------- v75: tabbalk (Buddy · Kaart · Groep · Meer) ---------- */
   (function () {
     var TABKEY = 'dashboardmaatje-tab-v1', DEVKEY = 'dashboardmaatje-dev-v1';
@@ -6730,7 +6853,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     zet($('kopGroep'), 'groep');
     zet($('kopScherm'), 'buddy'); zet($('kopOver'), 'buddy');   /* v83: schermpje en 'Over Buddy' onder het Buddy-tabblad */
     zet($('buddyStatus'), 'buddy');
-    ['kopRitten', 'kopPlezier', 'kopInst', 'kopBouw'].forEach(function (id) { zet($(id), 'meer'); });
+    ['kopInst', 'kopHulp', 'kopBouw'].forEach(function (id) { zet($(id), 'meer'); });
+    zet($('kopRitten'), 'ritten'); zet($('kopRecords'), 'ritten'); zet($('kopBadges'), 'ritten'); zet($('kopPlezier'), 'buddy');   /* v85: eigen Ritten-tab */
     zet($('verTxt'), 'meer');
     var koppen = document.querySelector('main > .koppen'); if (koppen) koppen.removeAttribute('data-in-tab');
     /* de flitserkaart en de meld-knoppen verhuizen naar de Kaart-tab */
@@ -6751,6 +6875,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       try { localStorage.setItem(TABKEY, t); } catch (e) {}
       if (t === 'kaart') { $('kaartKnop').click(); }
       if (t === 'groep' && $('kopGroep')) $('kopGroep').open = true;
+      if (t === 'ritten') { ['kopRitten', 'kopRecords', 'kopBadges'].forEach(function (id) { if ($(id)) $(id).open = true; }); try { recordsToon(); badgeToon(); } catch (e) {} }
       window.scrollTo(0, 0);
     }
     Array.prototype.forEach.call(document.querySelectorAll('#tabBar button'), function (b) { b.addEventListener('click', function () { toon(b.getAttribute('data-tab')); }); });
