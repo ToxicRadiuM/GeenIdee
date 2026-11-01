@@ -6440,7 +6440,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (schS.s) d.push('GPS ' + schS.s.replace('/', ' sat, ') + ' in zicht');
       if (schS.w) d.push(schS.w === '1' ? 'wifi verbonden' : 'geen wifi');
       if (schS.t) d.push('chip ' + schS.t + ' °C');
-      if (schS.fr) d.push('vriendschap ' + schS.fr);
+      if (schS.fr) { d.push('vriendschap ' + schS.fr); window.__schVriend = +schS.fr; }
       $('schStat').textContent = d.join(' · ');
     }
     $('schZoek').addEventListener('click', function () { if (!rx) { toast('Verbind eerst met het schermpje.'); return; } klein('ZOEK'); toast('🔔 Het schermpje piept en knippert.'); });
@@ -6689,7 +6689,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         if (lv) $('bsLv').textContent = lv.textContent.replace(/ — .*/, '');
         if (bar) $('bsLvBar').style.width = bar.style.width || '0%';
         $('bsStijl').textContent = Math.round(S.style);
-        $('bsVriend').textContent = Math.round(S.love);
+        $('bsVriend').textContent = window.__schVriend != null ? window.__schVriend : Math.round(S.love);   /* met schermpje: zijn vriendschapsmeter */
         $('bsKar').textContent = character().label.replace('Nog aan het kennismaken', 'Kennismaken');
       } catch (e) {}
     }
