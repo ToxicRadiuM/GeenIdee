@@ -27,7 +27,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 43;
+static const int FW_VERSIE = 44;
 // v42: persoonlijkheid
 static char persNaam[16] = "", persNaamNieuw[16] = ""; static volatile char persKar = 'E'; static volatile int persLv = 0, persStijl = -1; static volatile uint32_t persEpoch = 0; static volatile bool persNieuw = false;
 static uint8_t vriend = 40; static uint8_t gagLike[48] = {0}; static uint8_t vertrekH[24] = {0};
@@ -98,7 +98,7 @@ static constexpr int GPS_UART_TX = 17;
 static constexpr uint32_t GPS_UART_BAUD = 115200; // LC76G standaard
 static HardwareSerial gpsSerial(1);
 static SemaphoreHandle_t i2cMutex = nullptr; // alleen voor touchscreen op Wire
-static volatile bool gpsFix = false;
+static volatile bool gpsFix = false; static volatile uint32_t gpsEigenMs = 0; static volatile bool posVanTel = false;   // v44: eigen fix van de GPS-chip, of plek van de telefoon
 static volatile bool gpsDataOk = false;
 static volatile uint32_t gpsLastDataMs = 0;
 static volatile uint32_t gpsNmeaBytes = 0;
@@ -912,7 +912,7 @@ void parseNmeaLine(char* line) {
   for(char *p=line; *p && n<20; ++p) if(*p==','){*p=0;f[n++]=p+1;}
   if (strstr(f[0],"RMC") && n>7 && f[2][0]=='A') {
     float lat=nmeaCoord(f[3],f[4]), lon=nmeaCoord(f[5],f[6]);
-    float knots=atof(f[7]); if (n>8 && f[8][0]) gpsKoers=atof(f[8]); gpsLat=lat; gpsLon=lon; gpsSpeedKmh=knots*1.852f; gpsFix=true; gpsLastFixMs=millis(); gpsNewFix=true;
+    float knots=atof(f[7]); if (n>8 && f[8][0]) gpsKoers=atof(f[8]); gpsLat=lat; gpsLon=lon; gpsSpeedKmh=knots*1.852f; gpsFix=true; gpsLastFixMs=millis(); gpsEigenMs=millis(); posVanTel=false; gpsNewFix=true;
     if (n>9 && strlen(f[9])==6) { memcpy(gpsDate, f[9], 6); gpsDate[6]=0; }
     if (strlen(f[1]) >= 6) { gpsHH = (f[1][0]-'0')*10 + (f[1][1]-'0'); gpsMM = (f[1][2]-'0')*10 + (f[1][3]-'0'); gpsTijdMs = millis(); }
     launchFix(millis(), gpsSpeedKmh);
@@ -923,7 +923,7 @@ void parseNmeaLine(char* line) {
     int k = f[0][2] == 'P' ? 0 : f[0][2] == 'A' ? 1 : f[0][2] == 'B' ? 2 : f[0][2] == 'L' ? 3 : 4; if (k < 5) inZicht[k] = atoi(f[3]);
     gpsInZicht = inZicht[0] + inZicht[1] + inZicht[2] + inZicht[3] + inZicht[4];
   } else if(strstr(f[0],"GGA") && n>8) {
-    int q=atoi(f[6]); gpsSatellites=atoi(f[7]); if(q>0 && f[2][0]) {gpsLat=nmeaCoord(f[2],f[3]);gpsLon=nmeaCoord(f[4],f[5]);gpsFix=true;gpsLastFixMs=millis();} else if(q==0) gpsFix=false;
+    int q=atoi(f[6]); gpsSatellites=atoi(f[7]); if(q>0 && f[2][0]) {gpsLat=nmeaCoord(f[2],f[3]);gpsLon=nmeaCoord(f[4],f[5]);gpsFix=true;gpsEigenMs=millis();posVanTel=false;gpsLastFixMs=millis();} else if(q==0) gpsFix=false;
   }
 }
 float cameraDistanceM(float a1,float o1,float a2,float o2) {
@@ -1084,7 +1084,7 @@ static WerkerCfg wCfg = {"", "", "", ""}, wNieuw = {"", "", "", ""}; static vola
 static char grpTekst[40] = ""; static volatile uint32_t grpTot = 0;
 static volatile int setLicht = -1, setVol = -1; static volatile float animFactor = 1.0f; static char outfitK[16] = ""; static volatile uint32_t outfitT = 0;
 static char wifiNaam[33] = "", wifiPass[65] = "", wifiNaamNieuw[33] = "", wifiPassNieuw[65] = ""; static volatile bool wifiNieuw = false, wifiHerstart = false;
-struct PhoneData { int v, lim, camD, camLim, fileD, fileMin; bool werk; int mood; char txt[64]; uint32_t ms; char nav; int navD; char msi[6]; char eta[6]; char buur[24]; bool beker; };
+struct PhoneData { int v, lim, camD, camLim, fileD, fileMin; bool werk; int mood; char txt[64]; uint32_t ms; char nav; int navD; char msi[6]; char eta[6]; char buur[24]; bool beker; float lat, lon, hd; bool pos; };
 static PhoneData phone = {0, 0, -1, 0, -1, 0, false, -1, "", 0, 0, 0, ""};
 static BLECharacteristic *bleTx = nullptr;
 static volatile bool bleConnected = false;
@@ -1118,8 +1118,8 @@ static void parsePhone(char *line) {
     return;
   }
   if (!strncmp(line, "WIFI:", 5)) { char *tab = strchr(line + 5, '\t'); if (tab) { *tab = 0; strncpy(wifiNaamNieuw, line + 5, 32); wifiNaamNieuw[32] = 0; strncpy(wifiPassNieuw, tab + 1, 64); wifiPassNieuw[64] = 0; wifiNieuw = true; } return; }
-  char *f[16] = {0}; int n = 0; f[n++] = line;
-  for (char *q = line; *q && n < 16; ++q) if (*q == '|') { *q = 0; f[n++] = q + 1; }
+  char *f[18] = {0}; int n = 0; f[n++] = line;
+  for (char *q = line; *q && n < 18; ++q) if (*q == '|') { *q = 0; f[n++] = q + 1; }
   if (n < 9 || strcmp(f[0], "B1") != 0) return;
   PhoneData d = phone;
   d.v = atoi(f[1]); d.lim = atoi(f[2]); d.camD = atoi(f[3]); d.camLim = atoi(f[4]);
@@ -1134,6 +1134,9 @@ static void parsePhone(char *line) {
     if (tl) *tl = '~'; buurNieuw = true; }
   strncpy(d.buur, n > 13 ? f[13] : "", sizeof(d.buur) - 1); d.buur[sizeof(d.buur) - 1] = 0;
   d.beker = n > 14 && f[14][0] == '1';
+  d.pos = false;   // v44: plek van de telefoon (lat~lon~koers)
+  if (n > 15 && f[15][0]) { char *a = f[15], *b = strchr(a, '~'); if (b) { *b = 0; char *c = strchr(b + 1, '~'); if (c) *c = 0;
+      d.lat = atof(a); d.lon = atof(b + 1); d.hd = (c && c[1]) ? atof(c + 1) : -1; d.pos = d.lat > 30 && d.lat < 72 && d.lon > -25 && d.lon < 45; } }
   d.ms = millis(); phone = d;
 }
 class BuddySrvCb : public BLEServerCallbacks {
@@ -1252,7 +1255,7 @@ static void drawInfo() {
   frame->setTextColor(EYE); frame->setTextSize(2);
   char r[48]; int y = 46;
   snprintf(r, sizeof r, "Buddy v%d %s", FW_VERSIE, netStatus); infoRegel(y, r); y += 16;
-  snprintf(r, sizeof r, "GPS %s %d sat", gpsFix ? "FIX" : (gpsDataOk ? "zoekt" : "geen data"), (int)gpsSatellites); infoRegel(y, r); y += 16;
+  snprintf(r, sizeof r, "GPS %s %d sat", posVanTel ? "via tel" : (gpsFix ? "FIX" : (gpsDataOk ? "zoekt" : "geen data")), (int)gpsSatellites); infoRegel(y, r); y += 16;
   snprintf(r, sizeof r, "Tel %s code %06lu", bleConnected ? (phoneFresh() ? "OK" : "stil") : "niet", (unsigned long)koppelPin); infoRegel(y, r); y += 16;
   snprintf(r, sizeof r, "Volume %d%% Licht %d%%", buddyVolume, helderheid * 100 / 255); infoRegel(y, r); y += 16;
   snprintf(r, sizeof r, "Vriend %d  Trucjes %d/8", (int)vriend, trucjesOpen()); infoRegel(y, r); y += 16;
@@ -2050,6 +2053,11 @@ static void persStap(float dt) {
   }
   if (!gegroet && nu > groetVanaf && gagAct < 0 && !menuOpen && !venster && (klokOk() || nu > groetVanaf + 12000)) doeGroet();
   if (statVraag && !logBezig) { statVraag = false; stuurStat(); }
+  // v44: zoekt de eigen GPS nog? Dan de plek van de telefoon gebruiken (bordjes, flitsers, files, klok blijven werken)
+  { static uint32_t telPosMs = 0;
+    if (phone.pos && phone.ms != telPosMs && millis() - gpsEigenMs > 4000 && millis() - phone.ms < 2500) { telPosMs = phone.ms;
+      gpsLat = phone.lat; gpsLon = phone.lon; gpsSpeedKmh = (float)phone.v; if (phone.hd >= 0) gpsKoers = phone.hd;
+      gpsLastFixMs = millis(); gpsFix = true; posVanTel = true; gpsNewFix = true; } }
   if (zoekNu) { zoekNu = false; zoekTot = nu + 6000; laatsteActie = nu; slaapt = false; }
   { static uint32_t zb = 0; if ((int32_t)(zoekTot - nu) > 0 && nu - zb > 700) { zb = nu; playMoodSound(ALERT); } }
   // samen rijden: vriendschap groeit, laatste-ritmoment bijhouden
@@ -2621,7 +2629,7 @@ void loop(){
      logStatusMs = millis(); int hh = -1, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
      bool ok; float v = spdNow(&ok);
      logRegel("status | klok %02d:%02d | gps %s sat=%d zicht=%d nmea=%lu/%lu | %.0f km/u | tel %s | heap %u | licht %d | fps %.0f teken %.1fms stuur %.1fms%s",
-       hh, mm, fixNu ? "FIX" : "zoekt", (int)gpsSatellites, (int)gpsInZicht, (unsigned long)nmeaOk, (unsigned long)nmeaBad, v,
+       hh, mm, fixNu ? (posVanTel ? "TEL" : "FIX") : "zoekt", (int)gpsSatellites, (int)gpsInZicht, (unsigned long)nmeaOk, (unsigned long)nmeaBad, v,
        bleConnected ? (phoneFresh() ? "data" : "stil") : "nee", (unsigned)ESP.getFreeHeap(), (int)huidigLicht, laatsteFps, laatsteDrawMs, laatsteFlushMs, slaapt ? " | SLAAPT" : "");
    }
    if (Serial.available()) {

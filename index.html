@@ -2546,7 +2546,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       S.lastExc = S.lastStart = S.lastCorner = T; S.turn = 0; S.turnS = 0; prevHdgT = null; lastHdg = null; V.pakT = T; V.okNa = T + 3; gokV = null; hiLast = 0;
       lg('terug na ' + Math.round(T - S.liveT) + ' s zonder GPS');
     }
-    lastPos = { t: pos.timestamp, lat: c.latitude, lon: c.longitude };
+    lastPos = { t: pos.timestamp, lat: c.latitude, lon: c.longitude, hd: (c.heading != null && !isNaN(c.heading)) ? c.heading : null, acc: c.accuracy };
     S.liveT = T; S.gpsWeg = false;
     clearGpsHelp();
     if (v !== null && c.accuracy < 60) S.liveSpeed = v < 2 ? 0 : v;
@@ -4407,7 +4407,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v86';
+  var VERSION = 'v87';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6565,6 +6565,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       } catch (e) { return ''; }
     }
     /* v81: thuis-tijd, collega in de buurt en wisselbeker ook naar het schermpje */
+    /* v86: plek van de telefoon mee, zodat het schermpje ook weet waar we zijn als zijn eigen GPS nog zoekt */
+    function posCode() { try { if (!S.live || !lastPos || Date.now() - lastPos.t > 5000 || (lastPos.acc && lastPos.acc > 60)) return ''; return lastPos.lat.toFixed(5) + '~' + lastPos.lon.toFixed(5) + '~' + (lastPos.hd == null ? '' : Math.round(lastPos.hd)); } catch (e) { return ''; } }
     function etaCode() { var e = window.__thuisEta; return e && Date.now() - e.t < 90 * 60e3 ? e.tijd : ''; }
     function buurCode() { var b = window.__buur; return b && Date.now() - b.t < 60e3 ? String(b.n || 'Collega').replace(/[|~\n]/g, ' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').slice(0, 14) + '~' + (b.d || 0) : ''; }
     function msiCode() { var g = S.gag; if (!g || g.k !== 'matrix') return ''; return g.mt === 'x' ? 'x' : String(g.mv || ''); }
@@ -6573,7 +6575,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var c = S.cam || null, f = S.fileVoor && T - S.fileVoor.t < 4 ? S.fileVoor : null, w = S.werkVoor && T - S.werkVoor.t < 4;
       var txt = (($('thought') && $('thought').textContent) || '').replace(/[|\n\r]/g, ' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').trim().slice(0, 60);
       var msg = ['B1', Math.round(S.speed || 0), S.roadLim == null ? 0 : S.roadLim, c && c.dist != null ? Math.round(c.dist) : -1, c && c.limit ? c.limit : 0,
-        f ? Math.round(f.d) : -1, f && f.dl ? Math.round(f.dl / 60) : 0, w ? 1 : 0, curKey || 'neutral', txt, navCode(), msiCode(), etaCode(), buurCode(), window.__ikBeker ? 1 : 0].join('|') + '\n';
+        f ? Math.round(f.d) : -1, f && f.dl ? Math.round(f.dl / 60) : 0, w ? 1 : 0, curKey || 'neutral', txt, navCode(), msiCode(), etaCode(), buurCode(), window.__ikBeker ? 1 : 0, posCode()].join('|') + '\n';
       var data = new TextEncoder().encode(msg), stukken = [];
       for (var i = 0; i < data.length; i += 20) stukken.push(data.slice(i, i + 20));   /* kleine stukjes: werkt ook zonder grote MTU */
       bezig = true;
