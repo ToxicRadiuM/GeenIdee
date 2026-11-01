@@ -1451,7 +1451,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       } else lg('0-100 niet voor het leaderboard: hier geldt zeker ' + S.roadLim);
     }
     S.flagUntil = T + 9; S.starUntil = T + 7; S.flagMsg = fmt1(tt) + ' s'; S.flagRec = rec;
-    if ((rec || tt < 6.5) && Date.now() - (mem.ruimteT || 0) > 10 * 60e3) { S.ruimteNa = T + 9.3; mem.ruimteT = Date.now(); }   /* v96: daarna de ruimte in */
+    if (!(S.meterT && T - S.meterT < 30)) { var nk = sprintBeurt(); if (nk === 'retroMeter') { sprintVolgende(); nk = sprintBeurt(); } S.ruimteNa = T + 9.3; S.naGag = nk; sprintVolgende(); }   /* v97: elke sprint een andere animatie (was de meter er net al, dan niet nog een) */
     setEv('excited', 9, m, true); S.evLock = T + 9; S.lastExc = T; S.love = Math.min(100, S.love + 10);
     save(); beep('race');
   }
@@ -2093,12 +2093,12 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (T - retroT >= .5) { retroT = T; retroH.shift(); retroH.push(S.speed || 0); }
     var v = S.speed || 0;
     if (v > 8 && retroH[3] - retroH[0] >= 12 && !(S.flagUntil > T) && !(S.gag && S.gag.k === 'ruimte') && !S.ruimteNa) {
-      if (!S.gag || S.gag.k !== 'retroMeter') { if (S.gag) endGag(true); startGag('retroMeter'); lg('retro meter: optrekken ' + Math.round(retroH[0]) + ' -> ' + Math.round(retroH[3])); }
+      if (!S.gag || S.gag.k !== 'retroMeter') { if (sprintBeurt() !== 'retroMeter') return; if (S.gag) endGag(true); startGag('retroMeter'); S.meterT = T; sprintVolgende(); lg('retro meter: optrekken ' + Math.round(retroH[0]) + ' -> ' + Math.round(retroH[3])); }
       else S.gag.end = Math.max(S.gag.end, T + 2.5);
     }
   }
   function render(dt) {
-    if (S.ruimteNa && T > S.ruimteNa && !(S.flagUntil > T)) { S.ruimteNa = 0; if (S.gag) endGag(true); startGag('ruimte'); lg('ruimte-gag na een flinke sprint'); }
+    if (S.ruimteNa && T > S.ruimteNa && !(S.flagUntil > T)) { var ng = S.naGag || 'ruimte'; S.ruimteNa = 0; S.naGag = null; if (S.gag) endGag(true); startGag(ng); lg('sprint-animatie: ' + ng); }
     try { retroCheck(); } catch (e) {}
     if (ctx.reset) ctx.reset(); else { ctx.globalAlpha = 1; }
     var tg = P[curKey], k = 1 - Math.exp(-dt * 11);
@@ -4478,7 +4478,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v96';
+  var VERSION = 'v97';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8330,10 +8330,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       ctx.fillStyle = SCREEN; ctx.fillRect(-1, -6, 2, 16); ctx.restore();
     } };
   /* v96: keihard optrekken = Buddy schiet de ruimte in (eigen deuntje) */
-  function ruimteDeuntje() {
-    if (!sound || !ac) return; audioGebruik(ac);
+  function synthMaak() {   /* v97: klein synthesizertje voor de sprint-deuntjes */
+    if (!sound || !ac) return null; audioGebruik(ac);
     var t0 = ac.currentTime + .05, mg = ac.createGain(); mg.gain.value = .9; mg.connect(ac.destination);
-    var noot = function (f, s, d, type, vol, f2) { var o = ac.createOscillator(), g = ac.createGain(); o.type = type || 'sawtooth'; o.frequency.setValueAtTime(f, t0 + s); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + s + d); g.gain.setValueAtTime(.0001, t0 + s); g.gain.exponentialRampToValueAtTime(vol || .045, t0 + s + .02); g.gain.exponentialRampToValueAtTime(.0001, t0 + s + d); o.connect(g); g.connect(mg); o.start(t0 + s); o.stop(t0 + s + d + .02); };
+    return function (f, s, d, type, vol, f2) { var o = ac.createOscillator(), g = ac.createGain(); o.type = type || 'sawtooth'; o.frequency.setValueAtTime(f, t0 + s); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + s + d); g.gain.setValueAtTime(.0001, t0 + s); g.gain.exponentialRampToValueAtTime(vol || .045, t0 + s + .02); g.gain.exponentialRampToValueAtTime(.0001, t0 + s + d); o.connect(g); g.connect(mg); o.start(t0 + s); o.stop(t0 + s + d + .02); };
+  }
+  function ruimteDeuntje() {
+    var noot = synthMaak(); if (!noot) return;
     noot(80, 0, 1.3, 'sawtooth', .06, 1400);   /* lancering: woesj omhoog */
     var AK = [[293.7, 370, 440], [329.6, 415.3, 493.9], [370, 466.2, 554.4], [440, 554.4, 659.3]], s = 1.3;   /* eigen deuntje: stijgende akkoorden */
     AK.forEach(function (a, i) { for (var r = 0; r < 4; r++) { var f = a[r % 3] * (r === 3 ? 2 : 1); noot(f, s + i * 1.2 + r * .15, .5, 'square', .03); } noot(a[0] / 2, s + i * 1.2, 1.1, 'triangle', .07); });
@@ -8379,6 +8382,72 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     ctx.beginPath(); ctx.arc(0, 12, 6, 0, Math.PI); ctx.fill();
     ctx.restore();
   }
+  /* v97: meer sprint-animaties; ze wisselen elkaar af */
+  GAGS.turbo = { name: 'Turbo!', dur: 7, noFace: true, mood: 'excited', msg: 'TURBO!',
+    upd: function (g, tt) {
+      if (!g.sp) { g.sp = 1; g.rook = []; var n = synthMaak(); if (n) { n(110, 0, 1.6, 'sawtooth', .07, 900); n(900, 1.6, .5, 'square', .03, 300); [523, 659, 784, 1047].forEach(function (f, i) { n(f, 2.3 + i * .12, .3, 'square', .035); }); n(1047, 2.8, .9, 'triangle', .05); } }
+      g.msg = tt < 2.2 ? 'TURBO!' : tt < 4.5 ? 'Bandjes roken!' : tt < 6 ? (S.flagMsg ? '0-100 in ' + S.flagMsg + '!' : 'Wat een knal!') : 'Pfoe...';
+    },
+    draw: function (g, tt) {
+      var a = tt > 6.3 ? Math.max(0, (7 - tt) / .7) : 1, i; ctx.save(); ctx.globalAlpha = a;
+      ctx.fillStyle = '#20242c'; ctx.fillRect(0, 140, 240, 100); ctx.strokeStyle = '#ffd60a'; ctx.lineWidth = 3; ctx.setLineDash([16, 14]); ctx.lineDashOffset = -tt * 500; ctx.beginPath(); ctx.moveTo(0, 196); ctx.lineTo(240, 196); ctx.stroke(); ctx.setLineDash([]);
+      var x = tt < 1.4 ? -60 + tt * 130 : tt < 4.6 ? 122 + Math.sin(tt * 40) * 2 : 122 + (tt - 4.6) * 260, y = 150;
+      if (tt > 1 && tt < 5.2 && Math.random() < .9) g.rook.push({ x: x - 34, y: y + 22, r: 6, l: 0, vx: -60 - Math.random() * 60, vy: -10 - Math.random() * 20 });
+      g.rook = g.rook.filter(function (r) { r.l += 1 / 60; r.x += r.vx / 60; r.y += r.vy / 60; r.r += .3; return r.l < 1.2; }); if (g.rook.length > 40) g.rook = g.rook.slice(-40);
+      g.rook.forEach(function (r) { ctx.fillStyle = 'rgba(200,200,210,' + (.28 * (1 - r.l / 1.2)) + ')'; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, TAU); ctx.fill(); });
+      ctx.save(); ctx.translate(x, y); ctx.rotate(tt < 4.6 && tt > 1.4 ? -.05 : 0);
+      ctx.fillStyle = '#ff453a'; rr(-40, -6, 80, 26, 10); ctx.fill(); ctx.fillStyle = SCREEN; ctx.strokeStyle = EYE; ctx.lineWidth = 2.5; rr(-22, -28, 44, 26, 10); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = EYE; ctx.beginPath(); ctx.ellipse(-8, -16, 4, 6, 0, 0, TAU); ctx.ellipse(8, -16, 4, 6, 0, 0, TAU); ctx.fill();
+      for (i = -1; i <= 1; i += 2) { ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(i * 24, 22, 10, 0, TAU); ctx.fill(); ctx.strokeStyle = '#888'; ctx.lineWidth = 2; ctx.beginPath(); var wa = tt * 40; ctx.moveTo(i * 24, 22); ctx.lineTo(i * 24 + Math.cos(wa) * 8, 22 + Math.sin(wa) * 8); ctx.stroke(); }
+      if (tt > 1.3) { var fl = 18 + Math.random() * 20; ctx.fillStyle = '#ff9f0a'; ctx.beginPath(); ctx.moveTo(-40, 4); ctx.lineTo(-40 - fl, 10); ctx.lineTo(-40, 16); ctx.fill(); ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.moveTo(-40, 7); ctx.lineTo(-40 - fl * .6, 10); ctx.lineTo(-40, 13); ctx.fill(); }
+      ctx.restore();
+      if (tt > 1.4 && tt < 4.8) { ctx.fillStyle = '#ffd60a'; ctx.textAlign = 'center'; ctx.font = '800 30px "Chakra Petch", sans-serif'; ctx.save(); ctx.translate(120, 70); ctx.rotate(-.12); var sc = 1 + Math.sin(tt * 10) * .06; ctx.scale(sc, sc); ctx.fillText('TURBO!', 0, 0); ctx.restore(); }
+      ctx.restore();
+    } };
+  GAGS.podium = { name: 'Op het podium', dur: 7.5, noFace: true, mood: 'love', msg: 'Kampioen!',
+    upd: function (g, tt) {
+      if (!g.sp) { g.sp = 1; g.cf = []; var n = synthMaak(); if (n) { [[392, 0], [523, .18], [659, .36], [784, .54], [659, .9], [784, 1.08]].forEach(function (x) { n(x[0], x[1], .3, 'square', .04); }); n(1047, 1.3, 1.4, 'triangle', .06); n(523, 1.3, 1.4, 'triangle', .05); n(2400, 2.4, .25, 'sine', .04, 600); } }
+      if (tt > 2.4 && tt < 6) for (var i = 0; i < 3; i++) g.cf.push({ x: 120 + (Math.random() - .5) * 200, y: -10, vy: 40 + Math.random() * 60, vx: (Math.random() - .5) * 30, kl: ['#ff453a', '#ffd60a', '#30d158', '#0a84ff', '#bf5af2'][Math.floor(Math.random() * 5)], r: Math.random() * TAU });
+      g.cf = g.cf.filter(function (c) { c.y += c.vy / 60; c.x += c.vx / 60; c.r += .2; return c.y < 250; });
+      g.msg = tt < 2.4 ? 'En de winnaar is…' : tt < 5 ? 'IK! ' + (S.flagMsg || '') : 'Dank u, dank u.';
+    },
+    draw: function (g, tt) {
+      var a = tt > 6.8 ? Math.max(0, (7.5 - tt) / .7) : 1; ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      var sp = Math.min(1, tt / .8);
+      ctx.fillStyle = 'rgba(255,214,10,' + (.12 * sp) + ')'; ctx.beginPath(); ctx.moveTo(120, 0); ctx.lineTo(60, 200); ctx.lineTo(180, 200); ctx.fill();
+      [[50, 168, 40, '2', '#c0c0c0'], [120, 150, 58, '1', '#ffd60a'], [190, 176, 32, '3', '#cd7f32']].forEach(function (p) { ctx.fillStyle = '#2c2f38'; ctx.fillRect(p[0] - 32, p[1], 64, 240 - p[1]); ctx.fillStyle = p[4]; ctx.font = '800 22px "Chakra Petch", sans-serif'; ctx.fillText(p[3], p[0], p[1] + 22); });
+      var by = 150 - 30 - Math.max(0, Math.sin(Math.min(tt, 2.4) * 4)) * 6 * (tt < 2.4 ? 1 : 0) - (tt > 2.4 && tt < 5 ? Math.abs(Math.sin(tt * 6)) * 6 : 0);
+      ctx.save(); ctx.translate(120, by); ctx.fillStyle = SCREEN; ctx.strokeStyle = EYE; ctx.lineWidth = 3; rr(-26, -24, 52, 46, 14); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = EYE; if (tt > 2.4) { ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(-10, -4, 6, Math.PI, 0); ctx.arc(10, -4, 6, Math.PI, 0); ctx.stroke(); } else { ctx.beginPath(); ctx.ellipse(-10, -4, 5, 8, 0, 0, TAU); ctx.ellipse(10, -4, 5, 8, 0, 0, TAU); ctx.fill(); }
+      ctx.beginPath(); ctx.arc(0, 8, 7, 0, Math.PI); ctx.fill();
+      if (tt > 2.4) { ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.moveTo(-20, -24); ctx.lineTo(-14, -40); ctx.lineTo(-6, -30); ctx.lineTo(0, -44); ctx.lineTo(6, -30); ctx.lineTo(14, -40); ctx.lineTo(20, -24); ctx.fill(); }
+      ctx.restore();
+      g.cf.forEach(function (c) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.r); ctx.fillStyle = c.kl; ctx.fillRect(-3, -1.5, 6, 3); ctx.restore(); });
+      if (tt > 2.4 && S.flagMsg) { ctx.fillStyle = '#fff'; ctx.font = '700 16px "Chakra Petch", sans-serif'; ctx.fillText('0→100  ' + S.flagMsg, 120, 40); }
+      ctx.restore();
+    } };
+  GAGS.tijdreis = { name: 'Tijdreis', dur: 8, noFace: true, mood: 'excited', msg: 'Zo hard dat de tijd verbuigt…',
+    upd: function (g, tt) {
+      if (!g.sp) { g.sp = 1; g.j0 = new Date().getFullYear(); var n = synthMaak(); if (n) { n(200, 0, 3, 'sine', .06, 1600); n(300, .3, 2.7, 'triangle', .04, 2400); n(1600, 3.2, 1.6, 'sine', .05, 120); [880, 1109, 1319].forEach(function (f, i) { n(f, 5 + i * .15, .6, 'triangle', .045); }); } }
+      g.msg = tt < 3.2 ? 'Zo hard dat de tijd verbuigt…' : tt < 5 ? 'Waar… wanneer ben ik?' : 'Ah, gewoon weer vandaag.';
+    },
+    draw: function (g, tt) {
+      var a = tt > 7.3 ? Math.max(0, (8 - tt) / .7) : 1, i; ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#05030c'; ctx.fillRect(0, 0, 240, 240);
+      var kr = tt < 3.2 ? tt / 3.2 : tt < 5 ? 1 : Math.max(0, 1 - (tt - 5) / 2);
+      for (i = 0; i < 12; i++) { var r = ((i * 14 + tt * 90 * (.3 + kr)) % 168), h0 = (i * 30 + tt * 120) % 360; ctx.strokeStyle = 'hsla(' + h0 + ',90%,60%,' + (r / 168) * kr + ')'; ctx.lineWidth = 2 + r / 30; ctx.beginPath(); ctx.ellipse(120, 120, r, r * .8, tt * kr, 0, TAU); ctx.stroke(); }
+      var jaar = tt < 3.2 ? g.j0 + Math.floor(Math.pow(tt / 3.2, 3) * 1000) : tt < 5 ? g.j0 + 1000 - Math.floor((tt - 3.2) / 1.8 * 1000) : g.j0;
+      ctx.fillStyle = '#fff'; ctx.font = '800 34px "Chakra Petch", sans-serif'; ctx.fillText(String(jaar), 120, 58 + Math.sin(tt * 30) * kr * 2);
+      ctx.save(); ctx.translate(120 + Math.sin(tt * 47) * 3 * kr, 140); ctx.rotate(Math.sin(tt * 3) * .3 * kr); ctx.fillStyle = SCREEN; ctx.strokeStyle = EYE; ctx.lineWidth = 3; rr(-26, -22, 52, 44, 14); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = EYE; if (kr > .5) { ctx.lineWidth = 2.5; for (var e = -1; e <= 1; e += 2) { ctx.beginPath(); for (var s2 = 0; s2 < 14; s2++) { var an = s2 * .55 + tt * 6, rr3 = s2 * .45; ctx.lineTo(e * 10 + Math.cos(an) * rr3, -3 + Math.sin(an) * rr3); } ctx.stroke(); } }
+      else { ctx.beginPath(); ctx.ellipse(-10, -3, 5, 7, 0, 0, TAU); ctx.ellipse(10, -3, 5, 7, 0, 0, TAU); ctx.fill(); }
+      ctx.beginPath(); ctx.ellipse(0, 10, 5, 4, 0, 0, TAU); ctx.fill(); ctx.restore();
+      ctx.restore();
+    } };
+  /* v97: welke sprint-animatie is aan de beurt? Elke sprint de volgende uit het rijtje */
+  var SPRINTRIJ = ['retroMeter', 'ruimte', 'turbo', 'podium', 'tijdreis'];
+  function sprintBeurt() { return SPRINTRIJ[((mem.sprintI || 0) % SPRINTRIJ.length + SPRINTRIJ.length) % SPRINTRIJ.length]; }
+  function sprintVolgende() { mem.sprintI = (mem.sprintI || 0) + 1; save(); }
   GAGS.rainbow = { name: 'Regenboog', dur: 5.6, idle: 1, mood: 'happy', msg: 'Kijk, een regenboog!',
     upd: function (g, tt) { dir(0, -.7); if (tt > 4) g.msg = 'Zo mooi.'; },
     draw: function (g, tt) {
