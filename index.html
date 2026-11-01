@@ -6426,7 +6426,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         var ch = character(), kc = /Waaghals/.test(ch.label) ? 'W' : /Rustige/.test(ch.label) ? 'R' : /kennismaken/.test(ch.label) ? 'K' : 'E';
         var lvm = (($('lvStat') && $('lvStat').textContent) || '').match(/Level (\d+)/), lv = lvm ? +lvm[1] : 1;
         var lr = (typeof ritten !== 'undefined' && ritten.length) ? ritten[ritten.length - 1] : null;
-        klein('PERS:' + [nm, kc, Math.round(S.love || 0), lv, Math.round(mem.km || 0), lr ? lr.stijl : -1, Math.round(mem.styleAvg || 0)].join('\t'));
+        klein('PERS:' + [nm, kc, Math.round(S.love || 0), lv, Math.round(mem.km || 0), lr ? lr.stijl : -1, Math.round(mem.styleAvg || 0), Math.floor(Date.now() / 1000)].join('\t'));   /* v83: + de tijd, dan kent het schermpje de klok ook zonder GPS of wifi */
       } catch (e) {}
     }
     window.__persStuur = persStuur;
