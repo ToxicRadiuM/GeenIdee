@@ -27,7 +27,9 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 46;
+static const int FW_VERSIE = 47;
+static bool robotModus = false;
+static bool klokOk(); static void lokaleTijd(int &hh, int &mm);   // v47: stilstaan = gewoon een mini-robotje (geen snelheid/bord), rijden = alles terug
 // v46: echte geluidjes, weer in beeld, vliegen vangen
 enum { GL_HOI, GL_GIECHEL, GL_VROEM, GL_DINGDONG, GL_PLING, GL_OEPS, GL_SLAAP, GL_TADA };
 void playGeluid(int g);
@@ -1437,6 +1439,10 @@ static float spdNow(bool *ok = nullptr) {
 static bool tripActief = false;
 static void startGag(int k) {
   if (k == 1) { vliegGevangen = false; }
+  if (robotModus && k >= 0 && GAGS[k].flags) {   // v47: als robotje bij elk trucje een geluidje (niet 's nachts)
+    int hh = 12, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
+    if (hh >= 7 && hh < 22) { int m = GAGS[k].mood; playGeluid(m == EXCITED ? GL_TADA : m == LOVE ? GL_GIECHEL : (m == HAPPY || m == CONTENT) ? GL_HOI : (m == SLEEPY || m == YAWN || m == BORED) ? GL_SLAAP : (m == ALERT || m == WORRIED || m == STARTLED) ? GL_OEPS : GL_PLING); }
+  }
   gagAct = k; gagT0 = t; gagMood = GAGS[k].mood; gagMsg = GAGS[k].msg; g_b = false; g_nn = 0; g_r = 0;
 }
 static void gagStep(float dt) {
@@ -1469,7 +1475,7 @@ static void gagStep(float dt) {
     if (kerst && random(4) == 0) k = 37;
     if (nieuwjaar && random(3) == 0) k = 40;
     startGag(k);
-    nextGagT = t + GAGS[k].dur + (stil ? frand(8, 16) : frand(15, 30)) * animFactor * karFactor;
+    nextGagT = t + GAGS[k].dur + (robotModus ? frand(3, 8) : (stil ? frand(8, 16) : frand(15, 30))) * animFactor * karFactor;   // v47: als robotje veel vaker iets
     return;
   }
   float tt = t - gagT0; const GagDef &d = GAGS[gagAct];
@@ -2181,23 +2187,23 @@ void drawFace(){
    char ct[28]; snprintf(ct, sizeof ct, "CODE %06lu", (unsigned long)koppelPin);
    boxAdd(40, 26, 200, 50); roundRect(44, 28, 152, 20, 10, 0x0451);
    frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - strlen(ct) * 6, Y(32)); frame->print(ct);
- } else if (tel && phone.msi[0]) {   // v29: matrixbord boven de weg
+ } else if (!robotModus && tel && phone.msi[0]) {   // v29: matrixbord boven de weg
    boxAdd(70, 18, 170, 76); roundRect(72, 20, 96, 54, 7, 0x0841); frame->drawRoundRect(X(72), Y(20), S(96), S(54), S(7), EYE);
    bool kn = (millis() / 250) % 2; circle(80, 27, 3, kn ? 0xFD80 : 0x4200); circle(160, 27, 3, kn ? 0xFD80 : 0x4200); circle(80, 67, 3, kn ? 0x4200 : 0xFD80); circle(160, 67, 3, kn ? 0x4200 : 0xFD80);
    if (phone.msi[0] == 'x') { dikLijn(104, 32, 136, 62, 6, 0xF800); dikLijn(136, 32, 104, 62, 6, 0xF800); }
    else { circle(120, 47, 19, 0xF800); circle(120, 47, 15, 0xFFFF); segTekst(phone.msi, 120, 47, strlen(phone.msi) >= 3 ? 10.f : 13.f, 0x0000); }
- } else if (camM >= 0 && camM < 1000) {
+ } else if (!robotModus && camM >= 0 && camM < 1000) {
    char ct[24]; snprintf(ct, sizeof ct, "FLITSER %dm", (camM / 10) * 10);
    boxAdd(40, 26, 200, 50); roundRect(44, 28, 152, 20, 10, 0x8000);
    frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - strlen(ct) * 6, Y(32)); frame->print(ct);
- } else if ((tel && phone.fileD >= 0) || (!tel && lokFileD >= 0)) {
+ } else if (!robotModus && ((tel && phone.fileD >= 0) || (!tel && lokFileD >= 0))) {
    int fD = tel ? phone.fileD : lokFileD, fM = tel ? phone.fileMin : lokFileMin;
    char ft[32]; if (fD < 950) snprintf(ft, sizeof ft, "FILE %dm", (fD / 50) * 50); else snprintf(ft, sizeof ft, "FILE %d,%dkm", fD / 1000, (fD % 1000) / 100);
    if (fM > 0) { size_t l = strlen(ft); snprintf(ft + l, sizeof ft - l, " +%dm", fM); }
    boxAdd(50, 26, 190, 50); roundRect(52, 28, 136, 20, 10, 0x3082);
    bool aan = (millis() / 400) % 2; circle(64, 38, 3, aan ? 0xF8A6 : 0x7800); circle(73, 38, 3, aan ? 0x7800 : 0xF8A6);
    frame->setTextColor(0xFEDB); frame->setTextSize(2); frame->setCursor(X(82), Y(31)); frame->print(ft);
- } else if (tel && phone.nav) {   // v29: navigatiepijl met afstand
+ } else if (!robotModus && tel && phone.nav) {   // v29: navigatiepijl met afstand
    float cx = 120, cy = 34; uint16_t c = EYE;
    boxAdd(70, 14, 170, 72);
    if (phone.nav == 'A') { line(cx - 2, cy - 14, cx - 2, cy + 14, c, 3); triF(cx, cy - 14, cx + 16, cy - 8, cx, cy - 2, 0xF800); }
@@ -2210,7 +2216,7 @@ void drawFace(){
    }
    char nd[16]; if (phone.navD >= 950) snprintf(nd, sizeof nd, "%d,%d km", phone.navD / 1000, (phone.navD % 1000) / 100); else snprintf(nd, sizeof nd, "%d m", (phone.navD / 10) * 10);
    frame->setTextColor(EYE); frame->setTextSize(2); frame->setCursor(X(120) - strlen(nd) * 6, Y(56)); frame->print(nd);
- } else if (wxGlad() || (wxVers() && wxRegenOver >= 0 && wxRegenOver <= 15 && spdNow() > 20)) {   // v29: gladheid of regen
+ } else if (!robotModus && (wxGlad() || (wxVers() && wxRegenOver >= 0 && wxRegenOver <= 15 && spdNow() > 20))) {   // v29: gladheid of regen
    char ct[28]; bool gl = wxGlad(); if (gl) snprintf(ct, sizeof ct, "GLAD? %d GRADEN", (int)lroundf(wxTemp)); else if (wxRegenOver == 0) snprintf(ct, sizeof ct, "HET REGENT"); else snprintf(ct, sizeof ct, "REGEN OVER %d MIN", wxRegenOver);
    boxAdd(24, 26, 216, 50); roundRect(28, 28, 184, 20, 10, gl ? 0xC300 : 0x0318);
    frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - strlen(ct) * 6, Y(32)); frame->print(ct);
@@ -2225,6 +2231,7 @@ void drawFace(){
    char tx[27]; strncpy(tx, phone.txt, 26); tx[26] = 0; int tw = strlen(tx) * 12;
    boxAdd(20, 30, 220, 46); frame->setTextColor(0xBDF7); frame->setTextSize(2); frame->setCursor(X(120) - tw / 2, Y(34)); frame->print(tx);
  }
+ if (robotModus) return;   // v47: robotmodus: geen bord, snelheid of GPS-regel
  if ((tel && phone.werk) || (!tel && lokWerk)) {   // werk-driehoekje boven het snelheidsbord
    boxAdd(64, 156, 90, 178);
    frame->fillTriangle(X(77), Y(157), X(89), Y(177), X(65), Y(177), 0xD8A6);
@@ -2715,6 +2722,13 @@ void loop(){
  float dt=lastRenderUs ? fminf(0.10f,(uint32_t)(nowUs-lastRenderUs)/1000000.0f) : 1.0f/30.0f;
  lastRenderUs=nowUs; t+=dt;
  { static uint32_t volT = 0; if (millis() - volT > 8000) { volT = millis(); drawnBox[0] = drawnBox[1] = prevBox = {0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1}; } }  // v28: af en toe alles wissen en opnieuw versturen
+ { // v47: robotmodus: 20 s stilstaan (en geen trajectcontrole/update) -> mini-robotje; zodra je rijdt is alles terug
+   static uint32_t stilSinds = 0; float vr = spdNow(); uint32_t nu = millis();
+   if (vr < 1.5f) { if (!stilSinds) stilSinds = nu; } else stilSinds = 0;
+   bool r = stilSinds && nu - stilSinds > 20000 && !trajActief && otaPct < 0;
+   if (r != robotModus) { robotModus = r; drawnBox[0] = drawnBox[1] = prevBox = {0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1}; if (r && gagAct < 0 && nextGagT > t + 3) nextGagT = t + 2; }
+   if (robotModus && bleConnected) laatsteActie = nu;   // telefoon erbij (bv. op tafel): wakker blijven en spelen
+ }
  imuStep(dt); gagStep(dt); driveStep(dt); slaapStap(); persStap(dt);
  { // v39: te hard, collega in de buurt, wisselbeker
    static uint32_t hardSinds = 0, hardT = 0; uint32_t nu = millis();
