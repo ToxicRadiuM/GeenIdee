@@ -27,7 +27,11 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 45;
+static const int FW_VERSIE = 46;
+// v46: echte geluidjes, weer in beeld, vliegen vangen
+enum { GL_HOI, GL_GIECHEL, GL_VROEM, GL_DINGDONG, GL_PLING, GL_OEPS, GL_SLAAP, GL_TADA };
+void playGeluid(int g);
+static bool vliegGevangen = false; static uint16_t vliegTotaal = 0; static char vliegTxt[32] = "";
 static volatile bool persJarig = false;   // v45: vandaag jarig (van de app)
 // v42: persoonlijkheid
 static char persNaam[16] = "", persNaamNieuw[16] = ""; static volatile char persKar = 'E'; static volatile int persLv = 0, persStijl = -1; static volatile uint32_t persEpoch = 0; static volatile bool persNieuw = false;
@@ -1432,6 +1436,7 @@ static float spdNow(bool *ok = nullptr) {
 }
 static bool tripActief = false;
 static void startGag(int k) {
+  if (k == 1) { vliegGevangen = false; }
   gagAct = k; gagT0 = t; gagMood = GAGS[k].mood; gagMsg = GAGS[k].msg; g_b = false; g_nn = 0; g_r = 0;
 }
 static void gagStep(float dt) {
@@ -1472,7 +1477,7 @@ static void gagStep(float dt) {
   switch (gagAct) {
     case 0: gdir(0, tt < 3.6f ? -.7f : .2f); fdy = tt > 1.5f ? fabsf(sinf(tt * 6)) * 3 : 0; if (tt > 3.6f) { gagMsg = "Kom op, groen!"; gagMood = ANTICIPATE; } break;
     case 1: { float x = sinf(tt * 2.1f) * .9f + sinf(tt * 5) * .1f, y = cosf(tt * 1.6f) * .6f; g_fx = 120 + x * 75; g_fy = 88 + y * 40;
-      if (tt < 4.8f) gdir(x * .9f, y * .9f); else { gdir(0, .1f); gagMood = HAPPY; gagMsg = "Gevangen! ...oh, weg."; } } break;
+      if (tt < 4.8f) gdir(x * .9f, y * .9f); else { gdir(0, .1f); gagMood = HAPPY; gagMsg = vliegGevangen ? vliegTxt : "Hij ontsnapte! Tik hem de volgende keer!"; } } break;
     case 2: gdir(0, .3f); if (tt < 3.6f) g_r = 3 + tt / 3.6f * 27; else { g_r = 0; gagMood = HAPPY; gagMsg = "Plop!"; if (!g_b) { g_b = true; burstAt(120, 168, 12); } } break;
     case 3: { static const float dx[5] = {-1, 1, -.6f, .8f, 0}, dy[5] = {0, -.3f, .2f, -.2f, 0}; int i = (int)(tt / .85f) % 5; gdir(dx[i], dy[i]); if (tt > 4) gagMsg = "Alles veilig."; } break;
     case 4: { float a = tt * 6.5f; gdir(cosf(a) * .95f, sinf(a) * .85f); if (tt > 3.3f) { fxSpiral = true; gagMood = WORRIED; gagMsg = "Oei, duizelig..."; } } break;
@@ -1725,7 +1730,7 @@ static void slaapStap() {
     static uint32_t afscheidT = 0;   // v42: eerst even zwaaien
     if (!afscheidT) { afscheidT = nu; static char tt[44]; char nm[20]; naamDeel(nm, sizeof nm); int hh = -1, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
       const char *w = hh < 0 ? "Tot later%s!" : (hh >= 22 || hh < 5) ? "Slaap lekker%s!" : (hh < 10) ? "Fijne dag%s!" : (hh >= 17) ? "Fijne avond%s!" : "Tot straks%s!";
-      snprintf(tt, sizeof tt, w, nm); startGag(22); gagMsg = tt; }
+      snprintf(tt, sizeof tt, w, nm); startGag(22); gagMsg = tt; playGeluid((hh >= 22 || hh < 5) ? GL_SLAAP : GL_HOI); }
     else if (nu - afscheidT > 3200) { afscheidT = 0; diepSlapen("deur dicht en daarna stil"); }
   }
   if (geparkeerd && nu - laatsteActie > 10UL * 60000 && nu - laatsteBeweging > 60000 && !menuOpen && otaPct < 0) diepSlapen("10 minuten niets");
@@ -2038,7 +2043,7 @@ static void doeGroet() {
     else if (hh >= 0) snprintf(groetTxt, sizeof groetTxt, "Laat hoor%s. Rustig aan.", nm);
     else snprintf(groetTxt, sizeof groetTxt, "Hoi%s! Daar ben je!", nm);
   }
-  startGag(gag); gagMsg = groetTxt; if (gag != 44) playMoodSound(HAPPY);
+  startGag(gag); gagMsg = groetTxt; if (gag != 44) playGeluid(gag == 38 ? GL_TADA : GL_HOI); else playGeluid(GL_OEPS);
   logRegel("groet: %s (vriend %d)", groetTxt, vriend);
 }
 static void stuurStat() {
@@ -2075,7 +2080,7 @@ static void persStap(float dt) {
   // mijlpalen en nieuwe trucjes
   { static uint32_t mT = 0; if (nu - mT > 5000 && gagAct < 0 && !menuOpen && !venster) { mT = nu;
       static const int M[] = {100, 250, 500, 1000, 2500, 5000, 10000, 25000}; uint32_t m = mijlKm; for (int x : M) if (totKm >= x) m = x;
-      if (m > mijlKm) { mijlKm = m; buddyPrefs.putUInt("mijl", m); snprintf(mijlTxt, sizeof mijlTxt, "%u km samen! Feestje!", (unsigned)m); startGag(38); gagMsg = mijlTxt; playMoodSound(EXCITED); vriendPlus(5); }
+      if (m > mijlKm) { mijlKm = m; buddyPrefs.putUInt("mijl", m); snprintf(mijlTxt, sizeof mijlTxt, "%u km samen! Feestje!", (unsigned)m); startGag(38); gagMsg = mijlTxt; playGeluid(GL_TADA); vriendPlus(5); }
       else if (trucjesOpen() > trucjesGezien) { int k = UNLOCK_KM[trucjesGezien][0]; trucjesGezien++; buddyPrefs.putUChar("truc", trucjesGezien); startGag(k); gagMsg = "Nieuw trucje geleerd! Kijk!"; playMoodSound(EXCITED); } } }
   // microfoon: muziek en praten
   { static uint32_t mu0 = 0, pr0 = 0; uint32_t sindsS = nu - oorSoortT;
@@ -2084,6 +2089,7 @@ static void persStap(float dt) {
     if (oorSoort == 1 && nextGagT < t + 8) nextGagT = t + 8;   // tijdens een gesprek geen gekke dingen
   }
   { static uint32_t bT = 0; if (nu - bT > 300000) { bT = nu; persBewaar(); } }
+  { static uint32_t g0 = 0; uint32_t gt = grpTot; if (gt && gt != g0) { g0 = gt; playGeluid(GL_DINGDONG); } }   // v46: groepsbericht
   // v45: jarig, pauze na 2 uur, weer, lievelingstrucje
   { static bool jarigGedaan = false; static char jt[40];
     if (persJarig && !jarigGedaan && gegroet && gagAct < 0 && !menuOpen && !venster) { jarigGedaan = true; char nm[20]; naamDeel(nm, sizeof nm);
@@ -2135,6 +2141,11 @@ void drawFace(){
    boxAdd(0, 0, 240, 240); bool aan = (millis() / 350) % 2; circle(120, 120, 118, aan ? 0xFFE0 : 0xF800); circle(120, 120, 96, BG);
    frame->setTextColor(0xFFFF); frame->setTextSize(4); frame->setCursor(X(120) - 60, Y(120) - 16); frame->print("HIER!"); return; }
  if ((int32_t)(meterTot - millis()) > 0) { drawMeter(); return; }   // v40: retro meter bij flink optrekken
+ if (wxVers() && !slaapt) {   // v46: echt regen- of sneeuwweer -> druppels of vlokjes achter het gezicht
+   int c = wxCode; bool regen = (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95, sneeuw = (c >= 71 && c <= 77) || c == 85 || c == 86;
+   if (regen) for (int i = 0; i < 12; i++) { float x = 30 + i * 16 + sinf(i * 7.3f) * 5, y = fmodf(t * 140 + i * 37, 200) + 20; dikLijn(x, y, x - 2, y + 7, 1.6f, 0x3A9F); }
+   else if (sneeuw) for (int i = 0; i < 12; i++) { float x = 26 + i * 17 + sinf(t * 1.3f + i) * 6, y = fmodf(t * 28 + i * 31, 200) + 20; circle(x, y, (i % 3) ? 1.8f : 2.6f, 0xDEFB); }
+ }
  float ox=gx*9 + fmaxf(-16.f, fminf(16.f, -leanX * 40.f * LEAN_RICHTING)), oy=gy*7 + headBob - hop * 10.f + fmaxf(-6.f, fminf(6.f, pushZ * 14.f));
  ox += fdx; oy += fdy; faceOx = ox; faceOy = oy;
  if(mood==LOVE){float pulse=1+sinf(t*7)*.08f;heart(73+ox,114+oy,29*pulse,HEART);heart(167+ox,114+oy,29*pulse,HEART);}
@@ -2486,8 +2497,8 @@ bool initBuddyAudio() {
   return true;
 }
 
-struct Note { uint16_t hz; uint16_t ms; };
-struct SoundJob { Note notes[4]; uint8_t count; };
+struct Note { uint16_t hz; uint16_t ms; uint16_t hz2; };   // v46: hz2 = glijden naar deze toon (0 = vaste toon)
+struct SoundJob { Note notes[8]; uint8_t count; };
 
 void soundTask(void *arg) {
   SoundJob job = *(SoundJob*)arg;
@@ -2495,15 +2506,18 @@ void soundTask(void *arg) {
   int16_t pcm[640]; // 20 ms stereo buffer at 16 kHz
   for (uint8_t n=0; n<job.count; ++n) {
     const uint32_t totalFrames = (uint32_t)AUDIO_RATE * job.notes[n].ms / 1000;
-    uint32_t done = 0;
+    uint32_t done = 0; float phase = 0;
+    const float f0 = job.notes[n].hz, f1 = job.notes[n].hz2 ? job.notes[n].hz2 : f0;
     while (done < totalFrames) {
       uint32_t count = min((uint32_t)320, totalFrames-done);
       for (uint32_t i=0; i<count; ++i) {
-        float phase = 6.2831853f * job.notes[n].hz * (done+i) / AUDIO_RATE;
+        float k = (float)(done + i) / totalFrames, f = f0 + (f1 - f0) * k;   // glijdende toon
+        phase += 6.2831853f * f / AUDIO_RATE; if (phase > 6.2831853f) phase -= 6.2831853f;
         float env = 0.55f;
         if (done+i < 160) env *= (done+i)/160.0f;
         if (totalFrames-(done+i) < 240) env *= (totalFrames-(done+i))/240.0f;
-        int16_t v = buddyVolume == 0 ? 0 : (int16_t)(sinf(phase) * 30000.0f * env);
+        float golf = f0 < 30 ? 0 : sinf(phase) * .82f + sinf(phase * 2) * .18f;   // zachter, ronder klankje (hz 0..29 = stilte)
+        int16_t v = buddyVolume == 0 ? 0 : (int16_t)(golf * 30000.0f * env);
         pcm[i*2] = v; pcm[i*2+1] = v;
       }
       buddyI2S.write((uint8_t*)pcm, count*2*sizeof(int16_t));
@@ -2517,6 +2531,24 @@ void soundTask(void *arg) {
   vTaskDelete(NULL);
 }
 
+void playGeluid(int g) {   // v46: echte Buddy-geluidjes met glijtonen
+  if (!audioReady || audioBusy) return;
+  SoundJob *j = new SoundJob(); uint8_t n = 0;
+  auto z = [&](uint16_t a, uint16_t ms, uint16_t b) { if (n < 8) j->notes[n++] = {a, ms, b}; };
+  switch (g) {
+    case GL_HOI:     z(520, 110, 780); z(10, 40, 0); z(700, 160, 1050); break;                                   // "hoi!" omhoog
+    case GL_GIECHEL: for (int i = 0; i < 4; i++) { z(900 + i * 60, 55, 1250 + i * 60); z(10, 25, 0); } break;      // hihihi
+    case GL_VROEM:   z(110, 260, 180); z(180, 220, 320); z(320, 300, 560); break;                                // motor die optrekt
+    case GL_DINGDONG: z(988, 220, 0); z(10, 30, 0); z(784, 360, 0); break;                                       // ding-dong
+    case GL_PLING:   z(1320, 70, 1760); z(1760, 160, 2100); break;                                               // pling!
+    case GL_OEPS:    z(900, 120, 520); z(10, 30, 0); z(600, 180, 380); break;                                    // oeps (omlaag)
+    case GL_SLAAP:   z(600, 260, 380); z(10, 60, 0); z(380, 380, 260); break;                                    // welterusten
+    case GL_TADA:    z(523, 90, 0); z(659, 90, 0); z(784, 90, 0); z(1047, 260, 1100); break;                      // ta-da!
+    default: delete j; return;
+  }
+  j->count = n; audioBusy = true;
+  if (xTaskCreatePinnedToCore(soundTask, "BuddySound", 4096, j, 1, nullptr, 1) != pdPASS) { audioBusy = false; delete j; }
+}
 void playMoodSound(int m) {
   if (!audioReady || audioBusy) return;
   SoundJob *j = new SoundJob();
@@ -2550,7 +2582,10 @@ void handleTouch(){
      else if (lY > 188.0f) openVenster(2);                          // onderaan tikken = volume
      else { aaiTot = now + 2200; idleMoodUntilMs = now + 2200;    // op zijn gezicht tikken = aaien
        static uint32_t aaiPlusT = 0; if (now - aaiPlusT > 20000) { aaiPlusT = now; vriendPlus(1); }   // v42: aaien = vriendschap (max 3 per minuut)
-       if (vriend > 70) addParticleAt(0, frand(90, 150), 70, frand(-10, 10), -25, 1.4f, 10);
+       if (vriend > 70) { addParticleAt(0, frand(90, 150), 70, frand(-10, 10), -25, 1.4f, 10); static uint32_t gT = 0; if (now - gT > 15000) { gT = now; playGeluid(GL_GIECHEL); } }
+       if (gagAct == 1 && t - gagT0 < 4.8f && fabsf(lX - g_fx) < 30 && fabsf(lY - g_fy) < 30) {   // v46: vlieg gevangen!
+         vliegGevangen = true; vliegTotaal++; buddyPrefs.putUShort("vlieg", vliegTotaal); vriendPlus(1); playGeluid(GL_PLING);
+         snprintf(vliegTxt, sizeof vliegTxt, "Gevangen! Vlieg nr. %u", (unsigned)vliegTotaal); burstAt(g_fx, g_fy, 10); gagT0 = t - 4.8f; }
        if (gagAct >= 0 && gagAct < 48 && GAGS[gagAct].flags) { if (gagLike[gagAct] < 20) gagLike[gagAct]++; likeVuil = true; gagMsg = "Vind je dit leuk? Doe ik vaker!"; }
      }
    }
@@ -2637,7 +2672,7 @@ void setup(){
  xTaskCreatePinnedToCore(netTaak, "BuddyNet", 12288, nullptr, 1, nullptr, 0);
  logRegel("===== OPSTART v%d | reden: %s | heap %u =====", FW_VERSIE, resetReden(), (unsigned)ESP.getFreeHeap());
  setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1); tzset();   // v42: Nederlandse tijd, ook zonder wifi
- persLaad(); groetVanaf = millis() + 2500; nextGagT = 20;
+ persLaad(); groetVanaf = millis() + 2500; nextGagT = 20; vliegTotaal = buddyPrefs.getUShort("vlieg", 0);
  if (wakkerDoorBeweging) logRegel("wakker geworden door beweging (instappen?)");
  nextBlink=2;nextGaze=.5f;Serial.println("Buddy: koppelcode, navigatie, matrixborden, weer, oor | files/werk/groep zonder telefoon, zwaaien | outfits, instellen vanuit de app | uit/aan met de auto | wifi, eigen limieten, trajecten, updates | logboek | grote cijfers, klok, slapen, nachtstand | 28 animaties, 0-100 vlag, ritjes, G-meter | menu, meehangen, telefoon-koppeling | GPS-transactie in een keer | dubbele framebuffer (tekenen en versturen tegelijk) + LC76G via I2C zonder resetpuls + I2C-scan");
 }
@@ -2691,7 +2726,7 @@ void loop(){
      static uint32_t vT = 0; static float vH[4] = {0, 0, 0, 0}; float vn = spdNow();
      if (nu - vT >= 500) { vT = nu; vH[0] = vH[1]; vH[1] = vH[2]; vH[2] = vH[3]; vH[3] = vn; }
      if (vn > 8 && vH[3] - vH[0] >= 12 && !menuOpen && !venster) {
-       if ((int32_t)(meterTot - nu) <= 0) { meterStart = nu; naald = 0; naaldV = 0; logRegel("retro meter: optrekken %.0f -> %.0f", vH[0], vH[3]); }
+       if ((int32_t)(meterTot - nu) <= 0) { meterStart = nu; naald = 0; naaldV = 0; playGeluid(GL_VROEM); logRegel("retro meter: optrekken %.0f -> %.0f", vH[0], vH[3]); }
        meterTot = nu + 2500; if (meterTot < meterStart + 6000) meterTot = meterStart + 6000;
      }
      float doel = vn; naaldV += ((doel - naald) * 55.f - naaldV * 6.5f) * dt; naald += naaldV * dt;   // veer + demper: schiet door en trilt na
