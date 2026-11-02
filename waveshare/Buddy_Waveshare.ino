@@ -1793,12 +1793,13 @@ static void dikLijn(float x1, float y1, float x2, float y2, float w, uint16_t c)
 }
 // segmenten: a=boven b=rechtsboven c=rechtsonder d=onder e=linksonder f=linksboven g=midden
 static const uint8_t SEG[10] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
-static float segBreed(char ch, float h) { return ch == ':' ? h * .22f : h * .56f; }
+static float segBreed(char ch, float h) { return ch == ':' ? h * .22f : ch == '1' ? h * .24f : h * .56f; }   // v68: een 1 is smal, dan staat 100 netjes in het midden
 static void segCijfer(char ch, float x, float y, float h, uint16_t c) {   // x,y = linksboven
   float w = h * .56f, th = h * .15f, m = th * .5f;
   if (ch == ':') { circle(x + h * .11f, y + h * .3f, th * .55f, c); circle(x + h * .11f, y + h * .72f, th * .55f, c); return; }
   uint8_t s = ch == '-' ? 0x40 : (ch >= '0' && ch <= '9' ? SEG[ch - '0'] : 0x40);
   float L = x + m, R = x + w - m, T = y + m, M = y + h / 2, B = y + h - m;
+  if (ch == '1') { float x1 = x + h * .12f; dikLijn(x1, T, x1, M, th, c); dikLijn(x1, M, x1, B, th, c); return; }
   if (s & 0x01) dikLijn(L, T, R, T, th, c);
   if (s & 0x02) dikLijn(R, T, R, M, th, c);
   if (s & 0x04) dikLijn(R, M, R, B, th, c);
@@ -1894,7 +1895,7 @@ static Weg *wegen = nullptr; static float *wegPt = nullptr; static int wegN = 0;
 static volatile int wegLimiet = 0; static volatile uint32_t wegLimT = 0;
 struct Traject { float la1, lo1, la2, lo2; int16_t lim; };
 static Traject *trajecten = nullptr; static int trajN = 0;
-static volatile bool trajActief = false; static volatile float trajGem = 0; static volatile int trajLim = 0;
+static volatile bool trajActief = false; static volatile float trajGem = 0; static volatile int trajLim = 0; static volatile float trajFrac = 0;   // v68: hoe ver in het traject (voor de ring)
 
 static void jWs(JP &j) { while (j.p < j.e && (*j.p == ' ' || *j.p == '\n' || *j.p == '\r' || *j.p == '\t')) j.p++; }
 static bool jIs(JP &j, char c) { jWs(j); if (j.p < j.e && *j.p == c) { j.p++; return true; } return false; }
@@ -2013,7 +2014,7 @@ static void trajectStap(float dt) {
     }
     return;
   }
-  afstand += v / 3.6f * dt; tijd += dt; if (tijd > 2) trajGem = afstand / tijd * 3.6f;
+  afstand += v / 3.6f * dt; tijd += dt; if (tijd > 2) trajGem = afstand / tijd * 3.6f; trajFrac = rechtL > 0 ? fminf(1.f, afstand / rechtL) : 0;
   bool eind = afstandM(lat, lon, trajecten[ti].la2, trajecten[ti].lo2) < 150 || afstand > rechtL * 1.6f + 2000 || tijd > 3600;
   if (eind) { logRegel("traject klaar: gemiddeld %.0f bij %d", trajGem, trajLim); ti = -1; trajActief = false; }
 }
@@ -2573,22 +2574,28 @@ void drawFace(){
  }
  if (robotModus) return;   // v47: robotmodus: geen bord, snelheid of GPS-regel
  if ((tel && phone.werk) || (!tel && lokWerk)) {   // werk-driehoekje boven het snelheidsbord
-   boxAdd(64, 156, 90, 178);
-   frame->fillTriangle(X(77), Y(157), X(89), Y(177), X(65), Y(177), 0xD8A6);
-   frame->fillTriangle(X(77), Y(162), X(85), Y(174), X(69), Y(174), 0xFFFF);
-   circle(77, 169, 1.8f, 0x0000);
+   boxAdd(96, 144, 124, 176);   // v68: een oranje pionnetje in plaats van een rood bord
+   float pw = sinf(millis() / 260.f) * .8f;
+   triF(110 + pw, 146, 101, 170, 119, 170, 0xFC40);
+   dikLijn(106.6f + pw * .7f, 155, 113.4f + pw * .7f, 155, 2.6f, 0xFFFF); dikLijn(104 + pw * .4f, 163, 116 + pw * .4f, 163, 2.6f, 0xFFFF);
+   roundRect(97, 169, 26, 5, 2, 0xC300);
  }
  // v22: grote, haarscherpe cijfers die precies in het midden staan (eigen 7-segment-cijfers)
  bool rust = (ownSpeed <= 0) && klokOk() && (gagAct < 0);   // stilstaan: klok in plaats van 0
- int sx = 76, sy = 200; float sr = 24;
+ int sx = 78, sy = 194; float sr = 29;   // v68: groter bord
  boxAdd(sx - sr - 2, sy - sr - 2, sx + sr + 2, sy + sr + 2);
  bool teHard = limit > 0 && ownSpeed > limit + 3;
  hudLimiet = limit; hudSnelheid = ownSpeed;   // v39: voor de te-hard-waarschuwing
+ { float rp = -1; uint16_t rk = EYE;   // v68: ring langs de rand, net als in de app: flitser dichterbij of hoe ver je in het traject bent
+   if (trajActief) { rp = trajFrac; rk = trajGem > trajLim + 2 ? 0xF800 : EYE; }
+   else if (camM >= 0 && camM < 600) { rp = 1.f - camM / 600.f; rk = teHard || camM < 250 ? 0xF800 : EYE; }
+   if (rp >= 0) { const float R = 114; for (int i = 0; i < 48; i++) { float a0 = -1.5708f + i * .1309f, a1 = a0 + .1309f; dikLijn(120 + cosf(a0) * R, 120 + sinf(a0) * R, 120 + cosf(a1) * R, 120 + sinf(a1) * R, 4.5f, 0x2104); }
+     int nseg = (int)(fminf(1.f, rp) * 48); for (int i = 0; i < nseg; i++) { float a0 = -1.5708f + i * .1309f, a1 = a0 + .1309f; dikLijn(120 + cosf(a0) * R, 120 + sinf(a0) * R, 120 + cosf(a1) * R, 120 + sinf(a1) * R, 5.f, rk); } } }
  uint16_t ring = (teHard && (millis() / 350) % 2) ? 0xF800 : 0xD800;
  frame->fillCircle(X(sx), Y(sy), S(sr), ring);
  frame->fillCircle(X(sx), Y(sy), S(sr - 4.2f), 0xFFFF);
  char limTxt[6]; if (limit > 0) snprintf(limTxt, sizeof limTxt, "%d", limit); else snprintf(limTxt, sizeof limTxt, "-");
- segTekst(limTxt, sx, sy, strlen(limTxt) >= 3 ? 12.5f : 17.f, 0x0000);
+ segTekst(limTxt, sx, sy, strlen(limTxt) >= 3 ? 16.f : 22.f, 0x0000);
  char spdTxt[8];
  if (rust) { int hh, mm; lokaleTijd(hh, mm); snprintf(spdTxt, sizeof spdTxt, "%02d:%02d", hh, mm); segTekst(spdTxt, 152, 197, 22, EYE);
    if (wxVers()) {   // v29: temperatuur en een weericoontje onder de klok
