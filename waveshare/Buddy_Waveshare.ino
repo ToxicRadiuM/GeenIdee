@@ -34,7 +34,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 65;
+static const int FW_VERSIE = 66;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -2768,8 +2768,10 @@ static void oorTaak(void *) {
     }
   }
 }
-static char idfFout[96] = ""; static int idfFoutN = 0;   // v63: wat zegt de ESP32 zelf als het geluid niet start?
-static int idfVangPrintf(const char *fmt, va_list ap) { if (idfFoutN < 3) { char t[96]; vsnprintf(t, sizeof t, fmt, ap); if (strstr(t, "E (") || strstr(t, "[E]") || strstr(t, "rror") || strstr(t, "fail")) { strncpy(idfFout, t, sizeof idfFout - 1); idfFoutN++; } } return vprintf(fmt, ap); }
+static char idfFouten[4][110]; static int idfFoutN = 0; static bool audioAlleenSpeaker = false;   // v66: alle foutregels van de ESP32 bij het starten van het geluid
+static int idfVangPrintf(const char *fmt, va_list ap) { char t[110]; va_list ap2; va_copy(ap2, ap); vsnprintf(t, sizeof t, fmt, ap2); va_end(ap2);
+  if (idfFoutN < 4 && (strstr(t, "E (") || strstr(t, "W (") || strstr(t, "rror") || strstr(t, "fail"))) { char *nl = strchr(t, '\n'); if (nl) *nl = 0; strncpy(idfFouten[idfFoutN], t, 109); idfFouten[idfFoutN][109] = 0; idfFoutN++; }
+  return vprintf(fmt, ap); }
 bool initBuddyAudio() {
   logRegel("geluid: start, vrij DMA %u (grootste blok %u)", (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL), (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL));
   vprintf_like_t oudLog = esp_log_set_vprintf(idfVangPrintf);
@@ -2779,9 +2781,15 @@ bool initBuddyAudio() {
   bool i2sOk = false;   // v62: een paar keer proberen (op sommige ESP32-versies lukt de eerste keer niet)
   for (int poging = 0; poging < 3 && !i2sOk; poging++) { if (poging) { buddyI2S.end(); delay(150); buddyI2S.setPins(BCLKPIN, WSPIN, DIPIN, DOPIN, MCLKPIN); }
     i2sOk = buddyI2S.begin(I2S_MODE_STD, AUDIO_RATE, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO, I2S_STD_SLOT_BOTH); }
+  if (!i2sOk) {   // v66: lukt speaker + microfoons samen niet? Dan alleen de speaker (het oor doet dan even niet mee)
+    for (int k = 0; k < idfFoutN; k++) logRegel("geluid fout %d: %s", k + 1, idfFouten[k]);
+    idfFoutN = 0; buddyI2S.end(); delay(150); buddyI2S.setPins(BCLKPIN, WSPIN, DIPIN, -1, MCLKPIN);
+    i2sOk = buddyI2S.begin(I2S_MODE_STD, AUDIO_RATE, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO, I2S_STD_SLOT_BOTH);
+    audioAlleenSpeaker = i2sOk; logRegel("geluid: alleen speaker %s", i2sOk ? "gelukt" : "ook mislukt"); }
   esp_log_set_vprintf(oudLog);
   if (!i2sOk) {
-    Serial.println("Buddy audio: I2S start mislukt"); strcpy(audioStatus, "i2s-fout"); logRegel("geluid: I2S start mislukt: %s", idfFout[0] ? idfFout : "(geen melding)");
+    Serial.println("Buddy audio: I2S start mislukt"); strcpy(audioStatus, "i2s-fout"); logRegel("geluid: I2S start mislukt");
+    for (int k = 0; k < idfFoutN; k++) logRegel("geluid fout %d: %s", k + 1, idfFouten[k]);
     return false;
   }
 
@@ -2803,7 +2811,7 @@ bool initBuddyAudio() {
   }
   applyCodecVolume(buddyVolume);
   Serial.println("Buddy audio: ES8311 klaar"); strcpy(audioStatus, "ok"); logRegel("geluid: ES8311 klaar, volume %d", (int)buddyVolume);
-  if (es7210Init()) { xTaskCreatePinnedToCore(oorTaak, "BuddyOor", 6144, nullptr, 1, nullptr, 0); Serial.println("Buddy oor: ES7210 microfoons klaar"); }
+  if (!audioAlleenSpeaker && es7210Init()) { xTaskCreatePinnedToCore(oorTaak, "BuddyOor", 6144, nullptr, 1, nullptr, 0); Serial.println("Buddy oor: ES7210 microfoons klaar"); }
   else Serial.println("Buddy oor: ES7210 niet gevonden");
   return true;
 }
