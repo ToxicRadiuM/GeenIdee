@@ -271,6 +271,8 @@ body.car #carGroep { display: block; }
 /* v104: Groep-tab opnieuw ingedeeld */
 .segNav { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; margin: 4px 0 6px; scrollbar-width: none; position: sticky; top: 0; z-index: 5; background: var(--panel, #171B20); }
 .segNav::-webkit-scrollbar { display: none; }
+.kmDeel[hidden] { display: none !important; }
+body.kmNiet #flKaartLijst { display: none !important; }
 .segNav button { flex: none; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 9px 14px; font: 600 14px/1 var(--f-body); cursor: pointer; white-space: nowrap; }
 .segNav button[aria-pressed="true"] { color: var(--ink); border-color: #5ac8fa; background: rgba(90,200,250,.14); }
 .grKaart { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(135deg, rgba(90,200,250,.10), transparent); }
@@ -905,19 +907,30 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   </details>
   </div>
   <section id="tabKaart" class="tabPaneel" aria-label="Kaart">
+    <nav id="kmNav" class="segNav" aria-label="Wat staat er op de kaart"><button type="button" data-km="flits" aria-pressed="true">📸 Flitsers</button><button type="button" data-km="plek" aria-pressed="false">📍 Mijn plekjes</button><button type="button" data-km="bij" aria-pressed="false">🗺️ Bijnamen</button><button type="button" data-km="deel" aria-pressed="false">📤 Van de groep</button></nav>
+    <div class="kmDeel" data-km="flits">
     <div class="kaartKop"><b>🗺️ Flitsers en meldingen</b><span class="foot">Blauw = van jou · Rood = vast · Oranje = mobiel. Tik op een stip om hem te verwijderen.</span></div>
+    </div>
     <div id="kaartPlek"></div>
+    <div class="kmDeel" data-km="flits">
     <div class="btns kaartKnoppen" id="kaartKnoppen"></div>
-    <div class="kaartKop" style="margin-top:6px"><b>📍 Mijn plekjes</b><span class="foot">Tik op “Wat was dat?” (of zeg “onthoud dit”) en Buddy bewaart de plek, met straat en plaats. Daarna kies je wat het was. Paarse stippen op de kaart.</span></div>
+    </div>
+    <div class="kmDeel" data-km="plek">
+    <div class="kaartKop" style="margin-top:10px"><b>📍 Mijn plekjes</b><span class="foot">Tik op “Wat was dat?” (of zeg “onthoud dit”) en Buddy bewaart de plek, met straat en plaats. Daarna kies je wat het was. Paarse stippen op de kaart.</span></div>
     <p class="chip" style="text-align:left">🔒 <b>Privé.</b> Je plekjes blijven op jouw telefoon. Alleen als je bij een plekje op 📤 tikt, ziet je groep dát ene plekje: de plek, wat het is, de naam die je erbij zet en jouw naam.</p>
     <button class="btn" id="plekKnop2" type="button">📍 Wat was dat? Plek onthouden</button>
     <ul id="plekLijst" class="v77lijst"></ul>
+    </div>
+    <div class="kmDeel" data-km="bij">
     <div class="kaartKop" style="margin-top:10px"><b>🗺️ Buddy's bijnamen</b><span class="foot">Plekken waar Buddy iets voelde: een gat, een drempel, een rotonde of een stoplicht waar je lang stond. Gebeurt het twee keer op dezelfde plek, dan krijgt die plek een bijnaam en waarschuwt Buddy je de volgende keer.</span></div>
     <p class="chip" style="text-align:left">👥 <b>Gedeeld met je groep</b> (als het vinkje hieronder aan staat): de plek, de soort (gat, drempel, rotonde of stoplicht), de bijnaam en je naam. Pas vanaf de tweede keer op dezelfde plek, en nooit binnen 500 m van je huis (als je thuis hebt ingesteld). <b>Niet gedeeld:</b> wanneer je er was, hoe hard je reed en je route.</p>
     <div class="switchrow"><input type="checkbox" id="bijDeelOn" checked><label for="bijDeelOn">Deel Buddy's bijnamen met mijn groep</label></div>
     <ul id="bijLijst" class="v77lijst"></ul>
+    </div>
+    <div class="kmDeel" data-km="deel">
     <div class="kaartKop" style="margin-top:10px"><b>📤 Gedeeld door de groep</b><span class="foot">Plekjes die iemand uit je groep zelf heeft gedeeld, bijvoorbeeld een goede lunchplek.</span></div>
     <ul id="deelLijst" class="v77lijst"></ul>
+    </div>
     <div class="kaartKop" style="margin-top:6px"><b>⚡ Laden in de buurt</b><span class="foot">Laadpalen en Superchargers rond je plek (OpenStreetMap). Tik op 🧭 om te navigeren.</span></div>
     <button class="btn" id="laadZoekKnop" type="button">⚡ Zoek laadpalen in de buurt</button>
     <ul id="laadLijst" class="v77lijst"></ul>
@@ -4511,7 +4524,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v107';
+  var VERSION = 'v108';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7016,7 +7029,17 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }, 20000);
 
   /* ---------- v74: flitsers op de kaart, zelf verwijderen wat jij of de groep heeft gemeld ---------- */
-  var flMap = null, flLaag = null;
+  var flMap = null, flLaag = null, KMKEY = 'dashboardmaatje-kaartmodus-v1', kaartModus = 'flits';   /* v108: flitsers, plekjes, bijnamen en groepsplekjes los van elkaar */
+  try { kaartModus = localStorage.getItem(KMKEY) || 'flits'; } catch (e) {}
+  function kmZet(m) {
+    kaartModus = m; try { localStorage.setItem(KMKEY, m); } catch (e) {}
+    document.querySelectorAll('#kmNav button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.km === m ? 'true' : 'false'); });
+    document.querySelectorAll('.kmDeel').forEach(function (d) { d.hidden = d.dataset.km !== m; });
+    document.body.classList.toggle('kmNiet', m !== 'flits');
+    try { flKaartVul(); } catch (e) {}
+  }
+  window.__kaartModus = function () { return kaartModus; };
+  setTimeout(function () { document.querySelectorAll('#kmNav button').forEach(function (b) { b.addEventListener('click', function () { kmZet(b.dataset.km); }); }); kmZet(kaartModus); }, 0);
   function laadLeaflet() {
     if (window.L) return Promise.resolve();
     return new Promise(function (ok, nee) {
@@ -7053,15 +7076,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     });
     if (flMap && window.L) {
       if (flLaag) flLaag.remove(); flLaag = L.layerGroup().addTo(flMap); var pts = [];
-      lijst.forEach(function (m) {
+      (kaartModus === 'flits' ? lijst : []).forEach(function (m) {
         var mk = L.circleMarker([m.lat, m.lon], { radius: 9, color: '#fff', weight: 2, fillColor: m.mijn ? '#0a84ff' : (m.k === 'mobile' ? '#ff9f0a' : '#ff453a'), fillOpacity: 1 }).addTo(flLaag);
         var div = document.createElement('div'); div.style.textAlign = 'center';
         div.appendChild(document.createTextNode((m.k === 'mobile' ? 'Mobiele controle' : 'Vaste flitser') + ' · ' + (m.mijn ? 'door jou' : 'door ' + m.n)));
         var b = document.createElement('button'); b.textContent = '🗑️ Verwijderen'; b.style.marginTop = '6px'; b.addEventListener('click', function () { flVerwijder(m, b); }); div.appendChild(document.createElement('br')); div.appendChild(b);
         mk.bindPopup(div); pts.push([m.lat, m.lon]);
       });
-      if (lastPos) pts.push([lastPos.lat, lastPos.lon]);
-      if (pts.length) flMap.fitBounds(pts, { padding: [30, 30], maxZoom: 15 });
+      if (kaartModus === 'flits') { if (lastPos) pts.push([lastPos.lat, lastPos.lon]); if (pts.length) flMap.fitBounds(pts, { padding: [30, 30], maxZoom: 15 }); }
       if (window.__plekOpKaart) window.__plekOpKaart();
     }
   }
@@ -7070,6 +7092,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     laadLeaflet().then(function () {
       if (!flMap) { flMap = L.map('flKaartMap', { zoomControl: true }).setView(lastPos ? [lastPos.lat, lastPos.lon] : [52.1, 5.1], 10); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap-bijdragers' }).addTo(flMap); 
         flMap.on('click', function (e) {   /* v92: zelf een flitser op de kaart zetten */
+          if (kaartModus !== 'flits') return;   /* v108: alleen bij Flitsers */
           var ll = e.latlng, div = document.createElement('div'); div.style.textAlign = 'center';
           var t = document.createElement('b'); t.textContent = 'Hier een flitser melden?'; div.appendChild(t); div.appendChild(document.createElement('br'));
           [['fixed', '📸 Vaste flitser'], ['mobile', '🚓 Mobiele controle']].forEach(function (x) {
@@ -7376,14 +7399,16 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     function plekOpKaart() {
       if (!window.L || typeof flMap === 'undefined' || !flMap) return;
       if (plekLaag) plekLaag.remove(); plekLaag = L.layerGroup().addTo(flMap);
+      var km = window.__kaartModus ? window.__kaartModus() : 'flits', pts = []; if (km === 'flits') return;
       var ico = function (t, rand) { return L.divIcon({ className: '', html: '<div style="font-size:20px;line-height:28px;width:28px;height:28px;text-align:center;border-radius:50%;background:rgba(20,20,24,.85);border:2px solid ' + rand + '">' + t + '</div>', iconSize: [28, 28], iconAnchor: [14, 14] }); };
-      plekken.forEach(function (p) { L.marker([p.lat, p.lon], { icon: ico(WI[p.wat] || '📍', '#bf5af2') }).addTo(plekLaag).bindPopup((p.naam || (p.wat ? WN[p.wat] : 'Plekje')) + '<br>' + dagStr(p.t) + ' ' + tijdStr(p.t) + (p.gedeeld ? ' · gedeeld' : ' · privé')); });
-      window.__bij.eigen().forEach(function (p) { if (p.naam) L.marker([p.la, p.lo], { icon: ico(BI[p.s] || '📍', '#ffd60a') }).addTo(plekLaag).bindPopup(p.naam + '<br>' + BN[p.s] + ' · ' + p.n + '×'); });
+      if (km === 'plek') plekken.forEach(function (p) { pts.push([p.lat, p.lon]); L.marker([p.lat, p.lon], { icon: ico(WI[p.wat] || '📍', '#bf5af2') }).addTo(plekLaag).bindPopup((p.naam || (p.wat ? WN[p.wat] : 'Plekje')) + '<br>' + dagStr(p.t) + ' ' + tijdStr(p.t) + (p.gedeeld ? ' · gedeeld' : ' · privé')); });
+      if (km === 'bij') window.__bij.eigen().forEach(function (p) { if (p.naam) { pts.push([p.la, p.lo]); L.marker([p.la, p.lo], { icon: ico(BI[p.s] || '📍', '#ffd60a') }).addTo(plekLaag).bindPopup(p.naam + '<br>' + BN[p.s] + ' · ' + p.n + '×'); } });
       window.__bij.groep().forEach(function (x) {
-        if (x.s === 'deel') { L.marker([x.lat, x.lon], { icon: ico(WI[x.wat] || '📍', '#30d158') }).addTo(plekLaag).bindPopup((x.naam || WN[x.wat] || 'Plekje') + '<br>gedeeld door ' + ((x.wie && x.wie[0]) || 'de groep')); return; }
-        if (!BI[x.s] || window.__bij.eigen().some(function (p) { return p.s === x.s && gdist(p.la, p.lo, x.lat, x.lon) < 60; })) return;
-        L.marker([x.lat, x.lon], { icon: ico(BI[x.s], '#ff9f0a') }).addTo(plekLaag).bindPopup((x.naam || 'Bijnaam') + '<br>' + BN[x.s] + ' · door ' + ((x.wie || []).join(', ') || 'de groep'));
+        if (x.s === 'deel') { if (km !== 'deel') return; pts.push([x.lat, x.lon]); L.marker([x.lat, x.lon], { icon: ico(WI[x.wat] || '📍', '#30d158') }).addTo(plekLaag).bindPopup((x.naam || WN[x.wat] || 'Plekje') + '<br>gedeeld door ' + ((x.wie && x.wie[0]) || 'de groep')); return; }
+        if (km !== 'bij' || !BI[x.s] || window.__bij.eigen().some(function (p) { return p.s === x.s && gdist(p.la, p.lo, x.lat, x.lon) < 60; })) return;
+        pts.push([x.lat, x.lon]); L.marker([x.lat, x.lon], { icon: ico(BI[x.s], '#ff9f0a') }).addTo(plekLaag).bindPopup((x.naam || 'Bijnaam') + '<br>' + BN[x.s] + ' · door ' + ((x.wie || []).join(', ') || 'de groep'));
       });
+      if (pts.length) flMap.fitBounds(pts, { padding: [30, 30], maxZoom: 15 }); else if (lastPos) flMap.setView([lastPos.lat, lastPos.lon], 13);
     }
     window.__plekOpKaart = plekOpKaart;
     function plekNu(bron) {
