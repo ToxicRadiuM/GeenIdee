@@ -1189,7 +1189,11 @@ static void bleStart() {
   BLEDevice::setMTU(185);
   BLEServer *srv = BLEDevice::createServer(); srv->setCallbacks(new BuddySrvCb());
   BLEService *svc = srv->createService(NUS_SVC);
-  BLECharacteristic *rx = svc->createCharacteristic(NUS_RX, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR | BLECharacteristic::PROPERTY_WRITE_ENC | BLECharacteristic::PROPERTY_WRITE_AUTHEN);   // v61: met NimBLE (core 3.3) moet de koppelcode zo; met Bluedroid zijn deze twee 0
+  #if defined(CONFIG_NIMBLE_ENABLED)
+  BLECharacteristic *rx = svc->createCharacteristic(NUS_RX, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR | BLECharacteristic::PROPERTY_WRITE_ENC | BLECharacteristic::PROPERTY_WRITE_AUTHEN);   // v61: NimBLE (core 3.3)
+#else
+  BLECharacteristic *rx = svc->createCharacteristic(NUS_RX, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
+#endif
   rx->setCallbacks(new BuddyRxCb());
   rx->setAccessPermissions(ESP_GATT_PERM_WRITE_ENC_MITM);   // v29: alleen na koppelen met de koppelcode
   BLESecurity *sec = new BLESecurity();
