@@ -956,7 +956,7 @@ void parseNmeaLine(char* line) {
     int k = f[0][2] == 'P' ? 0 : f[0][2] == 'A' ? 1 : f[0][2] == 'B' ? 2 : f[0][2] == 'L' ? 3 : 4; if (k < 5) inZicht[k] = atoi(f[3]);
     gpsInZicht = inZicht[0] + inZicht[1] + inZicht[2] + inZicht[3] + inZicht[4];
   } else if(strstr(f[0],"GGA") && n>8) {
-    int q=atoi(f[6]); gpsSatellites=atoi(f[7]); if(q>0 && f[2][0]) {gpsLat=nmeaCoord(f[2],f[3]);gpsLon=nmeaCoord(f[4],f[5]);gpsFix=true;gpsEigenMs=millis();posVanTel=false;gpsLastFixMs=millis();} else if(q==0) gpsFix=false;
+    int q=atoi(f[6]); gpsSatellites=atoi(f[7]); if(q>0 && f[2][0]) {gpsLat=nmeaCoord(f[2],f[3]);gpsLon=nmeaCoord(f[4],f[5]);gpsFix=true;gpsEigenMs=millis();posVanTel=false;gpsLastFixMs=millis();} else if(q==0 && !posVanTel) gpsFix=false;
   }
 }
 float cameraDistanceM(float a1,float o1,float a2,float o2) {
@@ -3188,7 +3188,7 @@ void loop(){
  {
    static uint32_t logStatusMs = 0; static bool hadFix = false; static int fpsLog = 0;
    bool fixNu = gpsFix && millis() - gpsLastFixMs < 5000;
-   if (fixNu != hadFix) { hadFix = fixNu; logRegel(fixNu ? "GPS: FIX! %d satellieten" : "GPS: fix kwijt (%d sat)", (int)gpsSatellites); }
+   if (fixNu != hadFix) { hadFix = fixNu; if (!posVanTel || !fixNu) logRegel(fixNu ? "GPS: FIX! %d satellieten" : "GPS: fix kwijt (%d sat)", (int)gpsSatellites); }
    if (millis() - logStatusMs > 60000) {
      logStatusMs = millis(); int hh = -1, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
      bool ok; float v = spdNow(&ok);
