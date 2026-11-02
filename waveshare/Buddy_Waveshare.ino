@@ -34,7 +34,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 63;
+static const int FW_VERSIE = 64;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -1170,6 +1170,19 @@ static void parsePhone(char *line) {
       d.lat = atof(a); d.lon = atof(b + 1); d.hd = (c && c[1]) ? atof(c + 1) : -1; d.pos = d.lat > 30 && d.lat < 72 && d.lon > -25 && d.lon < 45; } }
   d.ms = millis(); phone = d;
 }
+#if defined(CONFIG_BLUEDROID_ENABLED) && !defined(CONFIG_NIMBLE_ENABLED)
+// v64: laten weten of koppelen lukt; een oude, kapotte koppeling meteen opruimen
+class BuddySecCb : public BLESecurityCallbacks {
+  uint32_t onPassKeyRequest() override { return koppelPin; }
+  void onPassKeyNotify(uint32_t) override { pinTot = millis() + 60000; }
+  bool onSecurityRequest() override { return true; }
+  bool onConfirmPIN(uint32_t) override { return true; }
+  void onAuthenticationComplete(esp_ble_auth_cmpl_t c) override {
+    if (c.success) { gekoppeld = true; pinTot = 0; logRegel("BLE: koppelen gelukt"); }
+    else { logRegel("BLE: koppelen mislukt (reden 0x%02X), oude koppeling gewist", (unsigned)c.fail_reason); esp_ble_remove_bond_device(c.bd_addr); }
+  }
+};
+#endif
 class BuddySrvCb : public BLEServerCallbacks {
   void onConnect(BLEServer *) override { bleConnected = true; verbindT = millis(); if (!gekoppeld) pinTot = millis() + 60000; logRegel("BLE: telefoon verbonden"); }
   void onDisconnect(BLEServer *) override { bleConnected = false; if (!gekoppeld && verbindT && millis() - verbindT > 8000 && koppelMislukt < 250) koppelMislukt++; verbindT = 0; pinTot = 0; logRegel("BLE: telefoon weg"); BLEDevice::startAdvertising(); }
@@ -1196,6 +1209,9 @@ static void bleStart() {
 #endif
   rx->setCallbacks(new BuddyRxCb());
   rx->setAccessPermissions(ESP_GATT_PERM_WRITE_ENC_MITM);   // v29: alleen na koppelen met de koppelcode
+#if defined(CONFIG_BLUEDROID_ENABLED) && !defined(CONFIG_NIMBLE_ENABLED)
+  BLEDevice::setSecurityCallbacks(new BuddySecCb());   // v64
+#endif
   BLESecurity *sec = new BLESecurity();
 #if defined(ESP_ARDUINO_VERSION) && ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 3, 0)
   sec->setPassKey(true, koppelPin); sec->setCapability(ESP_IO_CAP_OUT); sec->setAuthenticationMode(true, true, true);   // nieuwere ESP32-versie
@@ -1959,6 +1975,30 @@ static void trajectStap(float dt) {
   bool eind = afstandM(lat, lon, trajecten[ti].la2, trajecten[ti].lo2) < 150 || afstand > rechtL * 1.6f + 2000 || tijd > 3600;
   if (eind) { logRegel("traject klaar: gemiddeld %.0f bij %d", trajGem, trajLim); ti = -1; trajActief = false; }
 }
+// v64: het logboek ook via wifi naar de Worker sturen (dan komt het op GitHub, ook als Bluetooth het niet doet)
+static void logNaarWorker() {
+  static size_t vanaf = (size_t)-1;
+  if (!logFs || !wCfg.url[0]) return;
+  String tekst;
+  if (logMutex && xSemaphoreTake(logMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
+    File fl = logFs->open(LOGF, FILE_READ);
+    if (fl) { size_t sz = fl.size(); if (vanaf == (size_t)-1 || vanaf > sz) vanaf = sz > 8000 ? sz - 8000 : 0;
+      if (sz > vanaf) { size_t n = min((size_t)8000, sz - vanaf); fl.seek(vanaf); tekst.reserve(n + 64); uint8_t b[256]; size_t gelezen = 0;
+        while (gelezen < n) { int r = fl.read(b, min(sizeof b, n - gelezen)); if (r <= 0) break; for (int i = 0; i < r; i++) tekst += (char)b[i]; gelezen += r; }
+        vanaf += gelezen; }
+      fl.close(); }
+    xSemaphoreGive(logMutex);
+  }
+  if (!tekst.length()) return;
+  String kop = "--- Buddy+ v" + String(FW_VERSIE) + " ---\n";
+  char url[220]; snprintf(url, sizeof url, "%s/log?id=plus%s&n=%s", wCfg.url, wCfg.van, wCfg.naam[0] ? wCfg.naam : "BuddyPlus");
+  for (char *q = url; *q; q++) if (*q == ' ') *q = '+';
+  WiFiClientSecure cl; cl.setInsecure(); HTTPClient h; h.setTimeout(15000);
+  if (!h.begin(cl, url)) return;
+  h.addHeader("Content-Type", "text/plain");
+  int code = h.POST(kop + tekst); h.end();
+  if (code != 200) { vanaf -= tekst.length(); Serial.printf("logboek naar worker: %d\n", code); }
+}
 static void checkOta() {
   size_t n; uint8_t *b = haalUrl(FW_BASIS "versie.txt", n); if (!b) return;
   int v = atoi((char *)b); free(b);
@@ -2087,6 +2127,7 @@ static void netTaak(void *) {
     if (zwaaiVraag && !bleConnected) { zwaaiVraag = false; stuurZwaai(); } else if (zwaaiVraag) zwaaiVraag = false;
     if (gpsFix && tegelNu[0] == 0) { char key[16]; tegelKey(gpsLat, gpsLon, key, sizeof key); laadTegel(key, true); }
     if (otaNu) { otaNu = false; otaT = millis(); logRegel("update gevraagd vanuit de app"); checkOta(); }
+    { static uint32_t logT = 0; if ((!logT && millis() > 60000) || (logT && millis() - logT > 300000)) { logT = millis(); logNaarWorker(); } }   // v64
     bool stil = !gpsFix || gpsSpeedKmh < 1;
     if (stil && (!otaT || millis() - otaT > 3UL * 3600000) && millis() > 60000) { otaT = millis(); checkOta(); }
     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -2866,6 +2907,7 @@ void setup(){
  // USB CDC kan na reset iets later beschikbaar komen; wacht kort en meld expliciet.
  uint32_t serialWaitStart=millis();
  while(!Serial && millis()-serialWaitStart<300) delay(10);   // v33: niet meer 2,5 s wachten op een computer (in de auto is die er niet)
+ logStart();   // v64: logboek als eerste, zodat ook fouten bij het opstarten (geluid) erin komen
  delay(200);
  Serial.println();
  Serial.println("========================================");
@@ -2931,7 +2973,6 @@ void setup(){
  koppelPin = buddyPrefs.getUInt("pin", 0); if (koppelPin < 100000) { koppelPin = 100000 + esp_random() % 900000; buddyPrefs.putUInt("pin", koppelPin); }
  bleStart();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
- logStart();
  bool wakkerDoorBeweging = esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0;
  buddyPrefs.getString("wurl", wCfg.url, sizeof wCfg.url); buddyPrefs.getString("grp", wCfg.grp, sizeof wCfg.grp); buddyPrefs.getString("van", wCfg.van, sizeof wCfg.van); buddyPrefs.getString("naam", wCfg.naam, sizeof wCfg.naam);
  buddyPrefs.getString("ssid", wifiNaam, sizeof wifiNaam); buddyPrefs.getString("pass", wifiPass, sizeof wifiPass);
@@ -2945,7 +2986,7 @@ void setup(){
 // v55: lukt koppelen steeds niet (bijvoorbeeld na een weggedrukt koppelvenster), dan oude koppelingen wissen zodat de telefoon opnieuw kan koppelen
 static void koppelHerstel() {
   static uint32_t laatst = 0; uint32_t nu = millis(); if (nu - laatst < 1000) return; laatst = nu;
-  if (bleConnected && !gekoppeld && verbindT && nu - verbindT > 40000) { verbindT = nu; if (koppelMislukt < 250) koppelMislukt++; }
+  if (bleConnected && !gekoppeld && verbindT && nu - verbindT > 90000) { verbindT = nu; if (koppelMislukt < 250) koppelMislukt++; }
   if (gekoppeld) koppelMislukt = 0;
   if (koppelMislukt < 2) return;
   koppelMislukt = 0;
