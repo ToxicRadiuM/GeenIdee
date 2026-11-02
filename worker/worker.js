@@ -541,7 +541,7 @@ const GR_BEWAAR_MS = 2 * 3600e3, GR_MAX = 100, GR_LEDEN = 50, GR_PAUZE_MS = 120e
 
 async function groep(url, env, g, json) {
   const q = (k) => url.searchParams.get(k) || '';
-  const naam = (v) => v.replace(/[^A-Za-zÀ-ſ '\-]/g, '').trim().slice(0, 20);
+  const naam = (v) => v.replace(/[^A-Za-z0-9À-ſ '\-]/g, '').trim().slice(0, 20);   // ook cijfers in namen
   const auto = (v) => v.replace(/[^A-Za-z0-9À-ſ '\-]/g, '').trim().slice(0, 30);
   const idv = (v) => v.replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
   const getal = (v, max) => { const n = Math.round(Number(v)); return isFinite(n) && n >= 0 ? Math.min(n, max) : 0; };
@@ -816,7 +816,7 @@ async function logboek(request, url, env, cors) {
   if (url.pathname === '/log') {
     if (request.method !== 'POST') return json({ error: 'Alleen POST' }, 405);
     const id = (url.searchParams.get('id') || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
-    const naam = (url.searchParams.get('n') || '').replace(/[^A-Za-zÀ-ſ \-]/g, '').trim().slice(0, 20) || 'onbekend';
+    const naam = (url.searchParams.get('n') || '').replace(/[^A-Za-z0-9À-ſ \-]/g, '').trim().slice(0, 20) || 'onbekend';
     if (!id) return json({ error: 'id ontbreekt' }, 400);
     let tekst = (await request.text()).slice(0, 60000);
     if (!tekst.trim()) return json({ ok: true, leeg: true });

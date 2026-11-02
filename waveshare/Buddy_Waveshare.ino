@@ -35,7 +35,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 69;
+static const int FW_VERSIE = 70;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -1751,8 +1751,11 @@ static void driveStep(float dt) {
     if (stilSinds && nu - stilSinds > 180000) {   // 3 minuten stil = rit klaar
       tripActief = false;
       if (tripKm > .3f) {
+        int mijlOud = (int)(totKm / 500);
         totKm += tripKm; totRit++; buddyPrefs.putFloat("km", totKm); buddyPrefs.putUInt("rit", totRit);
-        if (tripG > recG) { recG = tripG; buddyPrefs.putFloat("gmax", recG); }
+        if ((int)(totKm / 500) > mijlOud) { snprintf(evtTxt, sizeof evtTxt, "%d KM SAMEN!", (int)(totKm / 500) * 500); evtSoort = 'f'; logRegel("mijlpaal: %d km", (int)(totKm / 500) * 500); }
+        else if (totRit % 50 == 0) { snprintf(evtTxt, sizeof evtTxt, "RIT %u SAMEN!", (unsigned)totRit); evtSoort = 'h'; }
+        if (tripG > recG) { if (recG > .2f && evtSoort == 0) { snprintf(evtTxt, sizeof evtTxt, "G-RECORD %.2f!", (double)tripG); evtSoort = 'f'; } recG = tripG; buddyPrefs.putFloat("gmax", recG); }
         ritKlaarTot = nu + 12000; logRegel("Rit klaar: %.1f km, max %.0f km/u, %.2f G", tripKm, tripMax, tripG);
         time_t ep = time(nullptr);   // v69: rit onthouden (alleen met een echte klok)
         if (ep > 1700000000) { PlusRit r; r.t1 = (uint32_t)ep - 180; r.t0 = r.t1 - (uint32_t)((nu - 180000 - tripStart) / 1000); r.km10 = (uint16_t)lroundf(tripKm * 10); r.vmax = (uint16_t)lroundf(tripMax); r.b100 = (uint16_t)lroundf(tripBest * 10); r.g100 = (uint8_t)fminf(255, tripG * 100); r.vrij = 0;

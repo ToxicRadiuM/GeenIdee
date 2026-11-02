@@ -737,6 +737,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   <details class="kop" id="kopBadges"><summary><span class="kopT">🏅 Badges</span><span class="kopS">wat je al hebt en hoe je de rest haalt</span></summary>
     <div class="kopIn"><p class="chip" id="badgeStat"></p><ul class="badgeGrid" id="badgeGrid"></ul></div>
   </details>
+  <details class="kop" id="kopLaden"><summary><span class="kopT">⚡ Laden</span><span class="kopS">laadbeurten en kosten per maand</span></summary>
+    <div class="kopIn"><p class="chip" id="laadStat">Nog geen laadbeurten bewaard.</p>
+      <div class="mobrow"><input type="text" inputmode="decimal" id="laadKwh" placeholder="kWh geladen" maxlength="6"><input type="text" inputmode="decimal" id="laadPrijs" placeholder="€ per kWh" maxlength="6"></div>
+      <div class="btns"><button class="btn" id="laadSave" type="button">⚡ Laadbeurt bewaren</button><button class="btn" id="laadWeg" type="button">Laatste wissen</button></div>
+      <ol id="laadLijst" class="v77lijst"></ol>
+      <p class="foot">Alleen op deze telefoon, niet gedeeld met de groep. De prijs per kWh wordt onthouden. Met km's van deze maand rekent Buddy ook je verbruik uit.</p></div>
+  </details>
   <details class="kop" id="kopPlezier"><summary><span class="kopT">🎲 Plezier</span><span class="kopS">spelletjes, praten, outfits</span></summary>
     <div class="kopIn">
       <p class="sub">Spelletjes</p>
@@ -4501,7 +4508,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v104';
+  var VERSION = 'v105';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5153,7 +5160,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       try { gAnnounce(); } catch (e) { lg('FOUT melden ' + e.message); }
     }).catch(function (e) { gStat('Groep ophalen mislukt: ' + (e.message || e)); lg('FOUT groep ' + (e.message || e)); }).then(function () { gBusy = false; });
   }
-  function myWho() { return (mem.me || '').replace(/[^A-Za-z\u00C0-\u017F \-]/g, '').slice(0, 18); }
+  function myWho() { return (mem.me || '').replace(/[^A-Za-z0-9\u00C0-\u017F \-]/g, '').slice(0, 18); }
   function placeOf(lat, lon) {
     var ctl = ('AbortController' in window) ? new AbortController() : null; if (ctl) setTimeout(function () { ctl.abort(); }, 4000);
     return fetch('https://api.pdok.nl/bzk/locatieserver/search/v3_1/reverse?type=woonplaats&rows=1&fl=woonplaatsnaam&lat=' + lat.toFixed(5) + '&lon=' + lon.toFixed(5), ctl ? { signal: ctl.signal } : {})
@@ -5807,6 +5814,34 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     l.forEach(function (r) { var li = document.createElement('li'), sp = document.createElement('span'); sp.textContent = dagStr(r.t0) + ' ' + tijdStr(r.t0) + ' · ' + String(r.km).replace('.', ',') + ' km · top ' + r.vmax + (r.nul ? ' · 0-100 ' + fmt1(r.nul) + ' s' : ''); li.appendChild(sp); ol.appendChild(li); });
   }
   setTimeout(function () { try { plusRitToon(); } catch (e) {} }, 800);
+  /* v105: laadbeurten bijhouden (alleen lokaal) */
+  (function () {
+    function getal(v) { var n = parseFloat(String(v || '').replace(',', '.')); return isFinite(n) && n > 0 ? n : 0; }
+    function eur(n) { return '€ ' + n.toFixed(2).replace('.', ','); }
+    function maandKm() { var d = new Date(), m0 = new Date(d.getFullYear(), d.getMonth(), 1).getTime(), km = 0;
+      try { (typeof ritten !== 'undefined' && ritten || []).forEach(function (r) { var t = r.t0 || 0; if (t >= m0) km += +r.km || 0; }); Object.keys(mem.plusRit || {}).forEach(function (x) { var r = mem.plusRit[x]; if (r.telt && r.t0 * (r.t0 < 1e12 ? 1000 : 1) >= m0) km += +r.km || 0; }); } catch (e) {}
+      return km; }
+    function toon() {
+      var L = mem.laad || [], ol = $('laadLijst'); if (!ol) return; while (ol.firstChild) ol.removeChild(ol.firstChild);
+      var d = new Date(), m0 = new Date(d.getFullYear(), d.getMonth(), 1).getTime(), kwh = 0, kost = 0, n = 0;
+      L.forEach(function (x) { if (x.t >= m0) { kwh += x.kwh; kost += x.kwh * x.p; n++; } });
+      var km = maandKm(), st = $('laadStat');
+      st.textContent = n ? 'Deze maand ' + n + '× geladen · ' + String(Math.round(kwh * 10) / 10).replace('.', ',') + ' kWh · ' + eur(kost) + (km >= 50 ? ' · ±' + String(Math.round(kwh / km * 1000) / 10).replace('.', ',') + ' kWh/100 km · ' + eur(kost / km * 100) + ' per 100 km' : '') : 'Deze maand nog niet geladen.';
+      L.slice(-6).reverse().forEach(function (x) { var li = document.createElement('li'), dt = new Date(x.t); li.textContent = dt.getDate() + '/' + (dt.getMonth() + 1) + ' · ' + String(x.kwh).replace('.', ',') + ' kWh · ' + eur(x.kwh * x.p); ol.appendChild(li); });
+    }
+    if (!$('laadSave')) return;
+    if (mem.laadPrijs) $('laadPrijs').value = String(mem.laadPrijs).replace('.', ',');
+    $('laadSave').addEventListener('click', function () {
+      var k = getal($('laadKwh').value), p = getal($('laadPrijs').value) || mem.laadPrijs || 0;
+      if (!k || k > 200) { toast('Vul het aantal kWh in (bijv. 42,5).'); return; }
+      if (!p || p > 2) { toast('Vul de prijs per kWh in (bijv. 0,25).'); return; }
+      mem.laad = (mem.laad || []).concat({ t: Date.now(), kwh: Math.round(k * 10) / 10, p: p }).slice(-200); mem.laadPrijs = p; save();
+      $('laadKwh').value = ''; toon(); toast('Laadbeurt bewaard: ' + eur(k * p));
+      try { window.__scEvt && window.__scEvt('i', 'VOL GELADEN!'); } catch (e) {}
+    });
+    $('laadWeg').addEventListener('click', function () { if (!(mem.laad || []).length) return; mem.laad.pop(); save(); toon(); toast('Laatste laadbeurt gewist.'); });
+    setTimeout(toon, 900);
+  })();
   function weekZacht() { var w = wk(); return w.zKm >= 20 ? Math.round(w.zSom / w.zKm) : 0; }
   var BORD = { zacht: { naam: 'Soepelste rijder van de week (bochten, remmen en optrekken, gemeten met de bewegingssensor)', w: function (l) { return l.zacht && l.zacht.w === weekIdx() && l.zacht.v > 0 ? l.zacht.v : -1; }, f: function (l) { return l.zacht && l.zacht.w === weekIdx() && l.zacht.v > 0 ? l.zacht.v + '/100' : 'nog niet genoeg km'; } },
     week: { naam: 'Weekchallenge', w: function (l) { return l.week && l.week.w === weekIdx() && l.week.v > 0 ? l.week.v : -1; }, f: function (l) { return l.week && l.week.w === weekIdx() && l.week.v > 0 ? l.week.v + chal(weekIdx()).eenh : 'nog niets'; } },
@@ -7670,7 +7705,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     zet($('kopScherm'), 'buddy'); zet($('kopOver'), 'buddy');   /* v83: schermpje en 'Over Buddy' onder het Buddy-tabblad */
     zet($('buddyStatus'), 'buddy');
     ['kopInst', 'kopHulp', 'kopBouw'].forEach(function (id) { zet($(id), 'meer'); });
-    zet($('kopRitten'), 'ritten'); zet($('kopRecords'), 'ritten'); zet($('kopBadges'), 'ritten'); zet($('kopPlezier'), 'buddy');   /* v85: eigen Ritten-tab */
+    zet($('kopRitten'), 'ritten'); zet($('kopRecords'), 'ritten'); zet($('kopBadges'), 'ritten'); zet($('kopLaden'), 'ritten'); zet($('kopPlezier'), 'buddy');   /* v85: eigen Ritten-tab */
     zet($('verTxt'), 'meer');
     var koppen = document.querySelector('main > .koppen'); if (koppen) koppen.removeAttribute('data-in-tab');
     /* de flitserkaart en de meld-knoppen verhuizen naar de Kaart-tab */
