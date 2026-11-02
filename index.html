@@ -153,6 +153,16 @@ body.car #carBack { display: block; }
 #rijGebaren button { width: 46px; height: 46px; border-radius: 23px; border: 1px solid #555; background: rgba(16,20,24,.85); font-size: 22px; }
 #rijHand { position: fixed; left: calc(var(--bw, 0px) + (100vw - var(--bw, 0px)) * .38); bottom: -60vh; font-size: 40vh; line-height: 1; z-index: 33; pointer-events: none; transition: bottom .35s cubic-bezier(.2,1.4,.5,1); filter: drop-shadow(0 8px 14px rgba(0,0,0,.5)); }
 #rijHand.op { bottom: 2vh; }
+#gooiFx { position: fixed; inset: 0; z-index: 90; pointer-events: none; overflow: hidden; }
+#gooiFx[hidden] { display: none; }
+#gooiDing { position: absolute; width: 60px; height: 120px; left: var(--gx, 50%); top: var(--gy, 40%); margin: -60px 0 0 -30px; animation: gooiVlieg 1.05s cubic-bezier(.5,0,.9,.6) forwards; filter: drop-shadow(0 10px 20px rgba(0,0,0,.6)); }
+@keyframes gooiVlieg { 0% { transform: translate(0,0) scale(.35) rotate(0); } 100% { transform: translate(calc(50vw - var(--gx, 50vw)), calc(50vh - var(--gy, 40vh))) scale(9) rotate(540deg); } }
+#gooiBarst { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+#gooiFx.raak #gooiBarst { opacity: 1; transition: opacity .05s; }
+#gooiFx.raak #gooiDing { animation: gooiGlij 1.6s ease-in forwards; }
+@keyframes gooiGlij { 0% { transform: translate(calc(50vw - var(--gx, 50vw)), calc(50vh - var(--gy, 40vh))) scale(9) rotate(540deg); } 30% { transform: translate(calc(50vw - var(--gx, 50vw)), calc(52vh - var(--gy, 40vh))) scale(9) rotate(545deg); } 100% { transform: translate(calc(50vw - var(--gx, 50vw)), calc(160vh - var(--gy, 40vh))) scale(9) rotate(560deg); opacity: .9; } }
+#gooiFx.weg { opacity: 0; transition: opacity .5s; }
+body.raakSchud main, body.raakSchud #rijKaart { animation: toeterSchud .4s; }
 body:not(.ondeugend) .alleenOnd { display: none !important; }
 #rijVloek { position: fixed; left: calc(var(--bw, 0px) + (100vw - var(--bw, 0px)) * .5); top: 22vh; z-index: 34; padding: 10px 18px; border-radius: 22px; background: #fff; color: #d00; font: 900 34px/1 var(--f-display); transform: scale(0) rotate(-8deg); transition: transform .25s cubic-bezier(.3,1.6,.5,1); pointer-events: none; }
 #rijVloek.op { transform: scale(1) rotate(-8deg); }
@@ -546,7 +556,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 <div id="rondRing" aria-label="Menu"><div class="rrVlak"></div></div>
 <button id="carBack" class="rijRond rijWeg" type="button">Terug</button>
 <button id="carKaartKnop" class="rijRond rijWeg" type="button" aria-label="Kaart naast Buddy aan of uit">🗺️ Kaart</button>
-<div id="rijKaart" aria-label="Kaart met je auto"><div id="rijMap"></div><button id="rijAutoKnop" class="rijWeg" type="button" aria-label="Andere auto kiezen">🚗</button><button id="rijNoordKnop" class="rijWeg" type="button" aria-label="Rijrichting of noorden boven">🧭</button><button id="rijZoekKnop" class="rijWeg" type="button" aria-label="Navigeer naar">🔍</button><button id="rijFpKnop" class="rijWeg" type="button" aria-label="Eerste persoon aan of uit">🎮</button><div id="rijGebaren" class="rijWeg" hidden><button type="button" data-g="v" aria-label="Middelvinger">🖕</button><button type="button" data-g="d" aria-label="Duim omhoog">👍</button><button type="button" data-g="t" aria-label="Toeter">📯</button><button type="button" data-g="k" class="alleenOnd" aria-label="Kontje">🍑</button></div>
+<div id="gooiFx" aria-hidden="true" hidden><div id="gooiDing"><svg viewBox="0 0 60 120"><rect x="24" y="40" width="12" height="80" rx="3" fill="#8e8e93"/><rect x="4" y="2" width="52" height="44" rx="8" fill="#d6d6d6" stroke="#555" stroke-width="3"/><rect x="4" y="2" width="52" height="12" rx="6" fill="#f2c200"/><circle cx="30" cy="30" r="10" fill="#222"/><circle cx="27" cy="27" r="3" fill="#fff" opacity=".8"/></svg></div><svg id="gooiBarst" viewBox="0 0 400 400" preserveAspectRatio="none"><g stroke="#fff" stroke-width="3" fill="none" opacity=".85"><path d="M200 200 L120 90 L95 30"/><path d="M200 200 L300 110 L370 60"/><path d="M200 200 L330 240 L400 255"/><path d="M200 200 L260 330 L280 400"/><path d="M200 200 L110 300 L40 390"/><path d="M200 200 L60 200 L0 180"/><path d="M160 145 L235 150 L250 215 L190 255 L150 220 Z"/></g></svg></div>
+<div id="rijKaart" aria-label="Kaart met je auto"><div id="rijMap"></div><button id="rijAutoKnop" class="rijWeg" type="button" aria-label="Andere auto kiezen">🚗</button><button id="rijNoordKnop" class="rijWeg" type="button" aria-label="Rijrichting of noorden boven">🧭</button><button id="rijZoekKnop" class="rijWeg" type="button" aria-label="Navigeer naar">🔍</button><button id="rijFpKnop" class="rijWeg" type="button" aria-label="Eerste persoon aan of uit">🎮</button><div id="rijGebaren" class="rijWeg" hidden><button type="button" data-g="v" aria-label="Middelvinger">🖕</button><button type="button" data-g="d" aria-label="Duim omhoog">👍</button><button type="button" data-g="t" aria-label="Toeter">📯</button><button type="button" data-g="k" class="alleenOnd" aria-label="Kontje">🍑</button><button type="button" data-g="g" aria-label="Gooien">🤾</button></div>
 <div id="rijVloek" aria-hidden="true">#@%&!</div><div id="rijPunten" aria-hidden="true"></div><div id="rijScore" aria-hidden="true" hidden></div>
 <div id="rijHand" aria-hidden="true"></div>
 <div id="rijPiek" aria-hidden="true"><svg viewBox="0 0 120 120"><rect x="10" y="22" width="100" height="86" rx="30" fill="#0d1117" stroke="#5ac8fa" stroke-width="5"/><path d="M14 52 Q60 40 106 52 L104 66 Q86 74 66 64 L54 64 Q34 74 16 66 Z" fill="#05070a"/><path d="M22 54 L34 52 L28 62 Z M70 54 L82 52 L76 62 Z" fill="#fff" opacity=".55"/><g id="rijPiekOog"><rect x="70" y="52" width="30" height="14" rx="6" fill="#05070a"/></g><path d="M44 88 Q60 98 78 86" stroke="#5ac8fa" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="50" y="6" width="20" height="18" rx="6" fill="#c8102e"/></svg></div>
@@ -3571,7 +3582,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       setTimeout(function () { try { nogDaarVraag(e); } catch (x) {} }, 4500);   /* v93 */
       if (e.limit == null) setEv('alert', 2.5, 'Flitser gepasseerd.');
       else if (e.over) { S.flash = 1; setEv('startled', 3.5, 'Flitser gepasseerd met ' + Math.round(e.v) + ' bij limiet ' + e.limit + '.'); beep('startled'); S.style = Math.max(0, S.style - 15); }
-      else { if (typeof ondeugend !== 'undefined' && ondeugend) { try { startGag('tong'); } catch (e) {} } else setEv('happy', 3, 'Netjes! Flitser gepasseerd.'); beep('wake'); S.love = Math.min(100, S.love + 6); mem.netjes = (mem.netjes || 0) + 1; wk().netjes++; save(); try { ritFlitsNetjes(); } catch (e) {} }
+      else { if (typeof ondeugend !== 'undefined' && ondeugend) { try { startGag(Math.random() < .35 ? 'gooi' : 'tong'); } catch (e) {} } else setEv('happy', 3, 'Netjes! Flitser gepasseerd.'); beep('wake'); S.love = Math.min(100, S.love + 6); mem.netjes = (mem.netjes || 0) + 1; wk().netjes++; save(); try { ritFlitsNetjes(); } catch (e) {} }
     } else if (e.type === 'traj_start') {
       setEv('alert', 2.5, 'Trajectcontrole begint. Ik bewaak het gemiddelde.');
     } else if (e.type === 'traj_end') {
@@ -4612,7 +4623,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v123';
+  var VERSION = 'v124';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6534,6 +6545,17 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   GAGS.krab = { name: 'Krabt aan zijn kont', dur: 5, idle: 1, laag: 1, mood: 'content', msg: 'Jeuk…', need: function () { return ondeugend; },
     upd: function (g, tt) { fdx += Math.sin(tt * 26) * 1.6; g.msg = tt < 2.5 ? 'Jeuk…' : 'Ahhh, dat is beter.'; if (tt > 2.5) { eyeL *= .5; eyeR *= .5; } },
     draw: function (g, tt) { var x = 200 + Math.sin(tt * 26) * 6, y = 214; ctx.fillStyle = EYE; ctx.beginPath(); ctx.ellipse(x, y, 13, 9, -.6, 0, TAU); ctx.fill(); for (var i = 0; i < 3; i++) { ctx.fillRect(x - 10 + i * 7, y - 16 + Math.sin(tt * 26 + i) * 3, 5, 12); } } };
+  function gooiNaarScherm() {   /* v124: Buddy gooit een flitspaal naar je scherm, BAM, barst, glijdt naar beneden */
+    var fx = $('gooiFx'); if (!fx) return; var h = document.querySelector('.helmet'), r = h ? h.getBoundingClientRect() : null;
+    fx.style.setProperty('--gx', r ? (r.left + r.width / 2) + 'px' : '50vw'); fx.style.setProperty('--gy', r ? (r.top + r.height * .45) + 'px' : '40vh');
+    fx.className = ''; fx.hidden = false; var d = $('gooiDing'); d.style.animation = 'none'; void d.offsetWidth; d.style.animation = '';
+    setTimeout(function () { fx.classList.add('raak'); document.body.classList.add('raakSchud'); try { if (navigator.vibrate) navigator.vibrate([60, 30, 90]); } catch (e) {} if (sound && ac && meldModus === 'alles') { try { var t0 = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(); o.type = 'square'; o.frequency.setValueAtTime(180, t0); o.frequency.exponentialRampToValueAtTime(40, t0 + .3); g.gain.setValueAtTime(.3, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + .35); o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + .4); } catch (e) {} } }, 1050);
+    setTimeout(function () { document.body.classList.remove('raakSchud'); }, 1500);
+    setTimeout(function () { fx.classList.add('weg'); }, 2500); setTimeout(function () { fx.hidden = true; fx.className = ''; }, 3100);
+  }
+  window.__gooi = gooiNaarScherm;
+  GAGS.gooi = { name: 'Gooit een flitspaal naar je scherm', dur: 4.2, idle: 1, drive: 1, ev: 1, need: nooit, mood: 'angry', msg: 'Hier, VANG!',
+    upd: function (g, tt) { if (!g.sp) { g.sp = 1; setTimeout(gooiNaarScherm, 500); try { if (window.__scEvt) window.__scEvt('g', 'VANG!'); } catch (e) {} } dir(tt < .5 ? -.5 : 0, tt < .5 ? -.4 : 0); fsc *= tt < .5 ? 1 - tt * .1 : tt < .7 ? 1.08 : 1; g.msg = tt < 1.6 ? 'Hier, VANG!' : 'Oeps. Sorry van je scherm.'; } };
   GAGS.boer = { name: 'Laat een boer', dur: 3.6, idle: 1, drive: 1, ev: 1, need: nooit, mood: 'happy', msg: 'BUUUURP!',
     upd: function (g, tt) { if (!g.sp) { g.sp = 1; boerGeluid(); } g.msg = tt < 1.4 ? 'BUUUURP!' : 'Pardon. Lekker gereden.'; if (tt < 1.2) fsc *= 1 + Math.sin(tt * 30) * .03; },
     draw: function (g, tt) { if (tt > 1.4) return; ctx.fillStyle = '#5ac8fa'; for (var i = 0; i < 5; i++) { var f = (tt * 1.5 + i / 5) % 1; ctx.globalAlpha = 1 - f; ctx.beginPath(); ctx.arc(120 + Math.sin(i * 2.7) * 18, 170 - f * 60, 3 + f * 5, 0, TAU); ctx.stroke(); } ctx.globalAlpha = 1; } };
@@ -9487,7 +9509,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     function toeter() { if (sound && ac && meldModus !== 'stil') { try { [[392, 0], [494, .02]].forEach(function (x) { var o = ac.createOscillator(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.value = x[0]; g.gain.setValueAtTime(.0001, ac.currentTime); g.gain.exponentialRampToValueAtTime(.12, ac.currentTime + .03); g.gain.setValueAtTime(.12, ac.currentTime + .45); g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + .6); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + .65); }); } catch (e) {} }
       var k = $('rijKaart'); k.classList.remove('toeter'); void k.offsetWidth; k.classList.add('toeter'); }
     document.querySelectorAll('#rijGebaren button').forEach(function (b) { b.addEventListener('click', function () {
-      var g = b.dataset.g; if (g === 't') { toeter(); return; }
+      var g = b.dataset.g; if (g === 't') { toeter(); return; } if (g === 'g') { try { if (window.__gooi) window.__gooi(); if (window.__scEvt) window.__scEvt('g', 'VANG!'); } catch (e) {} return; }
       var h = $('rijHand'); h.textContent = g === 'v' ? '🖕' : g === 'k' ? '🍑' : '👍'; h.classList.add('op'); setTimeout(function () { h.classList.remove('op'); }, 2200);
       if (g === 'v' && window.__ondeugend && window.__ondeugend()) { var vl = $('rijVloek'); vl.textContent = ['#@%&!', '$%#@&*!', 'GRRR @#!'][Math.floor(Math.random() * 3)]; vl.classList.add('op'); setTimeout(function () { vl.classList.remove('op'); }, 1900); }
       if (window.__scEvt) window.__scEvt(g, g === 'v' ? 'HMPF!' : g === 'k' ? 'KUS MN BUMPER' : 'DANKJE!');

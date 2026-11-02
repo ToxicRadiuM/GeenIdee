@@ -37,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 78;
+static const int FW_VERSIE = 79;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -2378,7 +2378,8 @@ static void persStap(float dt) {
   if (!gegroet && nu > groetVanaf && gagAct < 0 && !menuOpen && !venster && (klokOk() || nu > groetVanaf + 12000)) doeGroet();
   if (otaInstalleer) { otaInstalleer = false; installeerOta(); }   // v68
   if (evtSoort && gagAct < 0 && (int32_t)(showTot - millis()) <= 0) { char s = evtSoort; evtSoort = 0; laatsteActie = millis(); slaapt = false;   // v69: groepsgebeurtenis
-    if (s == 'v' || s == 'd' || s == 'k') { handGebaar = s; showSoort = 9; showStart = millis(); showTot = millis() + 2600; playGeluid(s == 'v' ? GL_OEPS : s == 'k' ? GL_GIECHEL : GL_TADA); logRegel("gebaar: %c", s); }   // v77: handje uit de app
+    if (s == 'g') { showSoort = 10; showStart = millis(); showTot = millis() + 3200; playGeluid(GL_OEPS); logRegel("gebaar: gooien"); }   // v79: flitspaal naar het scherm
+    else if (s == 'v' || s == 'd' || s == 'k') { handGebaar = s; showSoort = 9; showStart = millis(); showTot = millis() + 2600; playGeluid(s == 'v' ? GL_OEPS : s == 'k' ? GL_GIECHEL : GL_TADA); logRegel("gebaar: %c", s); }   // v77: handje uit de app
     else { int g = s == 'f' ? 38 : s == 'm' ? 44 : s == 'z' ? 22 : 7; startGag(g); gagMsg = evtTxt;
     playGeluid(s == 'f' ? GL_TADA : s == 'm' ? GL_OEPS : s == 'z' ? GL_HOI : s == 'h' ? GL_GIECHEL : GL_PLING); logRegel("gebeurtenis: %s", evtTxt); } }
   if (sndAntw && bleConnected && !logBezig) { uint8_t a = sndAntw; sndAntw = 0;   // v72: eigen geluidje bewaren of wissen
@@ -2564,6 +2565,22 @@ static void drawShow() {
     float pu = .5f + .5f * sinf(tt * 5); circle(120, 120, 30 + pu * 6, hsv565(tt * 400, 1, 1)); circle(120, 120, 26 + pu * 6, 0x0000);
     miniBuddy(120, 120, .45f, false, 1);
     showTekst(tt < 3.5f ? "KIJK MIJ AAN" : "SUPERBLIJ!", 120, 204, 2, 0xFFFF);
+  } else if (showSoort == 10) {   // v79: Buddy gooit een flitspaal naar je scherm (vliegt naar je toe, BAM, barst, glijdt weg)
+    float k = fminf(1, tt / 1.0f), sc = .3f + k * k * 5.5f, rot = k * 9.4f, glij = tt > 1.4f ? (tt - 1.4f) * (tt - 1.4f) * 160 : 0;
+    if (tt < 1.0f) { miniBuddy(120, 150, .55f, false, 0); showTekst("VANG!", 120, 210, 2, 0xFFE0); }
+    float cx = 120, cy = 120 - 30 * (1 - k) + glij, ca = cosf(rot), sa = sinf(rot);
+    auto P = [&](float x, float y, float &ox, float &oy) { ox = cx + (x * ca - y * sa) * sc; oy = cy + (x * sa + y * ca) * sc; };
+    float ax, ay, bx, by, qx, qy, dx2, dy2;   // kastje (16x14) op een paal
+    P(-2, 6, ax, ay); P(2, 6, bx, by); P(2, 26, qx, qy); P(-2, 26, dx2, dy2); triF(ax, ay, bx, by, qx, qy, 0x8C51); triF(ax, ay, qx, qy, dx2, dy2, 0x8C51);
+    P(-8, -8, ax, ay); P(8, -8, bx, by); P(8, 7, qx, qy); P(-8, 7, dx2, dy2); triF(ax, ay, bx, by, qx, qy, 0xD69A); triF(ax, ay, qx, qy, dx2, dy2, 0xD69A);
+    P(-8, -8, ax, ay); P(8, -8, bx, by); P(8, -4, qx, qy); P(-8, -4, dx2, dy2); triF(ax, ay, bx, by, qx, qy, 0xFE00); triF(ax, ay, qx, qy, dx2, dy2, 0xFE00);
+    float lx, ly; P(0, 1.5f, lx, ly); circle(lx, ly, 3.2f * sc, 0x2104);
+    if (tt >= 1.0f) {   // barst in het glas
+      for (int i = 0; i < 9; i++) { float a = i * .698f + .3f, r1 = 30 + (i % 3) * 18, r2 = 120; float mx = 120 + cosf(a) * r1, my = 120 + sinf(a) * r1;
+        dikLijn(120, 120, mx, my, 1.6f, 0xFFFF); dikLijn(mx, my, 120 + cosf(a + .12f) * r2, 120 + sinf(a + .12f) * r2, 1.2f, 0xC618); }
+      for (int i = 0; i < 6; i++) { float a1 = i * 1.047f, a2 = a1 + 1.047f; dikLijn(120 + cosf(a1) * 26, 120 + sinf(a1) * 26, 120 + cosf(a2) * 26, 120 + sinf(a2) * 26, 1.4f, 0xFFFF); }
+      if (tt < 1.4f) showTekst("BAM!", 120, 46, 4, 0xF800);
+    }
   } else if (showSoort == 9) {   // v77: handje omhoog (middelvinger of duim)
     float op = tt < .35f ? 1 - tt / .35f : tt > 2.2f ? (tt - 2.2f) / .4f : 0, dy = op * 150 + sinf(tt * 18) * (tt > .35f && tt < 2.2f ? 1.5f : 0);
     const uint16_t HUID = 0xFE8F, RAND = 0xC3A8;
@@ -3395,7 +3412,7 @@ void loop(){
        { static uint32_t losShowT = 0; if (meterStart == nu && !showNa && random(4) == 0 && (!losShowT || nu - losShowT > 600000UL)) { losShowT = nu; showSoort = SHOWRIJ[sprintI % 6]; showNa = nu + 6500; sprintI++; buddyPrefs.putUChar("spri", sprintI); } }   // v57: af en toe ook na gewoon flink optrekken
      }
      if (showNa && (int32_t)(nu - showNa) >= 0) {   // v56: na de vlag de sprint-show
-       static const uint16_t DUUR[10] = {0, 9500, 7000, 7500, 8000, 6000, 5000, 7000, 7000, 2600};
+       static const uint16_t DUUR[11] = {0, 9500, 7000, 7500, 8000, 6000, 5000, 7000, 7000, 2600, 3200};
        showNa = 0; showStart = nu; showTot = nu + DUUR[showSoort]; if (showSoort == 1) speelSter(); else playGeluid(showSoort == 5 ? GL_VROEM : showSoort == 6 ? GL_GIECHEL : showSoort >= 7 ? GL_TRIP : GL_RUIMTE + showSoort - 1); logRegel("sprint-show %d", (int)showSoort);
      }
      float doel = vn; naaldV += ((doel - naald) * 55.f - naaldV * 6.5f) * dt; naald += naaldV * dt;   // veer + demper: schiet door en trilt na
