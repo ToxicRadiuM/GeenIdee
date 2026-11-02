@@ -23,6 +23,7 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <esp_heap_caps.h>
+#include <mbedtls/platform.h>   // v75: https-geheugen in PSRAM (intern raakte versnipperd: 'SSL - Memory allocation failed')
 #include "driver/spi_master.h"   // v37: eigen, snellere verzending van het beeld
 #include "driver/gpio.h"
 #include <sys/time.h>
@@ -36,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 74;
+static const int FW_VERSIE = 75;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -2152,7 +2153,7 @@ static void installeerOta() {   // v68: de klaarstaande update aanzetten en hers
 struct Jam { char k; int16_t d; int32_t l; char w[6]; uint16_t p0; uint8_t n; };
 static Jam *jams = nullptr; static float *jamPt = nullptr; static volatile int jamN = 0;
 static volatile int lokFileD = -1, lokFileMin = 0; static volatile bool lokWerk = false; static volatile uint32_t lokT = 0;
-static uint32_t pakketSinds = 0;
+static uint64_t pakketSinds = 0;   // v75: servertijd in ms past niet in 32 bit (daardoor kwamen groepsberichten steeds opnieuw)
 static const char *grpZin(const char *s) {
   if (!strcmp(s, "zwaai")) return "zwaait!"; if (!strcmp(s, "koffie")) return ": koffie?"; if (!strcmp(s, "koffieJa")) return ": ja, koffie!";
   if (!strcmp(s, "koffieStraks")) return ": straks koffie"; if (!strcmp(s, "file")) return "staat in de file"; if (!strcmp(s, "pech")) return "heeft pech!";
@@ -2190,14 +2191,14 @@ static bool wxVers() { return wxT && millis() - wxT < 45UL * 60000; }
 static bool wxGlad() { return wxVers() && wxTemp <= 1.0f && (wxCode >= 45 || wxRegenOver >= 0); }   // vorst + neerslag/mist
 static void haalPakket() {
   if (!wCfg.url[0]) return;
-  char url[256]; snprintf(url, sizeof url, "%s/scherm?lat=%.5f&lon=%.5f&g=%s&van=%s&sinds=%lu", wCfg.url, (double)gpsLat, (double)gpsLon, wCfg.grp, wCfg.van, (unsigned long)pakketSinds);
+  char url[256]; snprintf(url, sizeof url, "%s/scherm?lat=%.5f&lon=%.5f&g=%s&van=%s&sinds=%llu", wCfg.url, (double)gpsLat, (double)gpsLon, wCfg.grp, wCfg.van, (unsigned long long)pakketSinds);
   size_t n; uint8_t *b = haalUrl(url, n); if (!b) return;
   int maxC = 300, maxJ = 60, maxP = 1200;
   NetCam *nc = (NetCam *)heap_caps_malloc(sizeof(NetCam) * maxC, MALLOC_CAP_SPIRAM); Jam *nj = (Jam *)heap_caps_malloc(sizeof(Jam) * maxJ, MALLOC_CAP_SPIRAM); float *np = (float *)heap_caps_malloc(sizeof(float) * maxP, MALLOC_CAP_SPIRAM);
   if (!nc || !nj || !np) { free(nc); free(nj); free(np); free(b); return; }
   int c = 0, j = 0, pc = 0;
   for (char *r = strtok((char *)b, "\n"); r; r = strtok(nullptr, "\n")) {
-    if (r[0] == 'T' && r[1] == '|') { if (!pakketSinds) pakketSinds = strtoul(r + 2, nullptr, 10); }
+    if (r[0] == 'T' && r[1] == '|') { if (!pakketSinds) pakketSinds = strtoull(r + 2, nullptr, 10); }
     else if (r[0] == 'M' && r[1] == '|' && c < maxC) { char *q; NetCam x; x.lat = strtof(r + 2, &q); x.lon = strtof(q + 1, nullptr); x.lim = 0; x.type = 1; nc[c++] = x; }
     else if (r[0] == 'G' && r[1] == '|' && c < maxC) { char *q; NetCam x; x.lat = strtof(r + 2, &q); x.lon = strtof(q + 1, &q); x.lim = (int16_t)strtol(q + 1, &q, 10); x.type = (q[1] == 'm') ? 3 : 2; nc[c++] = x; }
     else if (r[0] == 'J' && r[1] == '|' && j < maxJ) {
@@ -2210,7 +2211,7 @@ static void haalPakket() {
     }
     else if (r[0] == 'B' && r[1] == '|') {
       char *f[3] = {0}; int k = 0; f[k++] = r + 2; for (char *q = r + 2; *q && k < 3; q++) if (*q == '|') { *q = 0; f[k++] = q + 1; }
-      if (k < 3) continue; uint32_t tt = strtoul(f[0], nullptr, 10); if (tt > pakketSinds) pakketSinds = tt;
+      if (k < 3) continue; uint64_t tt = strtoull(f[0], nullptr, 10); if (tt <= pakketSinds) continue; pakketSinds = tt;
       if (!phoneFresh()) { snprintf(grpTekst, sizeof grpTekst, "%s %s", f[2], grpZin(f[1])); grpTot = millis() + 7000; logRegel("groep: %s", grpTekst); }
     }
   }
@@ -3137,7 +3138,10 @@ void handleTouch(){
  if (!lang && now - downMs > 700 && fabsf(x - dX) < 12 && fabsf(y - dY) < 12) { lang = true; menuOpen = !menuOpen; menuTot = now + 10000; }
 }
 
+static void *tlsCalloc(size_t n, size_t g) { void *q = heap_caps_calloc(n, g, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT); return q ? q : heap_caps_calloc(n, g, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT); }   // v75
+static void tlsFree(void *q) { heap_caps_free(q); }
 void setup(){
+ mbedtls_platform_set_calloc_free(tlsCalloc, tlsFree);   // v75: https gebruikt nu het grote PSRAM, niet het krappe interne geheugen
  Serial.begin(115200);
  // USB CDC kan na reset iets later beschikbaar komen; wacht kort en meld expliciet.
  uint32_t serialWaitStart=millis();
