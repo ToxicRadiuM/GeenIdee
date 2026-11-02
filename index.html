@@ -272,7 +272,7 @@ body.car #carGroep { display: block; }
 .segNav { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; margin: 4px 0 6px; scrollbar-width: none; position: sticky; top: 0; z-index: 5; background: var(--panel, #171B20); }
 .segNav::-webkit-scrollbar { display: none; }
 .kmDeel[hidden] { display: none !important; }
-body.kmNiet #flKaartLijst { display: none !important; }
+body.kmNiet #flKaartLijst, body.kmNiet #flDruk, body.kmNiet #flDrukKop { display: none !important; }
 .segNav button { flex: none; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 9px 14px; font: 600 14px/1 var(--f-body); cursor: pointer; white-space: nowrap; }
 .segNav button[aria-pressed="true"] { color: var(--ink); border-color: #5ac8fa; background: rgba(90,200,250,.14); }
 .grKaart { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(135deg, rgba(90,200,250,.10), transparent); }
@@ -477,7 +477,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 
 </head>
 <body>
-<div id="flKaart" hidden role="dialog" aria-label="Flitsers op de kaart"><div class="fkKop"><b>Gemelde flitsers</b><button type="button" id="flKaartSluit" class="btn">Sluiten</button></div><div id="flKaartMap"></div><p class="foot" style="margin:6px 4px">Tip: tik ergens op de kaart om daar zelf een flitser of controle toe te voegen.</p><ol id="flKaartLijst"></ol><p class="sub" style="margin:10px 14px 4px">🔥 Drukste plekken van jullie groep</p><ol id="flDruk"></ol></div>
+<div id="flKaart" hidden role="dialog" aria-label="Flitsers op de kaart"><div class="fkKop"><b>Gemelde flitsers</b><button type="button" id="flKaartSluit" class="btn">Sluiten</button></div><div id="flKaartMap"></div><p class="foot" id="kmTip" style="margin:6px 4px">Tip: tik ergens op de kaart om daar zelf een flitser of controle toe te voegen.</p><ol id="flKaartLijst"></ol><p class="sub" id="flDrukKop" style="margin:10px 14px 4px">🔥 Drukste plekken van jullie groep</p><ol id="flDruk"></ol></div>
 <div id="ritOv" hidden role="dialog" aria-label="Rit op de kaart"><div class="fkKop"><b id="ritOvTitel">Rit op de kaart</b><button type="button" id="ritOvSluit" class="btn">Sluiten</button></div><div id="ritOvMap"></div><p id="ritOvUitleg" class="foot" style="padding:8px 14px 16px;margin:0"></p></div>
 <div id="rondRing" aria-label="Menu"><div class="rrVlak"></div></div>
 <button id="carBack" type="button">Terug</button>
@@ -563,8 +563,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     <div class="btns">
       <button class="btn" id="bLive" type="button" aria-pressed="false" style="grid-column:1/-1">Telefoon-GPS: uit</button>
       <button class="btn primary" id="bCar" type="button" style="grid-column:1/-1">Autostand: alleen gezicht, groot</button>
-      <button class="btn" id="bRond" type="button" style="grid-column:1/-1">⭕ Rond scherm (zoals het echte schermpje)</button>
-      <p class="foot" style="grid-column:1/-1">Rond scherm: alleen Buddy, precies zoals hij straks op het schermpje staat. Lang drukken op zijn gezicht opent het menu (flitser melden, groep, rit klaar, geluid, terug). Vegen naar links of rechts wisselt tussen gezicht, grote snelheid en je rit.</p>
+      <button class="btn" id="bRond" type="button" style="grid-column:1/-1" hidden>⭕ Rond scherm</button>
+      <p class="foot" style="grid-column:1/-1" hidden>Rond scherm: alleen Buddy, precies zoals hij straks op het schermpje staat. Lang drukken op zijn gezicht opent het menu (flitser melden, groep, rit klaar, geluid, terug). Vegen naar links of rechts wisselt tussen gezicht, grote snelheid en je rit.</p>
       <button class="btn" id="bSound" type="button" aria-pressed="false" style="grid-column:1/-1">Geluid: uit</button>
       <button class="btn" id="plekKnop" type="button" style="grid-column:1/-1">📍 Wat was dat? Plek onthouden</button>
     </div>
@@ -4524,7 +4524,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v108';
+  var VERSION = 'v109';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6901,7 +6901,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (aan) toast('Lang drukken op Buddy opent het menu. Vegen wisselt van scherm.');
   }
   $('bRond').addEventListener('click', function () { rondZet(true); });
-  try { if (localStorage.getItem(RONDKEY) === '1') setTimeout(function () { rondZet(true); }, 300); } catch (e) {}
+  try { localStorage.removeItem(RONDKEY); } catch (e) {}   /* v109: rond scherm is nu Buddy+ zelf, deze stand is weg */
 
   /* Menu: een ring met knoppen langs de rand van het rondje */
   var RING_HOOFD = [
@@ -7036,6 +7036,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     document.querySelectorAll('#kmNav button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.km === m ? 'true' : 'false'); });
     document.querySelectorAll('.kmDeel').forEach(function (d) { d.hidden = d.dataset.km !== m; });
     document.body.classList.toggle('kmNiet', m !== 'flits');
+    var tip = $('kmTip'); if (tip) tip.textContent = { flits: 'Tip: tik ergens op de kaart om daar zelf een flitser of controle toe te voegen.', plek: 'Tip: tik ergens op de kaart om daar een plekje te bewaren.', bij: 'Bijnamen komen vanzelf: als Buddy twee keer iets voelt op dezelfde plek, krijgt die plek een naam.', deel: 'Hier zie je de plekjes die iemand uit je groep heeft gedeeld.' }[m] || '';
     try { flKaartVul(); } catch (e) {}
   }
   window.__kaartModus = function () { return kaartModus; };
@@ -7092,6 +7093,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     laadLeaflet().then(function () {
       if (!flMap) { flMap = L.map('flKaartMap', { zoomControl: true }).setView(lastPos ? [lastPos.lat, lastPos.lon] : [52.1, 5.1], 10); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap-bijdragers' }).addTo(flMap); 
         flMap.on('click', function (e) {   /* v92: zelf een flitser op de kaart zetten */
+          if (kaartModus === 'plek') { if (window.__plekNu) window.__plekNu('kaart', { lat: e.latlng.lat, lon: e.latlng.lng }); return; }   /* v109: plekje op de kaart zetten */
           if (kaartModus !== 'flits') return;   /* v108: alleen bij Flitsers */
           var ll = e.latlng, div = document.createElement('div'); div.style.textAlign = 'center';
           var t = document.createElement('b'); t.textContent = 'Hier een flitser melden?'; div.appendChild(t); div.appendChild(document.createElement('br'));
@@ -7411,13 +7413,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (pts.length) flMap.fitBounds(pts, { padding: [30, 30], maxZoom: 15 }); else if (lastPos) flMap.setView([lastPos.lat, lastPos.lon], 13);
     }
     window.__plekOpKaart = plekOpKaart;
-    function plekNu(bron) {
-      if (!lastPos) { toast('Ik weet nog niet waar we zijn. Zet de GPS aan.'); return false; }
-      var p = { lat: +lastPos.lat.toFixed(5), lon: +lastPos.lon.toFixed(5), t: Date.now(), v: Math.round(S.speed || 0) };
+    function plekNu(bron, pos) {
+      var w = pos || lastPos; if (!w) { toast('Ik weet nog niet waar we zijn. Zet de GPS aan.'); return false; }
+      var p = { lat: +w.lat.toFixed(5), lon: +w.lon.toFixed(5), t: Date.now(), v: pos ? 0 : Math.round(S.speed || 0) };
       plekken.push(p); mem.plekN = (mem.plekN || 0) + 1; save();
       plekBewaar(); plekToon(); plekOpKaart(); setEv('happy', 2.5, 'Plek onthouden! Kijk later bij Kaart.'); beep('pet'); lg('plek onthouden (' + bron + ')');
       placeOf(p.lat, p.lon).then(function (pl) { if (pl) { p.p = pl; plekBewaar(); plekToon(); } });
-      if ((S.speed || 0) < 10) watKies(p);   /* tijdens het rijden niet: dan vraagt Buddy het na de rit */
+      if (pos || (S.speed || 0) < 10) watKies(p);   /* tijdens het rijden niet: dan vraagt Buddy het na de rit */
       return true;
     }
     window.__plekHerinner = function (t0) {
