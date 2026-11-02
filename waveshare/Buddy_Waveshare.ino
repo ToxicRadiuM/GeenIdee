@@ -35,7 +35,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 68;
+static const int FW_VERSIE = 69;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -1153,6 +1153,7 @@ static volatile bool bleConnected = false;
 static char bleBuf[256]; static size_t bleLen = 0;
 static const char *moodKeys[MOOD_COUNT] = {"neutral","content","relaxed","happy","love","excited","focused","startled","worried","bored","sleepy","yawn","sleeping","alert","blow","anticipate"};
 static bool phoneFresh() { return phone.ms && millis() - phone.ms < 3500; }
+static char evtTxt[44] = ""; static volatile char evtSoort = 0;   // v69: groepsgebeurtenissen van de app
 static void parsePhone(char *line) {
   if (!pinOk) {   // v65: eerst de juiste code, anders luistert Buddy+ nergens naar
     if (!strncmp(line, "PIN:", 4)) {
@@ -1162,6 +1163,7 @@ static void parsePhone(char *line) {
     return;
   }
   if (strcmp(line, "LOG?") == 0) { logVraag = true; return; }
+  if (!strncmp(line, "EVT:", 4) && line[4] && line[5] == '|') { strncpy(evtTxt, line + 6, sizeof evtTxt - 1); evtTxt[sizeof evtTxt - 1] = 0; evtSoort = line[4]; return; }   // v69
   if (!strncmp(line, "NET:", 4)) {   // v28: NET:<worker-url>\t<groepscode>\t<mijn id>\t<naam>
     char *f[4] = {line + 4, nullptr, nullptr, nullptr}; int n = 1; for (char *q = line + 4; *q && n < 4; q++) if (*q == '\t') { *q = 0; f[n++] = q + 1; }
     if (n == 4) { strncpy(wNieuw.url, f[0], sizeof wNieuw.url - 1); strncpy(wNieuw.grp, f[1], sizeof wNieuw.grp - 1); strncpy(wNieuw.van, f[2], sizeof wNieuw.van - 1); strncpy(wNieuw.naam, f[3], sizeof wNieuw.naam - 1); netNieuw = true; }
@@ -1174,7 +1176,7 @@ static void parsePhone(char *line) {
     return;
   }
   if (!strcmp(line, "ZOEK")) { zoekNu = true; return; }
-  if (!strncmp(line, "DOE:", 4)) { const char *d = line + 4; doeOpdracht = !strcmp(d, "koekje") ? 1 : !strcmp(d, "focus") ? 2 : !strcmp(d, "weer") ? 3 : !strcmp(d, "zwaai") ? 4 : !strcmp(d, "mok") ? 5 : !strcmp(d, "juich") ? 6 : !strcmp(d, "sprint") ? 7 : !strcmp(d, "piep") ? 8 : !strcmp(d, "installeer") ? 9 : 0; return; }
+  if (!strncmp(line, "DOE:", 4)) { const char *d = line + 4; doeOpdracht = !strcmp(d, "koekje") ? 1 : !strcmp(d, "focus") ? 2 : !strcmp(d, "weer") ? 3 : !strcmp(d, "zwaai") ? 4 : !strcmp(d, "mok") ? 5 : !strcmp(d, "juich") ? 6 : !strcmp(d, "sprint") ? 7 : !strcmp(d, "piep") ? 8 : !strcmp(d, "installeer") ? 9 : !strcmp(d, "tunnel") ? 10 : !strcmp(d, "rotonde") ? 11 : 0; return; }
   if (!strcmp(line, "UPD")) { otaNu = true; return; }
   if (!strcmp(line, "STAT?")) { statVraag = true; return; }
   if (!strncmp(line, "SET:", 4)) {   // v27: instellingen uit de app, bv. SET:l=65;v=80;a=1;o=pet
@@ -1547,6 +1549,11 @@ static float spdNow(bool *ok = nullptr) {
   return g ? gpsSpeedKmh : (phoneFresh() ? (float)phone.v : 0);
 }
 static bool tripActief = false;
+// v69: ritten onthouden en naar de app sturen, zodat je account ook de ritten krijgt die de telefoon miste
+struct PlusRit { uint32_t t0, t1; uint16_t km10, vmax, b100; uint8_t g100, vrij; };
+static PlusRit plusRit[40]; static int plusRitN = 0; static volatile bool ritStuurNu = false; static uint32_t ritStuurT = 0;
+static void plusRitBewaar() { buddyPrefs.putBytes("ritten", plusRit, sizeof(PlusRit) * plusRitN); }
+static void plusRitLaad() { size_t n = buddyPrefs.getBytesLength("ritten"); if (n && n <= sizeof(plusRit) && n % sizeof(PlusRit) == 0) { buddyPrefs.getBytes("ritten", plusRit, n); plusRitN = n / sizeof(PlusRit); } }
 static void startGag(int k) {
   if (k == 1) { vliegGevangen = false; }
   if (robotModus && k >= 0 && GAGS[k].flags) {   // v47: als robotje bij elk trucje een geluidje (niet 's nachts)
@@ -1747,6 +1754,10 @@ static void driveStep(float dt) {
         totKm += tripKm; totRit++; buddyPrefs.putFloat("km", totKm); buddyPrefs.putUInt("rit", totRit);
         if (tripG > recG) { recG = tripG; buddyPrefs.putFloat("gmax", recG); }
         ritKlaarTot = nu + 12000; logRegel("Rit klaar: %.1f km, max %.0f km/u, %.2f G", tripKm, tripMax, tripG);
+        time_t ep = time(nullptr);   // v69: rit onthouden (alleen met een echte klok)
+        if (ep > 1700000000) { PlusRit r; r.t1 = (uint32_t)ep - 180; r.t0 = r.t1 - (uint32_t)((nu - 180000 - tripStart) / 1000); r.km10 = (uint16_t)lroundf(tripKm * 10); r.vmax = (uint16_t)lroundf(tripMax); r.b100 = (uint16_t)lroundf(tripBest * 10); r.g100 = (uint8_t)fminf(255, tripG * 100); r.vrij = 0;
+          if (plusRitN >= 40) { memmove(plusRit, plusRit + 1, sizeof(PlusRit) * 39); plusRitN = 39; }
+          plusRit[plusRitN++] = r; plusRitBewaar(); ritStuurNu = true; }
       }
     }
   }
@@ -2258,6 +2269,7 @@ static void persLaad() {
   String nm = buddyPrefs.getString("naam", ""); strncpy(persNaam, nm.c_str(), sizeof persNaam - 1);
   vriend = buddyPrefs.getUChar("vriend", 40);
   sprintI = buddyPrefs.getUChar("spri", 0);   // v56
+  plusRitLaad();   // v69
   { int ov = buddyPrefs.getInt("otaV", 0);   // v68: staat er nog een binnengehaalde update klaar?
     if (ov > FW_VERSIE) { const esp_partition_t *p = esp_ota_get_next_update_partition(NULL); if (p && buddyPrefs.getString("otaP", "") == String(p->label)) otaKlaarV = ov; }
     else if (ov) buddyPrefs.remove("otaV"); }
@@ -2328,7 +2340,14 @@ static void persStap(float dt) {
   }
   if (!gegroet && nu > groetVanaf && gagAct < 0 && !menuOpen && !venster && (klokOk() || nu > groetVanaf + 12000)) doeGroet();
   if (otaInstalleer) { otaInstalleer = false; installeerOta(); }   // v68
-  if (pinAntw && bleConnected && !logBezig) { uint8_t a = pinAntw; pinAntw = 0; bleSend(a == 1 ? "PIN:OK" : a == 2 ? "PIN:FOUT" : "PIN?"); }   // v65
+  if (evtSoort && gagAct < 0 && (int32_t)(showTot - millis()) <= 0) { char s = evtSoort; evtSoort = 0; laatsteActie = millis(); slaapt = false;   // v69: groepsgebeurtenis
+    int g = s == 'f' ? 38 : s == 'm' ? 44 : s == 'z' ? 22 : 7; startGag(g); gagMsg = evtTxt;
+    playGeluid(s == 'f' ? GL_TADA : s == 'm' ? GL_OEPS : s == 'z' ? GL_HOI : s == 'h' ? GL_GIECHEL : GL_PLING); logRegel("gebeurtenis: %s", evtTxt); }
+  if (pinAntw && bleConnected && !logBezig) { uint8_t a = pinAntw; pinAntw = 0; bleSend(a == 1 ? "PIN:OK" : a == 2 ? "PIN:FOUT" : "PIN?"); if (a == 1) { ritStuurNu = true; ritStuurT = millis() + 6000; } }   // v65
+  if (ritStuurNu && bleConnected && pinOk && !logBezig && (int32_t)(millis() - ritStuurT) >= 0) { ritStuurNu = false;   // v69: ritten naar de app
+    time_t ep = time(nullptr);
+    for (int i = 0; i < plusRitN; i++) { const PlusRit &r = plusRit[i]; if (ep > 1700000000 && (uint32_t)ep - r.t1 > 14UL * 86400) continue;
+      char m[64]; snprintf(m, sizeof m, "RIT:%lu|%lu|%u|%u|%u|%u", (unsigned long)r.t0, (unsigned long)r.t1, r.km10, r.vmax, r.b100, r.g100); bleSend(m); delay(25); } }
   if (statVraag && !logBezig) { statVraag = false; stuurStat(); }
   // v44: zoekt de eigen GPS nog? Dan de plek van de telefoon gebruiken (bordjes, flitsers, files, klok blijven werken)
   { static uint32_t telPosMs = 0;
@@ -2387,7 +2406,8 @@ static void robotStap(float dt) {
     else if (d == 6) { startGag(38); gagMsg = "WRAAK! Record terug!"; playGeluid(GL_TADA); }   // v54: record teruggepakt
     else if (d == 7) { showSoort = 1 + sprintI % 4; sprintI++; buddyPrefs.putUChar("spri", sprintI); showNa = millis(); }
     else if (d == 8) { playGeluid(GL_PLING); logRegel("geluid test: klaar=%d bezig=%d volume=%d status=%s", (int)audioReady, (int)audioBusy, (int)buddyVolume, audioStatus); statVraag = true; }
-    else if (d == 9) { otaInstalleer = true; } }   // v58: geluid testen / v68: update installeren   // v56: sprint-show testen vanuit de app
+    else if (d == 9) { otaInstalleer = true; }
+    else if ((d == 10 || d == 11) && (int32_t)(showTot - millis()) <= 0 && !showNa) { showSoort = d == 10 ? 5 : 6; showNa = millis(); } }   // v69: tunnel / rotonde   // v58: geluid testen / v68: update installeren   // v56: sprint-show testen vanuit de app
   if (!robotModus) { koekjeZichtbaar = false; return; }
   // schudden of oppakken
   { static uint32_t piekT[6] = {0}; static int pi = 0; static uint32_t duizT = 0;
@@ -2479,6 +2499,17 @@ static void drawShow() {
     char js[8]; snprintf(js, sizeof js, "%d", jaar); showTekst(js, 120 + sinf(tt * 30) * kr * 2, 56, 4, 0xFFFF);
     miniBuddy(120 + sinf(tt * 47) * 3 * kr, 145, .85f, false, kr > .5f ? 1 : 0);
     if (tt > 5.2f) showTekst("GEWOON VANDAAG", 120, 200, 2, 0xFFFF);
+  } else if (showSoort == 5) {   // v69: tunnel
+    for (int i = 0; i < 6; i++) { float a = -2.6f + i * .32f; dikLijn(120 + cosf(a) * 20, 120 + sinf(a) * 20, 120 + cosf(a) * 118, 120 + sinf(a) * 118, 2, 0x2945); a = .52f + i * .32f; dikLijn(120 + cosf(a) * 20, 120 + sinf(a) * 20, 120 + cosf(a) * 118, 120 + sinf(a) * 118, 2, 0x2945); }
+    for (int i = 0; i < 5; i++) { float k = fmodf(tt * 1.6f + i * .2f, 1.f), r = 14 + k * k * 110;   // lampen die voorbij flitsen
+      for (int s2 = -1; s2 <= 1; s2 += 2) { float a = -1.5708f + s2 * .55f; circle(120 + cosf(a) * r, 120 + sinf(a) * r, 2 + k * 6, k > .3f ? 0xFEA0 : 0x8400); } }
+    miniBuddy(120, 150, .7f, false, 0); triF(108, 150, 70, 210, 100, 210, 0x4208); triF(132, 150, 140, 210, 170, 210, 0x4208);   // koplampbundels
+    showTekst(tt < 3 ? "TUNNEL!" : "LICHTEN AAN", 120, 52, 2, 0xFEA0);
+  } else if (showSoort == 6) {   // v69: rotonde, even duizelig
+    float rot = tt * 4.f; for (int i = 0; i < 3; i++) { float a0 = rot + i * 2.094f; for (int k = 0; k < 8; k++) { float a1 = a0 + k * .16f, a2 = a1 + .16f; dikLijn(120 + cosf(a1) * 92, 120 + sinf(a1) * 92, 120 + cosf(a2) * 92, 120 + sinf(a2) * 92, 5, 0x5DFF); }
+      float ae = a0 + 1.4f; triF(120 + cosf(ae) * 104, 120 + sinf(ae) * 104, 120 + cosf(ae) * 80, 120 + sinf(ae) * 80, 120 + cosf(ae + .25f) * 92, 120 + sinf(ae + .25f) * 92, 0x5DFF); }
+    miniBuddy(120 + sinf(tt * 6) * 8, 120 + cosf(tt * 6) * 5, .9f, false, 1);
+    showTekst(tt < 2.5f ? "WIEEE!" : "DUIZELIG...", 120, 200, 2, 0xFFFF);
   }
   (void)ms;
 }
@@ -3211,8 +3242,8 @@ void loop(){
        { static uint32_t losShowT = 0; if (meterStart == nu && !showNa && random(4) == 0 && (!losShowT || nu - losShowT > 600000UL)) { losShowT = nu; showSoort = 1 + sprintI % 4; showNa = nu + 6500; sprintI++; buddyPrefs.putUChar("spri", sprintI); } }   // v57: af en toe ook na gewoon flink optrekken
      }
      if (showNa && (int32_t)(nu - showNa) >= 0) {   // v56: na de vlag de sprint-show
-       static const uint16_t DUUR[5] = {0, 9500, 7000, 7500, 8000};
-       showNa = 0; showStart = nu; showTot = nu + DUUR[showSoort]; playGeluid(GL_RUIMTE + showSoort - 1); logRegel("sprint-show %d", (int)showSoort);
+       static const uint16_t DUUR[7] = {0, 9500, 7000, 7500, 8000, 6000, 5000};
+       showNa = 0; showStart = nu; showTot = nu + DUUR[showSoort]; playGeluid(showSoort == 5 ? GL_VROEM : showSoort == 6 ? GL_GIECHEL : GL_RUIMTE + showSoort - 1); logRegel("sprint-show %d", (int)showSoort);
      }
      float doel = vn; naaldV += ((doel - naald) * 55.f - naaldV * 6.5f) * dt; naald += naaldV * dt;   // veer + demper: schiet door en trilt na
      if (naald < 0) { naald = 0; naaldV = 0; }

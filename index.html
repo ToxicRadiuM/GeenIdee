@@ -268,6 +268,16 @@ body.car #carGroep { display: block; }
 #ritLijst li { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
 #ritLijst .wd { font-variant-numeric: tabular-nums; color: var(--muted); }
 #bordTabs { display: flex; flex-wrap: wrap; gap: 8px; }
+/* v104: Groep-tab opnieuw ingedeeld */
+.segNav { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; margin: 4px 0 6px; scrollbar-width: none; position: sticky; top: 0; z-index: 5; background: var(--panel, #171B20); }
+.segNav::-webkit-scrollbar { display: none; }
+.segNav button { flex: none; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 9px 14px; font: 600 14px/1 var(--f-body); cursor: pointer; white-space: nowrap; }
+.segNav button[aria-pressed="true"] { color: var(--ink); border-color: #5ac8fa; background: rgba(90,200,250,.14); }
+.grKaart { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(135deg, rgba(90,200,250,.10), transparent); }
+.grKaart b { display: block; font-size: 17px; }
+.grKaart span { display: block; font-size: 13px; color: var(--muted); }
+.grSnel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+.grSnel .btn { padding: 10px 4px; font-size: 13px; }
 #bordTabs button[aria-pressed="true"] { border-color: var(--accent, #ff6b6b); font-weight: 700; }
 #bordLijst { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 #bordLijst li { display: grid; grid-template-columns: 2.4em 1fr auto; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
@@ -588,7 +598,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         <p>Geen hotspot aan? Geen ramp: Buddy+ werkt dan met de flitsers die hij het laatst heeft opgehaald, en de app geeft via Bluetooth nog steeds alles door.</p></details>
       <p class="foot" style="text-align:left">Gelukt? Kijk hieronder bij Gezondheid: daar komt “wifi verbonden” te staan (zet je hotspot dan wel even aan).</p>
       <p class="sub">Stap 3 · Spelen en instellen</p>
-      <div class="btns"><button class="btn" id="bpKoekje" type="button">🍪 Geef een koekje</button><button class="btn" id="bpFocus" type="button">🤓 Focus 25 min</button><button class="btn" id="bpWeer" type="button">⛅ Weer laten zien</button><button class="btn" id="bpZwaai" type="button">👋 Laat hem zwaaien</button><button class="btn" id="bpSprint" type="button">🚀 Sprint-show testen</button><button class="btn" id="bpPiep" type="button">🔊 Geluid testen</button></div>
+      <div class="btns"><button class="btn" id="bpKoekje" type="button">🍪 Geef een koekje</button><button class="btn" id="bpFocus" type="button">🤓 Focus 25 min</button><button class="btn" id="bpWeer" type="button">⛅ Weer laten zien</button><button class="btn" id="bpZwaai" type="button">👋 Laat hem zwaaien</button><button class="btn" id="bpSprint" type="button">🚀 Sprint-show testen</button><button class="btn" id="bpPiep" type="button">🔊 Geluid testen</button><button class="btn" id="bpTunnel" type="button">🚇 Tunnel</button><button class="btn" id="bpRotonde" type="button">🔄 Rotonde</button></div>
       <div class="limitrow"><label for="scLicht">Helderheid</label><input type="range" id="scLicht" min="10" max="100" step="5" value="65"></div>
       <div class="limitrow"><label for="scVol">Volume</label><input type="range" id="scVol" min="0" max="100" step="5" value="80"></div>
       <div class="limitrow"><label for="scAnim">Animaties</label><select id="scAnim"><option value="2">Rustig</option><option value="1" selected>Normaal</option><option value="0.5">Veel</option></select></div>
@@ -649,50 +659,62 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="foot">Telefoon-GPS werkt alleen als deze pagina via https is geopend en je locatie toestaat. Het scherm blijft dan aan. Bedien de pagina niet tijdens het rijden: zet je telefoon in een houder.</p>
     </div>
   </details>
-  <details class="kop" id="kopGroep"><summary><span class="kopT">👥 Groep</span><span class="kopS">berichten, leaderboard, verjaardagen</span></summary>
+  <details class="kop" id="kopGroep" open><summary><span class="kopT">👥 Groep</span><span class="kopS">berichten, ranglijst, sprints</span></summary>
     <div class="kopIn">
-      <p class="chip" id="grBerStat">Groepsberichten: nog niet opgehaald.</p>
-      <button class="btn" id="grTestKnop" type="button">🧪 Test de groep</button>
-      <p class="chip" id="grTestStat" hidden></p>
-      <p class="sub">Laatste berichten</p>
-      <ol id="grLijst" class="grLijst"><li class="leeg">Nog geen berichten.</li></ol>
-      <p class="sub">Leaderboard</p>
-      <p class="foot">Jouw groep, op basis van echte ritten met de GPS aan. De groepscode en je auto stel je hieronder in, bij Groepsinstellingen. Elke week is er een nieuwe challenge; de winnaar hoort iedereen op maandag.</p>
-      <div id="bordGroep" class="btns" role="group" aria-label="Soort leaderboard"><button type="button" class="btn" data-g="week" aria-pressed="true">🏆 Deze week</button><button type="button" class="btn" data-g="netjes" aria-pressed="false">🧘 Netjes</button><button type="button" class="btn" data-g="rec" aria-pressed="false">🚀 Records</button></div>
-      <div id="bordTabs" role="group" aria-label="Soort ranglijst">
+      <div id="grKaart" class="grKaart"><div><b id="grKaartNaam">Jouw groep</b><span id="grKaartSub">nog niet geladen</span></div><button class="btn" id="grStuurKnop" type="button">📣 Stuur iets</button></div>
+      <nav id="grNav" class="segNav" aria-label="Groep">
+        <button type="button" data-gp="ber" aria-pressed="true">💬 Berichten</button><button type="button" data-gp="rang" aria-pressed="false">🏆 Ranglijst</button><button type="button" data-gp="sprint" aria-pressed="false">⏱️ Sprints</button><button type="button" data-gp="graf" aria-pressed="false">📈 Rijstijl</button><button type="button" data-gp="inst" aria-pressed="false">⚙️ Instellen</button>
+      </nav>
+      <div class="grPane" data-gp="ber">
+        <div class="grSnel"><button class="btn" type="button" data-snel="zwaai">👋 Zwaai</button><button class="btn" type="button" data-snel="koffie">☕ Koffie?</button><button class="btn" type="button" data-snel="hart">❤️ Hartjes</button><button class="btn" type="button" data-snel="file">🚗 File</button></div>
+        <p class="chip" id="grBerStat">Groepsberichten: nog niet opgehaald.</p>
+        <ol id="grLijst" class="grLijst"><li class="leeg">Nog geen berichten.</li></ol>
+      </div>
+      <div class="grPane" data-gp="rang" hidden>
+        <div id="grRangKop">
+          <div id="bordGroep" class="btns" role="group" aria-label="Soort leaderboard"><button type="button" class="btn" data-g="week" aria-pressed="true">🏆 Deze week</button><button type="button" class="btn" data-g="netjes" aria-pressed="false">🧘 Netjes</button><button type="button" class="btn" data-g="rec" aria-pressed="false">🚀 Records</button></div>
+          <div id="bordTabs" role="group" aria-label="Soort ranglijst">
       <button type="button" class="btn" data-soort="week" aria-pressed="true">🏁 Week</button><button type="button" class="btn" data-soort="km" aria-pressed="false">Km</button><button type="button" class="btn" data-soort="netjes" aria-pressed="false">Netjes</button><button type="button" class="btn" data-soort="gemeld" aria-pressed="false">Meldingen</button><button type="button" class="btn" data-soort="sprint" aria-pressed="false">⏱️ Sprinttabel</button><button type="button" class="btn" data-soort="tachtig" aria-pressed="false">0–80</button><button type="button" class="btn" data-soort="nul" aria-pressed="false">0–100</button><button type="button" class="btn" data-soort="stijl" aria-pressed="false">Rijstijl</button><button type="button" class="btn" data-soort="stijlgraf" aria-pressed="false">📈 Grafiek</button><button type="button" class="btn" data-soort="zacht" aria-pressed="false">🧘 Soepel</button>
       </div>
-      <p class="foot" id="bordUitleg" style="text-align:left"></p>
-      <ol id="bordLijst"></ol>
-      <div id="sprintTabel" hidden></div>
-      <div id="stijlGraf" hidden></div>
-      <p class="chip" id="bordStat">Nog niet geladen.</p>
-      <button class="btn" id="bordVervers" type="button">Leaderboard verversen</button>
-      <p class="sub">Jouw badges</p>
-      <div id="badgeLijst" aria-label="Jouw badges"></div>
-      <p class="chip" id="badgeInfo" hidden></p>
-      <p class="foot">Tik op een badge om te zien hoe je hem haalt.</p>
-      <p class="sub">Groepsinstellingen</p>
-      <div class="switchrow"><input type="checkbox" id="grSignaalOn" checked><label for="grSignaalOn">Geluidje en trillen bij een groepsbericht (ook als het geluid van Buddy uit staat)</label></div>
-      <div class="switchrow"><input type="checkbox" id="grGezienOn" checked><label for="grGezienOn">Laat collega’s zien dat ik hun bericht heb gezien (✓)</label></div>
-      <div class="limitrow"><label>Mijn verjaardag</label><select id="bdDag"></select><select id="bdMaand"></select></div>
-      <p class="foot">Je collega’s zien dan op je verjaardag een taartje bij je naam en kunnen je met één tik feliciteren. Alleen dag en maand, geen jaartal.</p>
-      <p class="foot">Standaard zit iedereen in groep 123456, dus collega’s hoeven niets in te vullen. Wil je een eigen groep, vul dan op alle telefoons dezelfde andere code in (6 tot 32 letters of cijfers, houd hem geheim). Flitsers die iemand toevoegt komen dan bij iedereen, en jullie kunnen elkaar in de autostand met de knop “Groep” een zwaai, koffievraag, file, “ik sta stil”, hartjes of “bijna thuis” sturen. Er worden alleen plek en limiet gedeeld, en je plaatsnaam bij “ik sta stil” (geen precieze plek). Je hebt het Worker-adres hierboven nodig, met opslag gekoppeld.</p>
-      <div class="mobrow"><input type="text" id="grpCode" maxlength="32" autocomplete="off" autocapitalize="none" placeholder="Groepscode"><button class="btn" id="grpSave" type="button">Opslaan en verversen</button></div>
-      <button class="btn" id="grUitnodig" type="button">📨 Nodig een collega uit (QR-code of link)</button><div id="grUitBox" hidden style="text-align:center"></div>
-      <p class="chip" id="grpStat">Geen groepscode ingevuld.</p>
-      <p class="foot">Je naam voor de groep is de naam die je hierboven bij “Jouw naam” bewaart. Je auto is optioneel, zo herkennen jullie elkaar op de weg (geen kenteken).</p>
-      <div class="mobrow"><input type="text" id="autoIn" maxlength="30" autocomplete="off" placeholder="Jouw auto, bijv. witte Model Y"><button class="btn" id="autoSave" type="button">Bewaar auto</button></div>
-      <button class="btn" id="grpWeg" type="button">Haal mij uit de groep</button>
-      <div class="switchrow"><input type="checkbox" id="buurIn"><label for="buurIn">Zwaai als een collega vlakbij rijdt, en zeg het als er een binnen 5 km rijdt (je positie wordt niet aan anderen gegeven, alleen ongeveer hoe ver weg)</label></div>
-      <button class="btn" id="grpDel" type="button">Mijn laatst toegevoegde flitser verwijderen</button>
-      <button class="btn" id="kaartKnop" type="button">🗺️ Flitsers op de kaart (bekijken en verwijderen)</button>
+        </div>
+        <p class="foot" id="bordUitleg" style="text-align:left"></p>
+        <ol id="bordLijst"></ol>
+        <div id="sprintTabel" hidden></div>
+        <div id="stijlGraf" hidden></div>
+        <p class="chip" id="bordStat">Nog niet geladen.</p>
+        <button class="btn" id="bordVervers" type="button">↻ Verversen</button>
+        <p class="foot">Alleen echte ritten met de GPS aan tellen mee. Elke week een nieuwe challenge; de winnaar hoort iedereen op maandag.</p>
+      </div>
+      <div class="grPane" data-gp="inst" hidden>
+        <p class="sub">Jouw groep</p>
+        <div class="mobrow"><input type="text" id="grpCode" maxlength="32" autocomplete="off" autocapitalize="none" placeholder="Groepscode"><button class="btn" id="grpSave" type="button">Opslaan</button></div>
+        <p class="chip" id="grpStat">Geen groepscode ingevuld.</p>
+        <button class="btn" id="grUitnodig" type="button">📨 Nodig een collega uit (QR-code of link)</button><div id="grUitBox" hidden style="text-align:center"></div>
+        <button class="btn" id="grTestKnop" type="button">🧪 Test de groep</button>
+        <p class="chip" id="grTestStat" hidden></p>
+        <details class="foot" style="text-align:left"><summary>Hoe werkt de groepscode?</summary><p>Standaard zit iedereen in groep 123456, dus collega’s hoeven niets in te vullen. Wil je een eigen groep, vul dan op alle telefoons dezelfde andere code in (6 tot 32 letters of cijfers, houd hem geheim), of stuur een uitnodiging met de knop hierboven.</p></details>
+        <p class="sub">Over jou</p>
+        <div class="mobrow"><input type="text" id="autoIn" maxlength="30" autocomplete="off" placeholder="Jouw auto, bijv. witte Model Y"><button class="btn" id="autoSave" type="button">Bewaar auto</button></div>
+        <div class="limitrow"><label>Mijn verjaardag</label><select id="bdDag"></select><select id="bdMaand"></select></div>
+        <p class="foot">Je naam voor de groep is de naam bij “Jouw naam”. Op je verjaardag zien collega’s een taartje bij je naam (alleen dag en maand).</p>
+        <p class="sub">Meldingen</p>
+        <div class="switchrow"><input type="checkbox" id="grSignaalOn" checked><label for="grSignaalOn">Geluidje en trillen bij een groepsbericht</label></div>
+        <div class="switchrow"><input type="checkbox" id="grGezienOn" checked><label for="grGezienOn">Laat collega’s zien dat ik hun bericht heb gezien (✓)</label></div>
+        <div class="switchrow"><input type="checkbox" id="buurIn"><label for="buurIn">Zeg het als een collega in de buurt rijdt (alleen ongeveer hoe ver, nooit je precieze plek)</label></div>
+        <p class="sub">Flitsers</p>
+        <button class="btn" id="grpDel" type="button">Mijn laatst toegevoegde flitser verwijderen</button>
+        <button class="btn" id="kaartKnop" type="button">🗺️ Flitsers op de kaart (bekijken en verwijderen)</button>
+        <button class="btn" id="grpWeg" type="button">Haal mij uit de groep</button>
+        <div hidden><div id="badgeLijst" aria-label="Jouw badges"></div><p class="chip" id="badgeInfo" hidden></p></div>
+      </div>
     </div>
   </details>
   <details class="kop" id="kopRitten"><summary><span class="kopT">🏁 Mijn ritten</span><span class="kopS">ritten, level, records</span></summary>
     <div class="kopIn">
       <p class="sub">Laatste ritten</p>
       <ol id="ritLijst"></ol>
+      <p class="sub" id="plusRitKop" hidden>🤖 Ritten die Buddy+ alleen zag</p>
+      <ol id="plusRitLijst" class="v77lijst"></ol>
       <p class="chip" id="weekStat">Deze week nog geen ritten.</p>
       <button class="btn" id="weekKnop" type="button">📅 Weekrapport bekijken</button>
       <button class="btn" id="dagKnop" type="button">📔 Dagboek van vandaag</button>
@@ -1311,7 +1333,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         if (S.raSum >= 300) {
           S.raGedaan = 1; S.dizzyUntil = T + 2.6; setEv('excited', 3.2, 'Helemaal rond! Wheee, ik word draaierig.'); beep('excited'); lg('rotonde: helemaal rond (' + Math.round(S.raSum) + '°)');
         } else if (S.raSum >= 60 && T - (S.opRotondeT || -99) < 4 && !S.raKaart) {
-          S.raKaart = 1; S.hop = .6; setEv('excited', 2, 'Rotonde!'); beep('wake'); lg('rotonde: herkend op de kaart'); dagTel('rot'); plekMerk('rotonde');
+          S.raKaart = 1; S.hop = .6; setEv('excited', 2, 'Rotonde!'); if (window.__scDoe && Math.random() < .35) window.__scDoe('rotonde'); beep('wake'); lg('rotonde: herkend op de kaart'); dagTel('rot'); plekMerk('rotonde');
         }
       }
     }
@@ -4825,7 +4847,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     /* Tunnel = echt geen GPS meer (10 s+) bij snelheid. iPhones geven hun locatie onderweg vaak met gaatjes van een paar seconden door. */
     var wasTunnel = S.tunnel;
     S.tunnel = S.speed > 40 && T - S.liveT > 10 && T - S.liveT < 90;
-    if (S.tunnel && !wasTunnel) S.tunnelT0 = T;
+    if (S.tunnel && !wasTunnel) { S.tunnelT0 = T; if (window.__scDoe) window.__scDoe('tunnel'); }   /* v104: tunnel-show op Buddy+ */
     if (T - S.liveT > (S.tunnel ? 90 : 10)) { S.liveSpeed = 0; setTag('GPS geen signaal'); if (!S.gpsWeg) { S.gpsWeg = true; S.speed = 0; S.accel = 0; S.lastStart = S.lastExc = T; } }  /* geen signaal is geen noodstop */
     if (T - lastClk > 1) {
       lastClk = T;
@@ -5398,6 +5420,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     else if (s === 'test') { m = '🧪 Testbericht van ' + wie(b) + ' ontvangen. De groep werkt!'; setEv('happy', 3, m); try { grInRondje(b); } catch (e) {} grSignaal(false); grStuur('gezien', '&aan=' + encodeURIComponent(b.van) + '&r=' + encodeURIComponent(b.id)).catch(function () {}); toast(m); grLijstAdd('in', m); lg('groepsbericht ontvangen: test van ' + (b.n || '?')); return; }
     if (!m) return;
+    try { if (window.__scEvt) window.__scEvt({ zwaai: 'z', hart: 'h', reactie: 'f', feli: 'f', mijlpaal: 'f', thuis: 'f', pech: 'm' }[s] || 'i', m); } catch (e) {}   /* v104 */
     try { grInRondje(b); } catch (e) {}
     grLijstAdd('in', m);
     grSignaal(false); grGezienSturen(b);
@@ -5628,7 +5651,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (!meld.length) return;
     meld.forEach(function (m) { grLijstAdd('in', m); });
     setEv('sad', 5, meld[0]); beep('startled'); toast(meld[0]); grSignaal(false);
-    if (window.__scDoe) window.__scDoe('mok');
+    if (window.__scEvt) window.__scEvt('m', meld[0]); else if (window.__scDoe) window.__scDoe('mok');
   }
   function recordNieuw(k) {
     var mijn = mijnRec(k), K = SPRK[k]; if (!mijn) return;
@@ -5760,6 +5783,30 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       li.appendChild(sp); li.appendChild(b); ol.appendChild(li);
     });
   }
+  /* v104: ritten van Buddy+ die de telefoon miste (app op de achtergrond of thuisgelaten) tellen alsnog mee */
+  function plusRitBinnen(s) {
+    var d = s.split('|').map(Number); if (d.length < 6 || !(d[0] > 1.7e9) || !(d[1] > d[0])) return;
+    var t0 = d[0] * 1000, t1 = d[1] * 1000, km = d[2] / 10, id = String(d[0]);
+    mem.plusRit = mem.plusRit || {}; if (mem.plusRit[id]) return;
+    var dubbel = ritten.some(function (r) { return r.t0 < t1 + 120e3 && (r.t1 || r.t0 + (r.min || 1) * 60e3) > t0 - 120e3; });
+    mem.plusRit[id] = { t0: t0, t1: t1, km: km, vmax: d[3], nul: d[4] ? d[4] / 10 : 0, g: d[5] / 100, telt: !dubbel };
+    var ks = Object.keys(mem.plusRit); if (ks.length > 60) ks.sort().slice(0, ks.length - 60).forEach(function (k) { delete mem.plusRit[k]; });
+    if (!dubbel && km >= 0.5) {
+      mem.kmLive = (mem.kmLive || 0) + km; mem.ritLive = (mem.ritLive || 0) + 1; var w = wk(); if (weekIdx(new Date(t0)) === w.w) w.km = (w.km || 0) + km;
+      if (d[5] / 100 > (mem.gmaxLive || 0) && d[5] / 100 < 1.3) { mem.gmaxLive = d[5] / 100; mem.gmaxLiveD = t1; }
+      lg('rit van Buddy+ toegevoegd: ' + km + ' km op ' + dagStr(t0) + ' ' + tijdStr(t0));
+      toast('🤖 Buddy+ reed ' + String(km).replace('.', ',') + ' km zonder je telefoon. Toegevoegd aan je account.');
+      save(); try { badgeCheck(); } catch (e) {} if (typeof grLid === 'function') grLid(true);
+    } else save();
+    plusRitToon();
+  }
+  function plusRitToon() {
+    var ol = $('plusRitLijst'), k = $('plusRitKop'); if (!ol) return; while (ol.firstChild) ol.removeChild(ol.firstChild);
+    var l = Object.keys(mem.plusRit || {}).map(function (x) { return mem.plusRit[x]; }).filter(function (r) { return r.telt; }).sort(function (a, b) { return b.t0 - a.t0; }).slice(0, 5);
+    if (k) k.hidden = !l.length;
+    l.forEach(function (r) { var li = document.createElement('li'), sp = document.createElement('span'); sp.textContent = dagStr(r.t0) + ' ' + tijdStr(r.t0) + ' · ' + String(r.km).replace('.', ',') + ' km · top ' + r.vmax + (r.nul ? ' · 0-100 ' + fmt1(r.nul) + ' s' : ''); li.appendChild(sp); ol.appendChild(li); });
+  }
+  setTimeout(function () { try { plusRitToon(); } catch (e) {} }, 800);
   function weekZacht() { var w = wk(); return w.zKm >= 20 ? Math.round(w.zSom / w.zKm) : 0; }
   var BORD = { zacht: { naam: 'Soepelste rijder van de week (bochten, remmen en optrekken, gemeten met de bewegingssensor)', w: function (l) { return l.zacht && l.zacht.w === weekIdx() && l.zacht.v > 0 ? l.zacht.v : -1; }, f: function (l) { return l.zacht && l.zacht.w === weekIdx() && l.zacht.v > 0 ? l.zacht.v + '/100' : 'nog niet genoeg km'; } },
     week: { naam: 'Weekchallenge', w: function (l) { return l.week && l.week.w === weekIdx() && l.week.v > 0 ? l.week.v : -1; }, f: function (l) { return l.week && l.week.w === weekIdx() && l.week.v > 0 ? l.week.v + chal(weekIdx()).eenh : 'nog niets'; } },
@@ -5772,6 +5819,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     sprint: { naam: 'Sprinttabel', w: function (l) { return l.nul ? -l.nul : -1e9; }, f: function () { return ''; } },
     stijl: { naam: 'Rijstijl', w: function (l) { return (l.ritten || 0) >= 3 ? l.stijl || 0 : -1; }, f: function (l) { return (l.ritten || 0) >= 3 ? (l.stijl || 0) + '/100' : 'nog te weinig ritten'; } } };
   function bordToon(fout) {
+    try { grKaartToon(); } catch (e) {}
     var ol = $('bordLijst'), st = $('bordStat'); if (!ol) return;
     document.querySelectorAll('#bordTabs button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.soort === bordSoort ? 'true' : 'false'); });
     while (ol.firstChild) ol.removeChild(ol.firstChild);
@@ -6227,7 +6275,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     BADGES.forEach(function (b) { if (mem.badges.indexOf(b.k) < 0 && b.ok(mem)) { mem.badges.push(b.k); mem.badgeT[b.k] = Date.now(); nieuw.push(b); } });
     if (nieuw.length) {
       save(); badgeToon();
-      if (!stil) { var b = nieuw[0]; queueCheer('Nieuwe badge: ' + b.n + ' ' + b.i + '!'); }
+      if (!stil) { var b = nieuw[0]; queueCheer('Nieuwe badge: ' + b.n + ' ' + b.i + '!'); if (window.__scEvt) window.__scEvt('f', 'Nieuwe badge: ' + b.n + '!'); }
       if (typeof grLid === 'function') grLid(true);
     }
   }
@@ -7059,6 +7107,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (t === 'PIN:OK') { lg('scherm: code goed, verbonden'); stat('✅ Verbonden met Buddy+. Het schermpje krijgt nu elke seconde de info van je telefoon.'); toast('✅ Verbonden met Buddy+'); setTimeout(stuurInst, 300); setTimeout(netStuur, 900); setTimeout(persStuur, 1500); setTimeout(function () { klein('STAT?'); }, 2500); setTimeout(vraagLog, 3500); return; }   /* alles wat vóór de code kwam, nog een keer */
       if (t === 'PIN:FOUT') { lg('scherm: verkeerde code'); try { localStorage.removeItem(PINKEY); } catch (e) {} toast('Die code klopt niet. Kijk bovenaan het schermpje.'); setTimeout(function () { stuurPin(true); }, 600); return; }
       if (t === 'PIN?') { stuurPin(); return; }
+      if (t.indexOf('RIT:') === 0) { try { plusRitBinnen(t.slice(4)); } catch (e) { lg('FOUT rit van Buddy+: ' + e.message); } return; }   /* v104 */
       /* v76: logboek van het schermpje komt in stukjes binnen en gaat in de gewone Buddy-log (-> buddy-logs) */
       if (t === 'LOGBEGIN') { logBuf = ''; return; }
       if (t === 'LOGEND') { if (logBuf != null) { var r = logBuf.split('\n').filter(function (x) { return x.trim(); }); r.forEach(function (x) { lg('scherm| ' + x.slice(0, 220)); }); stat('✅ Logboek van het schermpje opgehaald (' + r.length + ' regels). Het gaat mee met de gewone log.'); if (typeof logStuur === 'function') setTimeout(logStuur, 1500); } logBuf = null; return; }
@@ -7083,7 +7132,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     function stuurInst() { clearTimeout(scT); scT = setTimeout(function () { if (!rx) return; bezig = true; stuurTekst('SET:l=' + sc.l + ';v=' + sc.v + ';a=' + sc.a + ';w=' + (sc.w == null ? '1' : sc.w) + ';o=' + (typeof huidigOutfit === 'function' ? huidigOutfit() : 'geen')).catch(function () {}).then(function () { bezig = false; }); }, 400); }
     ['scLicht', 'scVol', 'scAnim', 'scWarn'].forEach(function (id) { $(id).addEventListener('change', function () { sc.l = +$('scLicht').value; sc.v = +$('scVol').value; sc.a = $('scAnim').value; sc.w = $('scWarn').value; try { localStorage.setItem(SCKEY, JSON.stringify(sc)); } catch (e) {} stuurInst(); }); });
     window.__scStuur = function () { stuurInst(); setTimeout(persStuur, 900); };
-    window.__scDoe = function (t) { if (rx) klein('DOE:' + t); };   /* v93: mokken of juichen op Buddy+ */
+    window.__scDoe = function (t) { if (rx) klein('DOE:' + t); };
+    window.__scEvt = function (c, t) {   /* v104: groepsgebeurtenis op Buddy+ (alleen gewone letters, het schermpje kent geen emoji) */
+      if (!rx) return; var s = String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      if (s) klein('EVT:' + c + '|' + s);
+    };   /* v93: mokken of juichen op Buddy+ */
     function vraagLog() { if (!rx) { toast('Verbind eerst met het Buddy-scherm.'); return; } var d = new TextEncoder().encode('LOG?\n'); (rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(d) : rx.writeValue(d)).catch(function () {}); stat('Logboek van Buddy+ wordt opgehaald…'); }
     $('bleLog').addEventListener('click', vraagLog);
     /* v76: wifi-gegevens naar het schermpje */
@@ -7131,7 +7184,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (schS.au) { var au = schS.au.split('/'); d.push('geluid ' + (au[0] === 'ok' ? 'werkt' : au[0] === 'bezig' ? 'speelt' : 'FOUT (' + au[0] + ')') + ', volume ' + au[1] + '%, ' + au[2] + ' geluidjes gespeeld'); lg('scherm geluid: ' + schS.au); }
       $('schStat').textContent = d.join(' · ');
     }
-    [['bpPiep', 'DOE:piep', '🔊 Buddy+ piept. Kijk hieronder bij Gezondheid wat hij over zijn geluid zegt.'], ['bpSprint', 'DOE:sprint', '🚀 Buddy+ laat de volgende sprint-show zien.'], ['bpKoekje', 'DOE:koekje', '🍪 Nom nom! Buddy+ eet zijn koekje.'], ['bpFocus', 'DOE:focus', '🤓 Buddy+ focust 25 minuten met je mee (nog eens tikken = stoppen).'], ['bpWeer', 'DOE:weer', '⛅ Buddy+ laat het weer zien (als hij wifi heeft).'], ['bpZwaai', 'DOE:zwaai', '👋 Buddy+ zwaait!']].forEach(function (k) {
+    [['bpTunnel', 'DOE:tunnel', '🚇 Buddy+ rijdt een tunnel in.'], ['bpRotonde', 'DOE:rotonde', '🔄 Wieee, de rotonde!'], ['bpPiep', 'DOE:piep', '🔊 Buddy+ piept. Kijk hieronder bij Gezondheid wat hij over zijn geluid zegt.'], ['bpSprint', 'DOE:sprint', '🚀 Buddy+ laat de volgende sprint-show zien.'], ['bpKoekje', 'DOE:koekje', '🍪 Nom nom! Buddy+ eet zijn koekje.'], ['bpFocus', 'DOE:focus', '🤓 Buddy+ focust 25 minuten met je mee (nog eens tikken = stoppen).'], ['bpWeer', 'DOE:weer', '⛅ Buddy+ laat het weer zien (als hij wifi heeft).'], ['bpZwaai', 'DOE:zwaai', '👋 Buddy+ zwaait!']].forEach(function (k) {
       $(k[0]).addEventListener('click', function () { if (!rx) { toast('Verbind eerst met Buddy+.'); return; } klein(k[1]); toast(k[2]); });
     });
     $('schZoek').addEventListener('click', function () { if (!rx) { toast('Verbind eerst met het schermpje.'); return; } klein('ZOEK'); toast('🔔 Het schermpje piept en knippert.'); });
@@ -7489,9 +7542,36 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     $('hebScherm').addEventListener('change', function () { heb = $('hebScherm').value; $('schermIn').hidden = heb !== '1'; try { localStorage.setItem(HEBKEY, heb); } catch (e) {} });
   })();
 
+  /* ---------- v104: Groep-tab met knoppen bovenin (één onderdeel tegelijk) ---------- */
+  function grKaartToon() {
+    var n = $('grKaartNaam'), s = $('grKaartSub'); if (!n) return;
+    if (!grp) { n.textContent = 'Nog geen groep'; s.textContent = 'Vul een groepscode in bij ⚙️ Instellen'; return; }
+    n.textContent = (grp === STANDAARD_GROEP ? 'Groep ' : 'Groep “') + grp + (grp === STANDAARD_GROEP ? '' : '”');
+    var jarig = bordData.filter(function (l) { return l.jr && l.jr === mmdd(new Date()); }).map(function (l) { return l.n; });
+    s.textContent = (bordData.length ? bordData.length + ' in de groep' : 'leden laden…') + ' · deze week: ' + chal(weekIdx()).naam + (jarig.length ? ' · 🎂 ' + jarig.join(', ') : '');
+  }
+  (function () {
+    var GPKEY = 'dashboardmaatje-grpane-v1';
+    function kies(gp) {
+      document.querySelectorAll('#grNav button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.gp === gp ? 'true' : 'false'); });
+      var pane = gp === 'sprint' || gp === 'graf' ? 'rang' : gp;
+      document.querySelectorAll('.grPane').forEach(function (d) { d.hidden = d.dataset.gp !== pane; });
+      var kop = $('grRangKop'); if (kop) kop.hidden = gp !== 'rang';
+      if (gp === 'sprint') { bordSoort = 'sprint'; bordToon(); }
+      else if (gp === 'graf') { bordSoort = 'stijlgraf'; bordToon(); }
+      else if (gp === 'rang') { if (bordSoort === 'sprint' || bordSoort === 'stijlgraf') { var a = document.querySelector('#bordTabs button:not([hidden])'); if (a) a.click(); else { bordSoort = 'week'; bordToon(); } } else bordToon(); }
+      try { localStorage.setItem(GPKEY, gp); } catch (e) {}
+    }
+    document.querySelectorAll('#grNav button').forEach(function (b) { b.addEventListener('click', function () { kies(b.dataset.gp); }); });
+    document.querySelectorAll('.grSnel button').forEach(function (b) { b.addEventListener('click', function () { if (typeof grKnop === 'function') grKnop(b.dataset.snel); }); });
+    $('grStuurKnop').addEventListener('click', function () { if (typeof grPaneel === 'function') grPaneel(true); });
+    var start = 'ber'; try { start = localStorage.getItem(GPKEY) || 'ber'; } catch (e) {}
+    setTimeout(function () { kies(start); }, 0);
+  })();
+
   /* ---------- v85: leaderboard in 3 groepjes ---------- */
   (function () {
-    var G = { week: ['week', 'zacht'], netjes: ['stijl', 'stijlgraf', 'netjes', 'gemeld'], rec: ['sprint', 'nul', 'tachtig', 'km'] };
+    var G = { week: ['week', 'zacht'], netjes: ['stijl', 'netjes', 'gemeld'], rec: ['nul', 'tachtig', 'km'] };   /* v104: sprints en rijstijl-grafiek hebben nu een eigen knop bovenin */
     function kies(g) {
       document.querySelectorAll('#bordGroep button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.g === g ? 'true' : 'false'); });
       var eerste = null;
