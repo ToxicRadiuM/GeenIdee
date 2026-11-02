@@ -2527,6 +2527,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (!sound) {
       try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.resume) ac.resume(); sound = true; } catch (e) { sound = false; }
     } else sound = false;
+    try { localStorage.setItem('dashboardmaatje-geluiduit-v1', sound ? '0' : '1'); } catch (e) {}   /* v116: zelf uitgezet = ook de navigatiestem stil */
     b.setAttribute('aria-pressed', sound ? 'true' : 'false');
     b.textContent = 'Geluid: ' + (sound ? 'aan' : 'uit');
     if (sound) beep('pet');
@@ -4090,7 +4091,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function navAfstKort(d) { return d >= 950 ? (Math.round(d / 100) / 10).toFixed(1).replace('.', ',') + ' km' : Math.round(d / 10) * 10 + ' m'; }
   function navZeg(t) {
     lg('nav zegt: ' + t);
-    if (!navSpk || !('speechSynthesis' in window)) return;
+    var uit = false; try { uit = localStorage.getItem('dashboardmaatje-geluiduit-v1') === '1'; } catch (e) {}
+    if (!navSpk || uit || !('speechSynthesis' in window)) return;
     try { var u = new SpeechSynthesisUtterance(t); u.lang = 'nl-NL'; u.rate = 1.0; u.volume = 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
   }
   function navRoute(van, naar, opnieuw) {
@@ -4581,7 +4583,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v115';
+  var VERSION = 'v116';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
