@@ -35,7 +35,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 70;
+static const int FW_VERSIE = 71;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -2917,6 +2917,9 @@ bool initBuddyAudio() {
   digitalWrite(PA, HIGH);
   buddyI2S.setPins(BCLKPIN, WSPIN, DIPIN, DOPIN, MCLKPIN);
   heap_caps_malloc_extmem_enable(1024 * 1024);   // v67: alles wat het geluid nu aanmaakt in het interne geheugen (anders: 'user context not in internal RAM')
+  static void *psramBezet[48]; int psramN = 0;   // v71: PSRAM even helemaal bezet, dan MOET de I2S-driver intern geheugen pakken
+  while (psramN < 48) { size_t blok = heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM); if (blok < 8) break; void *q = heap_caps_malloc(blok, MALLOC_CAP_SPIRAM); if (!q) break; psramBezet[psramN++] = q; }
+  logRegel("geluid: PSRAM tijdelijk bezet (%d blokken, %u vrij over)", psramN, (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
   bool i2sOk = false;   // v62: een paar keer proberen (op sommige ESP32-versies lukt de eerste keer niet)
   for (int poging = 0; poging < 3 && !i2sOk; poging++) { if (poging) { buddyI2S.end(); delay(150); buddyI2S.setPins(BCLKPIN, WSPIN, DIPIN, DOPIN, MCLKPIN); }
     i2sOk = buddyI2S.begin(I2S_MODE_STD, AUDIO_RATE, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO, I2S_STD_SLOT_BOTH); }
@@ -2926,6 +2929,7 @@ bool initBuddyAudio() {
     i2sOk = buddyI2S.begin(I2S_MODE_STD, AUDIO_RATE, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO, I2S_STD_SLOT_BOTH);
     audioAlleenSpeaker = i2sOk; logRegel("geluid: alleen speaker %s", i2sOk ? "gelukt" : "ook mislukt"); }
   esp_log_set_vprintf(oudLog);
+  for (int k = 0; k < psramN; k++) heap_caps_free(psramBezet[k]);   // v71: PSRAM weer vrijgeven
   heap_caps_malloc_extmem_enable(4096);   // v67: daarna weer normaal
   if (!i2sOk) {
     Serial.println("Buddy audio: I2S start mislukt"); strcpy(audioStatus, "i2s-fout"); logRegel("geluid: I2S start mislukt");
