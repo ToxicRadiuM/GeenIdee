@@ -1334,19 +1334,30 @@ static void drawMenu() {
 // v21: records en ritjes (blijven bewaard in het geheugen van het bordje)
 static float rec80 = 0, rec100 = 0, recG = 0, totKm = 0; static uint32_t totRit = 0; static char dat80[9] = "", dat100[9] = "";
 static const char *netStatus = "wifi uit";
+// v67: checklist (info-venster): wat werkt er en wat niet
+static volatile uint32_t netOkT = 0, netFoutT = 0; static volatile int netFoutCode = 0; static volatile int8_t netDnsOk = -1, netTcpOk = -1; static volatile uint8_t bordBron = 0;
 static void infoRegel(int y, const char *r) { frame->setCursor(X(120) - (int)strlen(r) * 6, Y(y)); frame->print(r); }
-static void drawInfo() {
-  frame->setTextColor(EYE); frame->setTextSize(2);
-  char r[48]; int y = 46;
-  snprintf(r, sizeof r, "Buddy v%d %s", FW_VERSIE, netStatus); infoRegel(y, r); y += 16;
-  snprintf(r, sizeof r, "GPS %s %d sat", posVanTel ? "via tel" : (gpsFix ? "FIX" : (gpsDataOk ? "zoekt" : "geen data")), (int)gpsSatellites); infoRegel(y, r); y += 16;
-  snprintf(r, sizeof r, "Tel %s code %06lu", bleConnected ? (phoneFresh() ? "OK" : "stil") : "niet", (unsigned long)koppelPin); infoRegel(y, r); y += 16;
-  snprintf(r, sizeof r, "Volume %d%% Licht %d%%", buddyVolume, helderheid * 100 / 255); infoRegel(y, r); y += 16;
-  snprintf(r, sizeof r, "Vriend %d  Trucjes %d/8", (int)vriend, trucjesOpen()); infoRegel(y, r); y += 16;
-  frame->setTextColor(GOLD);
-  if (rec100 > 0) snprintf(r, sizeof r, "0-100 %.1fs %s", rec100, dat100); else snprintf(r, sizeof r, "0-100 nog niet"); infoRegel(y, r); y += 16;
-  if (rec80 > 0) snprintf(r, sizeof r, "0-80 %.1fs %s", rec80, dat80); else snprintf(r, sizeof r, "0-80 nog niet"); infoRegel(y, r); y += 16;
-  snprintf(r, sizeof r, "Max %.2fG %dkm %d rit", recG, (int)totKm, (int)totRit); infoRegel(y, r);
+static void infoKl(int y, const char *r, uint16_t kl) { frame->setTextColor(kl); infoRegel(y, r); }
+static void drawInfo() {   // v67: checklist
+  const uint16_t OK = 0x87F0, NEE = 0xF9A6, MID = 0xFEA0; frame->setTextSize(2);
+  char r[48]; int y = 44; uint32_t nu = millis();
+  snprintf(r, sizeof r, "Buddy+ v%d", FW_VERSIE); infoKl(y, r, EYE); y += 16;
+  bool bt = bleConnected && pinOk;
+  snprintf(r, sizeof r, "BT %s", bt ? (phoneFresh() ? "OK app+code" : "OK, app stil") : bleConnected ? "geen code" : "niet verbonden"); infoKl(y, r, bt && phoneFresh() ? OK : bt ? MID : NEE); y += 16;
+  bool wf = WiFi.status() == WL_CONNECTED;
+  snprintf(r, sizeof r, "WIFI %s %.10s", wf ? "OK" : (wifiNaam[0] ? "zoekt" : "uit"), wifiNaam); infoKl(y, r, wf ? OK : NEE); y += 16;
+  bool netGoed = netOkT && (!netFoutT || netOkT > netFoutT);
+  if (!wf) snprintf(r, sizeof r, "NET -");
+  else if (netGoed) { time_t t = time(nullptr) - (nu - netOkT) / 1000; struct tm lt; localtime_r(&t, &lt); snprintf(r, sizeof r, "NET OK %02d:%02d", lt.tm_hour, lt.tm_min); }
+  else if (netDnsOk == 0) snprintf(r, sizeof r, "NET X geen DNS");
+  else if (netTcpOk == 0) snprintf(r, sizeof r, "NET X geen verb.");
+  else if (netFoutT) snprintf(r, sizeof r, "NET X fout %d", netFoutCode);
+  else snprintf(r, sizeof r, "NET nog niet getest");
+  infoKl(y, r, !wf ? 0x8410 : netGoed ? OK : NEE); y += 16;
+  snprintf(r, sizeof r, "GPS %s %d/%d", posVanTel ? "via tel" : (gpsFix ? "FIX" : (gpsDataOk ? "zoekt" : "geen data")), (int)gpsSatellites, (int)gpsInZicht); infoKl(y, r, (gpsFix && !posVanTel) ? OK : posVanTel ? MID : NEE); y += 16;
+  snprintf(r, sizeof r, "BORD %s", bordBron == 1 ? "via telefoon" : bordBron == 2 ? "eigen kaart" : bordBron == 3 ? "van flitser" : "geen"); infoKl(y, r, bordBron ? OK : NEE); y += 16;
+  snprintf(r, sizeof r, "GELUID %s %d%%", audioReady ? "OK" : "FOUT", buddyVolume); infoKl(y, r, audioReady ? OK : NEE); y += 16;
+  if (rec100 > 0) snprintf(r, sizeof r, "0-100 %.1fs %.2fG", rec100, recG); else snprintf(r, sizeof r, "Max %.2fG", recG); infoKl(y, r, GOLD);
 }
 // Schuifbalk: x 40..200 op hoogte 122; sleep je vinger eroverheen.
 static const float SL_X0 = 40, SL_X1 = 200, SL_Y = 122;
@@ -1893,7 +1904,8 @@ static bool jZoek(JP &j, const char *sleutel) { const char *q = strstr(j.p, sleu
 static uint8_t *haalUrl(const char *url, size_t &len) {
   len = 0; WiFiClientSecure cl; cl.setInsecure(); HTTPClient h; h.setTimeout(15000);
   if (!h.begin(cl, url)) return nullptr;
-  int code = h.GET(); if (code != 200) { h.end(); logRegel("net: %s -> %d", url + 34, code); return nullptr; }
+  int code = h.GET(); if (code != 200) { h.end(); netFoutCode = code; netFoutT = millis(); logRegel("net: %s -> %d", url + 34, code); return nullptr; }
+  netOkT = millis();   // v67
   int n = h.getSize(); size_t cap = n > 0 ? n + 1 : 600000;
   uint8_t *buf = (uint8_t *)heap_caps_malloc(cap, MALLOC_CAP_SPIRAM); if (!buf) { h.end(); return nullptr; }
   WiFiClient *st = h.getStreamPtr(); size_t got = 0; uint32_t t0 = millis();
@@ -2156,6 +2168,10 @@ static void netTaak(void *) {
     if (zwaaiVraag && !bleConnected) { zwaaiVraag = false; stuurZwaai(); } else if (zwaaiVraag) zwaaiVraag = false;
     if (gpsFix && tegelNu[0] == 0) { char key[16]; tegelKey(gpsLat, gpsLon, key, sizeof key); laadTegel(key, true); }
     if (otaNu) { otaNu = false; otaT = millis(); logRegel("update gevraagd vanuit de app"); checkOta(); }
+    { static uint32_t chkT = 0; if (!chkT || millis() - chkT > 120000UL) { chkT = millis();   // v67: internet-check
+        IPAddress ip; netDnsOk = WiFi.hostByName("raw.githubusercontent.com", ip) == 1 ? 1 : 0; netTcpOk = -1;
+        if (netDnsOk) { WiFiClient c; netTcpOk = c.connect(ip, 443, 5000) ? 1 : 0; c.stop(); }
+        logRegel("internet-check: dns %s, verbinding %s, laatste download %s", netDnsOk ? "ok" : "MISLUKT", netTcpOk == 1 ? "ok" : netTcpOk == 0 ? "MISLUKT" : "-", netOkT && (!netFoutT || netOkT > netFoutT) ? "gelukt" : netFoutT ? "mislukt" : "nog geen"); } }
     { static uint32_t logT = 0; if ((!logT && millis() > 60000) || (logT && millis() - logT > 300000)) { logT = millis(); logNaarWorker(); } }   // v64
     bool stil = !gpsFix || gpsSpeedKmh < 1;
     if (stil && (!otaT || millis() - otaT > 3UL * 3600000) && millis() > 60000) { otaT = millis(); checkOta(); }
@@ -2469,6 +2485,7 @@ void drawFace(){
  bool tel = phoneFresh();
  int ownSpeed = fixNow ? (int)lroundf(gpsSpeedKmh) : (tel ? phone.v : -1);
  int limit = (tel && phone.lim > 0) ? phone.lim : ((wegLimiet > 0 && millis() - wegLimT < 6000) ? wegLimiet : ((gpsNearestCameraM >= 0 && gpsNearestCameraM <= 600) ? gpsCameraLimit : 0));
+ bordBron = (tel && phone.lim > 0) ? 1 : (wegLimiet > 0 && millis() - wegLimT < 6000) ? 2 : (limit > 0 ? 3 : 0);   // v67: 1 telefoon, 2 eigen kaart, 3 flitser
  // v19: file en tekst van de telefoon bovenin, werk-driehoekje naast het bord
  int camM = (tel && phone.camD >= 0) ? phone.camD : gpsNearestCameraM;
  if (trajActief) {   // v25: trajectcontrole met je gemiddelde
