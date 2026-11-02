@@ -1094,11 +1094,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   for (var k0 in P.neutral) cur[k0] = P.neutral[k0];
 
   /* ---------- Sound (buzzer stand-in) ---------- */
-  var ac = null, sound = false;
+  var ac = null, sound = false, MELDKEY = 'dashboardmaatje-meldmodus-v1', meldModus = 'belangrijk';   /* v117: alles / belangrijk (flitsers, files, gevaar, navigatie) / stil, zoals Flitsmeister */
+  try { meldModus = localStorage.getItem(MELDKEY) || (localStorage.getItem('dashboardmaatje-geluiduit-v1') === '1' ? 'stil' : 'belangrijk'); } catch (e) {}
+  function meldAlles() { return meldModus === 'alles'; }
+  var MELDBELANGRIJK = /flitser|controle|traject|file|spookrijder|te hard|ongeluk|afgesloten|gevaar|let op|gladheid|pech/i;
   var TUNES = { race: [392, 523, 784, 1047, 1319], gag: [660, 880], pet: [784, 988], wake: [392, 523, 659], excited: [523, 659, 784, 1047], startled: [988, 330], sleep: [330, 262, 196] };
   var lastBab = -9;
   function babble(kind, text) {
-    if (!sound || !ac || T - lastBab < 1.2) return;
+    if (!sound || !ac || !meldAlles() || T - lastBab < 1.2) return;
     var bo = document.getElementById('babOn'); if (bo && !bo.checked) return;
     lastBab = T; text = text || ''; audioGebruik(ac);
     var n = Math.max(2, Math.min(6, Math.round(text.length / 14) + 2));
@@ -1127,7 +1130,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     });
   }, 1000);
   function beep(name) {
-    if (!sound || !ac) return;
+    if (!sound || !ac || !meldAlles()) return;
     var seq = TUNES[name]; if (!seq) return;
     audioGebruik(ac);
     var t0 = ac.currentTime;
@@ -2522,14 +2525,15 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (S.asleep) { wake(); return; }
     S.target = 0; speedEl.value = 0; S.idle = 71 * ix();
   });
+  function meldKnop() { var b = $('bSound'); if (!b) return; b.setAttribute('aria-pressed', meldModus !== 'stil' ? 'true' : 'false'); b.textContent = 'Geluid: ' + { alles: '🔊 alles', belangrijk: '⚠️ alleen belangrijk', stil: '🔇 stil' }[meldModus] + ' (tik om te wisselen)'; }
+  setTimeout(meldKnop, 0);
+  document.addEventListener('pointerdown', function () { if (meldModus !== 'stil' && !sound) { try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.resume) ac.resume(); sound = true; } catch (e) {} } }, true);   /* geluid mag pas na een tik */
   $('bSound').addEventListener('click', function () {
     var b = $('bSound');
-    if (!sound) {
-      try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.resume) ac.resume(); sound = true; } catch (e) { sound = false; }
-    } else sound = false;
-    try { localStorage.setItem('dashboardmaatje-geluiduit-v1', sound ? '0' : '1'); } catch (e) {}   /* v116: zelf uitgezet = ook de navigatiestem stil */
-    b.setAttribute('aria-pressed', sound ? 'true' : 'false');
-    b.textContent = 'Geluid: ' + (sound ? 'aan' : 'uit');
+    meldModus = meldModus === 'alles' ? 'belangrijk' : meldModus === 'belangrijk' ? 'stil' : 'alles';   /* v117: tikken = volgende stand */
+    try { localStorage.setItem(MELDKEY, meldModus); } catch (e) {}
+    if (meldModus !== 'stil') { try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.resume) ac.resume(); sound = true; } catch (e) { sound = false; } } else sound = false;
+    meldKnop(); toast({ alles: '🔊 Alles: Buddy praat en piept, plus alle meldingen.', belangrijk: '⚠️ Alleen belangrijk: flitsers, controles, files, gevaar en navigatie.', stil: '🔇 Stil: Buddy zegt niets.' }[meldModus]);
     if (sound) beep('pet');
   });
   var clockEl = $('clock');
@@ -4091,8 +4095,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function navAfstKort(d) { return d >= 950 ? (Math.round(d / 100) / 10).toFixed(1).replace('.', ',') + ' km' : Math.round(d / 10) * 10 + ' m'; }
   function navZeg(t) {
     lg('nav zegt: ' + t);
-    var uit = false; try { uit = localStorage.getItem('dashboardmaatje-geluiduit-v1') === '1'; } catch (e) {}
-    if (!navSpk || uit || !('speechSynthesis' in window)) return;
+    if (!navSpk || meldModus === 'stil' || !('speechSynthesis' in window)) return;
     try { var u = new SpeechSynthesisUtterance(t); u.lang = 'nl-NL'; u.rate = 1.0; u.volume = 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
   }
   function navRoute(van, naar, opnieuw) {
@@ -4583,7 +4586,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v116';
+  var VERSION = 'v117';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8589,14 +8592,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     } };
   /* v96: keihard optrekken = Buddy schiet de ruimte in (eigen deuntje) */
   function synthMaak() {   /* v97: klein synthesizertje voor de sprint-deuntjes */
-    if (!sound || !ac) return null; audioGebruik(ac);
+    if (!sound || !ac || !meldAlles()) return null; audioGebruik(ac);
     var t0 = ac.currentTime + .05, mg = ac.createGain(); mg.gain.value = .9; mg.connect(ac.destination);
     return function (f, s, d, type, vol, f2) { var o = ac.createOscillator(), g = ac.createGain(); o.type = type || 'sawtooth'; o.frequency.setValueAtTime(f, t0 + s); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + s + d); g.gain.setValueAtTime(.0001, t0 + s); g.gain.exponentialRampToValueAtTime(vol || .045, t0 + s + .02); g.gain.exponentialRampToValueAtTime(.0001, t0 + s + d); o.connect(g); g.connect(mg); o.start(t0 + s); o.stop(t0 + s + d + .02); };
   }
   var STERKEY = 'dashboardmaatje-sterren-v1';
   function sterLees() { try { var b = localStorage.getItem(STERKEY); if (!b) return null; var t = atob(b), a = new Uint8Array(t.length); for (var i = 0; i < t.length; i++) a[i] = t.charCodeAt(i); return a; } catch (e) { return null; } }
   function sterSpeel(a) {   /* v106: eigen geluidje (8 kHz, 8 bit) op de telefoon afspelen */
-    if (!sound || !ac) return false; audioGebruik(ac);
+    if (!sound || !ac || !meldAlles()) return false; audioGebruik(ac);
     try { var buf = ac.createBuffer(1, a.length, 8000), d = buf.getChannelData(0); for (var i = 0; i < a.length; i++) d[i] = (a[i] - 128) / 128; var bs = ac.createBufferSource(); bs.buffer = buf; bs.connect(ac.destination); bs.start(); return true; } catch (e) { return false; }
   }
   (function () {   /* v106: geluidje kiezen, omzetten naar 8 kHz en bewaren */
@@ -8617,7 +8620,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     $('sterWeg').addEventListener('click', function () { try { localStorage.removeItem(STERKEY); } catch (e) {} st.textContent = 'Standaard sterren-geluidje terug.'; if (window.__sterWeg) window.__sterWeg(); });
   })();
   var sterStd = null;   /* v107: Ricardo's eigen sterren-geluidje zit standaard in de app */
-  function sterStdSpeel() { if (!sound || !ac) return false; audioGebruik(ac);
+  function sterStdSpeel() { if (!sound || !ac || !meldAlles()) return false; audioGebruik(ac);
     function speel(b) { try { var bs = ac.createBufferSource(); bs.buffer = b; bs.connect(ac.destination); bs.start(); } catch (e) {} }
     if (sterStd) { speel(sterStd); return true; }
     fetch('geluid/sterren.mp3').then(function (r) { return r.arrayBuffer(); }).then(function (ab) { return ac.decodeAudioData(ab); }).then(function (b) { sterStd = b; speel(b); }).catch(function () {});
@@ -9166,6 +9169,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') stilTot = Math.max(stilTot, Date.now() + 20e3); });
   function say(txt, force) {
     if (!spkOn || !('speechSynthesis' in window)) return;
+    if (meldModus === 'stil' || (meldModus === 'belangrijk' && !MELDBELANGRIJK.test(txt))) return;
     if (Date.now() < stilTot && !(S.live && S.speed > 15)) { lg('stil bij openen (niet uitgesproken): ' + txt); return; }
     if (!force && T - lastSay < 3) return;
     lastSay = T;
