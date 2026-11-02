@@ -4562,7 +4562,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v111';
+  var VERSION = 'v112';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9255,6 +9255,20 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         zetPadding();
       }).catch(function () { melding('Kaart laden lukt niet (geen internet?).'); });
     }
+    var flMk = [], flT = 0;   /* v112: flitsers op de rijkaart (van de groep, van jou en de vaste) */
+    function flPunt(t, rand, klein) { var d = document.createElement('div'); d.style.cssText = 'width:' + (klein ? 24 : 32) + 'px;height:' + (klein ? 24 : 32) + 'px;border-radius:50%;background:rgba(16,20,24,.9);border:2px solid ' + rand + ';display:flex;align-items:center;justify-content:center;font-size:' + (klein ? 13 : 17) + 'px;box-shadow:0 3px 8px rgba(0,0,0,.5)'; d.textContent = t; return d; }
+    function flitsersOpKaart() {
+      if (!map || !window.maplibregl || !lastPos) return; flT = Date.now();
+      flMk.forEach(function (m) { m.remove(); }); flMk = [];
+      var la = lastPos.lat, lo = lastPos.lon, n = 0, gezien = [];
+      try { (typeof flMeldingen === 'function' ? flMeldingen() : []).forEach(function (m) { if (gdist(la, lo, m.lat, m.lon) > 25000) return; gezien.push(m);
+        var el = flPunt(m.k === 'mobile' ? '🚓' : '📸', m.mijn ? '#0a84ff' : (m.k === 'mobile' ? '#ff9f0a' : '#ff453a'));
+        el.title = (m.k === 'mobile' ? 'Mobiele controle' : 'Flitser') + (m.mijn ? ' (jij)' : ' (' + m.n + ')');
+        flMk.push(new maplibregl.Marker({ element: el }).setLngLat([m.lon, m.lat]).addTo(map)); }); } catch (e) {}
+      try { var cc = (typeof camCache !== 'undefined' && camCache && camCache.cams) || []; cc.forEach(function (c) { if (n > 150 || Math.abs(c.lat - la) > .15 || gdist(la, lo, c.lat, c.lon) > 12000) return;
+        if (gezien.some(function (m) { return gdist(m.lat, m.lon, c.lat, c.lon) < 60; })) return; n++;
+        flMk.push(new maplibregl.Marker({ element: flPunt('📸', '#8e8e93', true) }).setLngLat([c.lon, c.lat]).addTo(map)); }); } catch (e) {}
+    }
     function zetPadding() { if (!map) return; var h = $('rijKaart').clientHeight || 400, bw = (document.querySelector('main') || {}).clientWidth || 0; map.setPadding({ top: Math.round(h * .42), bottom: 0, left: Math.min(bw, innerWidth * .5), right: 0 }); }   /* v111: auto in het midden van het stuk naast Buddy */
     function stap() {
       if (!map || !mk || !lastPos) return;
@@ -9262,7 +9276,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (p.hd != null && sp > 3) koers = p.hd;
       else if (vorige && sp > 3) { var d = gdist(vorige.lat, vorige.lon, p.lat, p.lon); if (d > 4) { var y = Math.sin((p.lon - vorige.lon) * Math.PI / 180) * Math.cos(p.lat * Math.PI / 180), x = Math.cos(vorige.lat * Math.PI / 180) * Math.sin(p.lat * Math.PI / 180) - Math.sin(vorige.lat * Math.PI / 180) * Math.cos(p.lat * Math.PI / 180) * Math.cos((p.lon - vorige.lon) * Math.PI / 180); koers = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; } }
       if (!vorige || gdist(vorige.lat, vorige.lon, p.lat, p.lon) > 4) vorige = { lat: p.lat, lon: p.lon };
-      melding('');
+      melding(''); if (Date.now() - flT > 30000) flitsersOpKaart();
       mk.setLngLat([p.lon, p.lat]); mk.setRotation(koers);
       var zoom = sp > 90 ? 15.2 : sp > 60 ? 15.8 : sp > 30 ? 16.5 : 17.2;
       map.easeTo({ center: [p.lon, p.lat], bearing: st.noord ? 0 : koers, zoom: zoom, pitch: st.noord ? 0 : 62, duration: 950, easing: function (t) { return t; } });
