@@ -147,6 +147,10 @@ body.car #carBack { display: block; }
   body.car.kaartrij #rijMelding { left: calc(50% + var(--bw) / 2); }
 }
 #rijMap { position: absolute; inset: 0; }
+#rijTerug { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 46; padding: 10px 16px; border-radius: 22px; border: 1px solid #5ac8fa; background: rgba(10,31,43,.92); color: #b5e6ff; font: 600 15px var(--f-body); box-shadow: 0 4px 12px rgba(0,0,0,.5); }
+#rijTerug[hidden], #rijStuur[hidden] { display: none; }
+#rijStuur { position: fixed; left: var(--bw, 0px); right: 0; bottom: 0; height: 34vh; z-index: 32; pointer-events: none; }
+#rijStuur svg { width: 100%; height: 100%; display: block; }
 #rijZoekKnop { position: fixed; right: 12px; top: 174px; z-index: 50; width: 46px; height: 46px; border-radius: 23px; border: 1px solid #555; background: rgba(16,20,24,.85); color: #fff; font-size: 20px; }
 #rijAfslag { position: fixed; top: 10px; left: calc(var(--bw, 0px) + 12px); right: 130px; max-width: 460px; z-index: 45; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: rgba(10,90,70,.92); color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.45); font: 600 15px/1.25 var(--f-body); }
 #rijAfslag[hidden] { display: none; }
@@ -521,7 +525,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 <div id="rondRing" aria-label="Menu"><div class="rrVlak"></div></div>
 <button id="carBack" class="rijRond rijWeg" type="button">Terug</button>
 <button id="carKaartKnop" class="rijRond rijWeg" type="button" aria-label="Kaart naast Buddy aan of uit">🗺️ Kaart</button>
-<div id="rijKaart" aria-label="Kaart met je auto"><div id="rijMap"></div><button id="rijAutoKnop" class="rijWeg" type="button" aria-label="Andere auto kiezen">🚗</button><button id="rijNoordKnop" class="rijWeg" type="button" aria-label="Rijrichting of noorden boven">🧭</button><button id="rijZoekKnop" class="rijWeg" type="button" aria-label="Navigeer naar">🔍</button><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
+<div id="rijKaart" aria-label="Kaart met je auto"><div id="rijMap"></div><button id="rijAutoKnop" class="rijWeg" type="button" aria-label="Andere auto kiezen">🚗</button><button id="rijNoordKnop" class="rijWeg" type="button" aria-label="Rijrichting of noorden boven">🧭</button><button id="rijZoekKnop" class="rijWeg" type="button" aria-label="Navigeer naar">🔍</button><button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><path d="M0 170 L0 120 Q200 70 400 120 L400 170 Z" fill="#111417"/><path d="M0 120 Q200 70 400 120" stroke="#2a2f35" stroke-width="3" fill="none"/><rect x="250" y="96" width="70" height="40" rx="6" fill="#0b0d10" stroke="#30363d"/><text x="285" y="122" text-anchor="middle" fill="#5ac8fa" font-size="16" font-family="sans-serif" id="rijStuurKmu">0</text><g transform="translate(150 150)"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></svg></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
 <button id="carRit" type="button">🏁 Rit klaar</button>
 <button id="carSpel" type="button">🎲 Spel</button>
 <div id="spel" hidden role="dialog" aria-label="Spelletjes">
@@ -4577,7 +4581,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v113';
+  var VERSION = 'v114';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9226,8 +9230,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   $('bCar').addEventListener('click', function () { carOn(true); });
   /* v110: autostand met een 3D-kaart en je auto (gratis kaart van OpenFreeMap, MapLibre) */
   (function () {
-    var KEY = 'dashboardmaatje-rijkaart-v1', st = { aan: true, auto: 0, noord: false };
-    try { var s0 = JSON.parse(localStorage.getItem(KEY)); if (s0) { st.aan = s0.aan !== false; st.auto = +s0.auto || 0; st.noord = !!s0.noord; } } catch (e) {}
+    var KEY = 'dashboardmaatje-rijkaart-v1', st = { aan: true, auto: 0, kijk: 0 };   /* v114: kijk 0 = 3D achter de auto, 1 = bovenaf, 2 = eerste persoon */
+    try { var s0 = JSON.parse(localStorage.getItem(KEY)); if (s0) { st.aan = s0.aan !== false; st.auto = +s0.auto || 0; st.kijk = +s0.kijk || (s0.noord ? 1 : 0); } } catch (e) {}
     function bewaar() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
     var AUTOS = [   /* bovenaanzicht, neus naar boven */
       { n: 'Model Y wit', k: '#f2f2f2', r: '#2b3440', vorm: 'suv' }, { n: 'Model Y zwart', k: '#1c1f24', r: '#56606b', vorm: 'suv' },
@@ -9256,7 +9260,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       melding('Kaart laden…');
       laadGL().then(function () {
         var p = lastPos || { lat: 52.1, lon: 5.1 };
-        map = new maplibregl.Map({ container: 'rijMap', style: 'https://tiles.openfreemap.org/styles/liberty', center: [p.lon, p.lat], zoom: 17, pitch: 62, bearing: 0, attributionControl: { compact: true }, interactive: true });
+        map = new maplibregl.Map({ container: 'rijMap', style: 'https://tiles.openfreemap.org/styles/liberty', center: [p.lon, p.lat], zoom: 17, pitch: 62, bearing: 0, maxPitch: 85, attributionControl: { compact: true }, interactive: true, doubleClickZoom: false });
+        volgInstellen();
         map.on('load', function () {
           melding(lastPos ? '' : 'Zet de GPS aan (Start), dan rijdt je auto mee.');
           try {   /* gebouwen in 3D */
@@ -9322,7 +9327,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       }).catch(function () { $('rijZoekRes').textContent = 'Zoeken lukt niet (internet?).'; }); }, 350);
     });
     setInterval(function () { if (map && document.body.classList.contains('kaartrij')) { routeTeken(); afslagToon(); } }, 1000);
-    function zetPadding() { if (!map) return; var h = $('rijKaart').clientHeight || 400, bw = (document.querySelector('main') || {}).clientWidth || 0; map.setPadding({ top: Math.round(h * .42), bottom: 0, left: Math.min(bw, innerWidth * .5), right: 0 }); }   /* v111: auto in het midden van het stuk naast Buddy */
+    function zetPadding() { if (!map) return; var h = $('rijKaart').clientHeight || 400, bw = (document.querySelector('main') || {}).clientWidth || 0; map.setPadding({ top: st.kijk === 2 ? 0 : Math.round(h * .42), bottom: 0, left: Math.min(bw, innerWidth * .5), right: 0 }); }   /* v111: auto in het midden van het stuk naast Buddy */
+    var volg = true, klikT = 0;   /* v114: zelf schuiven/zoomen mag; 2x tikken = terug naar de auto */
+    function volgZet(v) { volg = v; var b = $('rijTerug'); if (b) b.hidden = v; if (v) stap(); }
+    function volgInstellen() {
+      ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'].forEach(function (ev) { map.on(ev, function (e) { if (e && e.originalEvent) volgZet(false); }); });
+      map.on('click', function () { var nu = Date.now(); if (nu - klikT < 400) { volgZet(true); klikT = 0; } else klikT = nu; });
+    }
     function stap() {
       if (!map || !mk || !lastPos) return;
       var p = lastPos, sp = S.speed || 0;
@@ -9331,8 +9342,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (!vorige || gdist(vorige.lat, vorige.lon, p.lat, p.lon) > 4) vorige = { lat: p.lat, lon: p.lon };
       melding(''); if (Date.now() - flT > 30000) flitsersOpKaart();
       mk.setLngLat([p.lon, p.lat]); mk.setRotation(koers);
-      var zoom = sp > 90 ? 15.2 : sp > 60 ? 15.8 : sp > 30 ? 16.5 : 17.2;
-      map.easeTo({ center: [p.lon, p.lat], bearing: st.noord ? 0 : koers, zoom: zoom, pitch: st.noord ? 0 : 62, duration: 950, easing: function (t) { return t; } });
+      var fp = st.kijk === 2; if (fp) { var km = $('rijStuurKmu'); if (km) km.textContent = Math.round(sp) + ' km/u'; } mkEl.style.visibility = fp ? 'hidden' : 'visible'; $('rijStuur').hidden = !fp;
+      if (!volg) return;
+      var zoom = sp > 90 ? 15.2 : sp > 60 ? 15.8 : sp > 30 ? 16.5 : 17.2, c = [p.lon, p.lat];
+      if (fp) {   /* eerste persoon: camera laag, net achter de auto, kijkend over de weg */
+        var vooruit = 22, rad = koers * Math.PI / 180; c = [p.lon + Math.sin(rad) * vooruit / (111320 * Math.cos(p.lat * Math.PI / 180)), p.lat + Math.cos(rad) * vooruit / 110540];
+        map.easeTo({ center: c, bearing: koers, zoom: 19.6, pitch: 84, duration: 950, easing: function (t) { return t; } });
+      } else map.easeTo({ center: c, bearing: st.kijk === 1 ? 0 : koers, zoom: zoom, pitch: st.kijk === 1 ? 0 : 62, duration: 950, easing: function (t) { return t; } });
     }
     function toon() {
       var aan = st.aan && document.body.classList.contains('car');
@@ -9344,7 +9360,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     $('carKaartKnop').addEventListener('click', function () { st.aan = !st.aan; bewaar(); toon(); });
     $('rijAutoKnop').addEventListener('click', function () { st.auto = (st.auto + 1) % AUTOS.length; bewaar(); if (mkEl) mkEl.innerHTML = autoSvg(AUTOS[st.auto]); toast('🚗 ' + AUTOS[st.auto].n); });
-    $('rijNoordKnop').addEventListener('click', function () { st.noord = !st.noord; bewaar(); toast(st.noord ? '🧭 Noorden boven, van bovenaf' : '🧭 Rijrichting boven, in 3D'); stap(); });
+    $('rijNoordKnop').addEventListener('click', function () { st.kijk = (st.kijk + 1) % 3; bewaar(); toast(['🧭 3D, achter de auto', '🧭 Van bovenaf, noorden boven', '🧭 Eerste persoon: jij achter het stuur!'][st.kijk]); zetPadding(); volgZet(true); });
+    $('rijTerug').addEventListener('click', function () { volgZet(true); });
     var rustT = null; function wakker() { document.body.classList.remove('rust'); clearTimeout(rustT); rustT = setTimeout(function () { document.body.classList.add('rust'); }, 5000); }   /* v111: knopjes weg na 5 s, tik = terug */
     addEventListener('pointerdown', function () { if (document.body.classList.contains('kaartrij')) wakker(); }, true); wakker();
     new MutationObserver(toon).observe(document.body, { attributes: true, attributeFilter: ['class'] });
