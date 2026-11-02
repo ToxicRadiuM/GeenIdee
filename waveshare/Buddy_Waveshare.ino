@@ -26,6 +26,7 @@
 #include "driver/spi_master.h"   // v37: eigen, snellere verzending van het beeld
 #include "driver/gpio.h"
 #include <sys/time.h>
+#include "sterren_geluid.h"   // v73: Ricardo's eigen sterren-geluidje
 #include <LittleFS.h>             // v24: logboek in het flashgeheugen
 #include <WiFi.h>                 // v25: zelfstandig via de hotspot van je telefoon
 #include <WiFiClientSecure.h>
@@ -35,7 +36,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 72;
+static const int FW_VERSIE = 73;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -1155,11 +1156,12 @@ static char bleBuf[256]; static size_t bleLen = 0;
 // v72: eigen geluidje voor de sterren-show (komt van de app, bewaard in /sterren.raw: 8 kHz, 8 bit, max 7,5 s)
 static uint8_t *sterBuf = nullptr; static uint32_t sterLen = 0; static uint8_t *sndNieuw = nullptr; static uint32_t sndNieuwLen = 0, sndOntv = 0; static volatile uint8_t sndAntw = 0;
 static const uint32_t STER_MAX = 60000;
+static const uint8_t *sterData = STER_STANDAARD; static uint32_t sterDataLen = STER_STANDAARD_LEN;   // v73: standaard het ingebouwde geluidje, of het eigen uit de app
 static int b64Waarde(char c) { return c >= 'A' && c <= 'Z' ? c - 'A' : c >= 'a' && c <= 'z' ? c - 'a' + 26 : c >= '0' && c <= '9' ? c - '0' + 52 : c == '+' ? 62 : c == '/' ? 63 : -1; }
 static uint32_t b64Naar(const char *p, uint8_t *dst, uint32_t off, uint32_t max) { uint32_t n = 0, acc = 0; int bits = 0;
   for (; *p; p++) { int v = b64Waarde(*p); if (v < 0) continue; acc = (acc << 6) | v; bits += 6; if (bits >= 8) { bits -= 8; if (off + n < max) dst[off + n] = (acc >> bits) & 0xFF; n++; } } return n; }
 static void sterLaad() { File f = LittleFS.open("/sterren.raw", "r"); if (!f) return; uint32_t n = f.size();
-  if (n > 0 && n <= STER_MAX) { uint8_t *b = (uint8_t *)ps_malloc(n); if (b) { f.read(b, n); uint8_t *oud = sterBuf; sterBuf = b; sterLen = n; if (oud) free(oud); } } f.close(); }
+  if (n > 0 && n <= STER_MAX) { uint8_t *b = (uint8_t *)ps_malloc(n); if (b) { f.read(b, n); uint8_t *oud = sterBuf; sterBuf = b; sterLen = n; sterData = b; sterDataLen = n; if (oud) free(oud); } } f.close(); }
 static const char *moodKeys[MOOD_COUNT] = {"neutral","content","relaxed","happy","love","excited","focused","startled","worried","bored","sleepy","yawn","sleeping","alert","blow","anticipate"};
 static bool phoneFresh() { return phone.ms && millis() - phone.ms < 3500; }
 static char evtTxt[44] = ""; static volatile char evtSoort = 0;   // v69: groepsgebeurtenissen van de app
@@ -2365,9 +2367,9 @@ static void persStap(float dt) {
     playGeluid(s == 'f' ? GL_TADA : s == 'm' ? GL_OEPS : s == 'z' ? GL_HOI : s == 'h' ? GL_GIECHEL : GL_PLING); logRegel("gebeurtenis: %s", evtTxt); }
   if (sndAntw && bleConnected && !logBezig) { uint8_t a = sndAntw; sndAntw = 0;   // v72: eigen geluidje bewaren of wissen
     if (a == 1) { File f = LittleFS.open("/sterren.raw", "w"); bool ok = f && f.write(sndNieuw, sndNieuwLen) == sndNieuwLen; if (f) f.close();
-      if (ok) { uint8_t *oud = sterBuf; sterBuf = sndNieuw; sterLen = sndNieuwLen; sndNieuw = nullptr; if (oud) free(oud); logRegel("geluid: eigen sterren-geluidje bewaard (%u bytes)", (unsigned)sterLen); bleSend("SND:OK"); }
+      if (ok) { sterData = STER_STANDAARD; sterDataLen = STER_STANDAARD_LEN; uint8_t *oud = sterBuf; sterBuf = sndNieuw; sterLen = sndNieuwLen; sndNieuw = nullptr; sterData = sterBuf; sterDataLen = sterLen; if (oud) free(oud); logRegel("geluid: eigen sterren-geluidje bewaard (%u bytes)", (unsigned)sterLen); bleSend("SND:OK"); }
       else { logRegel("geluid: eigen geluidje opslaan mislukt"); bleSend("SND:FOUT"); } }
-    else if (a == 2) { LittleFS.remove("/sterren.raw"); uint8_t *oud = sterBuf; sterBuf = nullptr; sterLen = 0; if (oud) free(oud); bleSend("SND:WEG"); }
+    else if (a == 2) { LittleFS.remove("/sterren.raw"); sterData = STER_STANDAARD; sterDataLen = STER_STANDAARD_LEN; uint8_t *oud = sterBuf; sterBuf = nullptr; sterLen = 0; if (oud) free(oud); bleSend("SND:WEG"); }
     else bleSend("SND:FOUT"); }
   if (pinAntw && bleConnected && !logBezig) { uint8_t a = pinAntw; pinAntw = 0; bleSend(a == 1 ? "PIN:OK" : a == 2 ? "PIN:FOUT" : "PIN?"); if (a == 1) { ritStuurNu = true; ritStuurT = millis() + 6000; } }   // v65
   if (ritStuurNu && bleConnected && pinOk && !logBezig && (int32_t)(millis() - ritStuurT) >= 0) { ritStuurNu = false;   // v69: ritten naar de app
@@ -3029,14 +3031,14 @@ void soundTask(void *arg) {
 
 static void sterTask(void *) {   // v72: het eigen geluidje (8 kHz) afspelen op 16 kHz
   int16_t pcm[640]; uint32_t i = 0;
-  while (i < sterLen) { uint32_t n = 0;
-    while (n < 320 && i < sterLen) { int a = (int)sterBuf[i] - 128, b = (i + 1 < sterLen ? (int)sterBuf[i + 1] : 128) - 128;
+  while (i < sterDataLen) { uint32_t n = 0;
+    while (n < 320 && i < sterDataLen) { int a = (int)sterData[i] - 128, b = (i + 1 < sterDataLen ? (int)sterData[i + 1] : 128) - 128;
       int16_t v0 = buddyVolume ? a * 200 : 0, v1 = buddyVolume ? (a + b) * 100 : 0; pcm[n * 2] = v0; pcm[n * 2 + 1] = v0; n++; pcm[n * 2] = v1; pcm[n * 2 + 1] = v1; n++; i++; }
     buddyI2S.write((uint8_t *)pcm, n * 2 * sizeof(int16_t)); }
   memset(pcm, 0, sizeof(pcm)); buddyI2S.write((uint8_t *)pcm, sizeof(pcm));
   audioBusy = false; vTaskDelete(NULL); }
 static void speelSter() {
-  if (!audioReady || !sterBuf || !sterLen) { playGeluid(GL_RUIMTE); return; }
+  if (!audioReady || !sterData || !sterDataLen) { playGeluid(GL_RUIMTE); return; }
   if (audioBusy && millis() - audioBusyT > 8000) audioBusy = false;
   if (audioBusy) return;
   audioBusy = true; audioBusyT = millis(); audioGespeeld++;
@@ -3298,7 +3300,7 @@ void loop(){
      }
      if (showNa && (int32_t)(nu - showNa) >= 0) {   // v56: na de vlag de sprint-show
        static const uint16_t DUUR[9] = {0, 9500, 7000, 7500, 8000, 6000, 5000, 7000, 7000};
-       showNa = 0; showStart = nu; showTot = nu + DUUR[showSoort]; if (showSoort == 1 && sterLen) speelSter(); else playGeluid(showSoort == 5 ? GL_VROEM : showSoort == 6 ? GL_GIECHEL : showSoort >= 7 ? GL_TRIP : GL_RUIMTE + showSoort - 1); logRegel("sprint-show %d", (int)showSoort);
+       showNa = 0; showStart = nu; showTot = nu + DUUR[showSoort]; if (showSoort == 1) speelSter(); else playGeluid(showSoort == 5 ? GL_VROEM : showSoort == 6 ? GL_GIECHEL : showSoort >= 7 ? GL_TRIP : GL_RUIMTE + showSoort - 1); logRegel("sprint-show %d", (int)showSoort);
      }
      float doel = vn; naaldV += ((doel - naald) * 55.f - naaldV * 6.5f) * dt; naald += naaldV * dt;   // veer + demper: schiet door en trilt na
      if (naald < 0) { naald = 0; naaldV = 0; }

@@ -600,8 +600,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="sub">Stap 3 · Spelen en instellen</p>
       <div class="btns"><button class="btn" id="bpKoekje" type="button">🍪 Geef een koekje</button><button class="btn" id="bpFocus" type="button">🤓 Focus 25 min</button><button class="btn" id="bpWeer" type="button">⛅ Weer laten zien</button><button class="btn" id="bpZwaai" type="button">👋 Laat hem zwaaien</button><button class="btn" id="bpSprint" type="button">🚀 Sprint-show testen</button><button class="btn" id="bpPiep" type="button">🔊 Geluid testen</button><button class="btn" id="bpTunnel" type="button">🚇 Tunnel</button><button class="btn" id="bpRotonde" type="button">🔄 Rotonde</button><button class="btn" id="bpTrip" type="button">🌈 Kleurtrip</button><button class="btn" id="bpSpiraal" type="button">🌀 Spiraal</button></div>
       <p class="sub">🚀 Eigen geluidje voor de sterren-show</p>
-      <div class="btns"><label class="btn" for="sterBestand">🎵 Kies een geluidje</label><input type="file" id="sterBestand" accept="audio/*" hidden><button class="btn" id="sterStuur" type="button">📡 Stuur naar Buddy+</button><button class="btn" id="sterWeg" type="button">Gewone deuntje terug</button></div>
-      <p class="chip" id="sterStat">Nog geen eigen geluidje. Max 7,5 seconden, het begin telt.</p>
+      <div class="btns"><label class="btn" for="sterBestand">🎵 Kies een geluidje</label><input type="file" id="sterBestand" accept="audio/*" hidden><button class="btn" id="sterStuur" type="button">📡 Stuur naar Buddy+</button><button class="btn" id="sterWeg" type="button">Standaard terug</button></div>
+      <p class="chip" id="sterStat">Standaard speelt Ricardo's sterren-geluidje. Kies een ander als je wilt (max 7,5 seconden).</p>
       <div class="limitrow"><label for="scLicht">Helderheid</label><input type="range" id="scLicht" min="10" max="100" step="5" value="65"></div>
       <div class="limitrow"><label for="scVol">Volume</label><input type="range" id="scVol" min="0" max="100" step="5" value="80"></div>
       <div class="limitrow"><label for="scAnim">Animaties</label><select id="scAnim"><option value="2">Rustig</option><option value="1" selected>Normaal</option><option value="0.5">Veel</option></select></div>
@@ -4511,7 +4511,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v106';
+  var VERSION = 'v107';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8511,10 +8511,17 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       inp.value = '';
     });
     $('sterStuur').addEventListener('click', function () { var a = sterLees(); if (!a) { toast('Kies eerst een geluidje.'); return; } if (window.__sterNaarScherm) window.__sterNaarScherm(a); });
-    $('sterWeg').addEventListener('click', function () { try { localStorage.removeItem(STERKEY); } catch (e) {} st.textContent = 'Gewone deuntje terug.'; if (window.__sterWeg) window.__sterWeg(); });
+    $('sterWeg').addEventListener('click', function () { try { localStorage.removeItem(STERKEY); } catch (e) {} st.textContent = 'Standaard sterren-geluidje terug.'; if (window.__sterWeg) window.__sterWeg(); });
   })();
+  var sterStd = null;   /* v107: Ricardo's eigen sterren-geluidje zit standaard in de app */
+  function sterStdSpeel() { if (!sound || !ac) return false; audioGebruik(ac);
+    function speel(b) { try { var bs = ac.createBufferSource(); bs.buffer = b; bs.connect(ac.destination); bs.start(); } catch (e) {} }
+    if (sterStd) { speel(sterStd); return true; }
+    fetch('geluid/sterren.mp3').then(function (r) { return r.arrayBuffer(); }).then(function (ab) { return ac.decodeAudioData(ab); }).then(function (b) { sterStd = b; speel(b); }).catch(function () {});
+    return true; }
   function ruimteDeuntje() {
     var eigen = sterLees(); if (eigen && sterSpeel(eigen)) return;
+    if (sterStdSpeel()) return;
     var noot = synthMaak(); if (!noot) return;
     noot(80, 0, 1.3, 'sawtooth', .06, 1400);   /* lancering: woesj omhoog */
     var AK = [[293.7, 370, 440], [329.6, 415.3, 493.9], [370, 466.2, 554.4], [440, 554.4, 659.3]], s = 1.3;   /* eigen deuntje: stijgende akkoorden */

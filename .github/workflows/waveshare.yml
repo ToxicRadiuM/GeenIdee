@@ -40,7 +40,7 @@ jobs:
       - name: Compileren
         run: |
           mkdir -p bouw/Buddy_Waveshare out
-          cp waveshare/Buddy_Waveshare.ino waveshare/pin_config.h bouw/Buddy_Waveshare/
+          cp waveshare/Buddy_Waveshare.ino waveshare/pin_config.h waveshare/sterren_geluid.h bouw/Buddy_Waveshare/
           set -o pipefail
           arduino-cli compile --fqbn "esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PartitionScheme=app3M_fat9M_16MB,PSRAM=opi" \
             --output-dir out --warnings default bouw/Buddy_Waveshare 2>&1 | tee compile.log
