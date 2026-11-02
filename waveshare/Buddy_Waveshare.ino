@@ -1146,7 +1146,7 @@ static WerkerCfg wCfg = {"", "", "", ""}, wNieuw = {"", "", "", ""}; static vola
 static char grpTekst[40] = ""; static volatile uint32_t grpTot = 0;
 static volatile int setLicht = -1, setVol = -1; static volatile float animFactor = 1.0f; static char outfitK[16] = ""; static volatile uint32_t outfitT = 0;
 static char wifiNaam[33] = "", wifiPass[65] = "", wifiNaamNieuw[33] = "", wifiPassNieuw[65] = ""; static volatile bool wifiNieuw = false, wifiHerstart = false;
-struct PhoneData { int v, lim, camD, camLim, fileD, fileMin; bool werk; int mood; char txt[64]; uint32_t ms; char nav; int navD; char msi[6]; char eta[6]; char buur[24]; bool beker; float lat, lon, hd; bool pos; };
+struct PhoneData { int v, lim, camD, camLim, fileD, fileMin; bool werk; int mood; char txt[64]; uint32_t ms; char nav; int navD; char msi[6]; char eta[6]; char buur[24]; bool beker; float lat, lon, hd; bool pos; bool limEst; };
 static PhoneData phone = {0, 0, -1, 0, -1, 0, false, -1, "", 0, 0, 0, ""};
 static BLECharacteristic *bleTx = nullptr;
 static volatile bool bleConnected = false;
@@ -1204,6 +1204,7 @@ static void parsePhone(char *line) {
     if (tl) *tl = '~'; buurNieuw = true; }
   strncpy(d.buur, n > 13 ? f[13] : "", sizeof(d.buur) - 1); d.buur[sizeof(d.buur) - 1] = 0;
   d.beker = n > 14 && f[14][0] == '1';
+  d.limEst = n > 16 && f[16][0] == '1';   // v68: bord is maar geschat (dan niet leren)
   d.pos = false;   // v44: plek van de telefoon (lat~lon~koers)
   if (n > 15 && f[15][0]) { char *a = f[15], *b = strchr(a, '~'); if (b) { *b = 0; char *c = strchr(b + 1, '~'); if (c) *c = 0;
       d.lat = atof(a); d.lon = atof(b + 1); d.hd = (c && c[1]) ? atof(c + 1) : -1; d.pos = d.lat > 30 && d.lat < 72 && d.lon > -25 && d.lon < 45; } }
@@ -1356,7 +1357,7 @@ static void drawInfo() {   // v67: checklist
   else snprintf(r, sizeof r, "NET nog niet getest");
   infoKl(y, r, !wf ? 0x8410 : netGoed ? OK : NEE); y += 16;
   snprintf(r, sizeof r, "GPS %s %d/%d", posVanTel ? "via tel" : (gpsFix ? "FIX" : (gpsDataOk ? "zoekt" : "geen data")), (int)gpsSatellites, (int)gpsInZicht); infoKl(y, r, (gpsFix && !posVanTel) ? OK : posVanTel ? MID : NEE); y += 16;
-  snprintf(r, sizeof r, "BORD %s", bordBron == 1 ? "via telefoon" : bordBron == 2 ? "eigen kaart" : bordBron == 3 ? "van flitser" : "geen"); infoKl(y, r, bordBron ? OK : NEE); y += 16;
+  snprintf(r, sizeof r, "BORD %s", bordBron == 1 ? "via telefoon" : bordBron == 2 ? "eigen kaart" : bordBron == 3 ? "van flitser" : bordBron == 4 ? "geleerd" : bordBron == 5 ? "onthouden" : "geen"); infoKl(y, r, bordBron ? OK : NEE); y += 16;
   snprintf(r, sizeof r, "GELUID %s %d%%", audioReady ? "OK" : "FOUT", buddyVolume); infoKl(y, r, audioReady ? OK : NEE); y += 16;
   if (rec100 > 0) snprintf(r, sizeof r, "0-100 %.1fs %.2fG", rec100, recG); else snprintf(r, sizeof r, "Max %.2fG", recG); infoKl(y, r, GOLD);
 }
@@ -1924,6 +1925,43 @@ static uint8_t *leesBestand(const char *pad, size_t &n) {
   n = f.size(); uint8_t *b = (uint8_t *)heap_caps_malloc(n + 1, MALLOC_CAP_SPIRAM); if (!b) { f.close(); return nullptr; }
   f.read(b, n); b[n] = 0; f.close(); return b;
 }
+// v68: borden leren van de telefoon. Elk bord dat de app doorgeeft wordt met plek en rijrichting bewaard,
+// zodat Buddy+ het de volgende keer zelf weet (zonder telefoon en zonder internet).
+struct Leer { int32_t la, lo; uint8_t hd, lim; uint16_t vrij; };
+static Leer *leer = nullptr; static volatile int leerN = 0; static const int LEER_MAX = 40000;
+static Leer leerBuf[24]; static volatile int leerBufN = 0;
+static void leerLaad() {
+  if (!leer) leer = (Leer *)heap_caps_malloc(sizeof(Leer) * LEER_MAX, MALLOC_CAP_SPIRAM); if (!leer) return;
+  size_t n; uint8_t *b = leesBestand("/leer.bin", n); if (!b) return;
+  int k = n / sizeof(Leer); if (k > LEER_MAX) { memcpy(leer, b + (k - LEER_MAX) * sizeof(Leer), LEER_MAX * sizeof(Leer)); k = LEER_MAX; } else memcpy(leer, b, k * sizeof(Leer));
+  free(b); leerN = k; logRegel("borden geleerd van de telefoon: %d punten", k);
+}
+static void leerBewaar() {   // in de net-taak: buffer naar het bestand
+  int n = leerBufN; if (!n || !logFs) return; Leer tmp[24]; memcpy(tmp, leerBuf, n * sizeof(Leer)); leerBufN = 0;
+  File fl = logFs->open("/leer.bin", FILE_APPEND); if (fl) { fl.write((const uint8_t *)tmp, n * sizeof(Leer)); fl.close(); }
+  if (leerN >= LEER_MAX - 50) { File w = logFs->open("/leer.bin", FILE_WRITE); if (w) { int van = leerN - 30000; w.write((const uint8_t *)(leer + van), 30000 * sizeof(Leer)); w.close(); memmove(leer, leer + van, 30000 * sizeof(Leer)); leerN = 30000; } }
+}
+static void leerOnthoud(float lat, float lon, float hd, int lim) {   // vanuit de loop, als de telefoon een bord geeft
+  static float vLat = 0, vLon = 0; static int vLim = 0;
+  if (!leer || lim <= 0 || lim > 130 || hd < 0) return;
+  float dx = (lon - vLon) * 111320.f * cosf(lat * 0.0174533f), dy = (lat - vLat) * 110540.f;
+  if (dx * dx + dy * dy < 40 * 40 && lim == vLim) return;   // elke 40 m (of als het bord verandert)
+  vLat = lat; vLon = lon; vLim = lim;
+  Leer e; e.la = (int32_t)lroundf(lat * 1e5f); e.lo = (int32_t)lroundf(lon * 1e5f); e.hd = (uint8_t)((int)lroundf(hd / 360.f * 256) & 255); e.lim = lim; e.vrij = 0;
+  if (leerN < LEER_MAX) { leer[leerN] = e; leerN++; }
+  if (leerBufN < 24) { leerBuf[leerBufN] = e; leerBufN++; }
+}
+static int leerZoek(float lat, float lon, float hd) {   // nieuwste geleerde bord binnen 35 m in dezelfde richting
+  if (!leer || !leerN) return 0;
+  int32_t la = (int32_t)lroundf(lat * 1e5f), lo = (int32_t)lroundf(lon * 1e5f); float kx = cosf(lat * 0.0174533f);
+  int hb = (int)lroundf(hd / 360.f * 256) & 255;
+  for (int i = leerN - 1; i >= 0; i--) { const Leer &e = leer[i];
+    int dla = e.la - la, dlo = e.lo - lo; if (dla > 32 || dla < -32 || dlo > 52 || dlo < -52) continue;
+    float d = sqrtf((float)dla * dla * 1.2218f + (float)dlo * dlo * kx * kx * 1.2392f); if (d > 35) continue;
+    int dh = abs(((int)e.hd - hb + 384) % 256 - 128); if (dh > 32) continue;   // binnen ongeveer 45 graden
+    return e.lim; }
+  return 0;
+}
 static bool zetTegel(const char *key, const uint8_t *txt, size_t len) {
   JP j{(const char *)txt, (const char *)txt + len};
   if (!jZoek(j, "\"w\":[")) return false;
@@ -1977,7 +2015,12 @@ static void laadFlitsers(bool online) {
   free(b);
 }
 static float afstandM(float la1, float lo1, float la2, float lo2) { float kx = 111320.f * cosf(la1 * 0.0174533f); float dx = (lo2 - lo1) * kx, dy = (la2 - la1) * 110540.f; return sqrtf(dx * dx + dy * dy); }
+static volatile uint32_t leerLimT = 0; static volatile int leerLim = 0;
+static void bepaalWegGeleerd() {   // v68: geleerde borden (van de telefoon) als de kaart niets weet
+  if (!gpsFix || gpsSpeedKmh < 5) return; int l = leerZoek(gpsLat, gpsLon, gpsKoers); if (l > 0) { leerLim = l; leerLimT = millis(); }
+}
 static void bepaalWeg() {
+  bepaalWegGeleerd();
   if (!gpsFix || !wegN || !wegen) return;
   float lat = gpsLat, lon = gpsLon, hd = gpsKoers, v = gpsSpeedKmh;
   float kx = 111320.f * cosf(lat * 0.0174533f), ky = 110540.f, best = 1e9; int bi = -1;
@@ -1995,7 +2038,7 @@ static void bepaalWeg() {
     }
   }
   if (bi < 0) return;
-  const Weg &g = wegen[bi]; int lim = g.lim;
+  const Weg &g = wegen[bi]; int lim = g.lim;   // (geen kaart: zie bepaalWegGeleerd)
   if (g.clim && klokOk()) { int hh, mm; lokaleTijd(hh, mm); int m = hh * 60 + mm; bool in = g.tb < g.te ? (m >= g.tb && m < g.te) : (m >= g.tb || m < g.te); if (in) lim = g.clim; }
   wegLimiet = lim; wegLimT = millis();
 }
@@ -2167,12 +2210,14 @@ static void stuurZwaai() {
 static void netTaak(void *) {
   uint32_t flitsT = 0, otaT = 0, beginT = 0, stapT = millis(); bool ntpAan = false, flitsOud = false;
   laadFlitsers(false); flitsOud = true;   // eerst uit het geheugen
+  leerLaad();   // v68: geleerde borden
   for (;;) {
     float dt = (millis() - stapT) / 1000.f; stapT = millis();
     // 1. tegel voor de huidige plek (uit het geheugen of van internet)
     bool online = WiFi.status() == WL_CONNECTED && (uint32_t)WiFi.localIP() != 0;   // v32: pas online met een IP-adres
     if (gpsFix) { char key[16]; tegelKey(gpsLat, gpsLon, key, sizeof key); if (strcmp(key, tegelNu)) laadTegel(key, online); }
     bepaalWeg(); trajectStap(dt); fileVoorStap();
+    { static uint32_t lbT = 0; if (millis() - lbT > 20000 || leerBufN >= 20) { lbT = millis(); leerBewaar(); } }   // v68
     // 2. wifi
     if (wifiHerstart) { wifiHerstart = false; WiFi.disconnect(true); vTaskDelay(pdMS_TO_TICKS(300)); beginT = 0; }
     if (!wifiNaam[0]) { netStatus = "wifi uit"; vTaskDelay(pdMS_TO_TICKS(1000)); continue; }
@@ -2188,6 +2233,10 @@ static void netTaak(void *) {
     { static uint32_t pakT = 0; uint32_t elk = (gpsFix && gpsSpeedKmh > 5) ? 45000 : 120000; if (wCfg.url[0] && (!pakT || millis() - pakT > elk)) { pakT = millis(); haalPakket(); } }
     if (zwaaiVraag && !bleConnected) { zwaaiVraag = false; stuurZwaai(); } else if (zwaaiVraag) zwaaiVraag = false;
     if (gpsFix && tegelNu[0] == 0) { char key[16]; tegelKey(gpsLat, gpsLon, key, sizeof key); laadTegel(key, true); }
+    { static uint32_t vlT = 0; static int vi = 0; if (gpsFix && logFs && millis() - vlT > 4000) { vlT = millis();   // v68: kaartstukjes rondom vooruit laden (buffer voor als het internet wegvalt)
+        static const int8_t DX[8] = {-1, 0, 1, -1, 1, -1, 0, 1}, DY[8] = {-1, -1, -1, 0, 0, 1, 1, 1}; vi = (vi + 1) % 8;
+        char key[16]; tegelKey(gpsLat + DY[vi] * 0.03, gpsLon + DX[vi] * 0.05, key, sizeof key); char pad[32]; snprintf(pad, sizeof pad, "/t_%s.json", key);
+        if (!logFs->exists(pad)) { char url[128]; snprintf(url, sizeof url, DATA_BASIS "t/%s.json", key); size_t n; uint8_t *b = haalUrl(url, n); if (b && n > 10) bewaar(pad, b, n); free(b); } } }
     if (otaNu) { otaNu = false; otaT = millis(); logRegel("update gevraagd vanuit de app"); checkOta(); }
     { static uint32_t chkT = 0; if (!chkT || millis() - chkT > 120000UL) { chkT = millis();   // v67: internet-check
         IPAddress ip; netDnsOk = WiFi.hostByName("raw.githubusercontent.com", ip) == 1 ? 1 : 0; netTcpOk = -1;
@@ -2513,6 +2562,11 @@ void drawFace(){
  int ownSpeed = fixNow ? (int)lroundf(gpsSpeedKmh) : (tel ? phone.v : -1);
  int limit = (tel && phone.lim > 0) ? phone.lim : ((wegLimiet > 0 && millis() - wegLimT < 6000) ? wegLimiet : ((gpsNearestCameraM >= 0 && gpsNearestCameraM <= 600) ? gpsCameraLimit : 0));
  bordBron = (tel && phone.lim > 0) ? 1 : (wegLimiet > 0 && millis() - wegLimT < 6000) ? 2 : (limit > 0 ? 3 : 0);   // v67: 1 telefoon, 2 eigen kaart, 3 flitser
+ if (tel && phone.lim > 0 && !phone.limEst && fixNow) leerOnthoud(gpsLat, gpsLon, gpsKoers, phone.lim);   // v68: leren van de telefoon (geen geschatte borden)
+ if (limit <= 0 && leerLim > 0 && millis() - leerLimT < 6000) { limit = leerLim; bordBron = 4; }   // v68: geleerd bord
+ { static int lLim = 0; static uint32_t lT = 0; static float lKm = 0;   // v68: het laatste bord onthouden (2 km of 3 min) als de bron even wegvalt
+   if (limit > 0) { lLim = limit; lT = millis(); lKm = totKm + tripKm; }
+   else if (lLim > 0 && millis() - lT < 180000 && (totKm + tripKm) - lKm < 2.f) { limit = lLim; bordBron = 5; } }
  // v19: file en tekst van de telefoon bovenin, werk-driehoekje naast het bord
  int camM = (tel && phone.camD >= 0) ? phone.camD : gpsNearestCameraM;
  if (trajActief) {   // v25: trajectcontrole met je gemiddelde

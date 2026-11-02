@@ -7159,7 +7159,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var c = S.cam || null, f = S.fileVoor && T - S.fileVoor.t < 4 ? S.fileVoor : null, w = S.werkVoor && T - S.werkVoor.t < 4;
       var txt = (($('thought') && $('thought').textContent) || '').replace(/[|\n\r]/g, ' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').trim().slice(0, 60);
       var msg = ['B1', Math.round(S.speed || 0), S.roadLim == null ? 0 : S.roadLim, c && c.dist != null ? Math.round(c.dist) : -1, c && c.limit ? c.limit : 0,
-        f ? Math.round(f.d) : -1, f && f.dl ? Math.round(f.dl / 60) : 0, w ? 1 : 0, curKey || 'neutral', txt, navCode(), msiCode(), etaCode(), buurCode(), window.__ikBeker ? 1 : 0, posCode()].join('|') + '\n';
+        f ? Math.round(f.d) : -1, f && f.dl ? Math.round(f.dl / 60) : 0, w ? 1 : 0, curKey || 'neutral', txt, navCode(), msiCode(), etaCode(), buurCode(), window.__ikBeker ? 1 : 0, posCode(), S.roadEst ? 1 : 0].join('|') + '\n';   /* v104: veld 16 = bord is geschat */
       var data = new TextEncoder().encode(msg), stukken = [];
       for (var i = 0; i < data.length; i += 20) stukken.push(data.slice(i, i + 20));   /* kleine stukjes: werkt ook zonder grote MTU */
       bezig = true;
