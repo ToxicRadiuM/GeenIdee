@@ -35,7 +35,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 71;
+static const int FW_VERSIE = 72;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -2670,7 +2670,7 @@ void drawFace(){
  }
  // v22: grote, haarscherpe cijfers die precies in het midden staan (eigen 7-segment-cijfers)
  bool rust = (ownSpeed <= 0) && klokOk() && (gagAct < 0);   // stilstaan: klok in plaats van 0
- int sx = 78, sy = 194; float sr = 29;   // v68: groter bord
+ int sx = 76, sy = 200; float sr = 24;   // v72: bord weer de oude maat, alleen de cijfers erin groter
  boxAdd(sx - sr - 2, sy - sr - 2, sx + sr + 2, sy + sr + 2);
  bool teHard = limit > 0 && ownSpeed > limit + 3;
  hudLimiet = limit; hudSnelheid = ownSpeed;   // v39: voor de te-hard-waarschuwing
@@ -2681,9 +2681,9 @@ void drawFace(){
      int nseg = (int)(fminf(1.f, rp) * 48); for (int i = 0; i < nseg; i++) { float a0 = -1.5708f + i * .1309f, a1 = a0 + .1309f; dikLijn(120 + cosf(a0) * R, 120 + sinf(a0) * R, 120 + cosf(a1) * R, 120 + sinf(a1) * R, 5.f, rk); } } }
  uint16_t ring = (teHard && (millis() / 350) % 2) ? 0xF800 : 0xD800;
  frame->fillCircle(X(sx), Y(sy), S(sr), ring);
- frame->fillCircle(X(sx), Y(sy), S(sr - 4.2f), 0xFFFF);
+ frame->fillCircle(X(sx), Y(sy), S(sr - 3.4f), 0xFFFF);
  char limTxt[6]; if (limit > 0) snprintf(limTxt, sizeof limTxt, "%d", limit); else snprintf(limTxt, sizeof limTxt, "-");
- segTekst(limTxt, sx, sy, strlen(limTxt) >= 3 ? 16.f : 22.f, 0x0000);
+ segTekst(limTxt, sx, sy, strlen(limTxt) >= 3 ? 18.f : 22.f, 0x0000);
  char spdTxt[8];
  if (rust) { int hh, mm; lokaleTijd(hh, mm); snprintf(spdTxt, sizeof spdTxt, "%02d:%02d", hh, mm); segTekst(spdTxt, 152, 197, 22, EYE);
    if (wxVers()) {   // v29: temperatuur en een weericoontje onder de klok
