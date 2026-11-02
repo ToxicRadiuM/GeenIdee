@@ -766,7 +766,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       </div>
       <div class="grPane" data-gp="rang" hidden>
         <div id="grRangKop">
-          <div id="bordGroep" class="btns" role="group" aria-label="Soort leaderboard"><button type="button" class="btn" data-g="week" aria-pressed="true">🏆 Deze week</button><button type="button" class="btn" data-g="netjes" aria-pressed="false">🧘 Netjes</button><button type="button" class="btn" data-g="rec" aria-pressed="false">🚀 Records</button></div>
+          <div id="bordGroep" class="btns" role="group" aria-label="Soort leaderboard"><button type="button" class="btn" data-g="week" aria-pressed="true">🏆 Deze week</button><button type="button" class="btn" data-g="alg" aria-pressed="false">📊 Algemeen</button><button type="button" class="btn" data-g="netjes" aria-pressed="false">🧘 Netjes</button><button type="button" class="btn" data-g="rec" aria-pressed="false">🚀 Records</button></div>
           <div id="bordTabs" role="group" aria-label="Soort ranglijst">
       <button type="button" class="btn" data-soort="week" aria-pressed="true">🏁 Week</button><button type="button" class="btn" data-soort="km" aria-pressed="false">Km</button><button type="button" class="btn" data-soort="netjes" aria-pressed="false">Netjes</button><button type="button" class="btn" data-soort="gemeld" aria-pressed="false">Meldingen</button><button type="button" class="btn" data-soort="sprint" aria-pressed="false">⏱️ Sprinttabel</button><button type="button" class="btn" data-soort="tachtig" aria-pressed="false">0–80</button><button type="button" class="btn" data-soort="nul" aria-pressed="false">0–100</button><button type="button" class="btn" data-soort="stijl" aria-pressed="false">Rijstijl</button><button type="button" class="btn" data-soort="stijlgraf" aria-pressed="false">📈 Grafiek</button><button type="button" class="btn" data-soort="zacht" aria-pressed="false">🧘 Soepel</button>
       </div>
@@ -922,6 +922,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="sub">Testlog</p>
       <div class="btns">
       <button class="btn" id="bLog" type="button">Kopieer testlog</button>
+      <button class="btn" id="resetKnop" type="button" style="grid-column:1/-1">🗑️ Alles op nul: kilometers, ritten, records en badges</button>
       <div class="switchrow" style="grid-column:1/-1"><input type="checkbox" id="ondeugIn"><label for="ondeugIn">🔞 Ondeugende stand: scheetjes, boertjes, kontje laten zien, vloeken met tekentjes en stijlpunten in eerste persoon (grof en flauw, niks seksueels)</label></div>
       <div class="switchrow" style="grid-column:1/-1"><input type="checkbox" id="logUpIn" checked><label for="logUpIn">Mijn logboek automatisch naar Ricardo sturen (privé, alleen om fouten op te lossen; geen precieze locaties)</label></div>
       <button class="btn" id="bLogClear" type="button">Log wissen</button>
@@ -4631,7 +4632,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v125';
+  var VERSION = 'v126';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5618,7 +5619,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   /* Leaderboard: eigen tellers (alleen echte ritten met GPS) delen, hooguit eens per 15 minuten */
   var grLidT = -9999, grLidLaatst = '', bordData = [], bordSoort = 'week';
   function grLid(nu) {
-    if (!grp || !pbase()) return;
+    if (!grp || !pbase() || !myWho()) return;   /* v126: zonder naam niet in de ranglijst (anders 'Naamloos') */
     var st = 'km=' + Math.round(mem.kmLive || 0) + '&netjes=' + (mem.netjes || 0) + '&gemeld=' + (mem.gemeld || 0) + '&stijl=' + Math.round(mem.stijlLive || 0) + '&ritten=' + (mem.ritLive || 0) + '&nul=' + (mem.best100Live ? Math.round(mem.best100Live * 10) : 0) + '&tachtig=' + (mem.best80Live ? Math.round(mem.best80Live * 10) : 0) + '&ww=' + weekIdx() + '&wv=' + weekWaarde() + '&bd=' + badgeCodes() + '&lv=' + lvVan(lvXp()) + '&jr=' + mijnJr() + '&zw=' + weekIdx() + '&zv=' + weekZacht() + (function () { var dg = function (t) { return t ? Math.floor(t / 864e5) : 0; }; return '&nd=' + dg(mem.best100LiveD) + '&td=' + dg(mem.best80LiveD) + '&gm=' + Math.round((mem.gmaxLive || 0) * 100) + '&gd=' + dg(mem.gmaxLiveD) + (function () { var rk = mijnStijlReeks(); return rk.v.some(function (v) { return v > 0; }) ? '&swb=' + rk.b + '&sw=' + rk.v.join('.') : ''; })() + (mem.best100Kurve ? '&nk=' + mem.best100Kurve.g.join('.') + '&nv=' + mem.best100Kurve.v.join('.') : ''); })();
     var sleutel = st + '|' + myWho() + '|' + mijnAuto();
     if (!nu && (T - grLidT < 900 || sleutel === grLidLaatst)) return;
@@ -5627,7 +5628,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }
   function grBord() {
     if (!grp || !pbase()) { bordToon(); return; }
-    fetch(gUrl('/bord')).then(function (r) { return r.json(); }).then(function (j) { bordData = Array.isArray(j.leden) ? j.leden : []; bordToon(); try { recordWacht(); } catch (e) {} try { weekWinnaar(); } catch (e) {} }).catch(function () { bordToon('Leaderboard ophalen mislukt.'); });
+    fetch(gUrl('/bord')).then(function (r) { return r.json(); }).then(function (j) { bordData = (Array.isArray(j.leden) ? j.leden : []).filter(function (l) { return l && l.n && String(l.n).trim(); });   /* v126: naamlozen weg */ bordToon(); try { recordWacht(); } catch (e) {} try { weekWinnaar(); } catch (e) {} }).catch(function () { bordToon('Leaderboard ophalen mislukt.'); });
   }
   /* v92: sprinttabel 0-80 / 0-100 / G-kracht voor de hele groep, met reacties */
   var REACT = ['🔥', '👏', '😮', '🚀', '🐢'], REACTTXT = ['vuur', 'applaus', 'wauw', 'raket', 'slakje'], sprintSort = 'nul', sprintOpen = null;
@@ -6533,6 +6534,16 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function laatNacht() { var h = new Date().getHours(); return h >= 23 || h < 5; }
   var MAANDVOL = Object.keys(MONTHS);
   function nooit() { return false; }
+  (function () {   /* v126: alles op nul (naam, auto, groep, instellingen en Buddy's karakter blijven) */
+    var BLIJF = ['me', 'name', 'auto', 'bday', 'geboren', 'outfit', 'outfitsVrij', 'taught', 'notes', 'laad', 'laadPrijs', 'feestAan', 'reactieUit', 'example', 'unknown', 'jarigJ', 'samengevoegd'], arm = 0;
+    setTimeout(function () { var b = $('resetKnop'); if (!b) return; b.addEventListener('click', function () {
+      if (Date.now() - arm > 5000) { arm = Date.now(); b.textContent = '⚠️ Zeker weten? Tik nog een keer (kan niet terug)'; setTimeout(function () { if (Date.now() - arm >= 5000) b.textContent = '🗑️ Alles op nul: kilometers, ritten, records en badges'; }, 5100); return; }
+      arm = 0; Object.keys(mem).forEach(function (k) { if (BLIJF.indexOf(k) < 0 && /^(km|kmLive|kmMile|kmLiveMile|trips|ritLive|best|best100Live|best80Live|best100LiveD|best80LiveD|best100Kurve|last100Kurve|gmaxLive|gmaxLiveD|netjes|gemeld|stijlLive|stijlWk|styleAvg|badges|badgeT|wk|wkVorig|plusRit|level|streak|streakMax|launches|launchLive|hours|avg|cruise|brake|hard|nBrake|stops|stopAvg|maandRit|zenRitten|weekendRit|vroegRit|nachtRit|feestRit|vr13|landen|seizoenen|kampioen|kampioenN|uitdaging|uitdagingWon|wraak|verslagen|ontmoet|grBerichten|spook|slak|spiegel|tweeling|plekN|quizBest|sh|feestB|weekRap|wkKaartW|winGemeld|bordVorig|laatsteDag|flNog|lastSpecial|vcDag|taps|sprintI)$/.test(k)) delete mem[k]; });
+      try { ritten.length = 0; localStorage.setItem(RITKEY, '[]'); } catch (e) {}
+      save(); try { badgeToon(); recordsToon(); plusRitToon(); } catch (e) {} if (typeof grLid === 'function') grLid(true);
+      b.textContent = '🗑️ Alles op nul: kilometers, ritten, records en badges'; toast('🗑️ Alles staat op nul. Een frisse start!'); lg('alles op nul gezet');
+    }); }, 0);
+  })();
   var ONDKEY = 'dashboardmaatje-ondeugend-v1', ondeugend = false; try { ondeugend = localStorage.getItem(ONDKEY) === '1'; } catch (e) {}   /* v122 */
   window.__ondeugend = function () { return ondeugend; };
   setTimeout(function () { var c = $('ondeugIn'); if (!c) return; c.checked = ondeugend; c.addEventListener('change', function () { ondeugend = c.checked; try { localStorage.setItem(ONDKEY, ondeugend ? '1' : '0'); } catch (e) {} toast(ondeugend ? '🔞 Ondeugende stand aan. Buddy gedraagt zich voortaan wat minder netjes…' : '😇 Buddy is weer netjes.'); document.body.classList.toggle('ondeugend', ondeugend); }); document.body.classList.toggle('ondeugend', ondeugend); }, 0);
@@ -7232,6 +7243,17 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       L.circleMarker([m.lat, m.lon], { radius: 8, color: '#fff', weight: 2, dashArray: '3 3', fillColor: '#bf5af2', fillOpacity: 1 }).addTo(mobLaag).bindPopup('🚓 ' + (m.text || 'Gemelde controle') + '<br><small>ANWB / flitsers.nl · verdwijnt vanzelf</small>'); });
   }
   window.__mobItems = function () { return mobItems || []; };
+  var fileLaag = null;   /* v126: files (rood), werk en rijstrook dicht (oranje), afgesloten (donkerrood, gestippeld) op de flitserkaart */
+  var FILEKL = { jam: '#ff2d2d', accident: '#ff2d2d', closure: '#8b0000', ramp: '#8b0000', lane: '#ff9f0a', werk: '#ff9f0a', work: '#ff9f0a' };
+  function filesOpKaart() {
+    if (!flMap || !window.L) return; if (fileLaag) fileLaag.remove(); fileLaag = L.layerGroup().addTo(flMap); if (kaartModus !== 'flits') return;
+    var lijst = []; try { lijst = verkeerItems(); } catch (e) {}
+    lijst.forEach(function (it) { if (!it || !Array.isArray(it.pts) || !it.pts.length) return; var kl = FILEKL[it.k] || '#ff9f0a', pts = it.pts.map(function (p) { return Array.isArray(p) ? p : [p.lat, p.lon]; });
+      var tekst = (it.k === 'jam' ? '🚗 File' : it.k === 'accident' ? '💥 Ongeluk' : it.k === 'closure' || it.k === 'ramp' ? '⛔ Afgesloten' : '🚧 Werk / rijstrook dicht') + (it.weg ? ' · ' + it.weg : '') + (it.ql ? ' · ' + (it.ql / 1000).toFixed(1).replace('.', ',') + ' km' : '') + (it.dl ? ' · +' + Math.round(it.dl / 60) + ' min' : '');
+      if (pts.length >= 2) L.polyline(pts, { color: kl, weight: 7, opacity: .85, dashArray: it.k === 'closure' || it.k === 'ramp' ? '8 8' : null }).addTo(fileLaag).bindPopup(tekst);
+      else L.circleMarker(pts[0], { radius: 7, color: '#fff', weight: 2, fillColor: kl, fillOpacity: 1 }).addTo(fileLaag).bindPopup(tekst); });
+  }
+  window.__verkeerItems = function () { try { return verkeerItems(); } catch (e) { return []; } };
   function flKaartVul() {
     try { drukToon(); } catch (e) {}
     var lijst = flMeldingen(), ol = $('flKaartLijst'); while (ol.firstChild) ol.removeChild(ol.firstChild);
@@ -7257,7 +7279,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       });
       if (kaartModus === 'flits') { if (lastPos) pts.push([lastPos.lat, lastPos.lon]); if (pts.length) flMap.fitBounds(pts, { padding: [30, 30], maxZoom: 15 }); }
       if (window.__plekOpKaart) window.__plekOpKaart();
-      mobOpKaart();
+      mobOpKaart(); filesOpKaart();
     }
   }
   $('kaartKnop').addEventListener('click', function () {
@@ -7838,7 +7860,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 
   /* ---------- v85: leaderboard in 3 groepjes ---------- */
   (function () {
-    var G = { week: ['week', 'zacht'], netjes: ['stijl', 'netjes', 'gemeld'], rec: ['nul', 'tachtig', 'km'] };   /* v104: sprints en rijstijl-grafiek hebben nu een eigen knop bovenin */
+    var G = { week: ['week', 'zacht'], alg: ['km', 'gemeld'], netjes: ['stijl', 'netjes'], rec: ['nul', 'tachtig'] };   /* v126: km en meldingen onder Algemeen */   /* v104: sprints en rijstijl-grafiek hebben nu een eigen knop bovenin */
     function kies(g) {
       document.querySelectorAll('#bordGroep button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.g === g ? 'true' : 'false'); });
       var eerste = null;
@@ -9410,8 +9432,16 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     var flMk = [], flT = 0;   /* v112: flitsers op de rijkaart (van de groep, van jou en de vaste) */
     function flPunt(t, rand, klein) { var d = document.createElement('div'); d.style.cssText = 'width:' + (klein ? 24 : 32) + 'px;height:' + (klein ? 24 : 32) + 'px;border-radius:50%;background:rgba(16,20,24,.9);border:2px solid ' + rand + ';display:flex;align-items:center;justify-content:center;font-size:' + (klein ? 13 : 17) + 'px;box-shadow:0 3px 8px rgba(0,0,0,.5)'; d.textContent = t; return d; }
+    function filesRij() {   /* v126: files als rode lijnen op de rijkaart */
+      if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return; var KL = { jam: '#ff2d2d', accident: '#ff2d2d', closure: '#8b0000', ramp: '#8b0000' };
+      var fs = (window.__verkeerItems ? window.__verkeerItems() : []).filter(function (it) { return it && Array.isArray(it.pts) && it.pts.length >= 2; }).map(function (it) {
+        return { type: 'Feature', properties: { kl: KL[it.k] || '#ff9f0a' }, geometry: { type: 'LineString', coordinates: it.pts.map(function (p) { return Array.isArray(p) ? [p[1], p[0]] : [p.lon, p.lat]; }) } }; });
+      var data = { type: 'FeatureCollection', features: fs };
+      if (map.getSource('files')) map.getSource('files').setData(data);
+      else { map.addSource('files', { type: 'geojson', data: data }); map.addLayer({ id: 'files-lijn', type: 'line', source: 'files', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'kl'], 'line-width': 7, 'line-opacity': .85 } }, map.getLayer('route-rand') ? 'route-rand' : undefined); }
+    }
     function flitsersOpKaart() {
-      if (!map || !window.maplibregl || !lastPos) return; flT = Date.now();
+      if (!map || !window.maplibregl || !lastPos) return; flT = Date.now(); try { filesRij(); } catch (e) {}
       flMk.forEach(function (m) { m.remove(); }); flMk = [];
       var la = lastPos.lat, lo = lastPos.lon, n = 0, gezien = [];
       try { (typeof flMeldingen === 'function' ? flMeldingen() : []).forEach(function (m) { if (gdist(la, lo, m.lat, m.lon) > 25000) return; gezien.push(m);
