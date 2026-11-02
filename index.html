@@ -153,6 +153,14 @@ body.car #carBack { display: block; }
 #rijGebaren button { width: 46px; height: 46px; border-radius: 23px; border: 1px solid #555; background: rgba(16,20,24,.85); font-size: 22px; }
 #rijHand { position: fixed; left: calc(var(--bw, 0px) + (100vw - var(--bw, 0px)) * .38); bottom: -60vh; font-size: 40vh; line-height: 1; z-index: 33; pointer-events: none; transition: bottom .35s cubic-bezier(.2,1.4,.5,1); filter: drop-shadow(0 8px 14px rgba(0,0,0,.5)); }
 #rijHand.op { bottom: 2vh; }
+body:not(.ondeugend) .alleenOnd { display: none !important; }
+#rijVloek { position: fixed; left: calc(var(--bw, 0px) + (100vw - var(--bw, 0px)) * .5); top: 22vh; z-index: 34; padding: 10px 18px; border-radius: 22px; background: #fff; color: #d00; font: 900 34px/1 var(--f-display); transform: scale(0) rotate(-8deg); transition: transform .25s cubic-bezier(.3,1.6,.5,1); pointer-events: none; }
+#rijVloek.op { transform: scale(1) rotate(-8deg); }
+#rijPunten { position: fixed; left: calc(var(--bw, 0px) + (100vw - var(--bw, 0px)) * .5); top: 40vh; z-index: 34; transform: translateX(-50%); pointer-events: none; font: 900 30px/1.1 var(--f-display); color: #ffd60a; text-shadow: 0 3px 0 #a33, 0 0 14px rgba(0,0,0,.7); text-align: center; opacity: 0; }
+#rijPunten.op { animation: puntOp 1.8s ease-out; }
+@keyframes puntOp { 0% { opacity: 0; transform: translate(-50%, 20px) scale(.6); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); } 70% { opacity: 1; transform: translate(-50%, -20px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -60px) scale(.9); } }
+#rijScore { position: fixed; top: 64px; left: calc(var(--bw, 0px) + 12px); z-index: 44; padding: 6px 12px; border-radius: 14px; background: rgba(0,0,0,.7); color: #ffd60a; font: 800 18px var(--f-display); }
+#rijScore[hidden] { display: none; }
 #rijPiek { position: fixed; left: calc(var(--bw, 0px) - 12vh); bottom: 24vh; width: 30vh; height: 30vh; z-index: 36; pointer-events: none; transform: translateX(-130%) rotate(-14deg); transition: transform .7s cubic-bezier(.3,1.3,.5,1); }
 #rijPiek.op { transform: translateX(0) rotate(9deg); }
 #rijPiek svg { width: 100%; height: 100%; }
@@ -538,7 +546,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 <div id="rondRing" aria-label="Menu"><div class="rrVlak"></div></div>
 <button id="carBack" class="rijRond rijWeg" type="button">Terug</button>
 <button id="carKaartKnop" class="rijRond rijWeg" type="button" aria-label="Kaart naast Buddy aan of uit">🗺️ Kaart</button>
-<div id="rijKaart" aria-label="Kaart met je auto"><div id="rijMap"></div><button id="rijAutoKnop" class="rijWeg" type="button" aria-label="Andere auto kiezen">🚗</button><button id="rijNoordKnop" class="rijWeg" type="button" aria-label="Rijrichting of noorden boven">🧭</button><button id="rijZoekKnop" class="rijWeg" type="button" aria-label="Navigeer naar">🔍</button><button id="rijFpKnop" class="rijWeg" type="button" aria-label="Eerste persoon aan of uit">🎮</button><div id="rijGebaren" class="rijWeg" hidden><button type="button" data-g="v" aria-label="Middelvinger">🖕</button><button type="button" data-g="d" aria-label="Duim omhoog">👍</button><button type="button" data-g="t" aria-label="Toeter">📯</button></div>
+<div id="rijKaart" aria-label="Kaart met je auto"><div id="rijMap"></div><button id="rijAutoKnop" class="rijWeg" type="button" aria-label="Andere auto kiezen">🚗</button><button id="rijNoordKnop" class="rijWeg" type="button" aria-label="Rijrichting of noorden boven">🧭</button><button id="rijZoekKnop" class="rijWeg" type="button" aria-label="Navigeer naar">🔍</button><button id="rijFpKnop" class="rijWeg" type="button" aria-label="Eerste persoon aan of uit">🎮</button><div id="rijGebaren" class="rijWeg" hidden><button type="button" data-g="v" aria-label="Middelvinger">🖕</button><button type="button" data-g="d" aria-label="Duim omhoog">👍</button><button type="button" data-g="t" aria-label="Toeter">📯</button><button type="button" data-g="k" class="alleenOnd" aria-label="Kontje">🍑</button></div>
+<div id="rijVloek" aria-hidden="true">#@%&!</div><div id="rijPunten" aria-hidden="true"></div><div id="rijScore" aria-hidden="true" hidden></div>
 <div id="rijHand" aria-hidden="true"></div>
 <div id="rijPiek" aria-hidden="true"><svg viewBox="0 0 120 120"><rect x="10" y="22" width="100" height="86" rx="30" fill="#0d1117" stroke="#5ac8fa" stroke-width="5"/><path d="M14 52 Q60 40 106 52 L104 66 Q86 74 66 64 L54 64 Q34 74 16 66 Z" fill="#05070a"/><path d="M22 54 L34 52 L28 62 Z M70 54 L82 52 L76 62 Z" fill="#fff" opacity=".55"/><g id="rijPiekOog"><rect x="70" y="52" width="30" height="14" rx="6" fill="#05070a"/></g><path d="M44 88 Q60 98 78 86" stroke="#5ac8fa" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="50" y="6" width="20" height="18" rx="6" fill="#c8102e"/></svg></div>
 <button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><path d="M0 170 L0 120 Q200 70 400 120 L400 170 Z" fill="#111417"/><path d="M0 120 Q200 70 400 120" stroke="#2a2f35" stroke-width="3" fill="none"/><rect x="250" y="96" width="70" height="40" rx="6" fill="#0b0d10" stroke="#30363d"/><text x="285" y="122" text-anchor="middle" fill="#5ac8fa" font-size="16" font-family="sans-serif" id="rijStuurKmu">0</text><g transform="translate(150 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
@@ -894,6 +903,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="sub">Testlog</p>
       <div class="btns">
       <button class="btn" id="bLog" type="button">Kopieer testlog</button>
+      <div class="switchrow" style="grid-column:1/-1"><input type="checkbox" id="ondeugIn"><label for="ondeugIn">🔞 Ondeugende stand: scheetjes, boertjes, kontje laten zien, vloeken met tekentjes en stijlpunten in eerste persoon (grof en flauw, niks seksueels)</label></div>
       <div class="switchrow" style="grid-column:1/-1"><input type="checkbox" id="logUpIn" checked><label for="logUpIn">Mijn logboek automatisch naar Ricardo sturen (privé, alleen om fouten op te lossen; geen precieze locaties)</label></div>
       <button class="btn" id="bLogClear" type="button">Log wissen</button>
       </div>
@@ -2210,7 +2220,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (T - retroT >= .5) { retroT = T; retroH.shift(); retroH.push(S.speed || 0); }
     var v = S.speed || 0;
     if (v > 8 && retroH[3] - retroH[0] >= 12 && !(S.flagUntil > T) && !(S.gag && SPRINTRIJ.indexOf(S.gag.k) >= 0)) {
-      if (!S.gag || S.gag.k !== 'retroMeter') { if (S.gag) endGag(true); startGag('retroMeter'); if (!S.ruimteNa && Math.random() < .25 && Date.now() - (mem.losShowT || 0) > 600e3) { mem.losShowT = Date.now(); S.ruimteNa = T + 6.5; S.naGag = sprintBeurt(); sprintVolgende(); }   /* v99: af en toe ook na gewoon flink optrekken */ lg('retro meter: optrekken ' + Math.round(retroH[0]) + ' -> ' + Math.round(retroH[3])); }
+      if (!S.gag || S.gag.k !== 'retroMeter') { if (S.gag) endGag(true); startGag('retroMeter'); if (ondeugend && !S.ruimteNa && Math.random() < .35) { S.ruimteNa = T + 6.3; S.naGag = 'scheet'; }   /* v122: soms een turbo-scheetje */ if (!S.ruimteNa && Math.random() < .25 && Date.now() - (mem.losShowT || 0) > 600e3) { mem.losShowT = Date.now(); S.ruimteNa = T + 6.5; S.naGag = sprintBeurt(); sprintVolgende(); }   /* v99: af en toe ook na gewoon flink optrekken */ lg('retro meter: optrekken ' + Math.round(retroH[0]) + ' -> ' + Math.round(retroH[3])); }
       else S.gag.end = Math.max(S.gag.end, T + 2.5);
     }
   }
@@ -4602,7 +4612,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v121';
+  var VERSION = 'v122';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6121,6 +6131,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function ritStart() { V.harsh = 0; V.gmax = 0; V.ritVoel = false; S.ritStart = { van: lastPos ? [+lastPos.lat.toFixed(5), +lastPos.lon.toFixed(5)] : null, t: Date.now(), km: mem.kmLive || 0, netjes: mem.netjes || 0, h: new Date().getHours() + new Date().getMinutes() / 60, vmax: 0, nul: 0, nulTelt: false }; ritVakken = {}; }
   /* Wordt aangeroepen als een echte rit klaar is (8 min stilstaan of GPS uit) */
   function ritKlaar(sc) {
+    try { if (ondeugend && (S.tripT || 0) > 1500 && Math.random() < .5) setTimeout(function () { startGag('boer'); }, 9000); } catch (e) {}   /* v122: boertje na een lange rit */
     var r0 = S.ritStart; S.ritStart = null;
     if (!r0) return;
     var km = Math.max(0, (mem.kmLive || 0) - r0.km), min = Math.max(1, Math.round((S.tripT || 0) / 60)), /* echte rijtijd, zonder het stilstaan aan het eind */ netjes = Math.max(0, (mem.netjes || 0) - r0.netjes);
@@ -6503,6 +6514,18 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function laatNacht() { var h = new Date().getHours(); return h >= 23 || h < 5; }
   var MAANDVOL = Object.keys(MONTHS);
   function nooit() { return false; }
+  var ONDKEY = 'dashboardmaatje-ondeugend-v1', ondeugend = false; try { ondeugend = localStorage.getItem(ONDKEY) === '1'; } catch (e) {}   /* v122 */
+  window.__ondeugend = function () { return ondeugend; };
+  setTimeout(function () { var c = $('ondeugIn'); if (!c) return; c.checked = ondeugend; c.addEventListener('change', function () { ondeugend = c.checked; try { localStorage.setItem(ONDKEY, ondeugend ? '1' : '0'); } catch (e) {} toast(ondeugend ? '🔞 Ondeugende stand aan. Buddy gedraagt zich voortaan wat minder netjes…' : '😇 Buddy is weer netjes.'); document.body.classList.toggle('ondeugend', ondeugend); }); document.body.classList.toggle('ondeugend', ondeugend); }, 0);
+  function scheetGeluid() { if (!sound || !ac || meldModus !== 'alles') return; try { var t0 = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.setValueAtTime(95, t0); o.frequency.linearRampToValueAtTime(60, t0 + .9); f.type = 'lowpass'; f.frequency.value = 420; g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.25, t0 + .05);
+      for (var i = 0; i < 9; i++) g.gain.setValueAtTime(i % 2 ? .08 : .25, t0 + .1 + i * .08); g.gain.exponentialRampToValueAtTime(.0001, t0 + 1); o.connect(f); f.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + 1.05); } catch (e) {} }
+  function boerGeluid() { if (!sound || !ac || meldModus !== 'alles') return; try { var t0 = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(140, t0); o.frequency.linearRampToValueAtTime(85, t0 + .7); g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.2, t0 + .04); g.gain.exponentialRampToValueAtTime(.0001, t0 + .75); o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + .8); } catch (e) {} }
+  GAGS.scheet = { name: 'Laat een scheetje', dur: 4.6, idle: 1, drive: 1, ev: 1, need: nooit, mood: 'worried', msg: 'Oeps…',
+    upd: function (g, tt) { if (!g.sp) { g.sp = 1; scheetGeluid(); } fdx += tt < 1.2 ? Math.sin(tt * 60) * 2 : 0; g.msg = tt < 1.4 ? 'Oeps…' : tt < 3 ? 'Dat was de turbo 💨' : 'Raampje open?'; if (tt < 1.2) { eyeL *= .35; eyeR *= .35; } },
+    draw: function (g, tt) { for (var i = 0; i < 7; i++) { var f = Math.min(1, Math.max(0, tt - i * .12) / 2.2); if (f <= 0) continue; ctx.globalAlpha = .55 * (1 - f); ctx.fillStyle = i % 2 ? '#8bc34a' : '#a5d65c'; ctx.beginPath(); ctx.arc(120 + Math.sin(i * 1.9) * 50 * f, 228 - f * 140, 10 + f * 26, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; } };
+  GAGS.boer = { name: 'Laat een boer', dur: 3.6, idle: 1, drive: 1, ev: 1, need: nooit, mood: 'happy', msg: 'BUUUURP!',
+    upd: function (g, tt) { if (!g.sp) { g.sp = 1; boerGeluid(); } g.msg = tt < 1.4 ? 'BUUUURP!' : 'Pardon. Lekker gereden.'; if (tt < 1.2) fsc *= 1 + Math.sin(tt * 30) * .03; },
+    draw: function (g, tt) { if (tt > 1.4) return; ctx.fillStyle = '#5ac8fa'; for (var i = 0; i < 5; i++) { var f = (tt * 1.5 + i / 5) % 1; ctx.globalAlpha = 1 - f; ctx.beginPath(); ctx.arc(120 + Math.sin(i * 2.7) * 18, 170 - f * 60, 3 + f * 5, 0, TAU); ctx.stroke(); } ctx.globalAlpha = 1; } };
   GAGS.kots = { name: 'Wordt misselijk van het draaien', dur: 6, idle: 1, drive: 1, ev: 1, need: nooit, mood: 'worried', msg: 'Ugh… ik word misselijk…',   /* v121 */
     upd: function (g, tt) { try { fxSpiral = tt < 1.5; } catch (e) {} g.msg = tt < 1.5 ? 'Ugh… ik word misselijk…' : tt < 3.6 ? 'BLEEEHHH!' : 'Hou alsjeblieft op met draaien…'; dir(Math.sin(tt * 3) * .3, tt > 1.5 && tt < 3.5 ? .7 : .15); },
     draw: function (g, tt) {
@@ -9339,7 +9362,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       flMk.forEach(function (m) { m.remove(); }); flMk = [];
       var la = lastPos.lat, lo = lastPos.lon, n = 0, gezien = [];
       try { (typeof flMeldingen === 'function' ? flMeldingen() : []).forEach(function (m) { if (gdist(la, lo, m.lat, m.lon) > 25000) return; gezien.push(m);
-        var el = flPunt(m.k === 'mobile' ? '🚓' : '📸', m.mijn ? '#0a84ff' : (m.k === 'mobile' ? '#ff9f0a' : '#ff453a'));
+        var el = flPunt(window.__ondeugend && window.__ondeugend() ? '💩' : m.k === 'mobile' ? '🚓' : '📸', m.mijn ? '#0a84ff' : (m.k === 'mobile' ? '#ff9f0a' : '#ff453a'));
         el.title = (m.k === 'mobile' ? 'Mobiele controle' : 'Flitser') + (m.mijn ? ' (jij)' : ' (' + m.n + ')');
         flMk.push(new maplibregl.Marker({ element: el }).setLngLat([m.lon, m.lat]).addTo(map)); }); } catch (e) {}
       try { var cc = (typeof camCache !== 'undefined' && camCache && camCache.cams) || []; cc.forEach(function (c) { if (n > 150 || Math.abs(c.lat - la) > .15 || gdist(la, lo, c.lat, c.lon) > 12000) return;
@@ -9402,6 +9425,16 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var dk = ((koers - (stap.vk == null ? koers : stap.vk) + 540) % 360) - 180; stap.vk = koers;   /* v118: stuur draait mee in bochten */
       stap.hoek = (stap.hoek || 0) * .4 + Math.max(-130, Math.min(130, sp > 3 ? dk * 7 : 0)) * .6;
       var wiel = document.getElementById('rijStuurWiel'); if (wiel) wiel.style.transform = 'rotate(' + stap.hoek.toFixed(1) + 'deg)';
+      var ond = window.__ondeugend && window.__ondeugend(), sc = $('rijScore');   /* v122: stijlpunten (ondeugend + eerste persoon), à la Carmageddon */
+      if (st.kijk === 2 && ond) { var dv = sp - (stap.vv == null ? sp : stap.vv); stap.vv = sp; stap.score = stap.score || 0;
+        function punten(n, t) { stap.score += n; var pe = $('rijPunten'); pe.textContent = '+' + n + ' ' + t; pe.classList.remove('op'); void pe.offsetWidth; pe.classList.add('op'); }
+        if (Date.now() - (stap.puntT || 0) > 4000) {
+          if (dv >= 12) { punten(250, 'RAKETSTART!'); stap.puntT = Date.now(); }
+          else if (dv <= -15) { punten(150, 'NOODSTOP!'); stap.puntT = Date.now(); }
+          else if (sp > 15 && Math.abs(dk) > 35) { punten(200, 'DRIFT KONING!'); stap.puntT = Date.now(); }
+          else if (S.cam && S.cam.dist != null && S.cam.dist < 60 && S.cam.limit && sp <= S.cam.limit && Date.now() - (stap.flitsPuntT || 0) > 60000) { stap.flitsPuntT = Date.now(); punten(500, 'NETJES LANGS DE FLITSER'); stap.puntT = Date.now(); }
+          else if (sp > 30 && Math.random() < .01) { punten(100, ['MOOI GEREDEN', 'STIJLVOL', 'CHAUFFEUR!', 'WHAT A DRIVER'][Math.floor(Math.random() * 4)]); stap.puntT = Date.now(); } }
+        sc.hidden = false; sc.textContent = '🏁 ' + stap.score; } else sc.hidden = true;
       var fp = st.kijk === 2; $('rijGebaren').hidden = !fp; if (fp && sp > 25 && Date.now() > (stap.piekT || (stap.piekT = Date.now() + 120e3))) { stap.piekT = Date.now() + (240 + Math.random() * 300) * 1e3; buddyPiek(); }   /* v119: Buddy kijkt af en toe om */
       if (fp) { var km = $('rijStuurKmu'); if (km) km.textContent = Math.round(sp) + ' km/u'; } mkEl.style.visibility = fp ? 'hidden' : 'visible'; $('rijStuur').hidden = !fp;
       if (!volg) return;
@@ -9433,8 +9466,9 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var k = $('rijKaart'); k.classList.remove('toeter'); void k.offsetWidth; k.classList.add('toeter'); }
     document.querySelectorAll('#rijGebaren button').forEach(function (b) { b.addEventListener('click', function () {
       var g = b.dataset.g; if (g === 't') { toeter(); return; }
-      var h = $('rijHand'); h.textContent = g === 'v' ? '🖕' : '👍'; h.classList.add('op'); setTimeout(function () { h.classList.remove('op'); }, 2200);
-      if (window.__scEvt) window.__scEvt(g, g === 'v' ? 'HMPF!' : 'DANKJE!');
+      var h = $('rijHand'); h.textContent = g === 'v' ? '🖕' : g === 'k' ? '🍑' : '👍'; h.classList.add('op'); setTimeout(function () { h.classList.remove('op'); }, 2200);
+      if (g === 'v' && window.__ondeugend && window.__ondeugend()) { var vl = $('rijVloek'); vl.textContent = ['#@%&!', '$%#@&*!', 'GRRR @#!'][Math.floor(Math.random() * 3)]; vl.classList.add('op'); setTimeout(function () { vl.classList.remove('op'); }, 1900); }
+      if (window.__scEvt) window.__scEvt(g, g === 'v' ? 'HMPF!' : g === 'k' ? 'KUS MN BUMPER' : 'DANKJE!');
     }); });
     var rustT = null; function wakker() { document.body.classList.remove('rust'); clearTimeout(rustT); rustT = setTimeout(function () { document.body.classList.add('rust'); }, 5000); }   /* v111: knopjes weg na 5 s, tik = terug */
     addEventListener('pointerdown', function () { if (document.body.classList.contains('kaartrij')) wakker(); }, true); wakker();

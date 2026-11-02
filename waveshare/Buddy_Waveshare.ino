@@ -37,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 77;
+static const int FW_VERSIE = 78;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -2378,7 +2378,7 @@ static void persStap(float dt) {
   if (!gegroet && nu > groetVanaf && gagAct < 0 && !menuOpen && !venster && (klokOk() || nu > groetVanaf + 12000)) doeGroet();
   if (otaInstalleer) { otaInstalleer = false; installeerOta(); }   // v68
   if (evtSoort && gagAct < 0 && (int32_t)(showTot - millis()) <= 0) { char s = evtSoort; evtSoort = 0; laatsteActie = millis(); slaapt = false;   // v69: groepsgebeurtenis
-    if (s == 'v' || s == 'd') { handGebaar = s; showSoort = 9; showStart = millis(); showTot = millis() + 2600; playGeluid(s == 'v' ? GL_OEPS : GL_TADA); logRegel("gebaar: %c", s); }   // v77: handje uit de app
+    if (s == 'v' || s == 'd' || s == 'k') { handGebaar = s; showSoort = 9; showStart = millis(); showTot = millis() + 2600; playGeluid(s == 'v' ? GL_OEPS : s == 'k' ? GL_GIECHEL : GL_TADA); logRegel("gebaar: %c", s); }   // v77: handje uit de app
     else { int g = s == 'f' ? 38 : s == 'm' ? 44 : s == 'z' ? 22 : 7; startGag(g); gagMsg = evtTxt;
     playGeluid(s == 'f' ? GL_TADA : s == 'm' ? GL_OEPS : s == 'z' ? GL_HOI : s == 'h' ? GL_GIECHEL : GL_PLING); logRegel("gebeurtenis: %s", evtTxt); } }
   if (sndAntw && bleConnected && !logBezig) { uint8_t a = sndAntw; sndAntw = 0;   // v72: eigen geluidje bewaren of wissen
@@ -2567,7 +2567,13 @@ static void drawShow() {
   } else if (showSoort == 9) {   // v77: handje omhoog (middelvinger of duim)
     float op = tt < .35f ? 1 - tt / .35f : tt > 2.2f ? (tt - 2.2f) / .4f : 0, dy = op * 150 + sinf(tt * 18) * (tt > .35f && tt < 2.2f ? 1.5f : 0);
     const uint16_t HUID = 0xFE8F, RAND = 0xC3A8;
-    if (handGebaar == 'v') {
+    if (handGebaar == 'k') {   // v78: kontje laten zien (robotbilletjes)
+      float wieg = sinf(tt * 14) * 6 * (tt > .35f && tt < 2.2f ? 1 : 0);
+      for (int k = -1; k <= 1; k += 2) { circle(120 + k * 30 + wieg, 140 + dy, 38, 0x8410); circle(120 + k * 30 + wieg, 140 + dy, 35, 0xC618); circle(120 + k * 22 + wieg, 126 + dy, 9, 0xE71C); }
+      dikLijn(120 + wieg, 112 + dy, 120 + wieg, 168 + dy, 3, 0x8410);
+      roundRect(94 + wieg, 172 + dy, 14, 30, 6, EYE); roundRect(132 + wieg, 172 + dy, 14, 30, 6, EYE);   // beentjes
+      if (tt > .35f && tt < 2.2f) showTekst("KUS MN BUMPER", 120, 60, 2, 0xFFE0);
+    } else if (handGebaar == 'v') {
       roundRect(66, 132 + dy, 108, 74, 26, RAND); roundRect(69, 135 + dy, 102, 68, 23, HUID);                                   // vuist
       for (int i = 0; i < 4; i++) if (i != 1) { float x = 72 + i * 24; roundRect(x, 118 + dy, 24, 34, 12, RAND); roundRect(x + 2, 120 + dy, 20, 30, 10, HUID); }   // knokkels
       roundRect(95, 38 + dy, 30, 108, 15, RAND); roundRect(98, 41 + dy, 24, 104, 12, HUID); roundRect(101, 44 + dy, 18, 14, 6, 0xFFFF);   // de vinger, met nagel
