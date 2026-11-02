@@ -938,6 +938,7 @@ void parseNmeaLine(char* line) {
   char *ster = strrchr(line, '*');
   if (ster && strlen(ster) >= 3) { uint8_t cs = 0; for (char *q = line + 1; q < ster; ++q) cs ^= (uint8_t)*q; if (cs != (uint8_t)strtol(ster + 1, nullptr, 16)) { nmeaBad++; return; } *ster = 0; }
   nmeaOk++; if (strstr(line, "RMC")) { strncpy(lastRmc, line, sizeof lastRmc - 1); lastRmc[sizeof lastRmc - 1] = 0; }
+  if (!strncmp(line, "$PAIR001,59", 11) || !strncmp(line, "$PAIR001,60", 11)) logRegel("GPS antwoordt op hulp: %s (0 = gelukt)", line);   // v64
   char *f[20]={0}; int n=0; f[n++]=line;
   for(char *p=line; *p && n<20; ++p) if(*p==','){*p=0;f[n++]=p+1;}
   if (strstr(f[0],"RMC") && n>7 && f[2][0]=='A') {
@@ -1071,6 +1072,34 @@ static int lc76gReadI2C() {
   return res;
 }
 
+// v64: GPS-hulp. De plek en tijd van de telefoon als startpunt aan de GPS-chip geven (PAIR590 tijd, PAIR600 plek),
+// dan hoeft hij niet alles zelf te zoeken en vindt hij zijn satellieten veel sneller (vooral na een update of herstart).
+static volatile bool gpsHulpNu = false; static volatile float gpsHulpLat = 0, gpsHulpLon = 0;
+static bool lcSchrijf(const char *s) {
+  size_t len = strlen(s); if (len > 120) return false;
+  if (!i2cLock(200)) return false;
+  uint16_t oudTo = Wire.getTimeOut(); Wire.setTimeOut(300); bool ok = false;
+  do {
+    if (!lcTouch(0x50)) break; delay(3);
+    uint32_t vrij = lcRead32(0xAA510004UL); if (vrij == 0xFFFFFFFFUL || vrij < len) break; delay(3);
+    if (lcWriteCr(0xAA531000UL, len) != 0) break; delay(3);
+    Wire.beginTransmission(0x58); Wire.write((const uint8_t *)s, len); ok = Wire.endTransmission() == 0;
+  } while (0);
+  Wire.setTimeOut(oudTo); i2cUnlock(); return ok;
+}
+static bool lcZin(const char *body) {
+  uint8_t cs = 0; for (const char *q = body; *q; q++) cs ^= (uint8_t)*q;
+  char z[128]; snprintf(z, sizeof z, "$%s*%02X\r\n", body, cs); return lcSchrijf(z);
+}
+static void gpsHulpGeven() {
+  time_t nu = time(nullptr); if (nu < 1700000000) return;   // klok nog niet gezet
+  struct tm u; gmtime_r(&nu, &u);
+  char b[100]; snprintf(b, sizeof b, "PAIR590,%d,%d,%d,%d,%d,%d", u.tm_year + 1900, u.tm_mon + 1, u.tm_mday, u.tm_hour, u.tm_min, u.tm_sec);
+  bool t = lcZin(b); delay(30);
+  snprintf(b, sizeof b, "PAIR600,%.6f,%.6f,0.0,50.0,50.0,0.0,100.0", (double)gpsHulpLat, (double)gpsHulpLon);
+  bool p = lcZin(b);
+  logRegel("GPS-hulp gegeven: tijd %s, plek %s (%.4f, %.4f)", t ? "ok" : "mislukt", p ? "ok" : "mislukt", (double)gpsHulpLat, (double)gpsHulpLon);
+}
 void gpsTask(void*) {
   uint32_t lastI2c = 0;
   for (;;) {
@@ -1087,6 +1116,7 @@ void gpsTask(void*) {
       if (got > 0) { gpsDataOk = true; gpsI2cOk++; strcpy(gpsLastStage, "I2C NMEA DATA"); }
       else if (got < 0) gpsI2cFail++;
     }
+    if (gpsHulpNu) { gpsHulpNu = false; gpsHulpGeven(); }   // v64
     if (gpsFix && millis() - gpsLastFixMs > 3000) gpsFix = false;
     if (gpsNewFix) { gpsNewFix = false; checkBuddyCameras(); }  // alleen bij een nieuwe positie, niet 50x per seconde
     if (millis() - gpsLastReportMs >= 3000) {
@@ -2213,7 +2243,9 @@ static void persStap(float dt) {
   { static uint32_t telPosMs = 0;
     if (phone.pos && phone.ms != telPosMs && millis() - gpsEigenMs > 4000 && millis() - phone.ms < 2500) { telPosMs = phone.ms;
       gpsLat = phone.lat; gpsLon = phone.lon; gpsSpeedKmh = (float)phone.v; if (phone.hd >= 0) gpsKoers = phone.hd;
-      gpsLastFixMs = millis(); gpsFix = true; posVanTel = true; gpsNewFix = true; } }
+      gpsLastFixMs = millis(); gpsFix = true; posVanTel = true; gpsNewFix = true;
+      static uint32_t hulpT = 0;   // v64: GPS-chip zoekt nog? Geef hem de plek en tijd van de telefoon als startpunt (hooguit eens per 10 min)
+      if (klokOk() && (!hulpT || millis() - hulpT > 600000UL) && (!gpsEigenMs || millis() - gpsEigenMs > 60000)) { hulpT = millis(); gpsHulpLat = phone.lat; gpsHulpLon = phone.lon; gpsHulpNu = true; } } }
   if (zoekNu) { zoekNu = false; zoekTot = nu + 6000; laatsteActie = nu; slaapt = false; }
   { static uint32_t zb = 0; if ((int32_t)(zoekTot - nu) > 0 && nu - zb > 700) { zb = nu; playMoodSound(ALERT); } }
   // samen rijden: vriendschap groeit, laatste-ritmoment bijhouden
