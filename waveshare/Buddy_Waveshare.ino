@@ -29,12 +29,13 @@
 #include <LittleFS.h>             // v24: logboek in het flashgeheugen
 #include <WiFi.h>                 // v25: zelfstandig via de hotspot van je telefoon
 #include <WiFiClientSecure.h>
+#include <esp_ota_ops.h>   // v68: update op de achtergrond binnenhalen, installeren wanneer jij wilt
 #include <HTTPClient.h>
 #include <HTTPUpdate.h>
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 67;
+static const int FW_VERSIE = 68;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -68,7 +69,7 @@ static float wxPrecip = 0, wxRadarNu = -1; static uint32_t wxRadarT = 0;   // v5
 static volatile int setWarn = -1; static bool waarschuwAan = true; static int hudLimiet = 0, hudSnelheid = -1;
 static volatile bool buurNieuw = false; static char buurTxt[40] = ""; static bool bekerGetoond = false;
 struct Box { int16_t x0, y0, x1, y1; };   // v37: bovenaan i.v.m. automatische functie-koppen van Arduino
-static volatile int otaPct = -1;
+static volatile int otaPct = -1; static volatile int otaKlaarV = 0; static volatile bool otaInstalleer = false; static volatile uint32_t otaKlaarT = 0;   // v68
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
 static volatile bool pinOk = false; static volatile uint8_t pinAntw = 0;   // v65: koppelen met de code via de app zelf (geen Android-koppeling meer)
 static volatile uint32_t verbindT = 0; static volatile uint8_t koppelMislukt = 0;   // v55: mislukte koppelingen tellen
@@ -1173,7 +1174,7 @@ static void parsePhone(char *line) {
     return;
   }
   if (!strcmp(line, "ZOEK")) { zoekNu = true; return; }
-  if (!strncmp(line, "DOE:", 4)) { const char *d = line + 4; doeOpdracht = !strcmp(d, "koekje") ? 1 : !strcmp(d, "focus") ? 2 : !strcmp(d, "weer") ? 3 : !strcmp(d, "zwaai") ? 4 : !strcmp(d, "mok") ? 5 : !strcmp(d, "juich") ? 6 : !strcmp(d, "sprint") ? 7 : !strcmp(d, "piep") ? 8 : 0; return; }
+  if (!strncmp(line, "DOE:", 4)) { const char *d = line + 4; doeOpdracht = !strcmp(d, "koekje") ? 1 : !strcmp(d, "focus") ? 2 : !strcmp(d, "weer") ? 3 : !strcmp(d, "zwaai") ? 4 : !strcmp(d, "mok") ? 5 : !strcmp(d, "juich") ? 6 : !strcmp(d, "sprint") ? 7 : !strcmp(d, "piep") ? 8 : !strcmp(d, "installeer") ? 9 : 0; return; }
   if (!strcmp(line, "UPD")) { otaNu = true; return; }
   if (!strcmp(line, "STAT?")) { statVraag = true; return; }
   if (!strncmp(line, "SET:", 4)) {   // v27: instellingen uit de app, bv. SET:l=65;v=80;a=1;o=pet
@@ -1341,7 +1342,7 @@ static void infoKl(int y, const char *r, uint16_t kl) { frame->setTextColor(kl);
 static void drawInfo() {   // v67: checklist
   const uint16_t OK = 0x87F0, NEE = 0xF9A6, MID = 0xFEA0; frame->setTextSize(2);
   char r[48]; int y = 44; uint32_t nu = millis();
-  snprintf(r, sizeof r, "Buddy+ v%d", FW_VERSIE); infoKl(y, r, EYE); y += 16;
+  if (otaKlaarV) { snprintf(r, sizeof r, "TIK: UPDATE v%d", (int)otaKlaarV); infoKl(y, r, GOLD); } else { snprintf(r, sizeof r, "Buddy+ v%d", FW_VERSIE); infoKl(y, r, EYE); } y += 16;
   bool bt = bleConnected && pinOk;
   snprintf(r, sizeof r, "BT %s", bt ? (phoneFresh() ? "OK app+code" : "OK, app stil") : bleConnected ? "geen code" : "niet verbonden"); infoKl(y, r, bt && phoneFresh() ? OK : bt ? MID : NEE); y += 16;
   bool wf = WiFi.status() == WL_CONNECTED;
@@ -2040,17 +2041,36 @@ static void logNaarWorker() {
   int code = h.POST(kop + tekst); h.end();
   if (code != 200) { vanaf -= tekst.length(); Serial.printf("logboek naar worker: %d\n", code); }
 }
-static void checkOta() {
+static void checkOta() {   // v68: alleen binnenhalen (op de achtergrond, ook tijdens het rijden); installeren doe je zelf
   size_t n; uint8_t *b = haalUrl(FW_BASIS "versie.txt", n); if (!b) return;
   int v = atoi((char *)b); free(b);
   if (v <= FW_VERSIE) { logRegel("update: dit is de nieuwste (v%d)", FW_VERSIE); return; }
-  logRegel("update: v%d -> v%d wordt binnengehaald", FW_VERSIE, v);
-  otaPct = 0;
-  WiFiClientSecure cl; cl.setInsecure();
-  httpUpdate.onProgress([](int cur, int tot) { if (tot > 0) otaPct = cur * 100 / tot; });
-  httpUpdate.rebootOnUpdate(true);
-  t_httpUpdate_return r = httpUpdate.update(cl, FW_BASIS "firmware.bin");
-  logRegel("update mislukt (%d): %s", (int)r, httpUpdate.getLastErrorString().c_str()); otaPct = -1;
+  if (v == otaKlaarV) { logRegel("update: v%d staat al klaar om te installeren", v); return; }
+  const esp_partition_t *doel = esp_ota_get_next_update_partition(NULL); if (!doel) { logRegel("update: geen plek om te bewaren"); return; }
+  logRegel("update: v%d -> v%d wordt op de achtergrond binnengehaald", FW_VERSIE, v);
+  WiFiClientSecure cl; cl.setInsecure(); HTTPClient h; h.setTimeout(20000);
+  if (!h.begin(cl, FW_BASIS "firmware.bin")) return;
+  int code = h.GET(); if (code != 200) { logRegel("update: download -> %d", code); h.end(); return; }
+  int tot = h.getSize(); esp_ota_handle_t oh;
+  if (esp_ota_begin(doel, tot > 0 ? (size_t)tot : OTA_SIZE_UNKNOWN, &oh) != ESP_OK) { logRegel("update: kan niet beginnen"); h.end(); return; }
+  otaPct = 0; WiFiClient *st = h.getStreamPtr(); uint8_t *buf = (uint8_t *)malloc(4096); size_t got = 0; uint32_t t0 = millis(), laatsteData = millis(); bool fout = !buf;
+  while (!fout && (tot < 0 || got < (size_t)tot) && millis() - t0 < 600000UL && millis() - laatsteData < 30000) {
+    size_t a = st->available();
+    if (a) { int r = st->readBytes(buf, a > 4096 ? 4096 : a); if (r > 0) { if (esp_ota_write(oh, buf, r) != ESP_OK) fout = true; got += r; laatsteData = millis(); if (tot > 0) otaPct = got * 100 / tot; } }
+    else { if (!h.connected() && tot < 0) break; vTaskDelay(pdMS_TO_TICKS(5)); }
+  }
+  if (buf) free(buf); h.end(); otaPct = -1;
+  if (fout || (tot > 0 && got != (size_t)tot)) { esp_ota_abort(oh); logRegel("update: download onderbroken (%u van %d bytes), later opnieuw", (unsigned)got, tot); return; }
+  if (esp_ota_end(oh) != ESP_OK) { logRegel("update: binnengehaald bestand klopt niet, later opnieuw"); return; }
+  buddyPrefs.putInt("otaV", v); buddyPrefs.putString("otaP", doel->label);
+  otaKlaarV = v; otaKlaarT = millis(); statVraag = true;
+  logRegel("update: v%d staat klaar. Installeren via het info-venster of de app", v);
+}
+static void installeerOta() {   // v68: de klaarstaande update aanzetten en herstarten
+  if (!otaKlaarV) return; const esp_partition_t *p = esp_ota_get_next_update_partition(NULL);
+  if (!p || buddyPrefs.getString("otaP", "") != String(p->label)) { logRegel("update: klaarstaande versie niet meer gevonden"); otaKlaarV = 0; return; }
+  if (esp_ota_set_boot_partition(p) != ESP_OK) { logRegel("update: installeren mislukt"); return; }
+  logRegel("update: v%d wordt geinstalleerd, herstarten...", (int)otaKlaarV); delay(400); ESP.restart();
 }
 // v28: files/werk uit het Worker-pakketje
 struct Jam { char k; int16_t d; int32_t l; char w[6]; uint16_t p0; uint8_t n; };
@@ -2174,7 +2194,7 @@ static void netTaak(void *) {
         logRegel("internet-check: dns %s, verbinding %s, laatste download %s", netDnsOk ? "ok" : "MISLUKT", netTcpOk == 1 ? "ok" : netTcpOk == 0 ? "MISLUKT" : "-", netOkT && (!netFoutT || netOkT > netFoutT) ? "gelukt" : netFoutT ? "mislukt" : "nog geen"); } }
     { static uint32_t logT = 0; if ((!logT && millis() > 60000) || (logT && millis() - logT > 300000)) { logT = millis(); logNaarWorker(); } }   // v64
     bool stil = !gpsFix || gpsSpeedKmh < 1;
-    if (stil && (!otaT || millis() - otaT > 3UL * 3600000) && millis() > 60000) { otaT = millis(); checkOta(); }
+    (void)stil; if ((!otaT || millis() - otaT > 1UL * 3600000) && millis() > 60000) { otaT = millis(); checkOta(); }   // v68: elk uur kijken, binnenhalen mag altijd
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }
@@ -2188,6 +2208,9 @@ static void persLaad() {
   String nm = buddyPrefs.getString("naam", ""); strncpy(persNaam, nm.c_str(), sizeof persNaam - 1);
   vriend = buddyPrefs.getUChar("vriend", 40);
   sprintI = buddyPrefs.getUChar("spri", 0);   // v56
+  { int ov = buddyPrefs.getInt("otaV", 0);   // v68: staat er nog een binnengehaalde update klaar?
+    if (ov > FW_VERSIE) { const esp_partition_t *p = esp_ota_get_next_update_partition(NULL); if (p && buddyPrefs.getString("otaP", "") == String(p->label)) otaKlaarV = ov; }
+    else if (ov) buddyPrefs.remove("otaV"); }
   nachtStil = buddyPrefs.getBool("nstil", true);   // v59
   if (buddyPrefs.isKey("likes")) buddyPrefs.getBytes("likes", gagLike, sizeof gagLike);
   if (buddyPrefs.isKey("vertrek")) buddyPrefs.getBytes("vertrek", vertrekH, sizeof vertrekH);
@@ -2239,6 +2262,7 @@ static void stuurStat() {
   snprintf(b, sizeof b, "S:w=%d", WiFi.status() == WL_CONNECTED ? 1 : 0); bleSend(b); delay(15);
   snprintf(b, sizeof b, "S:t=%.0f", temperatureRead()); bleSend(b); delay(15);
   snprintf(b, sizeof b, "S:fr=%d", (int)vriend); bleSend(b); delay(15);
+  if (otaKlaarV) { snprintf(b, sizeof b, "S:upd=%d", (int)otaKlaarV); bleSend(b); delay(15); }   // v68
   snprintf(b, sizeof b, "S:au=%s/%d/%d", audioReady ? (audioBusy ? "bezig" : "ok") : audioStatus, (int)buddyVolume, (int)audioGespeeld); bleSend(b);   // v58: geluid
 }
 static void persStap(float dt) {
@@ -2253,6 +2277,7 @@ static void persStap(float dt) {
       else if (persStijl >= 92) { startGag(17); gagMsg = "Vorige rit: zen-modus. Top!"; } }
   }
   if (!gegroet && nu > groetVanaf && gagAct < 0 && !menuOpen && !venster && (klokOk() || nu > groetVanaf + 12000)) doeGroet();
+  if (otaInstalleer) { otaInstalleer = false; installeerOta(); }   // v68
   if (pinAntw && bleConnected && !logBezig) { uint8_t a = pinAntw; pinAntw = 0; bleSend(a == 1 ? "PIN:OK" : a == 2 ? "PIN:FOUT" : "PIN?"); }   // v65
   if (statVraag && !logBezig) { statVraag = false; stuurStat(); }
   // v44: zoekt de eigen GPS nog? Dan de plek van de telefoon gebruiken (bordjes, flitsers, files, klok blijven werken)
@@ -2311,7 +2336,8 @@ static void robotStap(float dt) {
     else if (d == 5) { startGag(44); gagMsg = "Hmpf! Ons record is verbroken..."; playGeluid(GL_OEPS); }   // v54: iemand verbrak je record
     else if (d == 6) { startGag(38); gagMsg = "WRAAK! Record terug!"; playGeluid(GL_TADA); }   // v54: record teruggepakt
     else if (d == 7) { showSoort = 1 + sprintI % 4; sprintI++; buddyPrefs.putUChar("spri", sprintI); showNa = millis(); }
-    else if (d == 8) { playGeluid(GL_PLING); logRegel("geluid test: klaar=%d bezig=%d volume=%d status=%s", (int)audioReady, (int)audioBusy, (int)buddyVolume, audioStatus); statVraag = true; } }   // v58: geluid testen   // v56: sprint-show testen vanuit de app
+    else if (d == 8) { playGeluid(GL_PLING); logRegel("geluid test: klaar=%d bezig=%d volume=%d status=%s", (int)audioReady, (int)audioBusy, (int)buddyVolume, audioStatus); statVraag = true; }
+    else if (d == 9) { otaInstalleer = true; } }   // v58: geluid testen / v68: update installeren   // v56: sprint-show testen vanuit de app
   if (!robotModus) { koekjeZichtbaar = false; return; }
   // schudden of oppakken
   { static uint32_t piekT[6] = {0}; static int pi = 0; static uint32_t duizT = 0;
@@ -2494,7 +2520,7 @@ void drawFace(){
    boxAdd(30, 26, 210, 50); roundRect(34, 28, 172, 20, 10, tg ? 0xB000 : 0x0230);
    frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - strlen(ct) * 6, Y(32)); frame->print(ct);
  } else if (otaPct >= 0) {
-   char ct[24]; snprintf(ct, sizeof ct, "UPDATE %d%%", otaPct);
+   char ct[24]; snprintf(ct, sizeof ct, "DOWNLOAD %d%%", otaPct);
    boxAdd(40, 26, 200, 50); roundRect(44, 28, 152, 20, 10, 0x0418);
    frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - strlen(ct) * 6, Y(32)); frame->print(ct);
  } else if ((int32_t)(pinTot - millis()) > 0) {   // v29: koppelcode laten zien bij de eerste keer verbinden
@@ -2922,6 +2948,7 @@ void handleTouch(){
    // loslaten = een tik afhandelen
    if (down && !lang && now - downMs < 600) {
      if (venster) { if (lY > 177.0f && fabsf(lX - 120.0f) < 62.0f) sluitVenster();   // TERUG
+       else if (venster == 1 && otaKlaarV && lY < 62.0f) installeerOta();   // v68: update installeren
        else if (venster == 2 && lY > 146.0f && lY < 176.0f) { vensterTot = now + 30000;   // v59: TEST of nachtstand
          if (lX < 120) { if (audioBusy) { audioBusy = false; logRegel("geluid: los gemaakt via TEST"); } testPiepT = now; playGeluid(GL_PLING); logRegel("geluid test (scherm): klaar=%d volume=%d status=%s", (int)audioReady, (int)buddyVolume, audioStatus); }
          else { nachtStil = !nachtStil; buddyPrefs.putBool("nstil", nachtStil); logRegel("nachtstand: %s", nachtStil ? "stil 22-7" : "geluid ook 's nachts"); } } }

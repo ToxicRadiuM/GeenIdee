@@ -596,9 +596,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="foot">Het schermpje draagt vanzelf hetzelfde outfit als Buddy hier (ook de feestdag-outfits).</p>
       <p class="sub">Gezondheid en onderhoud</p>
       <p class="chip" id="schStat">Nog niets gehoord. Verbind eerst (stap 1).</p>
-      <div class="mobrow"><button class="btn" id="schZoek" type="button">🔔 Zoek mijn Buddy</button><button class="btn" id="schUpd" type="button">⬇️ Update nu</button></div>
+      <div class="mobrow"><button class="btn" id="schZoek" type="button">🔔 Zoek mijn Buddy</button><button class="btn" id="schUpd" type="button">⬇️ Zoek naar update</button></div>
+      <button class="btn" id="schInstall" type="button" hidden style="border-color:#ffd60a">✨ Update installeren</button>
       <button class="btn" id="bleLog" type="button">📥 Logboek van Buddy+ ophalen</button>
-      <p class="foot">Zoek mijn Buddy laat hem piepen en knipperen. Update nu laat hem meteen kijken of er een nieuwe versie is (daarvoor heeft hij wifi nodig). Het logboek gaat automatisch mee bij elke verbinding.</p>
+      <p class="foot">Zoek mijn Buddy laat hem piepen en knipperen. Updates haalt Buddy+ zelf op de achtergrond binnen als hij internet heeft (ook tijdens het rijden, elk uur). Staat er een klaar, dan zie je hier ✨ Installeren, en in het info-venster van Buddy+ “TIK: UPDATE”. Jij kiest wanneer. Het logboek gaat automatisch mee bij elke verbinding.</p>
       </div>
     </div>
   </details>
@@ -4478,7 +4479,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v103';
+  var VERSION = 'v104';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7126,6 +7127,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (schS.w) d.push(schS.w === '1' ? 'wifi verbonden' : 'geen wifi');
       if (schS.t) d.push('chip ' + schS.t + ' °C');
       if (schS.fr) { d.push('vriendschap ' + schS.fr); window.__schVriend = +schS.fr; }
+      if (schS.upd && +schS.upd > v) { d.push('✨ Update v' + schS.upd + ' staat klaar'); var bi = $('schInstall'); if (bi) { bi.hidden = false; bi.textContent = '✨ Installeer v' + schS.upd + ' (Buddy+ herstart even)'; } }
       if (schS.au) { var au = schS.au.split('/'); d.push('geluid ' + (au[0] === 'ok' ? 'werkt' : au[0] === 'bezig' ? 'speelt' : 'FOUT (' + au[0] + ')') + ', volume ' + au[1] + '%, ' + au[2] + ' geluidjes gespeeld'); lg('scherm geluid: ' + schS.au); }
       $('schStat').textContent = d.join(' · ');
     }
@@ -7133,7 +7135,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       $(k[0]).addEventListener('click', function () { if (!rx) { toast('Verbind eerst met Buddy+.'); return; } klein(k[1]); toast(k[2]); });
     });
     $('schZoek').addEventListener('click', function () { if (!rx) { toast('Verbind eerst met het schermpje.'); return; } klein('ZOEK'); toast('🔔 Het schermpje piept en knippert.'); });
-    $('schUpd').addEventListener('click', function () { if (!rx) { toast('Verbind eerst met het schermpje.'); return; } klein('UPD'); toast('⬇️ Het schermpje kijkt nu naar updates (als hij wifi heeft).'); });
+    $('schUpd').addEventListener('click', function () { if (!rx) { toast('Verbind eerst met het schermpje.'); return; } klein('UPD'); toast('⬇️ Buddy+ kijkt naar updates en haalt ze op de achtergrond binnen (als hij internet heeft). Daarna verschijnt hier de knop Installeren.'); });
+    $('schInstall').addEventListener('click', function () { if (!rx) { toast('Verbind eerst met Buddy+.'); return; } klein('DOE:installeer'); $('schInstall').hidden = true; delete schS.upd; toast('✨ Buddy+ installeert de update en herstart. Over een halve minuut is hij er weer.'); });
     /* v80: navigatiepijl en matrixbord voor het schermpje */
     function navCode() {
       try {
