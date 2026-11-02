@@ -37,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 76;
+static const int FW_VERSIE = 77;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -66,7 +66,8 @@ static int trucjesOpen(); static bool gagOntgrendeld(int k);
 static uint32_t meterTot = 0, meterStart = 0; static float naald = 0, naaldV = 0;
 // v56: sprint-shows die elkaar afwisselen (0 meter, 1 ruimte, 2 turbo, 3 podium, 4 tijdreis)
 static uint32_t showTot = 0, showStart = 0, showNa = 0; static uint8_t showSoort = 0, sprintI = 0;
-static const uint8_t SHOWRIJ[6] = {1, 2, 3, 4, 7, 8};   // v72: ook de kleurtrip en de spiraal doen mee
+static const uint8_t SHOWRIJ[6] = {1, 2, 3, 4, 7, 8};
+static char handGebaar = 'v';   // v77: 'v' = middelvinger, 'd' = duim omhoog (vanuit de app, eerste-persoonsstand)   // v72: ook de kleurtrip en de spiraal doen mee
 static float wxPrecip = 0, wxRadarNu = -1; static uint32_t wxRadarT = 0;   // v56: regen van de Buienradar
 // v39: te-hard-waarschuwing, thuis-tijd, collega in de buurt, wisselbeker
 static volatile int setWarn = -1; static bool waarschuwAan = true; static int hudLimiet = 0, hudSnelheid = -1;
@@ -1156,7 +1157,7 @@ static volatile bool bleConnected = false;
 static char bleBuf[256]; static size_t bleLen = 0;
 // v76: route van de app (voor de kaart op Buddy+). Twee vaste buffers in PSRAM, nooit vrijgeven (tekenen en ontvangen lopen tegelijk)
 static const int RT_MAX = 1200; static float *rtA = nullptr, *rtB = nullptr, *rtPt = nullptr; static volatile int rtN = 0; static int rtNieuwN = 0; static bool rtBezig = false;
-static uint8_t kaartStand = 0; static uint32_t kaartGezichtTot = 0;   // 0 = gezicht, 1 = kaart; na tikken naar het gezicht even geen automatische kaart
+static uint8_t kaartStand = 0; static uint32_t kaartGezichtTot = 0, kaartOvergangT = 0; static bool kaartVorige = false;   // v77: twee handjes trekken het gezicht opzij   // 0 = gezicht, 1 = kaart; na tikken naar het gezicht even geen automatische kaart
 // v72: eigen geluidje voor de sterren-show (komt van de app, bewaard in /sterren.raw: 8 kHz, 8 bit, max 7,5 s)
 static uint8_t *sterBuf = nullptr; static uint32_t sterLen = 0; static uint8_t *sndNieuw = nullptr; static uint32_t sndNieuwLen = 0, sndOntv = 0; static volatile uint8_t sndAntw = 0;
 static const uint32_t STER_MAX = 60000;
@@ -2377,8 +2378,9 @@ static void persStap(float dt) {
   if (!gegroet && nu > groetVanaf && gagAct < 0 && !menuOpen && !venster && (klokOk() || nu > groetVanaf + 12000)) doeGroet();
   if (otaInstalleer) { otaInstalleer = false; installeerOta(); }   // v68
   if (evtSoort && gagAct < 0 && (int32_t)(showTot - millis()) <= 0) { char s = evtSoort; evtSoort = 0; laatsteActie = millis(); slaapt = false;   // v69: groepsgebeurtenis
-    int g = s == 'f' ? 38 : s == 'm' ? 44 : s == 'z' ? 22 : 7; startGag(g); gagMsg = evtTxt;
-    playGeluid(s == 'f' ? GL_TADA : s == 'm' ? GL_OEPS : s == 'z' ? GL_HOI : s == 'h' ? GL_GIECHEL : GL_PLING); logRegel("gebeurtenis: %s", evtTxt); }
+    if (s == 'v' || s == 'd') { handGebaar = s; showSoort = 9; showStart = millis(); showTot = millis() + 2600; playGeluid(s == 'v' ? GL_OEPS : GL_TADA); logRegel("gebaar: %c", s); }   // v77: handje uit de app
+    else { int g = s == 'f' ? 38 : s == 'm' ? 44 : s == 'z' ? 22 : 7; startGag(g); gagMsg = evtTxt;
+    playGeluid(s == 'f' ? GL_TADA : s == 'm' ? GL_OEPS : s == 'z' ? GL_HOI : s == 'h' ? GL_GIECHEL : GL_PLING); logRegel("gebeurtenis: %s", evtTxt); } }
   if (sndAntw && bleConnected && !logBezig) { uint8_t a = sndAntw; sndAntw = 0;   // v72: eigen geluidje bewaren of wissen
     if (a == 1) { File f = LittleFS.open("/sterren.raw", "w"); bool ok = f && f.write(sndNieuw, sndNieuwLen) == sndNieuwLen; if (f) f.close();
       if (ok) { sterData = STER_STANDAARD; sterDataLen = STER_STANDAARD_LEN; uint8_t *oud = sterBuf; sterBuf = sndNieuw; sterLen = sndNieuwLen; sndNieuw = nullptr; sterData = sterBuf; sterDataLen = sterLen; if (oud) free(oud); logRegel("geluid: eigen sterren-geluidje bewaard (%u bytes)", (unsigned)sterLen); bleSend("SND:OK"); }
@@ -2562,6 +2564,21 @@ static void drawShow() {
     float pu = .5f + .5f * sinf(tt * 5); circle(120, 120, 30 + pu * 6, hsv565(tt * 400, 1, 1)); circle(120, 120, 26 + pu * 6, 0x0000);
     miniBuddy(120, 120, .45f, false, 1);
     showTekst(tt < 3.5f ? "KIJK MIJ AAN" : "SUPERBLIJ!", 120, 204, 2, 0xFFFF);
+  } else if (showSoort == 9) {   // v77: handje omhoog (middelvinger of duim)
+    float op = tt < .35f ? 1 - tt / .35f : tt > 2.2f ? (tt - 2.2f) / .4f : 0, dy = op * 150 + sinf(tt * 18) * (tt > .35f && tt < 2.2f ? 1.5f : 0);
+    const uint16_t HUID = 0xFE8F, RAND = 0xC3A8;
+    if (handGebaar == 'v') {
+      roundRect(66, 132 + dy, 108, 74, 26, RAND); roundRect(69, 135 + dy, 102, 68, 23, HUID);                                   // vuist
+      for (int i = 0; i < 4; i++) if (i != 1) { float x = 72 + i * 24; roundRect(x, 118 + dy, 24, 34, 12, RAND); roundRect(x + 2, 120 + dy, 20, 30, 10, HUID); }   // knokkels
+      roundRect(95, 38 + dy, 30, 108, 15, RAND); roundRect(98, 41 + dy, 24, 104, 12, HUID); roundRect(101, 44 + dy, 18, 14, 6, 0xFFFF);   // de vinger, met nagel
+      roundRect(52, 150 + dy, 40, 26, 13, RAND); roundRect(54, 152 + dy, 36, 22, 11, HUID);                                      // duim
+      if (tt > .35f && tt < 2.2f) showTekst("HMPF!", 120, 222, 2, 0xF800);
+    } else {
+      roundRect(70, 110 + dy, 100, 76, 24, RAND); roundRect(73, 113 + dy, 94, 70, 21, HUID);
+      for (int i = 0; i < 4; i++) { roundRect(150, 116 + i * 17 + dy, 30, 17, 8, RAND); roundRect(152, 118 + i * 17 + dy, 26, 13, 6, HUID); }
+      roundRect(82, 40 + dy, 32, 84, 16, RAND); roundRect(85, 43 + dy, 26, 80, 13, HUID); roundRect(88, 46 + dy, 20, 14, 6, 0xFFFF);
+      if (tt > .35f && tt < 2.2f) showTekst("DANKJE!", 120, 222, 2, 0x07E0);
+    }
   }
   (void)ms;
 }
@@ -2637,6 +2654,16 @@ static void drawKaart() {
     else { float rd = a * .0174533f, dx = sinf(rd), dy = -cosf(rd); dikLijn(cx - dx * 6, cy - dy * 6, cx + dx * 4, cy + dy * 4, 3, c); triF(cx + dx * 10, cy + dy * 10, cx + dx * 3 - dy * 6, cy + dy * 3 + dx * 6, cx + dx * 3 + dy * 6, cy + dy * 3 - dx * 6, c); }
     char nd[16]; if (phone.navD >= 950) snprintf(nd, sizeof nd, "%d,%dkm", phone.navD / 1000, (phone.navD % 1000) / 100); else snprintf(nd, sizeof nd, "%dm", (phone.navD / 10) * 10);
     frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(100), Y(203)); frame->print(nd); }
+  uint32_t ov = millis() - kaartOvergangT;   // v77: de overgang: Buddy's gezicht als gordijn, twee handjes trekken het open
+  if (kaartOvergangT && ov < 1500) {
+    float t = ov / 1500.f, open = t < .3f ? 0 : powf((t - .3f) / .7f, 1.6f) * 135, hg = t < .3f ? t / .3f : 1;
+    const uint16_t HUID = 0xFE8F, RAND = 0xC3A8;
+    showRect(0, 0, 120 - open, 240, BG); showRect(120 + open, 0, 120 - open + 1, 240, BG);
+    if (120 - open > 60) { roundRect(73 - open - 13, 86, 26, 40, 13, EYE); } if (120 + open < 180) { roundRect(167 + open - 13, 86, 26, 40, 13, EYE); }   // oogjes gaan mee
+    for (int k = -1; k <= 1; k += 2) { float x = 120 + k * (open + 4), y = 128; float w = 30 * hg, h = 46 * hg;   // handjes aan de randen
+      roundRect(x - w / 2 + k * 6, y - h / 2, w, h, 12 * hg, RAND); roundRect(x - w / 2 + k * 6 + 2, y - h / 2 + 2, w - 4, h - 4, 10 * hg, HUID);
+      for (int f = 0; f < 3; f++) roundRect(x - k * 12 * hg - 6, y - h / 2 + 6 + f * 12 * hg, 14 * hg, 9 * hg, 4 * hg, HUID); }
+  }
 }
 void drawFace(){
  // v15: alleen wissen wat er vorige keer getekend is, in plaats van het hele scherm
@@ -2653,6 +2680,7 @@ void drawFace(){
    frame->setTextColor(0xFFFF); frame->setTextSize(4); frame->setCursor(X(120) - 60, Y(120) - 16); frame->print("HIER!"); return; }
  if ((int32_t)(showTot - millis()) > 0 && (int32_t)(flagTot - millis()) <= 0) { drawShow(); return; }   // v56: sprint-show
  if ((int32_t)(meterTot - millis()) > 0 && (int32_t)(flagTot - millis()) <= 0) { drawMeter(); return; }
+ { bool kn = kaartNu(); if (kn && !kaartVorige) kaartOvergangT = millis(); kaartVorige = kn; }
  if (kaartNu()) { drawKaart(); return; }   // v76: kaart met route   // v52: de 0-100-vlag gaat voor   // v40: retro meter bij flink optrekken
  if (rtN && !(phoneFresh() && phone.nav)) { boxAdd(84, 6, 156, 32); roundRect(86, 8, 68, 22, 11, 0x0A4E); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(13)); frame->print("KAART"); }   // v76: tik hier voor de kaart
  if (wxVers() && !slaapt) {   // v46: echt regen- of sneeuwweer -> druppels of vlokjes achter het gezicht
@@ -3361,7 +3389,7 @@ void loop(){
        { static uint32_t losShowT = 0; if (meterStart == nu && !showNa && random(4) == 0 && (!losShowT || nu - losShowT > 600000UL)) { losShowT = nu; showSoort = SHOWRIJ[sprintI % 6]; showNa = nu + 6500; sprintI++; buddyPrefs.putUChar("spri", sprintI); } }   // v57: af en toe ook na gewoon flink optrekken
      }
      if (showNa && (int32_t)(nu - showNa) >= 0) {   // v56: na de vlag de sprint-show
-       static const uint16_t DUUR[9] = {0, 9500, 7000, 7500, 8000, 6000, 5000, 7000, 7000};
+       static const uint16_t DUUR[10] = {0, 9500, 7000, 7500, 8000, 6000, 5000, 7000, 7000, 2600};
        showNa = 0; showStart = nu; showTot = nu + DUUR[showSoort]; if (showSoort == 1) speelSter(); else playGeluid(showSoort == 5 ? GL_VROEM : showSoort == 6 ? GL_GIECHEL : showSoort >= 7 ? GL_TRIP : GL_RUIMTE + showSoort - 1); logRegel("sprint-show %d", (int)showSoort);
      }
      float doel = vn; naaldV += ((doel - naald) * 55.f - naaldV * 6.5f) * dt; naald += naaldV * dt;   // veer + demper: schiet door en trilt na
