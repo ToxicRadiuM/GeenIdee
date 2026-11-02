@@ -37,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 75;
+static const int FW_VERSIE = 76;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -1154,6 +1154,9 @@ static PhoneData phone = {0, 0, -1, 0, -1, 0, false, -1, "", 0, 0, 0, ""};
 static BLECharacteristic *bleTx = nullptr;
 static volatile bool bleConnected = false;
 static char bleBuf[256]; static size_t bleLen = 0;
+// v76: route van de app (voor de kaart op Buddy+). Twee vaste buffers in PSRAM, nooit vrijgeven (tekenen en ontvangen lopen tegelijk)
+static const int RT_MAX = 1200; static float *rtA = nullptr, *rtB = nullptr, *rtPt = nullptr; static volatile int rtN = 0; static int rtNieuwN = 0; static bool rtBezig = false;
+static uint8_t kaartStand = 0; static uint32_t kaartGezichtTot = 0;   // 0 = gezicht, 1 = kaart; na tikken naar het gezicht even geen automatische kaart
 // v72: eigen geluidje voor de sterren-show (komt van de app, bewaard in /sterren.raw: 8 kHz, 8 bit, max 7,5 s)
 static uint8_t *sterBuf = nullptr; static uint32_t sterLen = 0; static uint8_t *sndNieuw = nullptr; static uint32_t sndNieuwLen = 0, sndOntv = 0; static volatile uint8_t sndAntw = 0;
 static const uint32_t STER_MAX = 60000;
@@ -1167,6 +1170,16 @@ static const char *moodKeys[MOOD_COUNT] = {"neutral","content","relaxed","happy"
 static bool phoneFresh() { return phone.ms && millis() - phone.ms < 3500; }
 static char evtTxt[44] = ""; static volatile char evtSoort = 0;   // v69: groepsgebeurtenissen van de app
 static void parsePhone(char *line) {
+  if (pinOk && !strncmp(line, "RT:", 3)) {   // v76: route binnenhalen (B = begin, P = punten, E = klaar, X = gestopt)
+    const char *a = line + 3;
+    if (!rtA) { rtA = (float *)ps_malloc(RT_MAX * 2 * sizeof(float)); rtB = (float *)ps_malloc(RT_MAX * 2 * sizeof(float)); }
+    if (!rtA || !rtB) return;
+    float *doel = (rtPt == rtA) ? rtB : rtA;
+    if (a[0] == 'B') { rtNieuwN = 0; rtBezig = true; }
+    else if (a[0] == 'P' && rtBezig) { const char *q = a + 2; while (*q && rtNieuwN < RT_MAX) { char *e; float la = strtof(q, &e); if (*e != ',') break; float lo = strtof(e + 1, &e); doel[rtNieuwN * 2] = la; doel[rtNieuwN * 2 + 1] = lo; rtNieuwN++; if (*e == ';') q = e + 1; else break; } }
+    else if (a[0] == 'E' && rtBezig) { rtBezig = false; if (rtNieuwN >= 2) { rtPt = doel; rtN = rtNieuwN; kaartStand = 1; logRegel("route ontvangen: %d punten", rtNieuwN); } }
+    else if (a[0] == 'X') { rtN = 0; rtBezig = false; kaartStand = 0; logRegel("route gestopt"); }
+    return; }
   if (pinOk && !strncmp(line, "SND:", 4)) {   // v72: eigen geluidje binnenhalen (B = begin, D = stukje, E = klaar, WEG = wissen)
     const char *a = line + 4;
     if (!strncmp(a, "B|", 2)) { uint32_t n = strtoul(a + 2, nullptr, 10); if (sndNieuw) { free(sndNieuw); sndNieuw = nullptr; } sndOntv = 0; sndNieuwLen = 0; if (n > 0 && n <= STER_MAX) { sndNieuw = (uint8_t *)ps_malloc(n); if (sndNieuw) sndNieuwLen = n; } if (!sndNieuw) sndAntw = 3; }
@@ -2584,6 +2597,47 @@ static void drawMeter() {
   circle(cx + c * 96, cy - sn * 96, 2.2f, 0xFFE0);                                 // gloeiend puntje
   circle(cx, cy, 10, 0x2104); circle(cx, cy, 5, 0xC618);                           // naaf
 }
+// v76: de kaart op Buddy+: wegen uit de limiet-tegel, de route van de app, flitsers, je auto en Buddy klein bovenin
+static bool kaartNu() {
+  if (!rtN || !rtPt || !gpsFix) return false;
+  if (kaartStand) return true;
+  return (int32_t)(kaartGezichtTot - millis()) <= 0 && phoneFresh() && phone.nav && phone.navD > 0 && phone.navD < 250;   // vlak voor een afslag even de kaart
+}
+static void drawKaart() {
+  boxAdd(0, 0, 240, 240); circle(120, 120, 119, 0x0861);
+  const float CX = 120, CY = 152; float lat = gpsLat, lon = gpsLon, hd = gpsKoers * 0.0174533f;
+  float kx = 111320.f * cosf(lat * 0.0174533f), ky = 110540.f, ch = cosf(hd), sh = sinf(hd), v = spdNow();
+  bool dichtbij = phoneFresh() && phone.nav && phone.navD > 0 && phone.navD < 250;
+  float mpp = dichtbij ? 1.8f : v > 85 ? 6.f : v > 45 ? 4.f : 2.8f;   // meters per beeldpuntje: harder rijden = verder vooruit kijken
+  auto proj = [&](float la, float lo, float &x, float &y) { float dx = (lo - lon) * kx, dy = (la - lat) * ky; x = CX + (dx * ch - dy * sh) / mpp; y = CY - (dx * sh + dy * ch) / mpp; };
+  auto binnen = [](float x, float y) { return x > -30 && x < 270 && y > -30 && y < 270; };
+  float bereik = 190 * mpp, dla = bereik / ky, dlo = bereik / kx;
+  if (wegen && wegPt) for (int i = 0; i < wegN; i++) {   // wegen om je heen
+    const Weg &g = wegen[i]; const float *pt = wegPt + g.p0 * 2; float px = 0, py = 0; bool pv = false;
+    uint16_t kl = g.lim >= 80 ? 0x52AA : 0x3186; float br = g.lim >= 80 ? 3.2f : 2.2f;
+    for (int k = 0; k < g.n; k++) { float la = pt[k * 2], lo = pt[k * 2 + 1];
+      if (fabsf(la - lat) > dla || fabsf(lo - lon) > dlo) { pv = false; continue; }
+      float x, y; proj(la, lo, x, y); if (pv && (binnen(x, y) || binnen(px, py))) dikLijn(px, py, x, y, br, kl); px = x; py = y; pv = true; } }
+  { float px = 0, py = 0; bool pv = false; const float *r = rtPt; int n = rtN;   // de route
+    for (int pass = 0; pass < 2; pass++) { pv = false;
+      for (int k = 0; k < n; k++) { float la = r[k * 2], lo = r[k * 2 + 1]; if (fabsf(la - lat) > dla * 1.3f || fabsf(lo - lon) > dlo * 1.3f) { pv = false; continue; }
+        float x, y; proj(la, lo, x, y); if (pv) dikLijn(px, py, x, y, pass ? 4.5f : 7.5f, pass ? 0x3D7F : 0x0A4E); px = x; py = y; pv = true; } } }
+  for (int pass = 0; pass < 2; pass++) { const NetCam *cs = pass ? extraCams : netCams; int n = pass ? extraCamN : netCamN; if (!cs) continue;   // flitsers
+    for (int i = 0; i < n; i++) { if (fabsf(cs[i].lat - lat) > dla || fabsf(cs[i].lon - lon) > dlo) continue; float x, y; proj(cs[i].lat, cs[i].lon, x, y); if (!binnen(x, y)) continue;
+      circle(x, y, 5.5f, 0xFFFF); circle(x, y, 4, cs[i].type == 3 ? 0xFD20 : 0xF800); } }
+  triF(CX, CY - 12, CX - 9, CY + 9, CX + 9, CY + 9, 0xFFFF); triF(CX, CY - 7, CX - 5, CY + 6, CX + 5, CY + 6, 0x3D7F);   // jouw auto
+  circle(120, 36, 27, 0x0000); circle(120, 36, 27, 0x2945); circle(120, 36, 25, 0x0000); miniBuddy(120, 38, .4f, false, 0);   // Buddy klein bovenin
+  char sp[8]; snprintf(sp, sizeof sp, "%d", (int)lroundf(v)); segTekst(sp, 200, 120, 18, EYE);   // snelheid rechts
+  int lim = phoneFresh() && phone.lim > 0 ? phone.lim : wegLimiet;
+  if (lim > 0) { circle(40, 120, 16, 0xD800); circle(40, 120, 12.5f, 0xFFFF); char lt[6]; snprintf(lt, sizeof lt, "%d", lim); segTekst(lt, 40, 120, lim >= 100 ? 9 : 12, 0x0000); }
+  if (phoneFresh() && phone.nav) {   // volgende afslag onderin
+    roundRect(66, 196, 108, 28, 14, 0x0B0A); float cx = 86, cy = 210, a = 0; uint16_t c = 0xFFFF;
+    switch (phone.nav) { case 'L': a = -90; break; case 'R': a = 90; break; case 'l': a = -45; break; case 'r': a = 45; break; case 'U': a = 180; break; default: a = 0; }
+    if (phone.nav == 'A') { circle(cx, cy, 6, 0xF800); } else if (phone.nav == 'O') { for (int i = 0; i < 10; i++) { float a1 = i * .63f, a2 = a1 + .5f; line(cx + cosf(a1) * 7, cy + sinf(a1) * 7, cx + cosf(a2) * 7, cy + sinf(a2) * 7, c, 2); } }
+    else { float rd = a * .0174533f, dx = sinf(rd), dy = -cosf(rd); dikLijn(cx - dx * 6, cy - dy * 6, cx + dx * 4, cy + dy * 4, 3, c); triF(cx + dx * 10, cy + dy * 10, cx + dx * 3 - dy * 6, cy + dy * 3 + dx * 6, cx + dx * 3 + dy * 6, cy + dy * 3 - dx * 6, c); }
+    char nd[16]; if (phone.navD >= 950) snprintf(nd, sizeof nd, "%d,%dkm", phone.navD / 1000, (phone.navD % 1000) / 100); else snprintf(nd, sizeof nd, "%dm", (phone.navD / 10) * 10);
+    frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(100), Y(203)); frame->print(nd); }
+}
 void drawFace(){
  // v15: alleen wissen wat er vorige keer getekend is, in plaats van het hele scherm
  Box &oud = drawnBox[frameIdx];
@@ -2598,7 +2652,9 @@ void drawFace(){
    boxAdd(0, 0, 240, 240); bool aan = (millis() / 350) % 2; circle(120, 120, 118, aan ? 0xFFE0 : 0xF800); circle(120, 120, 96, BG);
    frame->setTextColor(0xFFFF); frame->setTextSize(4); frame->setCursor(X(120) - 60, Y(120) - 16); frame->print("HIER!"); return; }
  if ((int32_t)(showTot - millis()) > 0 && (int32_t)(flagTot - millis()) <= 0) { drawShow(); return; }   // v56: sprint-show
- if ((int32_t)(meterTot - millis()) > 0 && (int32_t)(flagTot - millis()) <= 0) { drawMeter(); return; }   // v52: de 0-100-vlag gaat voor   // v40: retro meter bij flink optrekken
+ if ((int32_t)(meterTot - millis()) > 0 && (int32_t)(flagTot - millis()) <= 0) { drawMeter(); return; }
+ if (kaartNu()) { drawKaart(); return; }   // v76: kaart met route   // v52: de 0-100-vlag gaat voor   // v40: retro meter bij flink optrekken
+ if (rtN && !(phoneFresh() && phone.nav)) { boxAdd(84, 6, 156, 32); roundRect(86, 8, 68, 22, 11, 0x0A4E); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(13)); frame->print("KAART"); }   // v76: tik hier voor de kaart
  if (wxVers() && !slaapt) {   // v46: echt regen- of sneeuwweer -> druppels of vlokjes achter het gezicht
    int c = wxCode; bool regen = ((c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95) && !(c >= 51 && c <= 57 && wxPrecip < .2f), sneeuw = (c >= 71 && c <= 77) || c == 85 || c == 86;
    if (wxRadarT && millis() - wxRadarT < 20UL * 60000) regen = wxRadarNu >= .1f;   // v56: radar gaat voor
@@ -3103,6 +3159,8 @@ void handleTouch(){
          if (lX < 120) { if (audioBusy) { audioBusy = false; logRegel("geluid: los gemaakt via TEST"); } testPiepT = now; playGeluid(GL_PLING); logRegel("geluid test (scherm): klaar=%d volume=%d status=%s", (int)audioReady, (int)buddyVolume, audioStatus); }
          else { nachtStil = !nachtStil; buddyPrefs.putBool("nstil", nachtStil); logRegel("nachtstand: %s", nachtStil ? "stil 22-7" : "geluid ook 's nachts"); } } }
      else if (menuOpen) menuKies(lX, lY);
+     else if (kaartNu()) { kaartStand = 0; kaartGezichtTot = now + 60000; }   // v76: tik op de kaart = terug naar het gezicht
+     else if (rtN && lY < 56.0f && fabsf(lX - 120.0f) < 46.0f) { kaartStand = 1; }   // v76: tik op KAART bovenin = kaart
      else if (lY > 188.0f && !(koekjeZichtbaar && robotModus && fabsf(lX - 196) < 24)) openVenster(2);   // onderaan tikken = volume
      else if (koekjeZichtbaar && robotModus && fabsf(lX - 196) < 24 && fabsf(lY - 176) < 24) {   // v48: koekje!
        koekjeZichtbaar = false; energie = 100; startGag(51); playGeluid(GL_PLING); vriendPlus(1); laatsteActie = now; }
