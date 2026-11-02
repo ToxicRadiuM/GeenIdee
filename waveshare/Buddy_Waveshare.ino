@@ -34,7 +34,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 62;
+static const int FW_VERSIE = 63;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -2695,15 +2695,20 @@ static void oorTaak(void *) {
     }
   }
 }
+static char idfFout[96] = ""; static int idfFoutN = 0;   // v63: wat zegt de ESP32 zelf als het geluid niet start?
+static int idfVangPrintf(const char *fmt, va_list ap) { if (idfFoutN < 3) { char t[96]; vsnprintf(t, sizeof t, fmt, ap); if (strstr(t, "E (") || strstr(t, "[E]") || strstr(t, "rror") || strstr(t, "fail")) { strncpy(idfFout, t, sizeof idfFout - 1); idfFoutN++; } } return vprintf(fmt, ap); }
 bool initBuddyAudio() {
+  logRegel("geluid: start, vrij DMA %u (grootste blok %u)", (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL), (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL));
+  vprintf_like_t oudLog = esp_log_set_vprintf(idfVangPrintf);
   pinMode(PA, OUTPUT);
   digitalWrite(PA, HIGH);
   buddyI2S.setPins(BCLKPIN, WSPIN, DIPIN, DOPIN, MCLKPIN);
   bool i2sOk = false;   // v62: een paar keer proberen (op sommige ESP32-versies lukt de eerste keer niet)
   for (int poging = 0; poging < 3 && !i2sOk; poging++) { if (poging) { buddyI2S.end(); delay(150); buddyI2S.setPins(BCLKPIN, WSPIN, DIPIN, DOPIN, MCLKPIN); }
     i2sOk = buddyI2S.begin(I2S_MODE_STD, AUDIO_RATE, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO, I2S_STD_SLOT_BOTH); }
+  esp_log_set_vprintf(oudLog);
   if (!i2sOk) {
-    Serial.println("Buddy audio: I2S start mislukt"); strcpy(audioStatus, "i2s-fout"); logRegel("geluid: I2S start mislukt");
+    Serial.println("Buddy audio: I2S start mislukt"); strcpy(audioStatus, "i2s-fout"); logRegel("geluid: I2S start mislukt: %s", idfFout[0] ? idfFout : "(geen melding)");
     return false;
   }
 
@@ -2900,6 +2905,7 @@ void setup(){
  buddyTouch.setPins(TP_RESET, TP_INT);
  if (buddyTouch.begin(Wire, CST92XX_SLAVE_ADDRESS, IIC_SDA, IIC_SCL)) { touchReady=true; Serial.println("Buddy touch: CST9217 klaar"); }
  else Serial.println("Buddy touch: niet beschikbaar; volumeregeling via scherm uitgeschakeld");
+ audioReady = initBuddyAudio();   // v63: geluid eerst starten, voordat het beeld het speciale (DMA-)geheugen inpikt
  frames[0] = new PsramCanvas(LCD_WIDTH, LCD_HEIGHT, gfx, 0, 0, 0);
  frames[1] = new PsramCanvas(LCD_WIDTH, LCD_HEIGHT, gfx, 0, 0, 0);
  frame = frames[0];
@@ -2913,7 +2919,6 @@ void setup(){
  xTaskCreatePinnedToCore(flushTask, "BuddyFlush", 8192, nullptr, 1, nullptr, 0);   // v36: weer prioriteit 1 (met 2 kreeg core 0 geen adem -> waakhond)
  Serial.printf("Buddy beeld klaar | framebuffer=16-bit PSRAM | QSPI=%ld Hz | PSRAM over: %u | heap over: %u\n", (long)QSPI_HZ, (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap());
  frame->setTextColor(EYE); frame->setTextSize(1);
- audioReady = initBuddyAudio();
  // v19: bewegingssensor
  Serial.println("Buddy gyro: starten..."); Serial.flush();
  if (qmiInit()) { imuReady = true; Serial.println("Buddy gyro: QMI8658 klaar (meehangen in bochten)"); }
