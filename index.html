@@ -157,6 +157,14 @@ body.car #carBack { display: block; }
 #gooiFx[hidden] { display: none; }
 #gooiDing { position: absolute; width: 60px; height: 120px; left: var(--gx, 50%); top: var(--gy, 40%); margin: -60px 0 0 -30px; animation: gooiVlieg 1.05s cubic-bezier(.5,0,.9,.6) forwards; filter: drop-shadow(0 10px 20px rgba(0,0,0,.6)); }
 @keyframes gooiVlieg { 0% { transform: translate(0,0) scale(.35) rotate(0); } 100% { transform: translate(calc(50vw - var(--gx, 50vw)), calc(50vh - var(--gy, 40vh))) scale(9) rotate(540deg); } }
+#gooiKoe { display: none; font-size: 64px; line-height: 120px; text-align: center; width: 60px; }
+#gooiFx.koe #gooiKoe { display: block; } #gooiFx.koe #gooiPaal { display: none; }
+#gooiFx.koe #gooiDing { width: 200px; height: 200px; margin: -100px 0 0 -100px; animation-name: gooiVliegK; } #gooiFx.koe #gooiKoe { width: 200px; font-size: 180px; line-height: 200px; }
+#gooiFx.koe.raak #gooiDing { animation: gooiGlijK 1.6s ease-in forwards; }
+@keyframes gooiVliegK { 0% { transform: translate(0,0) scale(.12) rotate(0); } 100% { transform: translate(calc(50vw - var(--gx, 50vw)), calc(50vh - var(--gy, 40vh))) scale(2.8) rotate(400deg); } }
+@keyframes gooiGlijK { 0% { transform: translate(calc(50vw - var(--gx, 50vw)), calc(50vh - var(--gy, 40vh))) scale(2.8) rotate(400deg); } 30% { transform: translate(calc(50vw - var(--gx, 50vw)), calc(52vh - var(--gy, 40vh))) scale(2.8) rotate(405deg); } 100% { transform: translate(calc(50vw - var(--gx, 50vw)), calc(170vh - var(--gy, 40vh))) scale(2.8) rotate(420deg); } }
+#gooiTekst { position: absolute; left: 50%; top: 18%; transform: translateX(-50%) scale(0) rotate(-6deg); padding: 10px 20px; border-radius: 24px; background: #fff; color: #222; font: 900 38px/1 var(--f-display); z-index: 2; white-space: nowrap; transition: transform .2s cubic-bezier(.3,1.7,.5,1); }
+#gooiFx.raak #gooiTekst.aan { transform: translateX(-50%) scale(1) rotate(-6deg); }
 #gooiBarst { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
 #gooiFx.raak #gooiBarst { opacity: 1; transition: opacity .05s; }
 #gooiFx.raak #gooiDing { animation: gooiGlij 1.6s ease-in forwards; }
@@ -556,8 +564,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 <div id="rondRing" aria-label="Menu"><div class="rrVlak"></div></div>
 <button id="carBack" class="rijRond rijWeg" type="button">Terug</button>
 <button id="carKaartKnop" class="rijRond rijWeg" type="button" aria-label="Kaart naast Buddy aan of uit">🗺️ Kaart</button>
-<div id="gooiFx" aria-hidden="true" hidden><div id="gooiDing"><svg viewBox="0 0 60 120"><rect x="24" y="40" width="12" height="80" rx="3" fill="#8e8e93"/><rect x="4" y="2" width="52" height="44" rx="8" fill="#d6d6d6" stroke="#555" stroke-width="3"/><rect x="4" y="2" width="52" height="12" rx="6" fill="#f2c200"/><circle cx="30" cy="30" r="10" fill="#222"/><circle cx="27" cy="27" r="3" fill="#fff" opacity=".8"/></svg></div><svg id="gooiBarst" viewBox="0 0 400 400" preserveAspectRatio="none"><g stroke="#fff" stroke-width="3" fill="none" opacity=".85"><path d="M200 200 L120 90 L95 30"/><path d="M200 200 L300 110 L370 60"/><path d="M200 200 L330 240 L400 255"/><path d="M200 200 L260 330 L280 400"/><path d="M200 200 L110 300 L40 390"/><path d="M200 200 L60 200 L0 180"/><path d="M160 145 L235 150 L250 215 L190 255 L150 220 Z"/></g></svg></div>
-<div id="rijKaart" aria-label="Kaart met je auto"><div id="rijMap"></div><button id="rijAutoKnop" class="rijWeg" type="button" aria-label="Andere auto kiezen">🚗</button><button id="rijNoordKnop" class="rijWeg" type="button" aria-label="Rijrichting of noorden boven">🧭</button><button id="rijZoekKnop" class="rijWeg" type="button" aria-label="Navigeer naar">🔍</button><button id="rijFpKnop" class="rijWeg" type="button" aria-label="Eerste persoon aan of uit">🎮</button><div id="rijGebaren" class="rijWeg" hidden><button type="button" data-g="v" aria-label="Middelvinger">🖕</button><button type="button" data-g="d" aria-label="Duim omhoog">👍</button><button type="button" data-g="t" aria-label="Toeter">📯</button><button type="button" data-g="k" class="alleenOnd" aria-label="Kontje">🍑</button><button type="button" data-g="g" aria-label="Gooien">🤾</button></div>
+<div id="gooiFx" aria-hidden="true" hidden><div id="gooiTekst"></div><div id="gooiDing"><span id="gooiKoe">🐄</span><svg id="gooiPaal" viewBox="0 0 60 120"><rect x="24" y="40" width="12" height="80" rx="3" fill="#8e8e93"/><rect x="4" y="2" width="52" height="44" rx="8" fill="#d6d6d6" stroke="#555" stroke-width="3"/><rect x="4" y="2" width="52" height="12" rx="6" fill="#f2c200"/><circle cx="30" cy="30" r="10" fill="#222"/><circle cx="27" cy="27" r="3" fill="#fff" opacity=".8"/></svg></div><svg id="gooiBarst" viewBox="0 0 400 400" preserveAspectRatio="none"><g stroke="#fff" stroke-width="3" fill="none" opacity=".85"><path d="M200 200 L120 90 L95 30"/><path d="M200 200 L300 110 L370 60"/><path d="M200 200 L330 240 L400 255"/><path d="M200 200 L260 330 L280 400"/><path d="M200 200 L110 300 L40 390"/><path d="M200 200 L60 200 L0 180"/><path d="M160 145 L235 150 L250 215 L190 255 L150 220 Z"/></g></svg></div>
+<div id="rijKaart" aria-label="Kaart met je auto"><div id="rijMap"></div><button id="rijAutoKnop" class="rijWeg" type="button" aria-label="Andere auto kiezen">🚗</button><button id="rijNoordKnop" class="rijWeg" type="button" aria-label="Rijrichting of noorden boven">🧭</button><button id="rijZoekKnop" class="rijWeg" type="button" aria-label="Navigeer naar">🔍</button><button id="rijFpKnop" class="rijWeg" type="button" aria-label="Eerste persoon aan of uit">🎮</button><div id="rijGebaren" class="rijWeg" hidden><button type="button" data-g="v" aria-label="Middelvinger">🖕</button><button type="button" data-g="d" aria-label="Duim omhoog">👍</button><button type="button" data-g="t" aria-label="Toeter">📯</button><button type="button" data-g="k" class="alleenOnd" aria-label="Kontje">🍑</button><button type="button" data-g="g" aria-label="Gooien">🤾</button><button type="button" data-g="c" class="alleenOnd" aria-label="Koe">🐄</button></div>
 <div id="rijVloek" aria-hidden="true">#@%&!</div><div id="rijPunten" aria-hidden="true"></div><div id="rijScore" aria-hidden="true" hidden></div>
 <div id="rijHand" aria-hidden="true"></div>
 <div id="rijPiek" aria-hidden="true"><svg viewBox="0 0 120 120"><rect x="10" y="22" width="100" height="86" rx="30" fill="#0d1117" stroke="#5ac8fa" stroke-width="5"/><path d="M14 52 Q60 40 106 52 L104 66 Q86 74 66 64 L54 64 Q34 74 16 66 Z" fill="#05070a"/><path d="M22 54 L34 52 L28 62 Z M70 54 L82 52 L76 62 Z" fill="#fff" opacity=".55"/><g id="rijPiekOog"><rect x="70" y="52" width="30" height="14" rx="6" fill="#05070a"/></g><path d="M44 88 Q60 98 78 86" stroke="#5ac8fa" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="50" y="6" width="20" height="18" rx="6" fill="#c8102e"/></svg></div>
@@ -4623,7 +4631,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v124';
+  var VERSION = 'v125';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6545,14 +6553,17 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   GAGS.krab = { name: 'Krabt aan zijn kont', dur: 5, idle: 1, laag: 1, mood: 'content', msg: 'Jeuk…', need: function () { return ondeugend; },
     upd: function (g, tt) { fdx += Math.sin(tt * 26) * 1.6; g.msg = tt < 2.5 ? 'Jeuk…' : 'Ahhh, dat is beter.'; if (tt > 2.5) { eyeL *= .5; eyeR *= .5; } },
     draw: function (g, tt) { var x = 200 + Math.sin(tt * 26) * 6, y = 214; ctx.fillStyle = EYE; ctx.beginPath(); ctx.ellipse(x, y, 13, 9, -.6, 0, TAU); ctx.fill(); for (var i = 0; i < 3; i++) { ctx.fillRect(x - 10 + i * 7, y - 16 + Math.sin(tt * 26 + i) * 3, 5, 12); } } };
-  function gooiNaarScherm() {   /* v124: Buddy gooit een flitspaal naar je scherm, BAM, barst, glijdt naar beneden */
-    var fx = $('gooiFx'); if (!fx) return; var h = document.querySelector('.helmet'), r = h ? h.getBoundingClientRect() : null;
-    fx.style.setProperty('--gx', r ? (r.left + r.width / 2) + 'px' : '50vw'); fx.style.setProperty('--gy', r ? (r.top + r.height * .45) + 'px' : '40vh');
-    fx.className = ''; fx.hidden = false; var d = $('gooiDing'); d.style.animation = 'none'; void d.offsetWidth; d.style.animation = '';
+  function gooiNaarScherm(soort) {   /* v124: Buddy gooit een flitspaal naar je scherm, BAM, barst, glijdt naar beneden. v125: of een koe (Carmageddon-stijl) */
+    var fx = $('gooiFx'); if (!fx) return; var h = document.querySelector('.helmet'), r = h ? h.getBoundingClientRect() : null, koe = soort === 'koe';
+    if (koe) { var bw = (document.querySelector('main') || {}).clientWidth || 0, kaart = document.body.classList.contains('kaartrij'); fx.style.setProperty('--gx', kaart ? (bw + (innerWidth - bw) * .5) + 'px' : '50vw'); fx.style.setProperty('--gy', '62vh'); }
+    else { fx.style.setProperty('--gx', r ? (r.left + r.width / 2) + 'px' : '50vw'); fx.style.setProperty('--gy', r ? (r.top + r.height * .45) + 'px' : '40vh'); }
+    var gt = $('gooiTekst'); gt.textContent = koe ? pick(['BOEEEEE!', 'MOEEEE!', 'BOEM! BOEEE!']) : 'BAM!'; gt.className = 'aan';
+    fx.className = koe ? 'koe' : ''; fx.hidden = false; var d = $('gooiDing'); d.style.animation = 'none'; void d.offsetWidth; d.style.animation = '';
     setTimeout(function () { fx.classList.add('raak'); document.body.classList.add('raakSchud'); try { if (navigator.vibrate) navigator.vibrate([60, 30, 90]); } catch (e) {} if (sound && ac && meldModus === 'alles') { try { var t0 = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(); o.type = 'square'; o.frequency.setValueAtTime(180, t0); o.frequency.exponentialRampToValueAtTime(40, t0 + .3); g.gain.setValueAtTime(.3, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + .35); o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + .4); } catch (e) {} } }, 1050);
     setTimeout(function () { document.body.classList.remove('raakSchud'); }, 1500);
     setTimeout(function () { fx.classList.add('weg'); }, 2500); setTimeout(function () { fx.hidden = true; fx.className = ''; }, 3100);
   }
+  window.__koe = function () { gooiNaarScherm('koe'); try { if (window.__scEvt) window.__scEvt('c', 'BOEEEE!'); } catch (e) {} };
   window.__gooi = gooiNaarScherm;
   GAGS.gooi = { name: 'Gooit een flitspaal naar je scherm', dur: 4.2, idle: 1, drive: 1, ev: 1, need: nooit, mood: 'angry', msg: 'Hier, VANG!',
     upd: function (g, tt) { if (!g.sp) { g.sp = 1; setTimeout(gooiNaarScherm, 500); try { if (window.__scEvt) window.__scEvt('g', 'VANG!'); } catch (e) {} } dir(tt < .5 ? -.5 : 0, tt < .5 ? -.4 : 0); fsc *= tt < .5 ? 1 - tt * .1 : tt < .7 ? 1.08 : 1; g.msg = tt < 1.6 ? 'Hier, VANG!' : 'Oeps. Sorry van je scherm.'; } };
@@ -9478,6 +9489,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
           else if (sp > 15 && Math.abs(dk) > 35) { punten(200, 'DRIFT KONING!'); stap.puntT = Date.now(); }
           else if (S.cam && S.cam.dist != null && S.cam.dist < 60 && S.cam.limit && sp <= S.cam.limit && Date.now() - (stap.flitsPuntT || 0) > 60000) { stap.flitsPuntT = Date.now(); punten(500, 'NETJES LANGS DE FLITSER'); stap.puntT = Date.now(); }
           else if (sp > 30 && Math.random() < .01) { punten(100, ['MOOI GEREDEN', 'STIJLVOL', 'CHAUFFEUR!', 'WHAT A DRIVER'][Math.floor(Math.random() * 4)]); stap.puntT = Date.now(); } }
+        if (sp > 40 && Date.now() > (stap.koeT || (stap.koeT = Date.now() + 180e3))) { stap.koeT = Date.now() + (360 + Math.random() * 420) * 1e3; if (window.__koe) window.__koe(); setTimeout(function () { punten(1000, 'KOE GERAAKT!'); }, 1100); }   /* v125: af en toe een koe, Carmageddon-stijl */
         sc.hidden = false; sc.textContent = '🏁 ' + stap.score; } else sc.hidden = true;
       var fp = st.kijk === 2; $('rijGebaren').hidden = !fp; if (fp && sp > 25 && Date.now() > (stap.piekT || (stap.piekT = Date.now() + 120e3))) { stap.piekT = Date.now() + (240 + Math.random() * 300) * 1e3; buddyPiek(); }   /* v119: Buddy kijkt af en toe om */
       if (fp) { var km = $('rijStuurKmu'); if (km) km.textContent = Math.round(sp) + ' km/u'; } mkEl.style.visibility = fp ? 'hidden' : 'visible'; $('rijStuur').hidden = !fp;
@@ -9509,7 +9521,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     function toeter() { if (sound && ac && meldModus !== 'stil') { try { [[392, 0], [494, .02]].forEach(function (x) { var o = ac.createOscillator(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.value = x[0]; g.gain.setValueAtTime(.0001, ac.currentTime); g.gain.exponentialRampToValueAtTime(.12, ac.currentTime + .03); g.gain.setValueAtTime(.12, ac.currentTime + .45); g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + .6); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + .65); }); } catch (e) {} }
       var k = $('rijKaart'); k.classList.remove('toeter'); void k.offsetWidth; k.classList.add('toeter'); }
     document.querySelectorAll('#rijGebaren button').forEach(function (b) { b.addEventListener('click', function () {
-      var g = b.dataset.g; if (g === 't') { toeter(); return; } if (g === 'g') { try { if (window.__gooi) window.__gooi(); if (window.__scEvt) window.__scEvt('g', 'VANG!'); } catch (e) {} return; }
+      var g = b.dataset.g; if (g === 't') { toeter(); return; } if (g === 'c') { if (window.__koe) window.__koe(); return; } if (g === 'g') { try { if (window.__gooi) window.__gooi(); if (window.__scEvt) window.__scEvt('g', 'VANG!'); } catch (e) {} return; }
       var h = $('rijHand'); h.textContent = g === 'v' ? '🖕' : g === 'k' ? '🍑' : '👍'; h.classList.add('op'); setTimeout(function () { h.classList.remove('op'); }, 2200);
       if (g === 'v' && window.__ondeugend && window.__ondeugend()) { var vl = $('rijVloek'); vl.textContent = ['#@%&!', '$%#@&*!', 'GRRR @#!'][Math.floor(Math.random() * 3)]; vl.classList.add('op'); setTimeout(function () { vl.classList.remove('op'); }, 1900); }
       if (window.__scEvt) window.__scEvt(g, g === 'v' ? 'HMPF!' : g === 'k' ? 'KUS MN BUMPER' : 'DANKJE!');
