@@ -598,7 +598,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         <p>Geen hotspot aan? Geen ramp: Buddy+ werkt dan met de flitsers die hij het laatst heeft opgehaald, en de app geeft via Bluetooth nog steeds alles door.</p></details>
       <p class="foot" style="text-align:left">Gelukt? Kijk hieronder bij Gezondheid: daar komt “wifi verbonden” te staan (zet je hotspot dan wel even aan).</p>
       <p class="sub">Stap 3 · Spelen en instellen</p>
-      <div class="btns"><button class="btn" id="bpKoekje" type="button">🍪 Geef een koekje</button><button class="btn" id="bpFocus" type="button">🤓 Focus 25 min</button><button class="btn" id="bpWeer" type="button">⛅ Weer laten zien</button><button class="btn" id="bpZwaai" type="button">👋 Laat hem zwaaien</button><button class="btn" id="bpSprint" type="button">🚀 Sprint-show testen</button><button class="btn" id="bpPiep" type="button">🔊 Geluid testen</button><button class="btn" id="bpTunnel" type="button">🚇 Tunnel</button><button class="btn" id="bpRotonde" type="button">🔄 Rotonde</button></div>
+      <div class="btns"><button class="btn" id="bpKoekje" type="button">🍪 Geef een koekje</button><button class="btn" id="bpFocus" type="button">🤓 Focus 25 min</button><button class="btn" id="bpWeer" type="button">⛅ Weer laten zien</button><button class="btn" id="bpZwaai" type="button">👋 Laat hem zwaaien</button><button class="btn" id="bpSprint" type="button">🚀 Sprint-show testen</button><button class="btn" id="bpPiep" type="button">🔊 Geluid testen</button><button class="btn" id="bpTunnel" type="button">🚇 Tunnel</button><button class="btn" id="bpRotonde" type="button">🔄 Rotonde</button><button class="btn" id="bpTrip" type="button">🌈 Kleurtrip</button><button class="btn" id="bpSpiraal" type="button">🌀 Spiraal</button></div>
+      <p class="sub">🚀 Eigen geluidje voor de sterren-show</p>
+      <div class="btns"><label class="btn" for="sterBestand">🎵 Kies een geluidje</label><input type="file" id="sterBestand" accept="audio/*" hidden><button class="btn" id="sterStuur" type="button">📡 Stuur naar Buddy+</button><button class="btn" id="sterWeg" type="button">Gewone deuntje terug</button></div>
+      <p class="chip" id="sterStat">Nog geen eigen geluidje. Max 7,5 seconden, het begin telt.</p>
       <div class="limitrow"><label for="scLicht">Helderheid</label><input type="range" id="scLicht" min="10" max="100" step="5" value="65"></div>
       <div class="limitrow"><label for="scVol">Volume</label><input type="range" id="scVol" min="0" max="100" step="5" value="80"></div>
       <div class="limitrow"><label for="scAnim">Animaties</label><select id="scAnim"><option value="2">Rustig</option><option value="1" selected>Normaal</option><option value="0.5">Veel</option></select></div>
@@ -4508,7 +4511,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v105';
+  var VERSION = 'v106';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7150,6 +7153,9 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (logBuf != null) { logBuf += t; return; }
       if (t.indexOf('S:') === 0) { schStatZet(t.slice(2)); return; }   /* v83: gezondheid van het schermpje */
       lg('van het Buddy-scherm: ' + t);
+      if (t === 'SND:OK') { toast('🚀 Buddy+ heeft het geluidje! Probeer de sprint-show.'); if ($('sterStat')) $('sterStat').textContent = '✅ Buddy+ en de app gebruiken jouw geluidje bij de sterren-show.'; return; }
+      if (t === 'SND:FOUT') { toast('Buddy+ kon het geluidje niet bewaren. Probeer het nog eens.'); return; }
+      if (t === 'SND:WEG') { toast('Buddy+ gebruikt weer zijn eigen deuntje.'); return; }
       if (t === 'MELD:cam') $('bUcam').click(); else if (t === 'MELD:mob') $('bUmob').click();
       else if (t === 'MELD:plek') { $('plekKnop').click(); }   /* v81: 'Wat was dat?' vanaf het schermpje */
       else if (t === 'MELD:zwaai' && typeof grStuur === 'function' && grp && pbase()) { grStuur('zwaai').then(function () { toast('👋 Gezwaaid naar de groep (vanaf het schermpje).'); }).catch(function () {}); }
@@ -7189,6 +7195,16 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         .catch(function () { toast('Versturen lukte niet, probeer opnieuw.'); }).then(function () { bezig = false; });
     });
     /* v83: persoonlijke dingen naar het schermpje: PERS:naam<TAB>karakter<TAB>vriendschap<TAB>level<TAB>km<TAB>stijl laatste rit<TAB>gem. stijl */
+    /* v106: eigen geluidje naar Buddy+ (regel voor regel, met antwoord, zodat er niets kwijtraakt) */
+    window.__sterNaarScherm = function (bytes) {
+      if (!rx) { toast('Verbind eerst met Buddy+.'); return Promise.resolve(false); }
+      function regel(t, k) { var d = new TextEncoder().encode(t + '\n'); if (!rx) return Promise.reject(new Error('verbinding weg')); return (rx.writeValueWithResponse ? rx.writeValueWithResponse(d) : stuurTekst(t)).catch(function (e) { if ((k || 0) >= 4) throw e; return new Promise(function (r) { setTimeout(r, 300); }).then(function () { bezig = true; return regel(t, (k || 0) + 1); }); }); }
+      var stuk = 99, n = Math.ceil(bytes.length / stuk), i = 0, st = $('sterStat'); bezig = true;
+      function b64(a) { var t = ''; for (var k = 0; k < a.length; k++) t += String.fromCharCode(a[k]); return btoa(t); }
+      function volgende() { if (i >= n) return regel('SND:E'); var off = i * stuk; return regel('SND:D|' + off + '|' + b64(bytes.subarray(off, off + stuk))).then(function () { i++; if (st && i % 20 === 0) st.textContent = '📡 Versturen… ' + Math.round(i / n * 100) + '%'; return volgende(); }); }
+      return regel('SND:B|' + bytes.length).then(volgende).then(function () { bezig = false; if (st) st.textContent = '📡 Verstuurd, Buddy+ slaat het op…'; return true; }).catch(function (e) { bezig = false; if (st) st.textContent = 'Versturen mislukt (' + ((e && e.message) || e) + '). Probeer het nog eens.'; return false; });
+    };
+    window.__sterWeg = function () { if (rx) klein('SND:WEG'); };
     function klein(t, poging) {   /* v90: is de verbinding net bezig? Dan even wachten en opnieuw (eerst raakten knoppen zo kwijt) */
       if (!rx || (t === 'STAT?' && logBuf != null)) return;
       if (bezig) { if ((poging || 0) < 12) setTimeout(function () { klein(t, (poging || 0) + 1); }, 250); else lg('scherm: kon niet versturen: ' + t); return; }
@@ -7219,7 +7235,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (schS.au) { var au = schS.au.split('/'); d.push('geluid ' + (au[0] === 'ok' ? 'werkt' : au[0] === 'bezig' ? 'speelt' : 'FOUT (' + au[0] + ')') + ', volume ' + au[1] + '%, ' + au[2] + ' geluidjes gespeeld'); lg('scherm geluid: ' + schS.au); }
       $('schStat').textContent = d.join(' · ');
     }
-    [['bpTunnel', 'DOE:tunnel', '🚇 Buddy+ rijdt een tunnel in.'], ['bpRotonde', 'DOE:rotonde', '🔄 Wieee, de rotonde!'], ['bpPiep', 'DOE:piep', '🔊 Buddy+ piept. Kijk hieronder bij Gezondheid wat hij over zijn geluid zegt.'], ['bpSprint', 'DOE:sprint', '🚀 Buddy+ laat de volgende sprint-show zien.'], ['bpKoekje', 'DOE:koekje', '🍪 Nom nom! Buddy+ eet zijn koekje.'], ['bpFocus', 'DOE:focus', '🤓 Buddy+ focust 25 minuten met je mee (nog eens tikken = stoppen).'], ['bpWeer', 'DOE:weer', '⛅ Buddy+ laat het weer zien (als hij wifi heeft).'], ['bpZwaai', 'DOE:zwaai', '👋 Buddy+ zwaait!']].forEach(function (k) {
+    [['bpTrip', 'DOE:trip', '🌈 Buddy+ gaat op kleurtrip!'], ['bpSpiraal', 'DOE:spiraal', '🌀 Kijk Buddy+ diep in de ogen…'], ['bpTunnel', 'DOE:tunnel', '🚇 Buddy+ rijdt een tunnel in.'], ['bpRotonde', 'DOE:rotonde', '🔄 Wieee, de rotonde!'], ['bpPiep', 'DOE:piep', '🔊 Buddy+ piept. Kijk hieronder bij Gezondheid wat hij over zijn geluid zegt.'], ['bpSprint', 'DOE:sprint', '🚀 Buddy+ laat de volgende sprint-show zien.'], ['bpKoekje', 'DOE:koekje', '🍪 Nom nom! Buddy+ eet zijn koekje.'], ['bpFocus', 'DOE:focus', '🤓 Buddy+ focust 25 minuten met je mee (nog eens tikken = stoppen).'], ['bpWeer', 'DOE:weer', '⛅ Buddy+ laat het weer zien (als hij wifi heeft).'], ['bpZwaai', 'DOE:zwaai', '👋 Buddy+ zwaait!']].forEach(function (k) {
       $(k[0]).addEventListener('click', function () { if (!rx) { toast('Verbind eerst met Buddy+.'); return; } klein(k[1]); toast(k[2]); });
     });
     $('schZoek').addEventListener('click', function () { if (!rx) { toast('Verbind eerst met het schermpje.'); return; } klein('ZOEK'); toast('🔔 Het schermpje piept en knippert.'); });
@@ -8474,7 +8490,31 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     var t0 = ac.currentTime + .05, mg = ac.createGain(); mg.gain.value = .9; mg.connect(ac.destination);
     return function (f, s, d, type, vol, f2) { var o = ac.createOscillator(), g = ac.createGain(); o.type = type || 'sawtooth'; o.frequency.setValueAtTime(f, t0 + s); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + s + d); g.gain.setValueAtTime(.0001, t0 + s); g.gain.exponentialRampToValueAtTime(vol || .045, t0 + s + .02); g.gain.exponentialRampToValueAtTime(.0001, t0 + s + d); o.connect(g); g.connect(mg); o.start(t0 + s); o.stop(t0 + s + d + .02); };
   }
+  var STERKEY = 'dashboardmaatje-sterren-v1';
+  function sterLees() { try { var b = localStorage.getItem(STERKEY); if (!b) return null; var t = atob(b), a = new Uint8Array(t.length); for (var i = 0; i < t.length; i++) a[i] = t.charCodeAt(i); return a; } catch (e) { return null; } }
+  function sterSpeel(a) {   /* v106: eigen geluidje (8 kHz, 8 bit) op de telefoon afspelen */
+    if (!sound || !ac) return false; audioGebruik(ac);
+    try { var buf = ac.createBuffer(1, a.length, 8000), d = buf.getChannelData(0); for (var i = 0; i < a.length; i++) d[i] = (a[i] - 128) / 128; var bs = ac.createBufferSource(); bs.buffer = buf; bs.connect(ac.destination); bs.start(); return true; } catch (e) { return false; }
+  }
+  (function () {   /* v106: geluidje kiezen, omzetten naar 8 kHz en bewaren */
+    var inp = $('sterBestand'), st = $('sterStat'); if (!inp) return;
+    if (sterLees()) st.textContent = '🎵 Eigen geluidje staat klaar. Stuur het nog naar Buddy+ als je dat nog niet deed.';
+    inp.addEventListener('change', function () {
+      var f = inp.files && inp.files[0]; if (!f) return; st.textContent = 'Geluidje omzetten…';
+      f.arrayBuffer().then(function (ab) { var A = window.AudioContext || window.webkitAudioContext, tmp = new A(); return tmp.decodeAudioData(ab).then(function (b) { try { tmp.close(); } catch (e) {} return b; }); })
+        .then(function (b) { var dur = Math.min(7.5, b.duration), O = window.OfflineAudioContext || window.webkitOfflineAudioContext, oc = new O(1, Math.ceil(dur * 8000), 8000), src = oc.createBufferSource(); src.buffer = b; src.connect(oc.destination); src.start(); return oc.startRendering(); })
+        .then(function (r) { var d = r.getChannelData(0), mx = 0, i; for (i = 0; i < d.length; i++) mx = Math.max(mx, Math.abs(d[i])); var g = mx > 0 ? .95 / mx : 1, a = new Uint8Array(d.length);
+          for (i = 0; i < d.length; i++) { var fade = Math.min(1, (d.length - i) / 400); a[i] = Math.max(0, Math.min(255, Math.round(128 + d[i] * g * fade * 127))); }
+          var t = ''; for (i = 0; i < a.length; i++) t += String.fromCharCode(a[i]); localStorage.setItem(STERKEY, btoa(t));
+          st.textContent = '🎵 Geluidje bewaard (' + (a.length / 8000).toFixed(1).replace('.', ',') + ' s). Tik op "Stuur naar Buddy+".'; sterSpeel(a); })
+        .catch(function (e) { st.textContent = 'Dit geluidje lukt niet (' + ((e && e.message) || e) + '). Probeer een mp3 of wav.'; });
+      inp.value = '';
+    });
+    $('sterStuur').addEventListener('click', function () { var a = sterLees(); if (!a) { toast('Kies eerst een geluidje.'); return; } if (window.__sterNaarScherm) window.__sterNaarScherm(a); });
+    $('sterWeg').addEventListener('click', function () { try { localStorage.removeItem(STERKEY); } catch (e) {} st.textContent = 'Gewone deuntje terug.'; if (window.__sterWeg) window.__sterWeg(); });
+  })();
   function ruimteDeuntje() {
+    var eigen = sterLees(); if (eigen && sterSpeel(eigen)) return;
     var noot = synthMaak(); if (!noot) return;
     noot(80, 0, 1.3, 'sawtooth', .06, 1400);   /* lancering: woesj omhoog */
     var AK = [[293.7, 370, 440], [329.6, 415.3, 493.9], [370, 466.2, 554.4], [440, 554.4, 659.3]], s = 1.3;   /* eigen deuntje: stijgende akkoorden */
