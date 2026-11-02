@@ -36,7 +36,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 73;
+static const int FW_VERSIE = 74;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -1939,7 +1939,7 @@ static bool jZoek(JP &j, const char *sleutel) { const char *q = strstr(j.p, sleu
 static uint8_t *haalUrl(const char *url, size_t &len) {
   len = 0; WiFiClientSecure cl; cl.setInsecure(); HTTPClient h; h.setTimeout(15000);
   if (!h.begin(cl, url)) return nullptr;
-  int code = h.GET(); if (code != 200) { h.end(); netFoutCode = code; netFoutT = millis(); logRegel("net: %s -> %d", url + 34, code); return nullptr; }
+  int code = h.GET(); if (code != 200) { char tf[80] = ""; if (code < 0) cl.lastError(tf, sizeof tf); h.end(); netFoutCode = code; netFoutT = millis(); logRegel("net: %s -> %d %s (vrij %u, blok %u)", url + 34, code, tf, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL), (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)); return nullptr; }
   netOkT = millis();   // v67
   int n = h.getSize(); size_t cap = n > 0 ? n + 1 : 600000;
   uint8_t *buf = (uint8_t *)heap_caps_malloc(cap, MALLOC_CAP_SPIRAM); if (!buf) { h.end(); return nullptr; }
