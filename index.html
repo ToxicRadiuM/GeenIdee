@@ -4478,7 +4478,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v102';
+  var VERSION = 'v103';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7012,7 +7012,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
             return ch[1].startNotifications().then(function () { ch[1].removeEventListener('characteristicvaluechanged', binnen); ch[1].addEventListener('characteristicvaluechanged', binnen); lg('scherm: meldingen aan'); })
               .catch(function (e) { lg('scherm: meldingen aanzetten mislukt (' + ((e && e.message) || e) + ')'); if (keer < 5) return new Promise(function (ok) { setTimeout(ok, 1500); }).then(function () { if (rx === ch[0]) return luister(keer + 1); }); });
           }
-          luister(0).then(function () { proef(0); });
+          luister(0).then(function () { stuurPin(); setTimeout(function () { klein('STAT?'); }, 2500); });   /* v103: koppelen met de code via de app, geen Android-koppeling meer */
           function proef(keer) {   /* v94: één bericht MET bevestiging, zodat de telefoon merkt dat er gekoppeld moet worden en om de code vraagt */
             var e0 = new TextEncoder().encode('STAT?\n'), r0 = rx; if (!r0) return;
             (r0.writeValueWithResponse ? r0.writeValueWithResponse(e0) : r0.writeValue(e0)).then(function () { lg('scherm: koppeling in orde'); })
@@ -7030,19 +7030,34 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
           setTimeout(persStuur, 5000); setTimeout(function () { klein('STAT?'); }, 6500);   /* v83: wie je bent + gezondheid */
           if (!window.__persTimer) window.__persTimer = setInterval(function () { if (rx) { persStuur(); setTimeout(function () { klein('STAT?'); }, 1500); } }, 30000);
           setTimeout(stuurInst, 2000);   /* v77: instellingen en outfit */
-          setTimeout(function () {   /* v78: Worker-adres en groep, zodat het schermpje ook zonder telefoon files, werk en de groep ziet */
-            if (!pbase()) return; var nm = String(myWho() || 'Buddy').replace(/[^A-Za-z0-9 '\-]/g, '').slice(0, 20);
-            stuurTekst('NET:' + pbase() + '\t' + (grp || '') + '\t' + (mijnId || '') + '\t' + nm).catch(function () {});
-          }, 3000);
+          setTimeout(netStuur, 3000);
         });
+    }
+    function netStuur() {   /* v78: Worker-adres en groep, zodat het schermpje ook zonder telefoon files, werk en de groep ziet */
+      if (!pbase() || !rx) return; var nm = String(myWho() || 'Buddy').replace(/[^A-Za-z0-9 '\-]/g, '').slice(0, 20);
+      stuurTekst('NET:' + pbase() + '\t' + (grp || '') + '\t' + (mijnId || '') + '\t' + nm).catch(function () {});
     }
     function weg() {
       rx = null; stat('Verbinding met het schermpje weg, ik probeer het opnieuw…'); $('bleKnop').textContent = '📡 Verbind met Buddy+';
       setTimeout(function () { if (dev && !rx) koppel().catch(function () { stat('Niet verbonden. Tik op de knop om opnieuw te verbinden.'); }); }, 2500);
     }
     var logBuf = null;
+    var PINKEY = 'dashboardmaatje-scpin-v1', pinGevraagd = 0;
+    function stuurPin(opnieuw) {
+      if (!rx) return; var pin = ''; try { pin = opnieuw ? '' : (localStorage.getItem(PINKEY) || ''); } catch (e) {}
+      if (!pin) {
+        if (Date.now() - pinGevraagd < 4000) return; pinGevraagd = Date.now();
+        var v = prompt('Vul de 6 cijfers in die bovenaan het schermpje van Buddy+ staan:'); if (!v) { stat('🔑 Vul de code van het schermpje in om te verbinden (tik nog eens op Verbind).'); return; }
+        pin = String(v).replace(/\D/g, '').slice(0, 6); try { localStorage.setItem(PINKEY, pin); } catch (e) {}
+      }
+      var d = new TextEncoder().encode('PIN:' + pin + '\n');
+      (rx.writeValueWithResponse ? rx.writeValueWithResponse(d) : rx.writeValue(d)).catch(function (e) { lg('scherm: code sturen mislukt (' + ((e && e.message) || e) + ')'); });
+    }
     function binnen(e) {
       var t = new TextDecoder().decode(e.target.value);
+      if (t === 'PIN:OK') { lg('scherm: code goed, verbonden'); stat('✅ Verbonden met Buddy+. Het schermpje krijgt nu elke seconde de info van je telefoon.'); toast('✅ Verbonden met Buddy+'); setTimeout(stuurInst, 300); setTimeout(netStuur, 900); setTimeout(persStuur, 1500); setTimeout(function () { klein('STAT?'); }, 2500); setTimeout(vraagLog, 3500); return; }   /* alles wat vóór de code kwam, nog een keer */
+      if (t === 'PIN:FOUT') { lg('scherm: verkeerde code'); try { localStorage.removeItem(PINKEY); } catch (e) {} toast('Die code klopt niet. Kijk bovenaan het schermpje.'); setTimeout(function () { stuurPin(true); }, 600); return; }
+      if (t === 'PIN?') { stuurPin(); return; }
       /* v76: logboek van het schermpje komt in stukjes binnen en gaat in de gewone Buddy-log (-> buddy-logs) */
       if (t === 'LOGBEGIN') { logBuf = ''; return; }
       if (t === 'LOGEND') { if (logBuf != null) { var r = logBuf.split('\n').filter(function (x) { return x.trim(); }); r.forEach(function (x) { lg('scherm| ' + x.slice(0, 220)); }); stat('✅ Logboek van het schermpje opgehaald (' + r.length + ' regels). Het gaat mee met de gewone log.'); if (typeof logStuur === 'function') setTimeout(logStuur, 1500); } logBuf = null; return; }

@@ -34,7 +34,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 64;
+static const int FW_VERSIE = 65;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -70,6 +70,7 @@ static volatile bool buurNieuw = false; static char buurTxt[40] = ""; static boo
 struct Box { int16_t x0, y0, x1, y1; };   // v37: bovenaan i.v.m. automatische functie-koppen van Arduino
 static volatile int otaPct = -1;
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
+static volatile bool pinOk = false; static volatile uint8_t pinAntw = 0;   // v65: koppelen met de code via de app zelf (geen Android-koppeling meer)
 static volatile uint32_t verbindT = 0; static volatile uint8_t koppelMislukt = 0;   // v55: mislukte koppelingen tellen
 static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0; static volatile bool oorOk = false;
    // voortgang van een update via wifi (-1 = geen)   // ophogen bij elke nieuwe versie (de update via wifi kijkt hiernaar)
@@ -1152,6 +1153,13 @@ static char bleBuf[256]; static size_t bleLen = 0;
 static const char *moodKeys[MOOD_COUNT] = {"neutral","content","relaxed","happy","love","excited","focused","startled","worried","bored","sleepy","yawn","sleeping","alert","blow","anticipate"};
 static bool phoneFresh() { return phone.ms && millis() - phone.ms < 3500; }
 static void parsePhone(char *line) {
+  if (!pinOk) {   // v65: eerst de juiste code, anders luistert Buddy+ nergens naar
+    if (!strncmp(line, "PIN:", 4)) {
+      if ((uint32_t)atol(line + 4) == koppelPin) { pinOk = true; gekoppeld = true; pinTot = 0; koppelMislukt = 0; pinAntw = 1; logRegel("BLE: code goed, verbonden met de app"); }
+      else { pinAntw = 2; pinTot = millis() + 60000; logRegel("BLE: verkeerde code"); }
+    } else { static uint32_t gevraagd = 0; if (!gevraagd || millis() - gevraagd > 8000) { gevraagd = millis(); pinAntw = 3; } if ((int32_t)(pinTot - millis()) < 5000) pinTot = millis() + 60000; }
+    return;
+  }
   if (strcmp(line, "LOG?") == 0) { logVraag = true; return; }
   if (!strncmp(line, "NET:", 4)) {   // v28: NET:<worker-url>\t<groepscode>\t<mijn id>\t<naam>
     char *f[4] = {line + 4, nullptr, nullptr, nullptr}; int n = 1; for (char *q = line + 4; *q && n < 4; q++) if (*q == '\t') { *q = 0; f[n++] = q + 1; }
@@ -1214,12 +1222,12 @@ class BuddySecCb : public BLESecurityCallbacks {
 };
 #endif
 class BuddySrvCb : public BLEServerCallbacks {
-  void onConnect(BLEServer *) override { bleConnected = true; verbindT = millis(); if (!gekoppeld) pinTot = millis() + 60000; logRegel("BLE: telefoon verbonden"); }
-  void onDisconnect(BLEServer *) override { bleConnected = false; if (!gekoppeld && verbindT && millis() - verbindT > 8000 && koppelMislukt < 250) koppelMislukt++; verbindT = 0; pinTot = 0; logRegel("BLE: telefoon weg"); BLEDevice::startAdvertising(); }
+  void onConnect(BLEServer *) override { bleConnected = true; pinOk = false; verbindT = millis(); if (!gekoppeld) pinTot = millis() + 60000; logRegel("BLE: telefoon verbonden"); }
+  void onDisconnect(BLEServer *) override { bleConnected = false; pinOk = false; if (!gekoppeld && verbindT && millis() - verbindT > 8000 && koppelMislukt < 250) koppelMislukt++; verbindT = 0; pinTot = 0; logRegel("BLE: telefoon weg"); BLEDevice::startAdvertising(); }
 };
 class BuddyRxCb : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *c) override {
-    auto v = c->getValue(); if (!gekoppeld) { gekoppeld = true; pinTot = 0; }
+    auto v = c->getValue();
     for (size_t i = 0; i < v.length(); i++) {
       char ch = v[i];
       if (ch == '\n') { bleBuf[bleLen] = 0; parsePhone(bleBuf); bleLen = 0; }
@@ -1233,21 +1241,12 @@ static void bleStart() {
   BLEServer *srv = BLEDevice::createServer(); srv->setCallbacks(new BuddySrvCb());
   BLEService *svc = srv->createService(NUS_SVC);
   #if defined(CONFIG_NIMBLE_ENABLED)
-  BLECharacteristic *rx = svc->createCharacteristic(NUS_RX, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR | BLECharacteristic::PROPERTY_WRITE_ENC | BLECharacteristic::PROPERTY_WRITE_AUTHEN);   // v61: NimBLE (core 3.3)
+  BLECharacteristic *rx = svc->createCharacteristic(NUS_RX, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);   // v61: NimBLE (core 3.3)
 #else
   BLECharacteristic *rx = svc->createCharacteristic(NUS_RX, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
 #endif
   rx->setCallbacks(new BuddyRxCb());
-  rx->setAccessPermissions(ESP_GATT_PERM_WRITE_ENC_MITM);   // v29: alleen na koppelen met de koppelcode
-#if defined(CONFIG_BLUEDROID_ENABLED) && !defined(CONFIG_NIMBLE_ENABLED)
-  BLEDevice::setSecurityCallbacks(new BuddySecCb());   // v64
-#endif
-  BLESecurity *sec = new BLESecurity();
-#if defined(ESP_ARDUINO_VERSION) && ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 3, 0)
-  sec->setPassKey(true, koppelPin); sec->setCapability(ESP_IO_CAP_OUT); sec->setAuthenticationMode(true, true, true);   // nieuwere ESP32-versie
-#else
-  sec->setStaticPIN(koppelPin);
-#endif
+  rx->setAccessPermissions(ESP_GATT_PERM_WRITE);   // v65: geen Android-koppeling meer; de app stuurt de code (PIN:...) en pas dan luistert Buddy+
   bleTx = svc->createCharacteristic(NUS_TX, BLECharacteristic::PROPERTY_NOTIFY);
 #if !defined(CONFIG_NIMBLE_ENABLED)
   bleTx->addDescriptor(new BLE2902());   // NimBLE maakt dit zelf aan
@@ -2238,6 +2237,7 @@ static void persStap(float dt) {
       else if (persStijl >= 92) { startGag(17); gagMsg = "Vorige rit: zen-modus. Top!"; } }
   }
   if (!gegroet && nu > groetVanaf && gagAct < 0 && !menuOpen && !venster && (klokOk() || nu > groetVanaf + 12000)) doeGroet();
+  if (pinAntw && bleConnected && !logBezig) { uint8_t a = pinAntw; pinAntw = 0; bleSend(a == 1 ? "PIN:OK" : a == 2 ? "PIN:FOUT" : "PIN?"); }   // v65
   if (statVraag && !logBezig) { statVraag = false; stuurStat(); }
   // v44: zoekt de eigen GPS nog? Dan de plek van de telefoon gebruiken (bordjes, flitsers, files, klok blijven werken)
   { static uint32_t telPosMs = 0;
