@@ -4602,7 +4602,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v120';
+  var VERSION = 'v121';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -4892,13 +4892,20 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
   }
   /* staand ↔ liggend gedraaid: even een rondje */
-  function voelDraai() { if (T - V.draaiCool < 20 || S.asleep) return; V.draaiCool = T; S.spinT = T; setTimeout(function () { if (freeEv()) setEv('happy', 1.8, pick(['Wiee, ander uitzicht!', 'Draaien! Hoei!', 'Zo zie ik het ook.'])); }, 450); }
+  var draaiLijst = [], draaiHoekOud = null;   /* v121: elke draai telt, ook terug; te vaak draaien = Buddy wordt misselijk */
+  function voelDraai() {
+    if (S.asleep) return; var nu = Date.now(), hoek = schermHoek(), richting = draaiHoekOud == null ? 1 : (((hoek - draaiHoekOud + 540) % 360) - 180 >= 0 ? 1 : -1); draaiHoekOud = hoek;
+    if (nu - (V.draaiMs || 0) < 400) return; V.draaiMs = nu; S.spinT = T; S.spinDir = richting;
+    draaiLijst = draaiLijst.filter(function (t) { return nu - t < 30000; }); draaiLijst.push(nu); var n = draaiLijst.length;
+    if (n >= 6) { draaiLijst = []; setTimeout(function () { try { startGag('kots'); } catch (e) {} try { if (window.__scEvt) window.__scEvt('m', 'BLEEEH! Niet draaien!'); } catch (e) {} }, 600); return; }
+    setTimeout(function () { if (freeEv()) setEv(n >= 4 ? 'worried' : 'happy', 1.8, n >= 4 ? pick(['Oei… ik word een beetje draaierig.', 'Ho ho, niet zo vaak!', 'Mijn hoofd tolt…']) : pick(['Wiee, ander uitzicht!', 'Draaien! Hoei!', 'Zo zie ik het ook.', 'En weer terug!'])); }, 450);
+  }
   try { if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', voelDraai); else window.addEventListener('orientationchange', voelDraai); } catch (e) {}
   /* effecten op het gezicht, elke frame (vanuit gagTick) */
   function voelGezicht(g) {
     if (S.asleep) return;
     if (V.tilt && !V.held) frot += V.tilt;
-    if (S.spinT && T - S.spinT < .7) { var q = (T - S.spinT) / .7; frot += (1 - Math.cos(q * Math.PI)) * Math.PI; fsc *= 1 - Math.sin(q * Math.PI) * .12; }
+    if (S.spinT && T - S.spinT < .7) { var q = (T - S.spinT) / .7; frot += (1 - Math.cos(q * Math.PI)) * Math.PI * (S.spinDir || 1); fsc *= 1 - Math.sin(q * Math.PI) * .12; }
     if (V.dn && !g && S.speed < 3) dir(clamp(V.dn[0] * 2.4, -1, 1), clamp(V.dn[1] * 2.4, -1, 1));
     if (voelOk() && V.lon > 2.4 && S.speed > 3) {  /* optrekken: in de stoel gedrukt, wangetjes trillen */
       var k = clamp((V.lon - 2.2) / 3, 0, 1); eyeL *= 1 - k * .22; eyeR *= 1 - k * .22; fsc *= 1 - k * .05; fdx += Math.sin(T * 55) * k * 1.3;
@@ -6496,6 +6503,17 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function laatNacht() { var h = new Date().getHours(); return h >= 23 || h < 5; }
   var MAANDVOL = Object.keys(MONTHS);
   function nooit() { return false; }
+  GAGS.kots = { name: 'Wordt misselijk van het draaien', dur: 6, idle: 1, drive: 1, ev: 1, need: nooit, mood: 'worried', msg: 'Ugh… ik word misselijk…',   /* v121 */
+    upd: function (g, tt) { try { fxSpiral = tt < 1.5; } catch (e) {} g.msg = tt < 1.5 ? 'Ugh… ik word misselijk…' : tt < 3.6 ? 'BLEEEHHH!' : 'Hou alsjeblieft op met draaien…'; dir(Math.sin(tt * 3) * .3, tt > 1.5 && tt < 3.5 ? .7 : .15); },
+    draw: function (g, tt) {
+      var mx = 120, my = 176, i;
+      ctx.save(); ctx.globalAlpha = Math.min(.28, tt * .3); ctx.fillStyle = '#4caf50'; ctx.beginPath(); ctx.arc(120, 120, 112, 0, TAU); ctx.fill(); ctx.restore();   /* groen aanlopen */
+      if (tt < 1.5) { var bol = Math.sin(tt * 9) * 2 + tt * 4; ctx.fillStyle = '#7bd389'; ctx.beginPath(); ctx.ellipse(mx - 34, my - 6, 8 + bol, 7 + bol * .6, 0, 0, TAU); ctx.ellipse(mx + 34, my - 6, 8 + bol, 7 + bol * .6, 0, 0, TAU); ctx.fill(); }   /* bolle wangen */
+      if (tt > 1.5 && tt < 3.6) { var k = Math.min(1, (tt - 1.5) / .35), eind = my + 70 * k;
+        ctx.fillStyle = '#9ccc3d'; ctx.beginPath(); ctx.moveTo(mx - 9, my); ctx.quadraticCurveTo(mx - 22, (my + eind) / 2, mx - 30, eind); ctx.lineTo(mx + 30, eind); ctx.quadraticCurveTo(mx + 22, (my + eind) / 2, mx + 9, my); ctx.closePath(); ctx.fill();
+        for (i = 0; i < 9; i++) { var f = (tt * 1.8 + i / 9) % 1; ctx.fillStyle = i % 2 ? '#c0e05a' : '#7cb342'; ctx.beginPath(); ctx.arc(mx + Math.sin(i * 2.3) * 22 * f, my + 10 + f * 70, 3 + (i % 3), 0, TAU); ctx.fill(); } }
+      if (tt > 2) { var pw = Math.min(1, (tt - 2) / 1) * 58; ctx.fillStyle = '#8bc34a'; ctx.beginPath(); ctx.ellipse(mx, my + 74, pw, pw * .22, 0, 0, TAU); ctx.fill(); }   /* plasje */
+    } };
   function autootje(x, y, s, rem) {  /* achterkant van een auto met remlichten */
     ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
     ctx.fillStyle = '#37474F'; rr(-17, -12, 34, 17, 6); ctx.fill();
