@@ -146,6 +146,28 @@ body.car #carBack { display: block; }
   body.car.kaartrij.rust .rijWeg { opacity: 0 !important; pointer-events: none !important; }
   body.car.kaartrij #rijMelding { left: calc(50% + var(--bw) / 2); }
 }
+@media (orientation: portrait) {   /* v128: staand: Buddy linksboven, kaart eronder */
+  body.car #carKaartKnop { display: block; }
+  /* v111: kaart over het hele scherm, Buddy zweeft links, kleine ronde knopjes die na 5 s verdwijnen */
+  body.car.kaartrij #rijKaart { display: block; position: fixed; inset: 0; z-index: 30; background: #1a2129; }
+  body.car.kaartrij main { position: fixed; left: 0; top: 0; height: var(--bw); width: var(--bw); max-width: none; margin: 0; z-index: 35; pointer-events: none; }
+  body.car.kaartrij .stage { width: var(--bw); max-width: none; min-height: var(--bw); height: var(--bw); padding: 0 !important; align-items: center; justify-content: center; background: none; }
+  body.car.kaartrij .stage > *:not(.helmet) { display: none !important; }
+  body.car.kaartrij .helmet { --hs: calc(var(--bw) - 16px); pointer-events: auto; filter: drop-shadow(0 10px 24px rgba(0,0,0,.6)); }
+  body.car.kaartrij { --bw: min(46vw, 30vh); }
+  body.car.kaartrij #carSpel, body.car.kaartrij #carSpel.zichtbaar, body.car.kaartrij #carRit { display: none !important; }
+  body.car.kaartrij .rijRond { width: 46px !important; height: 46px !important; min-height: 0 !important; min-width: 0 !important; padding: 0 !important; border-radius: 23px !important; font-size: 0 !important; transform: none !important; display: flex !important; align-items: center; justify-content: center; border-width: 1px !important; background: rgba(16,20,24,.82) !important; box-shadow: 0 4px 12px rgba(0,0,0,.45); transition: opacity .4s; }
+  body.car.kaartrij .rijRond::before { font-size: 21px; line-height: 1; }
+  body.car.kaartrij #carStart { left: 12px; top: calc(var(--bw) + 6px); right: auto; bottom: auto; } body.car.kaartrij #carStart .vlag { width: 24px; }
+  body.car.kaartrij #carGroep { left: 12px; bottom: 12px; top: auto; } body.car.kaartrij #carGroep .gi { font-size: 21px; }
+  body.car.kaartrij #carBack { right: 12px; top: 12px; } body.car.kaartrij #carBack::before { content: '✕'; }
+  body.car.kaartrij #carKaartKnop { right: 66px; top: 12px; } body.car.kaartrij #carKaartKnop::before { content: '🗺️'; }
+  body.car.kaartrij #carAdd { right: 12px; bottom: 74px; top: auto; width: 56px !important; height: 56px !important; border-radius: 28px !important; border-color: #ffb02e !important; } body.car.kaartrij #carAdd::before { content: '📸'; font-size: 25px; }
+  body.car.kaartrij #carAddM { right: 12px; bottom: 12px; top: auto; width: 56px !important; height: 56px !important; border-radius: 28px !important; border-color: #ff6b6b !important; } body.car.kaartrij #carAddM::before { content: '🚓'; font-size: 25px; }
+  body.car.kaartrij #rijAutoKnop { left: auto; right: 12px; top: 66px; bottom: auto; } body.car.kaartrij #rijNoordKnop { left: auto; right: 12px; top: 120px; bottom: auto; }
+  body.car.kaartrij.rust .rijWeg { opacity: 0 !important; pointer-events: none !important; }
+  body.car.kaartrij #rijMelding { left: calc(50% + var(--bw) / 2); }
+}
 #rijMap { position: absolute; inset: 0; }
 #rijTerug { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 46; padding: 10px 16px; border-radius: 22px; border: 1px solid #5ac8fa; background: rgba(10,31,43,.92); color: #b5e6ff; font: 600 15px var(--f-body); box-shadow: 0 4px 12px rgba(0,0,0,.5); }
 #rijTerug[hidden], #rijStuur[hidden], #rijGebaren[hidden] { display: none; }
@@ -172,27 +194,42 @@ body.car #carBack { display: block; }
 #gooiFx.weg { opacity: 0; transition: opacity .5s; }
 body.raakSchud main, body.raakSchud #rijKaart { animation: toeterSchud .4s; }
 body:not(.ondeugend) .alleenOnd { display: none !important; }
+#rijFlits { position: fixed; inset: 0; z-index: 33; pointer-events: none; background: #fff; opacity: 0; }
+#rijFlits.op { animation: flits .5s ease-out; } @keyframes flits { 0% { opacity: .75; } 100% { opacity: 0; } }
+#rijFinish { position: fixed; left: 50%; top: 40%; z-index: 34; pointer-events: none; transform: translate(-50%, -50%) scale(0); font-size: 90px; text-align: center; transition: transform .4s cubic-bezier(.3,1.6,.5,1); }
+#rijFinish b { display: block; font: 900 34px var(--f-display); color: #fff; text-shadow: 0 3px 10px #000; }
+#rijFinish.op { transform: translate(-50%, -50%) scale(1); animation: finishWapper .5s ease-in-out infinite alternate; } @keyframes finishWapper { to { transform: translate(-50%, -50%) scale(1) rotate(8deg); } }
 #rijVloek { position: fixed; left: calc(var(--bw, 0px) + (100vw - var(--bw, 0px)) * .5); top: 22vh; z-index: 34; padding: 10px 18px; border-radius: 22px; background: #fff; color: #d00; font: 900 34px/1 var(--f-display); transform: scale(0) rotate(-8deg); transition: transform .25s cubic-bezier(.3,1.6,.5,1); pointer-events: none; }
 #rijVloek.op { transform: scale(1) rotate(-8deg); }
 #rijPunten { position: fixed; left: calc(var(--bw, 0px) + (100vw - var(--bw, 0px)) * .5); top: 40vh; z-index: 34; transform: translateX(-50%); pointer-events: none; font: 900 30px/1.1 var(--f-display); color: #ffd60a; text-shadow: 0 3px 0 #a33, 0 0 14px rgba(0,0,0,.7); text-align: center; opacity: 0; }
 #rijPunten.op { animation: puntOp 1.8s ease-out; }
 @keyframes puntOp { 0% { opacity: 0; transform: translate(-50%, 20px) scale(.6); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); } 70% { opacity: 1; transform: translate(-50%, -20px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -60px) scale(.9); } }
+@media (orientation: portrait) { #rijAfslag { top: auto; bottom: 80px; left: 12px; right: 80px; } #rijZoek { left: 12px; right: 12px; top: calc(var(--bw, 0px) + 8px); } #rijStuur { height: 26vh; } #rijTerug { bottom: 140px; } }
 #rijScore { position: fixed; top: 64px; left: calc(var(--bw, 0px) + 12px); z-index: 44; padding: 6px 12px; border-radius: 14px; background: rgba(0,0,0,.7); color: #ffd60a; font: 800 18px var(--f-display); }
 #rijScore[hidden] { display: none; }
 #rijPiek { position: fixed; left: calc(var(--bw, 0px) - 12vh); bottom: 24vh; width: 30vh; height: 30vh; z-index: 36; pointer-events: none; transform: translateX(-130%) rotate(-14deg); transition: transform .7s cubic-bezier(.3,1.3,.5,1); }
 #rijPiek.op { transform: translateX(0) rotate(9deg); }
+#rijPiek:not(.op) { opacity: 0; transition: transform .7s, opacity .2s .5s; }
 #rijPiek svg { width: 100%; height: 100%; }
 #rijPiekOog { transform-origin: 85px 59px; transition: transform .15s; }
 #rijPiek.knip #rijPiekOog { transform: scaleY(.15); }
 #rijKaart.toeter { animation: toeterSchud .5s; }
 @keyframes toeterSchud { 0%,100% { transform: none; } 20% { transform: translate(-6px, 2px); } 40% { transform: translate(6px, -2px); } 60% { transform: translate(-4px, 1px); } 80% { transform: translate(4px, 0); } }
-#rijStuur { position: fixed; left: var(--bw, 0px); right: 0; bottom: 0; height: 34vh; z-index: 32; pointer-events: none; }
-#rijStuur svg { width: 100%; height: 100%; display: block; }
+#rijStuur { position: fixed; left: 0; right: 0; bottom: 0; height: 34vh; z-index: 32; pointer-events: none; }
+#rijStuur svg { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; display: block; }
+#rijWissers { position: fixed; left: 0; right: 0; top: 0; bottom: 0; display: none; pointer-events: none; }
+body.regen #rijWissers { display: block; }
+#rijWissers i { position: absolute; bottom: 30vh; width: 6px; height: 62vh; background: linear-gradient(#111, #333); border-radius: 3px; transform-origin: 50% 100%; animation: wisser 2.2s ease-in-out infinite; }
+#rijWissers i:nth-child(1) { left: 30%; } #rijWissers i:nth-child(2) { left: 64%; animation-delay: .08s; }
+@keyframes wisser { 0%, 100% { transform: rotate(-72deg); } 45%, 55% { transform: rotate(14deg); } }
+#rijKoplamp { position: fixed; inset: 0; pointer-events: none; display: none; background: radial-gradient(ellipse 60% 45% at 55% 70%, rgba(255,240,190,.0) 0%, rgba(0,0,8,.55) 75%); }
+body.nacht #rijKoplamp { display: block; }
+body.nacht #rijMap canvas { filter: brightness(.7) saturate(.85); }
 #rijFpKnop { position: fixed; right: 66px; top: 66px; z-index: 50; width: 46px; height: 46px; border-radius: 23px; border: 1px solid #555; background: rgba(16,20,24,.85); color: #fff; font-size: 20px; }
 #rijFpKnop.aan, #rijSatKnop.aan { border-color: #ffd60a; background: rgba(60,50,0,.9); }
 #rijSatKnop { position: fixed; right: 66px; top: 120px; z-index: 50; width: 46px; height: 46px; border-radius: 23px; border: 1px solid #555; background: rgba(16,20,24,.85); color: #fff; font-size: 20px; }
 #rijZoekKnop { position: fixed; right: 12px; top: 174px; z-index: 50; width: 46px; height: 46px; border-radius: 23px; border: 1px solid #555; background: rgba(16,20,24,.85); color: #fff; font-size: 20px; }
-#rijAfslag { position: fixed; top: 10px; left: calc(var(--bw, 0px) + 12px); right: 130px; max-width: 460px; z-index: 45; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: rgba(10,90,70,.92); color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.45); font: 600 15px/1.25 var(--f-body); }
+#rijAfslag { position: fixed; top: 10px; left: calc(var(--bw, 0px) + 12px); right: 124px; max-width: 460px; z-index: 45; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: rgba(10,90,70,.92); color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.45); font: 600 15px/1.25 var(--f-body); }
 #rijAfslag[hidden] { display: none; }
 #rijAfslagD { font-size: 22px; white-space: nowrap; } #rijAfslagT { flex: 1; } #rijAfslagR { opacity: .85; white-space: nowrap; font-weight: 500; }
 #rijZoek { position: fixed; top: 10px; left: calc(var(--bw, 0px) + 12px); right: 124px; max-width: 520px; z-index: 70; padding: 10px; border-radius: 16px; background: rgba(16,20,24,.96); box-shadow: 0 8px 24px rgba(0,0,0,.6); }
@@ -567,10 +604,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 <button id="carKaartKnop" class="rijRond rijWeg" type="button" aria-label="Kaart naast Buddy aan of uit">🗺️ Kaart</button>
 <div id="gooiFx" aria-hidden="true" hidden><div id="gooiTekst"></div><div id="gooiDing"><span id="gooiKoe">🐄</span><svg id="gooiPaal" viewBox="0 0 60 120"><rect x="24" y="40" width="12" height="80" rx="3" fill="#8e8e93"/><rect x="4" y="2" width="52" height="44" rx="8" fill="#d6d6d6" stroke="#555" stroke-width="3"/><rect x="4" y="2" width="52" height="12" rx="6" fill="#f2c200"/><circle cx="30" cy="30" r="10" fill="#222"/><circle cx="27" cy="27" r="3" fill="#fff" opacity=".8"/></svg></div><svg id="gooiBarst" viewBox="0 0 400 400" preserveAspectRatio="none"><g stroke="#fff" stroke-width="3" fill="none" opacity=".85"><path d="M200 200 L120 90 L95 30"/><path d="M200 200 L300 110 L370 60"/><path d="M200 200 L330 240 L400 255"/><path d="M200 200 L260 330 L280 400"/><path d="M200 200 L110 300 L40 390"/><path d="M200 200 L60 200 L0 180"/><path d="M160 145 L235 150 L250 215 L190 255 L150 220 Z"/></g></svg></div>
 <div id="rijKaart" aria-label="Kaart met je auto"><div id="rijMap"></div><button id="rijAutoKnop" class="rijWeg" type="button" aria-label="Andere auto kiezen">🚗</button><button id="rijNoordKnop" class="rijWeg" type="button" aria-label="Rijrichting of noorden boven">🧭</button><button id="rijZoekKnop" class="rijWeg" type="button" aria-label="Navigeer naar">🔍</button><button id="rijFpKnop" class="rijWeg" type="button" aria-label="Eerste persoon aan of uit">🎮</button><button id="rijSatKnop" class="rijWeg" type="button" aria-label="Luchtfoto aan of uit">🛰️</button><div id="rijGebaren" class="rijWeg" hidden><button type="button" data-g="v" aria-label="Middelvinger">🖕</button><button type="button" data-g="d" aria-label="Duim omhoog">👍</button><button type="button" data-g="t" aria-label="Toeter">📯</button><button type="button" data-g="k" class="alleenOnd" aria-label="Kontje">🍑</button><button type="button" data-g="g" aria-label="Gooien">🤾</button><button type="button" data-g="c" class="alleenOnd" aria-label="Koe">🐄</button></div>
-<div id="rijVloek" aria-hidden="true">#@%&!</div><div id="rijPunten" aria-hidden="true"></div><div id="rijScore" aria-hidden="true" hidden></div>
+<div id="rijFlits" aria-hidden="true"></div><div id="rijFinish" aria-hidden="true">🏁<b>AANGEKOMEN!</b></div><div id="rijVloek" aria-hidden="true">#@%&!</div><div id="rijPunten" aria-hidden="true"></div><div id="rijScore" aria-hidden="true" hidden></div>
 <div id="rijHand" aria-hidden="true"></div>
 <div id="rijPiek" aria-hidden="true"><svg viewBox="0 0 120 120"><rect x="10" y="22" width="100" height="86" rx="30" fill="#0d1117" stroke="#5ac8fa" stroke-width="5"/><path d="M14 52 Q60 40 106 52 L104 66 Q86 74 66 64 L54 64 Q34 74 16 66 Z" fill="#05070a"/><path d="M22 54 L34 52 L28 62 Z M70 54 L82 52 L76 62 Z" fill="#fff" opacity=".55"/><g id="rijPiekOog"><rect x="70" y="52" width="30" height="14" rx="6" fill="#05070a"/></g><path d="M44 88 Q60 98 78 86" stroke="#5ac8fa" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="50" y="6" width="20" height="18" rx="6" fill="#c8102e"/></svg></div>
-<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><path d="M0 170 L0 120 Q200 70 400 120 L400 170 Z" fill="#111417"/><path d="M0 120 Q200 70 400 120" stroke="#2a2f35" stroke-width="3" fill="none"/><rect x="250" y="96" width="70" height="40" rx="6" fill="#0b0d10" stroke="#30363d"/><text x="285" y="122" text-anchor="middle" fill="#5ac8fa" font-size="16" font-family="sans-serif" id="rijStuurKmu">0</text><g transform="translate(150 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
+<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg class="dashBand" viewBox="0 0 400 170" preserveAspectRatio="none"><path d="M0 170 L0 112 Q200 66 400 112 L400 170 Z" fill="#111417"/><path d="M0 112 Q200 66 400 112" stroke="#2a2f35" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/></svg><svg class="dashWiel" viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><rect x="250" y="96" width="70" height="40" rx="6" fill="#0b0d10" stroke="#30363d"/><text x="285" y="122" text-anchor="middle" fill="#5ac8fa" font-size="16" font-family="sans-serif" id="rijStuurKmu">0</text><g transform="translate(170 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg><div id="rijWissers"><i></i><i></i></div><div id="rijKoplamp"></div></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
 <button id="carRit" type="button">🏁 Rit klaar</button>
 <button id="carSpel" type="button">🎲 Spel</button>
 <div id="spel" hidden role="dialog" aria-label="Spelletjes">
@@ -4633,7 +4670,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v127';
+  var VERSION = 'v128';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9459,14 +9496,23 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     /* v113: navigeren op de rijkaart: zoeken, routelijn en de volgende afslag bovenin */
     var routeT = 0, doelMk = null;
+    function fileVlaggen(geom, vk) {
+      var f = vk.filter(function (it) { return it && (it.k === 'jam' || it.k === 'accident') && Array.isArray(it.pts) && it.pts.length; }).map(function (it) {
+        var pts = it.pts.map(function (q) { return Array.isArray(q) ? q : [q.lat, q.lon]; }), b = [90, 180, -90, -180]; pts.forEach(function (q) { b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[0]); b[3] = Math.max(b[3], q[1]); }); return { pts: pts, b: b }; });
+      return geom.map(function (g) { return f.some(function (it) { if (g.lat < it.b[0] - .0005 || g.lat > it.b[2] + .0005 || g.lon < it.b[1] - .0008 || g.lon > it.b[3] + .0008) return false;
+        for (var k = 0; k < it.pts.length; k++) if (gdist(g.lat, g.lon, it.pts[k][0], it.pts[k][1]) < 45) return true; if (it.pts.length > 1) for (k = 0; k < it.pts.length - 1; k++) { var a = it.pts[k], c = it.pts[k + 1]; if (gdist(g.lat, g.lon, (a[0] + c[0]) / 2, (a[1] + c[1]) / 2) < 45) return true; } return false; }); });
+    }
     function routeTeken() {
       var N = window.__nav && window.__nav.nu(); if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return;
-      var t = N ? N.t : 0; if (t === routeT) return; routeT = t;
-      var data = { type: 'FeatureCollection', features: N ? [{ type: 'Feature', geometry: { type: 'LineString', coordinates: N.geom.map(function (g) { return [g.lon, g.lat]; }) } }] : [] };
+      var vk = window.__verkeerItems ? window.__verkeerItems() : [], t = (N ? N.t : 0) + '|' + vk.length + '|' + Math.floor(Date.now() / 60000); if (t === routeT) return; routeT = t;
+      var vlag = N ? fileVlaggen(N.geom, vk) : []; window.__routeFile = vlag;   /* v128: rood waar je route door een file gaat */
+      var feats = []; if (N) { var run = [], rood = vlag[0]; N.geom.forEach(function (g, i) { var r = vlag[i]; if (r !== rood && run.length) { run.push([g.lon, g.lat]); feats.push({ type: 'Feature', properties: { kl: rood ? '#ff2d2d' : '#3db7ff', kr: rood ? '#7a0000' : '#0b4f8a' }, geometry: { type: 'LineString', coordinates: run } }); run = []; rood = r; } run.push([g.lon, g.lat]); });
+        if (run.length > 1) feats.push({ type: 'Feature', properties: { kl: rood ? '#ff2d2d' : '#3db7ff', kr: rood ? '#7a0000' : '#0b4f8a' }, geometry: { type: 'LineString', coordinates: run } }); }
+      var data = { type: 'FeatureCollection', features: feats };
       if (map.getSource('route')) map.getSource('route').setData(data);
       else { map.addSource('route', { type: 'geojson', data: data });
-        map.addLayer({ id: 'route-rand', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0b4f8a', 'line-width': 13 } });
-        map.addLayer({ id: 'route-lijn', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#3db7ff', 'line-width': 8 } }); }
+        map.addLayer({ id: 'route-rand', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'kr'], 'line-width': 13 } });
+        map.addLayer({ id: 'route-lijn', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'kl'], 'line-width': 8 } }); }
       if (doelMk) { doelMk.remove(); doelMk = null; }
       if (N && N.dest) { var d = document.createElement('div'); d.style.cssText = 'font-size:30px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.6))'; d.textContent = '🏁'; doelMk = new maplibregl.Marker({ element: d, anchor: 'bottom-left' }).setLngLat([N.dest.lon, N.dest.lat]).addTo(map); }
       $('rijRouteStop').hidden = !N;
@@ -9495,7 +9541,15 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       }).catch(function () { $('rijZoekRes').textContent = 'Zoeken lukt niet (internet?).'; }); }, 350);
     });
     setInterval(function () { if (map && document.body.classList.contains('kaartrij')) { routeTeken(); afslagToon(); } }, 1000);
-    function zetPadding() { if (!map) return; var h = $('rijKaart').clientHeight || 400, bw = (document.querySelector('main') || {}).clientWidth || 0; map.setPadding({ top: st.kijk === 2 ? 0 : Math.round(h * .42), bottom: 0, left: Math.min(bw, innerWidth * .5), right: 0 }); }   /* v111: auto in het midden van het stuk naast Buddy */
+    function zetPadding() { if (!map) return; var h = $('rijKaart').clientHeight || 400, mn = document.querySelector('main') || {}, bw = mn.clientWidth || 0, staand = innerHeight > innerWidth; map.setPadding(staand ? { top: st.kijk === 2 ? 0 : Math.round(h * .5), bottom: 0, left: 0, right: 0 } : { top: st.kijk === 2 ? 0 : Math.round(h * .42), bottom: 0, left: Math.min(bw, innerWidth * .5), right: 0 }); }   /* v111: auto in het midden van het stuk naast Buddy */
+    function opRoute(N, la, lo) {   /* dichtstbijzijnde punt op de route (alleen rond waar je bent) */
+      var g = N.geom; if (!g || g.length < 2) return null; var kx = 111320 * Math.cos(la * Math.PI / 180), ky = 110540, best = null;
+      var i0 = Math.max(0, (N.van || 0) - 40), i1 = Math.min(g.length - 1, (N.van || 0) + 400); if (opRoute.mis > 5) { i0 = 0; i1 = g.length - 1; }
+      for (var i = i0; i < i1; i++) { var ax = (g[i].lon - lo) * kx, ay = (g[i].lat - la) * ky, bx = (g[i + 1].lon - lo) * kx, by = (g[i + 1].lat - la) * ky, dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+        var t = l2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0, px = ax + dx * t, py = ay + dy * t, d = Math.sqrt(px * px + py * py);
+        if (!best || d < best.d) best = { d: d, lat: la + py / ky, lon: lo + px / kx, brg: (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360 }; }
+      opRoute.mis = best && best.d < 30 ? 0 : (opRoute.mis || 0) + 1; return best;
+    }
     var volg = true, klikT = 0;   /* v114: zelf schuiven/zoomen mag; 2x tikken = terug naar de auto */
     function volgZet(v) { volg = v; var b = $('rijTerug'); if (b) b.hidden = v; if (v) stap(); }
     function volgInstellen() {
@@ -9508,7 +9562,12 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (p.hd != null && sp > 3) koers = p.hd;
       else if (vorige && sp > 3) { var d = gdist(vorige.lat, vorige.lon, p.lat, p.lon); if (d > 4) { var y = Math.sin((p.lon - vorige.lon) * Math.PI / 180) * Math.cos(p.lat * Math.PI / 180), x = Math.cos(vorige.lat * Math.PI / 180) * Math.sin(p.lat * Math.PI / 180) - Math.sin(vorige.lat * Math.PI / 180) * Math.cos(p.lat * Math.PI / 180) * Math.cos((p.lon - vorige.lon) * Math.PI / 180); koers = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; } }
       if (!vorige || gdist(vorige.lat, vorige.lon, p.lat, p.lon) > 4) vorige = { lat: p.lat, lon: p.lon };
+      var Nv = window.__nav && window.__nav.nu(), sn = Nv ? opRoute(Nv, p.lat, p.lon) : null;   /* v128: auto blijft op de blauwe lijn */
+      if (sn && sn.d < 30) { p = { lat: sn.lat, lon: sn.lon, hd: p.hd }; if (sp > 3) koers = sn.brg; }
+      try { document.body.classList.toggle('regen', !!(RADAR && Date.now() - RADAR.t < 20 * 60e3 && RADAR.nu >= .1)); } catch (e) {}
       melding(''); if (Date.now() - flT > 30000) flitsersOpKaart();
+      if (S.cam && S.cam.dist != null && S.cam.dist < 25 && Date.now() - (stap.flitsT || 0) > 30000) { stap.flitsT = Date.now(); var fl = $('rijFlits'); fl.classList.remove('op'); void fl.offsetWidth; fl.classList.add('op'); }   /* v128: flitsje als je een flitser passeert */
+      if (Nv && Nv.steps && Nv.steps[Nv.idx] && Nv.steps[Nv.idx].type === 'arrive' && gdist(p.lat, p.lon, Nv.dest.lat, Nv.dest.lon) < 40 && !stap.aankomst) { stap.aankomst = Nv.t; var fi = $('rijFinish'); fi.classList.add('op'); setTimeout(function () { fi.classList.remove('op'); }, 4000); }
       mk.setLngLat([p.lon, p.lat]); mk.setRotation(koers);
       var dk = ((koers - (stap.vk == null ? koers : stap.vk) + 540) % 360) - 180; stap.vk = koers;   /* v118: stuur draait mee in bochten */
       stap.hoek = (stap.hoek || 0) * .4 + Math.max(-130, Math.min(130, sp > 3 ? dk * 7 : 0)) * .6;
@@ -9537,7 +9596,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var aan = st.aan && document.body.classList.contains('car');
       document.body.classList.toggle('kaartrij', st.aan);
       $('carKaartKnop').textContent = st.aan ? '🗺️ Kaart uit' : '🗺️ Kaart';
-      var nu = aan && matchMedia('(orientation: landscape)').matches; if (nu === toon.was && !toon.forceer) return; toon.was = nu; toon.forceer = false;
+      var nu = aan; if (nu === toon.was && !toon.forceer) return;   /* v128: ook staand */ toon.was = nu; toon.forceer = false;
       clearInterval(tik); tik = null;
       if (nu) { maak(); wakker(); setTimeout(function () { if (map) { map.resize(); zetPadding(); } }, 300); tik = setInterval(stap, 1000); }
     }
