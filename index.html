@@ -881,6 +881,15 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <ol id="laadLijst" class="v77lijst"></ol>
       <p class="foot">Alleen op deze telefoon, niet gedeeld met de groep. De prijs per kWh wordt onthouden. Met km's van deze maand rekent Buddy ook je verbruik uit.</p></div>
   </details>
+  <details class="kop" id="kopAnim"><summary><span class="kopT">🎬 Animaties testen</span><span class="kopS">elke animatie en show met één tik, rijden of niet</span></summary>
+    <div class="kopIn">
+      <p class="sub">Buddy in de app</p>
+      <div class="mobrow"><select id="animKies" style="flex:1;min-width:0"></select><button class="btn" id="animSpeel" type="button">▶️ Speel af</button></div>
+      <div class="btns"><button class="btn" id="animVorige" type="button">⏮️ Vorige</button><button class="btn" id="animVolgende" type="button">⏭️ Volgende</button><button class="btn" id="animAlles" type="button">🔁 Alles achter elkaar</button></div>
+      <p class="sub">Buddy+ (het schermpje)</p>
+      <div class="mobrow"><select id="animPlus" style="flex:1;min-width:0"></select><button class="btn" id="animPlusSpeel" type="button">▶️ Op Buddy+</button></div>
+      <p class="foot">Ook als je rijdt of de simulatie uit staat: de animatie loopt altijd helemaal af. Buddy+ moet verbonden zijn voor zijn shows.</p></div>
+  </details>
   <details class="kop" id="kopPlezier"><summary><span class="kopT">🎲 Plezier</span><span class="kopS">spelletjes, praten, outfits</span></summary>
     <div class="kopIn">
       <p class="sub">Spelletjes</p>
@@ -1954,7 +1963,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var d = GAGS[g.k];
       var naGo = d.go && T - g.t0 >= 3; /* startvlag: na GO mag je wegrijden */
       if (d.go && g.zelf && !naGo && S.speed >= 3 && !S.asleep) { endGag(true); g = null; setEv('startled', 2.5, 'Valse start!'); beep('startled'); }
-      else if (T >= g.end || S.asleep || (S.cam && S.cam.dist <= 600) || S.traj || S.tunnel || (!d.drive && !d.seintje && S.speed >= 3 && !naGo) || (d.drive && !d.idle && S.speed < 3)) { endGag(); g = null; }
+      else if (T >= g.end || (!g.test && (S.asleep || (S.cam && S.cam.dist <= 600) || S.traj || S.tunnel || (!d.drive && !d.seintje && S.speed >= 3 && !naGo) || (d.drive && !d.idle && S.speed < 3)))) {   /* v130: in de animatietester loopt hij altijd af */ endGag(); g = null; }
       else d.upd(g, T - g.t0);
     }
     /* leaning into bends: head tilts outward, eyes look where you are going */
@@ -4675,7 +4684,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v129';
+  var VERSION = 'v130';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6578,6 +6587,38 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function laatNacht() { var h = new Date().getHours(); return h >= 23 || h < 5; }
   var MAANDVOL = Object.keys(MONTHS);
   function nooit() { return false; }
+  (function () {   /* v130: animatietester */
+    var EXTRA = [['fx:gooi', '💥 Effect: flitspaal tegen je scherm'], ['fx:koe', '🐄 Effect: koe tegen je scherm'], ['fx:piek', '😎 Effect: Buddy kijkt om (rijkaart)'], ['fx:draai', '🌀 Effect: telefoon gedraaid']];
+    var PLUS = [['DOE:sprint', '🚀 Sprint-show (volgende in de rij)'], ['DOE:tunnel', '🚇 Tunnel'], ['DOE:rotonde', '🔄 Rotonde'], ['DOE:trip', '🌈 Kleurtrip'], ['DOE:spiraal', '🌀 Spiraal'], ['DOE:koekje', '🍪 Koekje'], ['DOE:zwaai', '👋 Zwaaien'], ['DOE:mok', '😤 Mokken'], ['DOE:juich', '🎉 Juichen'], ['DOE:weer', '⛅ Weer'], ['DOE:piep', '🔊 Piepje'],
+      ['EVT:v|HMPF!', '🖕 Middelvinger'], ['EVT:d|DANKJE!', '👍 Duim'], ['EVT:k|KUS MN BUMPER', '🍑 Kontje'], ['EVT:g|VANG!', '🤾 Flitspaal gooien'], ['EVT:c|BOEEEE!', '🐄 Koe'], ['EVT:f|Feestje!', '🎊 Feest'], ['EVT:h|Hartje', '💛 Hartje']];
+    var lijst = [];
+    function vul() {
+      var sel = $('animKies'), sp = $('animPlus'); if (!sel || !sp) return;
+      lijst = Object.keys(GAGS).map(function (k) { return [k, GAGS[k].name || k]; }).sort(function (a, b) { return a[1].localeCompare(b[1], 'nl'); }).concat(EXTRA);
+      sel.textContent = ''; lijst.forEach(function (x) { var o = document.createElement('option'); o.value = x[0]; o.textContent = x[1]; sel.appendChild(o); });
+      sp.textContent = ''; PLUS.forEach(function (x) { var o = document.createElement('option'); o.value = x[0]; o.textContent = x[1]; sp.appendChild(o); });
+    }
+    function speel(k) {
+      if (k === 'fx:gooi') { if (window.__gooi) window.__gooi(); return; } if (k === 'fx:koe') { if (window.__koe) window.__koe(); return; }
+      if (k === 'fx:piek') { if (window.__buddyPiek) window.__buddyPiek(); else toast('Alleen in de autostand met kaart.'); return; }
+      if (k === 'fx:draai') { S.spinT = T; S.spinDir = 1; return; }
+      try { if (S.asleep) wake(); } catch (e) {} S.asleep = false; S.ev = null;
+      if (S.gag) endGag(true); startGag(k); if (S.gag) { S.gag.test = true; lg('animatietester: ' + k); } else toast('Die kan ik nu niet starten.');
+      try { scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {}
+    }
+    var reeks = null;
+    setTimeout(function () {
+      vul(); if (!$('animSpeel')) return;
+      $('animSpeel').addEventListener('click', function () { speel($('animKies').value); });
+      $('animKies').addEventListener('change', function () { speel($('animKies').value); });
+      function stapje(d) { var s0 = $('animKies'); s0.selectedIndex = (s0.selectedIndex + d + s0.options.length) % s0.options.length; speel(s0.value); }
+      $('animVorige').addEventListener('click', function () { stapje(-1); }); $('animVolgende').addEventListener('click', function () { stapje(1); });
+      $('animAlles').addEventListener('click', function () { if (reeks) { clearInterval(reeks); reeks = null; $('animAlles').textContent = '🔁 Alles achter elkaar'; return; } $('animAlles').textContent = '⏹️ Stop'; stapje(0);
+        reeks = setInterval(function () { if (!S.gag) stapje(1); }, 1000); });
+      $('animPlusSpeel').addEventListener('click', function () { var v = $('animPlus').value; if (!window.__scDoe) { toast('Verbind eerst met Buddy+.'); return; }
+        if (v.indexOf('DOE:') === 0) window.__scDoe(v.slice(4)); else if (window.__scEvt) { var q = v.slice(4).split('|'); window.__scEvt(q[0], q[1]); } toast('▶️ Verstuurd naar Buddy+'); });
+    }, 500);
+  })();
   (function () {   /* v126: alles op nul (naam, auto, groep, instellingen en Buddy's karakter blijven) */
     var BLIJF = ['me', 'name', 'auto', 'bday', 'geboren', 'outfit', 'outfitsVrij', 'taught', 'notes', 'laad', 'laadPrijs', 'feestAan', 'reactieUit', 'example', 'unknown', 'jarigJ', 'samengevoegd'], arm = 0;
     setTimeout(function () { var b = $('resetKnop'); if (!b) return; b.addEventListener('click', function () {
@@ -8020,7 +8061,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     zet($('kopScherm'), 'buddy'); zet($('kopOver'), 'buddy');   /* v83: schermpje en 'Over Buddy' onder het Buddy-tabblad */
     zet($('buddyStatus'), 'buddy');
     ['kopInst', 'kopHulp', 'kopBouw'].forEach(function (id) { zet($(id), 'meer'); });
-    zet($('kopRitten'), 'ritten'); zet($('kopRecords'), 'ritten'); zet($('kopBadges'), 'ritten'); zet($('kopLaden'), 'ritten'); zet($('kopPlezier'), 'buddy');   /* v85: eigen Ritten-tab */
+    zet($('kopRitten'), 'ritten'); zet($('kopRecords'), 'ritten'); zet($('kopBadges'), 'ritten'); zet($('kopLaden'), 'ritten'); zet($('kopPlezier'), 'buddy'); zet($('kopAnim'), 'buddy');   /* v85: eigen Ritten-tab */
     zet($('verTxt'), 'meer');
     var koppen = document.querySelector('main > .koppen'); if (koppen) koppen.removeAttribute('data-in-tab');
     /* de flitserkaart en de meld-knoppen verhuizen naar de Kaart-tab */
