@@ -189,7 +189,8 @@ body:not(.ondeugend) .alleenOnd { display: none !important; }
 #rijStuur { position: fixed; left: var(--bw, 0px); right: 0; bottom: 0; height: 34vh; z-index: 32; pointer-events: none; }
 #rijStuur svg { width: 100%; height: 100%; display: block; }
 #rijFpKnop { position: fixed; right: 66px; top: 66px; z-index: 50; width: 46px; height: 46px; border-radius: 23px; border: 1px solid #555; background: rgba(16,20,24,.85); color: #fff; font-size: 20px; }
-#rijFpKnop.aan { border-color: #ffd60a; background: rgba(60,50,0,.9); }
+#rijFpKnop.aan, #rijSatKnop.aan { border-color: #ffd60a; background: rgba(60,50,0,.9); }
+#rijSatKnop { position: fixed; right: 66px; top: 120px; z-index: 50; width: 46px; height: 46px; border-radius: 23px; border: 1px solid #555; background: rgba(16,20,24,.85); color: #fff; font-size: 20px; }
 #rijZoekKnop { position: fixed; right: 12px; top: 174px; z-index: 50; width: 46px; height: 46px; border-radius: 23px; border: 1px solid #555; background: rgba(16,20,24,.85); color: #fff; font-size: 20px; }
 #rijAfslag { position: fixed; top: 10px; left: calc(var(--bw, 0px) + 12px); right: 130px; max-width: 460px; z-index: 45; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: rgba(10,90,70,.92); color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.45); font: 600 15px/1.25 var(--f-body); }
 #rijAfslag[hidden] { display: none; }
@@ -565,7 +566,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 <button id="carBack" class="rijRond rijWeg" type="button">Terug</button>
 <button id="carKaartKnop" class="rijRond rijWeg" type="button" aria-label="Kaart naast Buddy aan of uit">🗺️ Kaart</button>
 <div id="gooiFx" aria-hidden="true" hidden><div id="gooiTekst"></div><div id="gooiDing"><span id="gooiKoe">🐄</span><svg id="gooiPaal" viewBox="0 0 60 120"><rect x="24" y="40" width="12" height="80" rx="3" fill="#8e8e93"/><rect x="4" y="2" width="52" height="44" rx="8" fill="#d6d6d6" stroke="#555" stroke-width="3"/><rect x="4" y="2" width="52" height="12" rx="6" fill="#f2c200"/><circle cx="30" cy="30" r="10" fill="#222"/><circle cx="27" cy="27" r="3" fill="#fff" opacity=".8"/></svg></div><svg id="gooiBarst" viewBox="0 0 400 400" preserveAspectRatio="none"><g stroke="#fff" stroke-width="3" fill="none" opacity=".85"><path d="M200 200 L120 90 L95 30"/><path d="M200 200 L300 110 L370 60"/><path d="M200 200 L330 240 L400 255"/><path d="M200 200 L260 330 L280 400"/><path d="M200 200 L110 300 L40 390"/><path d="M200 200 L60 200 L0 180"/><path d="M160 145 L235 150 L250 215 L190 255 L150 220 Z"/></g></svg></div>
-<div id="rijKaart" aria-label="Kaart met je auto"><div id="rijMap"></div><button id="rijAutoKnop" class="rijWeg" type="button" aria-label="Andere auto kiezen">🚗</button><button id="rijNoordKnop" class="rijWeg" type="button" aria-label="Rijrichting of noorden boven">🧭</button><button id="rijZoekKnop" class="rijWeg" type="button" aria-label="Navigeer naar">🔍</button><button id="rijFpKnop" class="rijWeg" type="button" aria-label="Eerste persoon aan of uit">🎮</button><div id="rijGebaren" class="rijWeg" hidden><button type="button" data-g="v" aria-label="Middelvinger">🖕</button><button type="button" data-g="d" aria-label="Duim omhoog">👍</button><button type="button" data-g="t" aria-label="Toeter">📯</button><button type="button" data-g="k" class="alleenOnd" aria-label="Kontje">🍑</button><button type="button" data-g="g" aria-label="Gooien">🤾</button><button type="button" data-g="c" class="alleenOnd" aria-label="Koe">🐄</button></div>
+<div id="rijKaart" aria-label="Kaart met je auto"><div id="rijMap"></div><button id="rijAutoKnop" class="rijWeg" type="button" aria-label="Andere auto kiezen">🚗</button><button id="rijNoordKnop" class="rijWeg" type="button" aria-label="Rijrichting of noorden boven">🧭</button><button id="rijZoekKnop" class="rijWeg" type="button" aria-label="Navigeer naar">🔍</button><button id="rijFpKnop" class="rijWeg" type="button" aria-label="Eerste persoon aan of uit">🎮</button><button id="rijSatKnop" class="rijWeg" type="button" aria-label="Luchtfoto aan of uit">🛰️</button><div id="rijGebaren" class="rijWeg" hidden><button type="button" data-g="v" aria-label="Middelvinger">🖕</button><button type="button" data-g="d" aria-label="Duim omhoog">👍</button><button type="button" data-g="t" aria-label="Toeter">📯</button><button type="button" data-g="k" class="alleenOnd" aria-label="Kontje">🍑</button><button type="button" data-g="g" aria-label="Gooien">🤾</button><button type="button" data-g="c" class="alleenOnd" aria-label="Koe">🐄</button></div>
 <div id="rijVloek" aria-hidden="true">#@%&!</div><div id="rijPunten" aria-hidden="true"></div><div id="rijScore" aria-hidden="true" hidden></div>
 <div id="rijHand" aria-hidden="true"></div>
 <div id="rijPiek" aria-hidden="true"><svg viewBox="0 0 120 120"><rect x="10" y="22" width="100" height="86" rx="30" fill="#0d1117" stroke="#5ac8fa" stroke-width="5"/><path d="M14 52 Q60 40 106 52 L104 66 Q86 74 66 64 L54 64 Q34 74 16 66 Z" fill="#05070a"/><path d="M22 54 L34 52 L28 62 Z M70 54 L82 52 L76 62 Z" fill="#fff" opacity=".55"/><g id="rijPiekOog"><rect x="70" y="52" width="30" height="14" rx="6" fill="#05070a"/></g><path d="M44 88 Q60 98 78 86" stroke="#5ac8fa" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="50" y="6" width="20" height="18" rx="6" fill="#c8102e"/></svg></div>
@@ -2646,7 +2647,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         navigator.wakeLock.request('screen').then(function (l) {
           wakeLock = l; lg('scherm-aan-slot gekregen');
           try { l.addEventListener('release', function () { if (wakeLock === l) wakeLock = null; }); } catch (e) {}
-        }, function (e) { lg('scherm-aan-slot geweigerd: ' + ((e && e.name) || e)); });
+        }, function (e) { if (!lockScreen.gemeld) { lockScreen.gemeld = true; lg('scherm-aan-slot geweigerd: ' + ((e && e.name) || e) + ' (probeer opnieuw bij een tik)'); } if (!lockScreen.wacht) { lockScreen.wacht = true; document.addEventListener('pointerdown', function () { lockScreen.wacht = false; if (!wakeLock) lockScreen(); }, { once: true, capture: true }); } });   /* v127: iPhone wil eerst een tik */
       }
     } catch (e) {}
   }
@@ -4632,7 +4633,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v126';
+  var VERSION = 'v127';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -4762,7 +4763,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       else {
         gEst.x += (a.x - gEst.x) * al; gEst.y += (a.y - gEst.y) * al; gEst.z += (a.z - gEst.z) * al;
         var ddx = a.x - gEst.x, ddy = a.y - gEst.y, ddz = a.z - gEst.z, dev = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
-        var sp = S.speed, floor = sp < 35 ? 2.2 : sp < 60 ? 3.6 : sp < 90 ? 5.2 : 7, thr = Math.max(floor, noiseEst * 3.2 + .8);
+        var sp = S.speed, floor = sp < 35 ? 2.6 : sp < 60 ? 5 : sp < 90 ? 6.4 : 8, thr = Math.max(floor, noiseEst * 3.6 + 1);   /* v127: minder valse boings (houder trilt) */
         if (!(T - lv.lastTouch < 1.5) && !V.held) { if (dev > thr) bump(dev); else noiseEst += (dev - noiseEst) * .004; }
       }
     }
@@ -6151,6 +6152,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function ritStart() { V.harsh = 0; V.gmax = 0; V.ritVoel = false; S.ritStart = { van: lastPos ? [+lastPos.lat.toFixed(5), +lastPos.lon.toFixed(5)] : null, t: Date.now(), km: mem.kmLive || 0, netjes: mem.netjes || 0, h: new Date().getHours() + new Date().getMinutes() / 60, vmax: 0, nul: 0, nulTelt: false }; ritVakken = {}; }
   /* Wordt aangeroepen als een echte rit klaar is (8 min stilstaan of GPS uit) */
   function ritKlaar(sc) {
+    setTimeout(function () { try { if (window.__vraagLog) window.__vraagLog(); } catch (e) {} }, 15000);
     try { if (ondeugend && (S.tripT || 0) > 1500 && Math.random() < .5) setTimeout(function () { startGag('boer'); }, 9000); } catch (e) {}   /* v122: boertje na een lange rit */
     var r0 = S.ritStart; S.ritStart = null;
     if (!r0) return;
@@ -7285,7 +7287,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   $('kaartKnop').addEventListener('click', function () {
     $('flKaart').hidden = false; flKaartVul();
     laadLeaflet().then(function () {
-      if (!flMap) { flMap = L.map('flKaartMap', { zoomControl: true }).setView(lastPos ? [lastPos.lat, lastPos.lon] : [52.1, 5.1], 10); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap-bijdragers' }).addTo(flMap); 
+      if (!flMap) { flMap = L.map('flKaartMap', { zoomControl: true }).setView(lastPos ? [lastPos.lat, lastPos.lon] : [52.1, 5.1], 10); var osmL = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap-bijdragers' }).addTo(flMap); L.control.layers({ '🗺️ Kaart': osmL, '🛰️ Luchtfoto': L.tileLayer('https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg', { maxZoom: 19, maxNativeZoom: 19, attribution: 'Luchtfoto © PDOK / Beeldmateriaal Nederland' }) }, null, { position: 'topright' }).addTo(flMap);   /* v127: luchtfoto (PDOK, gratis) */ 
         flMap.on('click', function (e) {   /* v92: zelf een flitser op de kaart zetten */
           if (kaartModus === 'plek') { if (window.__plekNu) window.__plekNu('kaart', { lat: e.latlng.lat, lon: e.latlng.lng }); return; }   /* v109: plekje op de kaart zetten */
           if (kaartModus !== 'flits') return;   /* v108: alleen bij Flitsers */
@@ -7397,6 +7399,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (!rx) return; var s = String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
       if (s) klein('EVT:' + c + '|' + s);
     };   /* v93: mokken of juichen op Buddy+ */
+    window.__vraagLog = function () { if (rx) try { vraagLog(); } catch (e) {} };   /* v127: na elke rit het logboek van Buddy+ ophalen */
     function vraagLog() { if (!rx) { toast('Verbind eerst met het Buddy-scherm.'); return; } var d = new TextEncoder().encode('LOG?\n'); (rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(d) : rx.writeValue(d)).catch(function () {}); stat('Logboek van Buddy+ wordt opgehaald…'); }
     $('bleLog').addEventListener('click', vraagLog);
     /* v76: wifi-gegevens naar het schermpje */
@@ -7443,7 +7446,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     window.__rtOpnieuw = function () { rtVerstuurd = null; };
     function klein(t, poging) {   /* v90: is de verbinding net bezig? Dan even wachten en opnieuw (eerst raakten knoppen zo kwijt) */
       if (!rx || (t === 'STAT?' && logBuf != null)) return;
-      if (bezig) { if ((poging || 0) < 12) setTimeout(function () { klein(t, (poging || 0) + 1); }, 250); else lg('scherm: kon niet versturen: ' + t); return; }
+      if (bezig) { if ((poging || 0) < 80) setTimeout(function () { klein(t, (poging || 0) + 1); }, 250); else lg('scherm: kon niet versturen: ' + t); return; }
       bezig = true; stuurTekst(t).catch(function () {}).then(function () { bezig = false; });
     }
     function persStuur() {
@@ -7468,7 +7471,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (schS.t) d.push('chip ' + schS.t + ' °C');
       if (schS.fr) { d.push('vriendschap ' + schS.fr); window.__schVriend = +schS.fr; }
       if (schS.upd && +schS.upd > v) { d.push('✨ Update v' + schS.upd + ' staat klaar'); var bi = $('schInstall'); if (bi) { bi.hidden = false; bi.textContent = '✨ Installeer v' + schS.upd + ' (Buddy+ herstart even)'; } }
-      if (schS.au) { var au = schS.au.split('/'); d.push('geluid ' + (au[0] === 'ok' ? 'werkt' : au[0] === 'bezig' ? 'speelt' : 'FOUT (' + au[0] + ')') + ', volume ' + au[1] + '%, ' + au[2] + ' geluidjes gespeeld'); lg('scherm geluid: ' + schS.au); }
+      if (schS.au) { var au = schS.au.split('/'); d.push('geluid ' + (au[0] === 'ok' ? 'werkt' : au[0] === 'bezig' ? 'speelt' : 'FOUT (' + au[0] + ')') + ', volume ' + au[1] + '%, ' + au[2] + ' geluidjes gespeeld'); if (schS.au !== schStatZet.au) { schStatZet.au = schS.au; lg('scherm geluid: ' + schS.au); } }
       $('schStat').textContent = d.join(' · ');
     }
     [['bpTrip', 'DOE:trip', '🌈 Buddy+ gaat op kleurtrip!'], ['bpSpiraal', 'DOE:spiraal', '🌀 Kijk Buddy+ diep in de ogen…'], ['bpTunnel', 'DOE:tunnel', '🚇 Buddy+ rijdt een tunnel in.'], ['bpRotonde', 'DOE:rotonde', '🔄 Wieee, de rotonde!'], ['bpPiep', 'DOE:piep', '🔊 Buddy+ piept. Kijk hieronder bij Gezondheid wat hij over zijn geluid zegt.'], ['bpSprint', 'DOE:sprint', '🚀 Buddy+ laat de volgende sprint-show zien.'], ['bpKoekje', 'DOE:koekje', '🍪 Nom nom! Buddy+ eet zijn koekje.'], ['bpFocus', 'DOE:focus', '🤓 Buddy+ focust 25 minuten met je mee (nog eens tikken = stoppen).'], ['bpWeer', 'DOE:weer', '⛅ Buddy+ laat het weer zien (als hij wifi heeft).'], ['bpZwaai', 'DOE:zwaai', '👋 Buddy+ zwaait!']].forEach(function (k) {
@@ -8817,8 +8820,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var a = tt > 6.3 ? Math.max(0, (7 - tt) / .7) : 1, i; ctx.save(); ctx.globalAlpha = a;
       ctx.fillStyle = '#20242c'; ctx.fillRect(0, 140, 240, 100); ctx.strokeStyle = '#ffd60a'; ctx.lineWidth = 3; ctx.setLineDash([16, 14]); ctx.lineDashOffset = -tt * 500; ctx.beginPath(); ctx.moveTo(0, 196); ctx.lineTo(240, 196); ctx.stroke(); ctx.setLineDash([]);
       var x = tt < 1.4 ? -60 + tt * 130 : tt < 4.6 ? 122 + Math.sin(tt * 40) * 2 : 122 + (tt - 4.6) * 260, y = 150;
-      if (tt > 1 && tt < 5.2 && Math.random() < .9) g.rook.push({ x: x - 34, y: y + 22, r: 6, l: 0, vx: -60 - Math.random() * 60, vy: -10 - Math.random() * 20 });
-      g.rook = g.rook.filter(function (r) { r.l += 1 / 60; r.x += r.vx / 60; r.y += r.vy / 60; r.r += .3; return r.l < 1.2; }); if (g.rook.length > 40) g.rook = g.rook.slice(-40);
+      if (!g.rook) g.rook = []; if (tt > 1 && tt < 5.2 && Math.random() < .9) g.rook.push({ x: x - 34, y: y + 22, r: 6, l: 0, vx: -60 - Math.random() * 60, vy: -10 - Math.random() * 20 });
+      if (!g.rook) return; g.rook = g.rook.filter(function (r) { r.l += 1 / 60; r.x += r.vx / 60; r.y += r.vy / 60; r.r += .3; return r.l < 1.2; }); if (g.rook.length > 40) g.rook = g.rook.slice(-40);
       g.rook.forEach(function (r) { ctx.fillStyle = 'rgba(200,200,210,' + (.28 * (1 - r.l / 1.2)) + ')'; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, TAU); ctx.fill(); });
       ctx.save(); ctx.translate(x, y); ctx.rotate(tt < 4.6 && tt > 1.4 ? -.05 : 0);
       ctx.fillStyle = '#ff453a'; rr(-40, -6, 80, 26, 10); ctx.fill(); ctx.fillStyle = SCREEN; ctx.strokeStyle = EYE; ctx.lineWidth = 2.5; rr(-22, -28, 44, 26, 10); ctx.fill(); ctx.stroke();
@@ -8833,7 +8836,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     upd: function (g, tt) {
       if (!g.sp) { g.sp = 1; g.cf = []; var n = synthMaak(); if (n) { [[392, 0], [523, .18], [659, .36], [784, .54], [659, .9], [784, 1.08]].forEach(function (x) { n(x[0], x[1], .3, 'square', .04); }); n(1047, 1.3, 1.4, 'triangle', .06); n(523, 1.3, 1.4, 'triangle', .05); n(2400, 2.4, .25, 'sine', .04, 600); } }
       if (tt > 2.4 && tt < 6) for (var i = 0; i < 3; i++) g.cf.push({ x: 120 + (Math.random() - .5) * 200, y: -10, vy: 40 + Math.random() * 60, vx: (Math.random() - .5) * 30, kl: ['#ff453a', '#ffd60a', '#30d158', '#0a84ff', '#bf5af2'][Math.floor(Math.random() * 5)], r: Math.random() * TAU });
-      g.cf = g.cf.filter(function (c) { c.y += c.vy / 60; c.x += c.vx / 60; c.r += .2; return c.y < 250; });
+      if (!g.cf) g.cf = []; g.cf = g.cf.filter(function (c) { c.y += c.vy / 60; c.x += c.vx / 60; c.r += .2; return c.y < 250; });
       g.msg = tt < 2.4 ? 'En de winnaar is…' : tt < 5 ? 'IK! ' + (S.flagMsg || '') : 'Dank u, dank u.';
     },
     draw: function (g, tt) {
@@ -8848,7 +8851,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       ctx.beginPath(); ctx.arc(0, 8, 7, 0, Math.PI); ctx.fill();
       if (tt > 2.4) { ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.moveTo(-20, -24); ctx.lineTo(-14, -40); ctx.lineTo(-6, -30); ctx.lineTo(0, -44); ctx.lineTo(6, -30); ctx.lineTo(14, -40); ctx.lineTo(20, -24); ctx.fill(); }
       ctx.restore();
-      g.cf.forEach(function (c) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.r); ctx.fillStyle = c.kl; ctx.fillRect(-3, -1.5, 6, 3); ctx.restore(); });
+      (g.cf || []).forEach(function (c) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.r); ctx.fillStyle = c.kl; ctx.fillRect(-3, -1.5, 6, 3); ctx.restore(); });
       if (tt > 2.4 && S.flagMsg) { ctx.fillStyle = '#fff'; ctx.font = '700 16px "Chakra Petch", sans-serif'; ctx.fillText('0→100  ' + S.flagMsg, 120, 40); }
       ctx.restore();
     } };
@@ -9386,7 +9389,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   /* v110: autostand met een 3D-kaart en je auto (gratis kaart van OpenFreeMap, MapLibre) */
   (function () {
     var KEY = 'dashboardmaatje-rijkaart-v1', st = { aan: true, auto: 0, kijk: 0 };   /* v114: kijk 0 = 3D achter de auto, 1 = bovenaf, 2 = eerste persoon */
-    try { var s0 = JSON.parse(localStorage.getItem(KEY)); if (s0) { st.aan = s0.aan !== false; st.auto = +s0.auto || 0; st.kijk = +s0.kijk || (s0.noord ? 1 : 0); } } catch (e) {}
+    try { var s0 = JSON.parse(localStorage.getItem(KEY)); if (s0) { st.aan = s0.aan !== false; st.auto = +s0.auto || 0; st.kijk = +s0.kijk || (s0.noord ? 1 : 0); st.sat = !!s0.sat; } } catch (e) {}
     function bewaar() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
     var AUTOS = [   /* bovenaanzicht, neus naar boven */
       { n: 'Model Y wit', k: '#f2f2f2', r: '#2b3440', vorm: 'suv' }, { n: 'Model Y zwart', k: '#1c1f24', r: '#56606b', vorm: 'suv' },
@@ -9417,7 +9420,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         var p = lastPos || { lat: 52.1, lon: 5.1 };
         map = new maplibregl.Map({ container: 'rijMap', style: 'https://tiles.openfreemap.org/styles/liberty', center: [p.lon, p.lat], zoom: 17, pitch: 62, bearing: 0, maxPitch: 85, attributionControl: { compact: true }, interactive: true, doubleClickZoom: false });
         volgInstellen();
-        map.on('load', function () {
+        map.on('load', function () { setTimeout(function () { try { window.__satZet(); } catch (e) {} }, 300);
           melding(lastPos ? '' : 'Zet de GPS aan (Start), dan rijdt je auto mee.');
           try {   /* gebouwen in 3D */
             var heeft = map.getStyle().layers.some(function (l) { return l.type === 'fill-extrusion'; });
@@ -9541,6 +9544,17 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     $('carKaartKnop').addEventListener('click', function () { st.aan = !st.aan; bewaar(); toon(); });
     $('rijAutoKnop').addEventListener('click', function () { st.auto = (st.auto + 1) % AUTOS.length; bewaar(); if (mkEl) mkEl.innerHTML = autoSvg(AUTOS[st.auto]); toast('🚗 ' + AUTOS[st.auto].n); });
     function fpKnop() { $('rijFpKnop').classList.toggle('aan', st.kijk === 2); }
+    function satZet() {   /* v127: luchtfoto's (PDOK, heel Nederland, scherp) onder de wegen, 3D-gebouwen erbovenop */
+      $('rijSatKnop').classList.toggle('aan', !!st.sat); if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return;
+      if (st.sat && !map.getLayer('lucht')) {
+        if (!map.getSource('lucht')) map.addSource('lucht', { type: 'raster', tiles: ['https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg'], tileSize: 256, maxzoom: 19, attribution: 'Luchtfoto © PDOK' });
+        var voor = null; map.getStyle().layers.some(function (l) { if (l.type === 'line' || l.type === 'symbol' || l.type === 'fill-extrusion') { voor = l.id; return true; } return false; });
+        map.addLayer({ id: 'lucht', type: 'raster', source: 'lucht', paint: { 'raster-opacity': 1, 'raster-saturation': -.1 } }, voor || undefined);
+        map.getStyle().layers.forEach(function (l) { if (l.type === 'fill-extrusion') try { map.setPaintProperty(l.id, 'fill-extrusion-opacity', .55); } catch (e) {} });
+      } else if (!st.sat && map.getLayer('lucht')) { map.removeLayer('lucht'); map.getStyle().layers.forEach(function (l) { if (l.type === 'fill-extrusion') try { map.setPaintProperty(l.id, 'fill-extrusion-opacity', .8); } catch (e) {} }); }
+    }
+    window.__satZet = satZet;
+    $('rijSatKnop').addEventListener('click', function () { st.sat = !st.sat; bewaar(); satZet(); toast(st.sat ? '🛰️ Luchtfoto aan' : '🗺️ Gewone kaart'); });
     $('rijNoordKnop').addEventListener('click', function () { st.kijk = st.kijk === 0 ? 1 : 0; bewaar(); toast(['🧭 3D, achter de auto', '🧭 Van bovenaf, noorden boven'][st.kijk]); fpKnop(); zetPadding(); volgZet(true); });   /* v120: kompas wisselt alleen 3D/bovenaf */
     $('rijFpKnop').addEventListener('click', function () { if (st.kijk === 2) { st.kijk = st.vorigeKijk || 0; toast('🎮 Eerste persoon uit'); } else { st.vorigeKijk = st.kijk; st.kijk = 2; toast('🎮 Eerste persoon: jij achter het stuur!'); } bewaar(); fpKnop(); zetPadding(); volgZet(true); });
     setTimeout(fpKnop, 0);
