@@ -37,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 80;
+static const int FW_VERSIE = 81;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -1157,7 +1157,9 @@ static volatile bool bleConnected = false;
 static char bleBuf[256]; static size_t bleLen = 0;
 // v76: route van de app (voor de kaart op Buddy+). Twee vaste buffers in PSRAM, nooit vrijgeven (tekenen en ontvangen lopen tegelijk)
 static const int RT_MAX = 1200; static float *rtA = nullptr, *rtB = nullptr, *rtPt = nullptr; static volatile int rtN = 0; static int rtNieuwN = 0; static bool rtBezig = false;
-static uint8_t kaartStand = 0; static uint32_t kaartGezichtTot = 0, kaartOvergangT = 0; static bool kaartVorige = false;   // v77: twee handjes trekken het gezicht opzij   // 0 = gezicht, 1 = kaart; na tikken naar het gezicht even geen automatische kaart
+static uint8_t kaartStand = 0; static uint32_t kaartGezichtTot = 0, kaartOvergangT = 0, kaartSluitT = 0; static bool kaartVorige = false;
+static uint8_t *rtFile = nullptr;   // v81: 1 = dit stukje route ligt in een file (rood)
+struct AppCam { float lat, lon; int16_t lim; uint8_t type; }; static AppCam *acA = nullptr, *acB = nullptr, *appCams = nullptr; static volatile int appCamN = 0; static int acNieuwN = 0; static bool acBezig = false;   // v81: flitsers van de app   // v77: twee handjes trekken het gezicht opzij   // 0 = gezicht, 1 = kaart; na tikken naar het gezicht even geen automatische kaart
 // v72: eigen geluidje voor de sterren-show (komt van de app, bewaard in /sterren.raw: 8 kHz, 8 bit, max 7,5 s)
 static uint8_t *sterBuf = nullptr; static uint32_t sterLen = 0; static uint8_t *sndNieuw = nullptr; static uint32_t sndNieuwLen = 0, sndOntv = 0; static volatile uint8_t sndAntw = 0;
 static const uint32_t STER_MAX = 60000;
@@ -1178,8 +1180,18 @@ static void parsePhone(char *line) {
     float *doel = (rtPt == rtA) ? rtB : rtA;
     if (a[0] == 'B') { rtNieuwN = 0; rtBezig = true; }
     else if (a[0] == 'P' && rtBezig) { const char *q = a + 2; while (*q && rtNieuwN < RT_MAX) { char *e; float la = strtof(q, &e); if (*e != ',') break; float lo = strtof(e + 1, &e); doel[rtNieuwN * 2] = la; doel[rtNieuwN * 2 + 1] = lo; rtNieuwN++; if (*e == ';') q = e + 1; else break; } }
-    else if (a[0] == 'E' && rtBezig) { rtBezig = false; if (rtNieuwN >= 2) { rtPt = doel; rtN = rtNieuwN; kaartStand = 1; logRegel("route ontvangen: %d punten", rtNieuwN); } }
+    else if (a[0] == 'E' && rtBezig) { rtBezig = false; if (rtNieuwN >= 2) { rtPt = doel; rtN = rtNieuwN; if (rtFile) memset(rtFile, 0, RT_MAX); logRegel("route ontvangen: %d punten", rtNieuwN); } }
     else if (a[0] == 'X') { rtN = 0; rtBezig = false; kaartStand = 0; logRegel("route gestopt"); }
+    else if (a[0] == 'F') { if (!rtFile) rtFile = (uint8_t *)ps_malloc(RT_MAX); if (rtFile) { memset(rtFile, 0, RT_MAX); const char *q = a + 2; int nf = 0;   // v81: file-stukken
+        while (*q) { char *e; long x = strtol(q, &e, 10); if (*e != '-') break; long y = strtol(e + 1, &e, 10); for (long k = x; k <= y && k < RT_MAX; k++) if (k >= 0) rtFile[k] = 1; nf++; if (*e == ';') q = e + 1; else break; }
+        if (nf) logRegel("route: %d stukken met file", nf); } }
+    return; }
+  if (pinOk && !strncmp(line, "FL:", 3)) {   // v81: flitsers om je heen van de app (B, P = lat,lon,lim,type;..., E)
+    if (!acA) { acA = (AppCam *)ps_malloc(320 * sizeof(AppCam)); acB = (AppCam *)ps_malloc(320 * sizeof(AppCam)); } if (!acA || !acB) return;
+    AppCam *doel = (appCams == acA) ? acB : acA; const char *a = line + 3;
+    if (a[0] == 'B') { acNieuwN = 0; acBezig = true; }
+    else if (a[0] == 'P' && acBezig) { const char *q = a + 2; while (*q && acNieuwN < 320) { char *e; AppCam c; c.lat = strtof(q, &e); if (*e != ',') break; c.lon = strtof(e + 1, &e); if (*e != ',') break; c.lim = (int16_t)strtol(e + 1, &e, 10); if (*e != ',') break; c.type = (uint8_t)strtol(e + 1, &e, 10); doel[acNieuwN++] = c; if (*e == ';') q = e + 1; else break; } }
+    else if (a[0] == 'E' && acBezig) { acBezig = false; appCams = doel; appCamN = acNieuwN; logRegel("flitsers van de app: %d", acNieuwN); }
     return; }
   if (pinOk && !strncmp(line, "SND:", 4)) {   // v72: eigen geluidje binnenhalen (B = begin, D = stukje, E = klaar, WEG = wissen)
     const char *a = line + 4;
@@ -2377,6 +2389,10 @@ static void persStap(float dt) {
   }
   if (!gegroet && nu > groetVanaf && gagAct < 0 && !menuOpen && !venster && (klokOk() || nu > groetVanaf + 12000)) doeGroet();
   if (otaInstalleer) { otaInstalleer = false; installeerOta(); }   // v68
+  { static uint32_t fileShowT = 0; static int finishRoute = -1; uint32_t nu2 = millis();   // v81: file-slakje en finishvlag
+    if ((int32_t)(showTot - nu2) <= 0 && gagAct < 0 && phoneFresh()) {
+      if (phone.fileD >= 0 && phone.fileD < 150 && spdNow() < 15 && (!fileShowT || nu2 - fileShowT > 600000UL)) { fileShowT = nu2; showSoort = 11; showStart = nu2; showTot = nu2 + 4000; playGeluid(GL_SLAAP); logRegel("show: file-slakje"); }
+      else if (phone.nav == 'A' && phone.navD >= 0 && phone.navD < 40 && rtN && finishRoute != rtN) { finishRoute = rtN; showSoort = 12; showStart = nu2; showTot = nu2 + 4500; playGeluid(GL_TADA); logRegel("show: aangekomen"); } } }
   if (evtSoort && gagAct < 0 && (int32_t)(showTot - millis()) <= 0) { char s = evtSoort; evtSoort = 0; laatsteActie = millis(); slaapt = false;   // v69: groepsgebeurtenis
     if (s == 'g' || s == 'c') { gooiKoe = s == 'c'; showSoort = 10; showStart = millis(); showTot = millis() + 3200; playGeluid(GL_OEPS); logRegel("gebaar: gooien"); }   // v79: flitspaal naar het scherm
     else if (s == 'v' || s == 'd' || s == 'k') { handGebaar = s; showSoort = 9; showStart = millis(); showTot = millis() + 2600; playGeluid(s == 'v' ? GL_OEPS : s == 'k' ? GL_GIECHEL : GL_TADA); logRegel("gebaar: %c", s); }   // v77: handje uit de app
@@ -2571,10 +2587,10 @@ static void drawShow() {
     float cx = 120, cy = 120 - 30 * (1 - k) + glij, ca = cosf(rot), sa = sinf(rot);
     auto P = [&](float x, float y, float &ox, float &oy) { ox = cx + (x * ca - y * sa) * sc; oy = cy + (x * sa + y * ca) * sc; };
     float ax, ay, bx, by, qx, qy, dx2, dy2;   // kastje (16x14) op een paal
-    P(-2, 6, ax, ay); P(2, 6, bx, by); P(2, 26, qx, qy); P(-2, 26, dx2, dy2); triF(ax, ay, bx, by, qx, qy, 0x8C51); triF(ax, ay, qx, qy, dx2, dy2, 0x8C51);
-    P(-8, -8, ax, ay); P(8, -8, bx, by); P(8, 7, qx, qy); P(-8, 7, dx2, dy2); triF(ax, ay, bx, by, qx, qy, 0xD69A); triF(ax, ay, qx, qy, dx2, dy2, 0xD69A);
+    if (!gooiKoe) { P(-2, 6, ax, ay); P(2, 6, bx, by); P(2, 26, qx, qy); P(-2, 26, dx2, dy2); triF(ax, ay, bx, by, qx, qy, 0x8C51); triF(ax, ay, qx, qy, dx2, dy2, 0x8C51); }   // v81: koe zonder paal
+    if (!gooiKoe) { P(-8, -8, ax, ay); P(8, -8, bx, by); P(8, 7, qx, qy); P(-8, 7, dx2, dy2); triF(ax, ay, bx, by, qx, qy, 0xD69A); triF(ax, ay, qx, qy, dx2, dy2, 0xD69A);
     P(-8, -8, ax, ay); P(8, -8, bx, by); P(8, -4, qx, qy); P(-8, -4, dx2, dy2); triF(ax, ay, bx, by, qx, qy, 0xFE00); triF(ax, ay, qx, qy, dx2, dy2, 0xFE00);
-    float lx, ly; P(0, 1.5f, lx, ly); circle(lx, ly, 3.2f * sc, 0x2104);
+    float lx, ly; P(0, 1.5f, lx, ly); circle(lx, ly, 3.2f * sc, 0x2104); }
     if (gooiKoe) {   // v80: koe over de paal heen (lijf, vlekken, kop met roze snuit, pootjes)
       float x1, y1; P(0, 0, x1, y1); circle(x1, y1, 12 * sc, 0xFFFF); P(-5, -3, x1, y1); circle(x1, y1, 3.5f * sc, 0x0000); P(5, 4, x1, y1); circle(x1, y1, 3 * sc, 0x0000);
       P(13, -4, x1, y1); circle(x1, y1, 6 * sc, 0xFFFF); P(16, -2, x1, y1); circle(x1, y1, 3 * sc, 0xFC18); P(12, -7, x1, y1); circle(x1, y1, 1 * sc, 0x0000);
@@ -2585,6 +2601,16 @@ static void drawShow() {
       for (int i = 0; i < 6; i++) { float a1 = i * 1.047f, a2 = a1 + 1.047f; dikLijn(120 + cosf(a1) * 26, 120 + sinf(a1) * 26, 120 + cosf(a2) * 26, 120 + sinf(a2) * 26, 1.4f, 0xFFFF); }
       if (tt < 1.6f) showTekst(gooiKoe ? "BOEEE!" : "BAM!", 120, 46, 4, gooiKoe ? 0xFFFF : 0xF800);
     }
+  } else if (showSoort == 11) {   // v81: file: een slakje kruipt over het scherm, Buddy zucht
+    showRect(0, 150, 240, 90, 0x2104); for (int i = 0; i < 9; i++) showRect(i * 30 - fmodf(tt * 6, 30), 194, 16, 3, 0xFEA0);
+    float sx = 250 - tt * 55; circle(sx, 168, 16, 0xC3A8); circle(sx, 168, 11, 0xE5AC); circle(sx, 168, 5, 0xC3A8);   // huisje
+    roundRect(sx - 26, 176, 40, 10, 5, 0x9CD3); dikLijn(sx - 22, 177, sx - 28, 160, 2, 0x9CD3); dikLijn(sx - 18, 177, sx - 20, 160, 2, 0x9CD3); circle(sx - 28, 159, 2.5f, 0x0000); circle(sx - 20, 159, 2.5f, 0x0000);
+    miniBuddy(120, 92, .7f, false, 0); showTekst(tt < 2 ? "FILE..." : "ZUCHT", 120, 30, 3, 0xFEA0);
+  } else if (showSoort == 12) {   // v81: aangekomen: wapperende finishvlag en confetti
+    for (int r = 0; r < 4; r++) for (int c = 0; c < 6; c++) { float x = 70 + c * 18, y = 60 + r * 16 + sinf(tt * 6 + c * .8f) * 6; showRect(x, y, 18, 16, ((r + c) % 2) ? 0xFFFF : 0x0000); }
+    dikLijn(70, 50, 70, 200, 4, 0xC618);
+    for (int i = 0; i < 30; i++) { static const uint16_t CK[5] = {0xF8A6, 0xFEA0, 0x35E6, 0x1C9F, 0xBADF}; float cx = fmodf(i * 53.7f, 220) + 10, cy = fmodf(i * 31 + tt * (50 + i % 5 * 15), 240); showRect(cx, cy, 5, 3, CK[i % 5]); }
+    showTekst("AANGEKOMEN!", 120, 212, 2, 0xFFE0);
   } else if (showSoort == 9) {   // v77: handje omhoog (middelvinger of duim)
     float op = tt < .35f ? 1 - tt / .35f : tt > 2.2f ? (tt - 2.2f) / .4f : 0, dy = op * 150 + sinf(tt * 18) * (tt > .35f && tt < 2.2f ? 1.5f : 0);
     const uint16_t HUID = 0xFE8F, RAND = 0xC3A8;
@@ -2645,12 +2671,28 @@ static void drawMeter() {
 static bool kaartNu() {
   if (!rtN || !rtPt || !gpsFix) return false;
   if (kaartStand) return true;
-  return (int32_t)(kaartGezichtTot - millis()) <= 0 && phoneFresh() && phone.nav && phone.navD > 0 && phone.navD < 250;   // vlak voor een afslag even de kaart
+  return (int32_t)(kaartGezichtTot - millis()) <= 0 && phoneFresh() && phone.nav && strchr("LRlrOUA", phone.nav) && phone.navD > 0 && phone.navD < 150;   // v81: alleen bij echte afslagen, vlak ervoor
+}
+static void kaartGordijn(float open, float hg) {   // v81: gezicht als gordijn met twee handjes (open = hoe ver uit elkaar)
+  const uint16_t HUID = 0xFE8F, RAND = 0xC3A8;
+  showRect(0, 0, 120 - open, 240, BG); showRect(120 + open, 0, 120 - open + 1, 240, BG);
+  if (120 - open > 60) { roundRect(73 - open - 13, 86, 26, 40, 13, EYE); } if (120 + open < 180) { roundRect(167 + open - 13, 86, 26, 40, 13, EYE); }
+  for (int k = -1; k <= 1; k += 2) { float x = 120 + k * (open + 4), y = 128; float w = 30 * hg, h = 46 * hg; if (hg < .05f) continue;
+    roundRect(x - w / 2 + k * 6, y - h / 2, w, h, 12 * hg, RAND); roundRect(x - w / 2 + k * 6 + 2, y - h / 2 + 2, w - 4, h - 4, 10 * hg, HUID);
+    for (int f = 0; f < 3; f++) roundRect(x - k * 12 * hg - 6, y - h / 2 + 6 + f * 12 * hg, 14 * hg, 9 * hg, 4 * hg, HUID); }
 }
 static void drawKaart() {
   boxAdd(0, 0, 240, 240); circle(120, 120, 119, 0x0861);
   const float CX = 120, CY = 152; float lat = gpsLat, lon = gpsLon, hd = gpsKoers * 0.0174533f;
-  float kx = 111320.f * cosf(lat * 0.0174533f), ky = 110540.f, ch = cosf(hd), sh = sinf(hd), v = spdNow();
+  float kx = 111320.f * cosf(lat * 0.0174533f), ky = 110540.f, v = spdNow();
+  if (rtN >= 2 && rtPt) {   // v81: auto op de route plakken (binnen 30 m), richting van de weg
+    float best = 1e9, bl = lat, bo = lon, bh = hd; for (int k = 0; k + 1 < rtN; k++) {
+      float ax = (rtPt[k * 2 + 1] - lon) * kx, ay = (rtPt[k * 2] - lat) * ky, bx = (rtPt[k * 2 + 3] - lon) * kx, by = (rtPt[k * 2 + 2] - lat) * ky;
+      if (fabsf(ax) > 800 && fabsf(bx) > 800) continue; if (fabsf(ay) > 800 && fabsf(by) > 800) continue;
+      float dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy, t = l2 > 0 ? fmaxf(0, fminf(1, -(ax * dx + ay * dy) / l2)) : 0, px = ax + dx * t, py = ay + dy * t, d = sqrtf(px * px + py * py);
+      if (d < best) { best = d; bl = lat + py / ky; bo = lon + px / kx; bh = atan2f(dx, dy); } }
+    if (best < 30) { lat = bl; lon = bo; if (v > 3) hd = bh; } }
+  float ch = cosf(hd), sh = sinf(hd);
   bool dichtbij = phoneFresh() && phone.nav && phone.navD > 0 && phone.navD < 250;
   float mpp = dichtbij ? 1.8f : v > 85 ? 6.f : v > 45 ? 4.f : 2.8f;   // meters per beeldpuntje: harder rijden = verder vooruit kijken
   auto proj = [&](float la, float lo, float &x, float &y) { float dx = (lo - lon) * kx, dy = (la - lat) * ky; x = CX + (dx * ch - dy * sh) / mpp; y = CY - (dx * sh + dy * ch) / mpp; };
@@ -2665,10 +2707,12 @@ static void drawKaart() {
   { float px = 0, py = 0; bool pv = false; const float *r = rtPt; int n = rtN;   // de route
     for (int pass = 0; pass < 2; pass++) { pv = false;
       for (int k = 0; k < n; k++) { float la = r[k * 2], lo = r[k * 2 + 1]; if (fabsf(la - lat) > dla * 1.3f || fabsf(lo - lon) > dlo * 1.3f) { pv = false; continue; }
-        float x, y; proj(la, lo, x, y); if (pv) dikLijn(px, py, x, y, pass ? 4.5f : 7.5f, pass ? 0x3D7F : 0x0A4E); px = x; py = y; pv = true; } } }
+        float x, y; proj(la, lo, x, y); bool rood = rtFile && k > 0 && rtFile[k - 1] && rtFile[k]; if (pv) dikLijn(px, py, x, y, pass ? 4.5f : 7.5f, pass ? (rood ? 0xF800 : 0x3D7F) : (rood ? 0x7800 : 0x0A4E)); px = x; py = y; pv = true; } } }
   for (int pass = 0; pass < 2; pass++) { const NetCam *cs = pass ? extraCams : netCams; int n = pass ? extraCamN : netCamN; if (!cs) continue;   // flitsers
     for (int i = 0; i < n; i++) { if (fabsf(cs[i].lat - lat) > dla || fabsf(cs[i].lon - lon) > dlo) continue; float x, y; proj(cs[i].lat, cs[i].lon, x, y); if (!binnen(x, y)) continue;
       circle(x, y, 5.5f, 0xFFFF); circle(x, y, 4, cs[i].type == 3 ? 0xFD20 : 0xF800); } }
+  if (appCams) for (int i = 0; i < appCamN; i++) { const AppCam &c = appCams[i]; if (fabsf(c.lat - lat) > dla || fabsf(c.lon - lon) > dlo) continue; float x, y; proj(c.lat, c.lon, x, y); if (!binnen(x, y)) continue;   // v81: flitsers van de app
+    circle(x, y, 6, 0xFFFF); circle(x, y, 4.5f, c.type == 3 ? 0xFD20 : c.type == 2 ? 0x041F : 0xF800); }
   triF(CX, CY - 12, CX - 9, CY + 9, CX + 9, CY + 9, 0xFFFF); triF(CX, CY - 7, CX - 5, CY + 6, CX + 5, CY + 6, 0x3D7F);   // jouw auto
   circle(120, 36, 27, 0x0000); circle(120, 36, 27, 0x2945); circle(120, 36, 25, 0x0000); miniBuddy(120, 38, .4f, false, 0);   // Buddy klein bovenin
   char sp[8]; snprintf(sp, sizeof sp, "%d", (int)lroundf(v)); segTekst(sp, 200, 120, 18, EYE);   // snelheid rechts
@@ -2681,16 +2725,8 @@ static void drawKaart() {
     else { float rd = a * .0174533f, dx = sinf(rd), dy = -cosf(rd); dikLijn(cx - dx * 6, cy - dy * 6, cx + dx * 4, cy + dy * 4, 3, c); triF(cx + dx * 10, cy + dy * 10, cx + dx * 3 - dy * 6, cy + dy * 3 + dx * 6, cx + dx * 3 + dy * 6, cy + dy * 3 - dx * 6, c); }
     char nd[16]; if (phone.navD >= 950) snprintf(nd, sizeof nd, "%d,%dkm", phone.navD / 1000, (phone.navD % 1000) / 100); else snprintf(nd, sizeof nd, "%dm", (phone.navD / 10) * 10);
     frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(100), Y(203)); frame->print(nd); }
-  uint32_t ov = millis() - kaartOvergangT;   // v77: de overgang: Buddy's gezicht als gordijn, twee handjes trekken het open
-  if (kaartOvergangT && ov < 1500) {
-    float t = ov / 1500.f, open = t < .3f ? 0 : powf((t - .3f) / .7f, 1.6f) * 135, hg = t < .3f ? t / .3f : 1;
-    const uint16_t HUID = 0xFE8F, RAND = 0xC3A8;
-    showRect(0, 0, 120 - open, 240, BG); showRect(120 + open, 0, 120 - open + 1, 240, BG);
-    if (120 - open > 60) { roundRect(73 - open - 13, 86, 26, 40, 13, EYE); } if (120 + open < 180) { roundRect(167 + open - 13, 86, 26, 40, 13, EYE); }   // oogjes gaan mee
-    for (int k = -1; k <= 1; k += 2) { float x = 120 + k * (open + 4), y = 128; float w = 30 * hg, h = 46 * hg;   // handjes aan de randen
-      roundRect(x - w / 2 + k * 6, y - h / 2, w, h, 12 * hg, RAND); roundRect(x - w / 2 + k * 6 + 2, y - h / 2 + 2, w - 4, h - 4, 10 * hg, HUID);
-      for (int f = 0; f < 3; f++) roundRect(x - k * 12 * hg - 6, y - h / 2 + 6 + f * 12 * hg, 14 * hg, 9 * hg, 4 * hg, HUID); }
-  }
+  uint32_t ov = millis() - kaartOvergangT;   // v77: overgang: twee handjes trekken het gezicht open
+  if (kaartOvergangT && ov < 1500) { float t = ov / 1500.f; kaartGordijn(t < .3f ? 0 : powf((t - .3f) / .7f, 1.6f) * 135, t < .3f ? t / .3f : 1); }
 }
 void drawFace(){
  // v15: alleen wissen wat er vorige keer getekend is, in plaats van het hele scherm
@@ -2707,7 +2743,8 @@ void drawFace(){
    frame->setTextColor(0xFFFF); frame->setTextSize(4); frame->setCursor(X(120) - 60, Y(120) - 16); frame->print("HIER!"); return; }
  if ((int32_t)(showTot - millis()) > 0 && (int32_t)(flagTot - millis()) <= 0) { drawShow(); return; }   // v56: sprint-show
  if ((int32_t)(meterTot - millis()) > 0 && (int32_t)(flagTot - millis()) <= 0) { drawMeter(); return; }
- { bool kn = kaartNu(); if (kn && !kaartVorige) kaartOvergangT = millis(); kaartVorige = kn; }
+ { bool kn = kaartNu(); if (kn && !kaartVorige) kaartOvergangT = millis(); if (!kn && kaartVorige && gpsFix) kaartSluitT = millis(); kaartVorige = kn; }
+ if (kaartSluitT && millis() - kaartSluitT < 1200) { float t = (millis() - kaartSluitT) / 1200.f; kaartOvergangT = 0; drawKaart(); kaartGordijn(t < .7f ? (1 - powf(t / .7f, .7f)) * 135 : 0, t < .7f ? 1 : 1 - (t - .7f) / .3f); return; }   // v81: gordijn dicht, terug naar het gezicht
  if (kaartNu()) { drawKaart(); return; }   // v76: kaart met route   // v52: de 0-100-vlag gaat voor   // v40: retro meter bij flink optrekken
  if (rtN && !(phoneFresh() && phone.nav)) { boxAdd(84, 6, 156, 32); roundRect(86, 8, 68, 22, 11, 0x0A4E); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(13)); frame->print("KAART"); }   // v76: tik hier voor de kaart
  if (wxVers() && !slaapt) {   // v46: echt regen- of sneeuwweer -> druppels of vlokjes achter het gezicht
@@ -3416,7 +3453,7 @@ void loop(){
        { static uint32_t losShowT = 0; if (meterStart == nu && !showNa && random(4) == 0 && (!losShowT || nu - losShowT > 600000UL)) { losShowT = nu; showSoort = SHOWRIJ[sprintI % 6]; showNa = nu + 6500; sprintI++; buddyPrefs.putUChar("spri", sprintI); } }   // v57: af en toe ook na gewoon flink optrekken
      }
      if (showNa && (int32_t)(nu - showNa) >= 0) {   // v56: na de vlag de sprint-show
-       static const uint16_t DUUR[11] = {0, 9500, 7000, 7500, 8000, 6000, 5000, 7000, 7000, 2600, 3200};
+       static const uint16_t DUUR[13] = {0, 9500, 7000, 7500, 8000, 6000, 5000, 7000, 7000, 2600, 3200, 4000, 4500};
        showNa = 0; showStart = nu; showTot = nu + DUUR[showSoort]; if (showSoort == 1) speelSter(); else playGeluid(showSoort == 5 ? GL_VROEM : showSoort == 6 ? GL_GIECHEL : showSoort >= 7 ? GL_TRIP : GL_RUIMTE + showSoort - 1); logRegel("sprint-show %d", (int)showSoort);
      }
      float doel = vn; naaldV += ((doel - naald) * 55.f - naaldV * 6.5f) * dt; naald += naaldV * dt;   // veer + demper: schiet door en trilt na

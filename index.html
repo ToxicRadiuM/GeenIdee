@@ -7465,7 +7465,23 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     };
     window.__sterWeg = function () { if (rx) klein('SND:WEG'); };
     /* v115: de route ook naar Buddy+ (die tekent zelf een kaartje). Punten om de ~25 m, max 1100 */
-    var rtVerstuurd = null, rtBezig = false;
+    var rtVerstuurd = null, rtBezig = false, rtIdx = [], rtFileVerz = '', flVerz = 0, flPlek = null;
+    function fileRanges() {   /* v128: welke stukken van de route liggen in een file (voor de rode lijn op Buddy+) */
+      var N = window.__nav && window.__nav.nu(), v = []; try { v = N && window.__fileVlaggen ? window.__fileVlaggen(N.geom, window.__verkeerItems ? window.__verkeerItems() : []) : (window.__routeFile || []); } catch (e) {} var r = [], a = -1; rtIdx.forEach(function (gi, k) { var f = !!v[gi]; if (f && a < 0) a = k; if (!f && a >= 0) { r.push(a + '-' + (k - 1)); a = -1; } }); if (a >= 0) r.push(a + '-' + (rtIdx.length - 1)); return r.join(';');
+    }
+    function extraNaarScherm() {   /* v128: files op de route en de flitsers om je heen naar Buddy+ */
+      if (!rx || rtBezig || bezig) return; var lijnen = [];
+      if (rtVerstuurd) { var fr = fileRanges(); if (fr !== rtFileVerz) { rtFileVerz = fr; lijnen.push('RT:F|' + fr); } }
+      if (lastPos && (Date.now() - flVerz > 120e3 || !flPlek || gdist(flPlek.lat, flPlek.lon, lastPos.lat, lastPos.lon) > 5000)) {
+        flVerz = Date.now(); flPlek = { lat: lastPos.lat, lon: lastPos.lon }; var cams = [];
+        try { ((typeof camCache !== 'undefined' && camCache && camCache.cams) || []).forEach(function (c) { if (gdist(lastPos.lat, lastPos.lon, c.lat, c.lon) < 15000) cams.push([c.lat, c.lon, c.limit || 0, 1]); }); } catch (e) {}
+        try { (typeof flMeldingen === 'function' ? flMeldingen() : []).forEach(function (m) { if (gdist(lastPos.lat, lastPos.lon, m.lat, m.lon) < 25000) cams.push([m.lat, m.lon, m.lim || 0, m.k === 'mobile' ? 3 : 2]); }); } catch (e) {}
+        try { (window.__mobItems ? window.__mobItems() : []).forEach(function (m) { if (isFinite(m.lat) && gdist(lastPos.lat, lastPos.lon, m.lat, m.lon) < 25000) cams.push([m.lat, m.lon, 0, 3]); }); } catch (e) {}
+        cams = cams.slice(0, 300); lijnen.push('FL:B'); for (var i = 0; i < cams.length; i += 7) lijnen.push('FL:P|' + cams.slice(i, i + 7).map(function (c) { return c[0].toFixed(5) + ',' + c[1].toFixed(5) + ',' + c[2] + ',' + c[3]; }).join(';')); lijnen.push('FL:E');
+      }
+      if (!lijnen.length) return; rtBezig = true; lijnenNaarScherm(lijnen).catch(function () {}).then(function () { rtBezig = false; });
+    }
+    setInterval(extraNaarScherm, 20000);
     function lijnenNaarScherm(lijnen) {
       function regel(t, k) { var d = new TextEncoder().encode(t + '\n'); if (!rx) return Promise.reject(new Error('weg')); return (rx.writeValueWithResponse ? rx.writeValueWithResponse(d) : stuurTekst(t)).catch(function (e) { if ((k || 0) >= 3) throw e; return new Promise(function (r) { setTimeout(r, 300); }).then(function () { return regel(t, (k || 0) + 1); }); }); }
       bezig = true; return lijnen.reduce(function (p, l) { return p.then(function () { return regel(l); }); }, Promise.resolve()).then(function () { bezig = false; }, function (e) { bezig = false; throw e; });
@@ -7474,13 +7490,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (!rx || rtBezig || !window.__nav) return; var N = window.__nav.nu(), sleutel = N ? N.t : 0;
       if (sleutel === rtVerstuurd) return;
       if (!N) { rtBezig = true; lijnenNaarScherm(['RT:X']).then(function () { rtVerstuurd = 0; }).catch(function () {}).then(function () { rtBezig = false; }); return; }
-      var g = N.geom || [], stap = 25, pts; do { pts = []; var l = null; g.forEach(function (q, i) { if (!l || i === g.length - 1 || gdist(l.lat, l.lon, q.lat, q.lon) >= stap) { pts.push(q); l = q; } }); stap *= 1.6; } while (pts.length > 1100);
+      var g = N.geom || [], stap = 25, pts; do { pts = []; rtIdx = []; var l = null; g.forEach(function (q, i) { if (!l || i === g.length - 1 || gdist(l.lat, l.lon, q.lat, q.lon) >= stap) { pts.push(q); rtIdx.push(i); l = q; } }); stap *= 1.6; } while (pts.length > 1100);
       var lijnen = ['RT:B|' + pts.length]; for (var i = 0; i < pts.length; i += 8) lijnen.push('RT:P|' + pts.slice(i, i + 8).map(function (q) { return q.lat.toFixed(5) + ',' + q.lon.toFixed(5); }).join(';')); lijnen.push('RT:E');
       rtBezig = true; lg('route naar Buddy+: ' + pts.length + ' punten');
-      lijnenNaarScherm(lijnen).then(function () { rtVerstuurd = sleutel; }).catch(function () {}).then(function () { rtBezig = false; });
+      lijnenNaarScherm(lijnen).then(function () { rtVerstuurd = sleutel; rtFileVerz = ''; }).catch(function () {}).then(function () { rtBezig = false; });
     }
     setInterval(routeNaarScherm, 3000);
-    window.__rtOpnieuw = function () { rtVerstuurd = null; };
+    window.__rtOpnieuw = function () { rtVerstuurd = null; flVerz = 0; rtFileVerz = ''; };
     function klein(t, poging) {   /* v90: is de verbinding net bezig? Dan even wachten en opnieuw (eerst raakten knoppen zo kwijt) */
       if (!rx || (t === 'STAT?' && logBuf != null)) return;
       if (bezig) { if ((poging || 0) < 80) setTimeout(function () { klein(t, (poging || 0) + 1); }, 250); else lg('scherm: kon niet versturen: ' + t); return; }
@@ -9502,6 +9518,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       return geom.map(function (g) { return f.some(function (it) { if (g.lat < it.b[0] - .0005 || g.lat > it.b[2] + .0005 || g.lon < it.b[1] - .0008 || g.lon > it.b[3] + .0008) return false;
         for (var k = 0; k < it.pts.length; k++) if (gdist(g.lat, g.lon, it.pts[k][0], it.pts[k][1]) < 45) return true; if (it.pts.length > 1) for (k = 0; k < it.pts.length - 1; k++) { var a = it.pts[k], c = it.pts[k + 1]; if (gdist(g.lat, g.lon, (a[0] + c[0]) / 2, (a[1] + c[1]) / 2) < 45) return true; } return false; }); });
     }
+    window.__fileVlaggen = fileVlaggen;
     function routeTeken() {
       var N = window.__nav && window.__nav.nu(); if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return;
       var vk = window.__verkeerItems ? window.__verkeerItems() : [], t = (N ? N.t : 0) + '|' + vk.length + '|' + Math.floor(Date.now() / 60000); if (t === routeT) return; routeT = t;
