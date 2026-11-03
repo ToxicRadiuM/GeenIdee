@@ -4684,7 +4684,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v131';
+  var VERSION = 'v132';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8831,6 +8831,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     return function (f, s, d, type, vol, f2) { var o = ac.createOscillator(), g = ac.createGain(); o.type = type || 'sawtooth'; o.frequency.setValueAtTime(f, t0 + s); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + s + d); g.gain.setValueAtTime(.0001, t0 + s); g.gain.exponentialRampToValueAtTime(vol || .045, t0 + s + .02); g.gain.exponentialRampToValueAtTime(.0001, t0 + s + d); o.connect(g); g.connect(mg); o.start(t0 + s); o.stop(t0 + s + d + .02); };
   }
   var STERKEY = 'dashboardmaatje-sterren-v1';
+  try { if (!localStorage.getItem('dashboardmaatje-stermig-v132')) { localStorage.setItem('dashboardmaatje-stermig-v132', '1'); var oud = localStorage.getItem(STERKEY); if (oud && oud.length < 75000) { localStorage.removeItem(STERKEY); setTimeout(function () { try { if (window.__sterWeg) window.__sterWeg(); } catch (e) {} }, 20000); } } } catch (e) {}   /* v132: oude korte kopie (6,4 s) weg, de nieuwe ingebouwde van 9,5 s gaat voor */
   function sterLees() { try { var b = localStorage.getItem(STERKEY); if (!b) return null; var t = atob(b), a = new Uint8Array(t.length); for (var i = 0; i < t.length; i++) a[i] = t.charCodeAt(i); return a; } catch (e) { return null; } }
   function sterSpeel(a) {   /* v106: eigen geluidje (8 kHz, 8 bit) op de telefoon afspelen */
     if (!sound || !ac || !meldAlles()) return false; audioGebruik(ac);

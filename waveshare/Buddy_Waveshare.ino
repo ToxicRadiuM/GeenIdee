@@ -37,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 82;
+static const int FW_VERSIE = 83;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -1168,6 +1168,7 @@ static int b64Waarde(char c) { return c >= 'A' && c <= 'Z' ? c - 'A' : c >= 'a' 
 static uint32_t b64Naar(const char *p, uint8_t *dst, uint32_t off, uint32_t max) { uint32_t n = 0, acc = 0; int bits = 0;
   for (; *p; p++) { int v = b64Waarde(*p); if (v < 0) continue; acc = (acc << 6) | v; bits += 6; if (bits >= 8) { bits -= 8; if (off + n < max) dst[off + n] = (acc >> bits) & 0xFF; n++; } } return n; }
 static void sterLaad() { File f = LittleFS.open("/sterren.raw", "r"); if (!f) return; uint32_t n = f.size();
+  if (n >= 50000 && n <= 53000) { f.close(); LittleFS.remove("/sterren.raw"); logRegel("geluid: oude korte kopie van het sterren-geluidje weg, de ingebouwde (9,5 s) gaat voor"); return; }   // v83
   if (n > 0 && n <= STER_MAX) { uint8_t *b = (uint8_t *)ps_malloc(n); if (b) { f.read(b, n); uint8_t *oud = sterBuf; sterBuf = b; sterLen = n; sterData = b; sterDataLen = n; if (oud) free(oud); } } f.close(); }
 static const char *moodKeys[MOOD_COUNT] = {"neutral","content","relaxed","happy","love","excited","focused","startled","worried","bored","sleepy","yawn","sleeping","alert","blow","anticipate"};
 static bool phoneFresh() { return phone.ms && millis() - phone.ms < 3500; }
