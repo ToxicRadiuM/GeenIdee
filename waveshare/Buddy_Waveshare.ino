@@ -37,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 81;
+static const int FW_VERSIE = 82;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -3188,12 +3188,12 @@ static void sterTask(void *) {   // v72: het eigen geluidje (8 kHz) afspelen op 
   audioBusy = false; vTaskDelete(NULL); }
 static void speelSter() {
   if (!audioReady || !sterData || !sterDataLen) { playGeluid(GL_RUIMTE); return; }
-  if (audioBusy && millis() - audioBusyT > 8000) audioBusy = false;
+  if (audioBusy && millis() - audioBusyT > 12000) audioBusy = false;
   if (audioBusy) return;
   audioBusy = true; audioBusyT = millis(); audioGespeeld++;
   if (xTaskCreatePinnedToCore(sterTask, "BuddySter", 4096, nullptr, 1, nullptr, 1) != pdPASS) audioBusy = false; }
 void playGeluid(int g) {   // v46: echte Buddy-geluidjes met glijtonen
-  if (audioBusy && millis() - audioBusyT > 8000) { audioBusy = false; logRegel("geluid: hing vast, losgemaakt"); }   // v58: vangnet
+  if (audioBusy && millis() - audioBusyT > 12000) { audioBusy = false; logRegel("geluid: hing vast, losgemaakt"); }   // v82: 12 s (het sterren-geluidje duurt 9,5 s)   // v58: vangnet
   if (!audioReady) { static uint32_t gemeld = 0; if (!gemeld || millis() - gemeld > 60000) { gemeld = millis(); logRegel("geluid: niet klaar (%s)", audioStatus); } return; }
   if (audioBusy) return;
   SoundJob *j = new SoundJob(); uint8_t n = 0;
