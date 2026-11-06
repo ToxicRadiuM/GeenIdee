@@ -4718,7 +4718,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v137';
+  var VERSION = 'v138';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7577,7 +7577,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (!rx || bezig || rtBezig) return;
       var B = window.__balk; if (B && Date.now() - B.t < 10000) { var r = 'BL:' + Math.round(B.lang / 100) + '|' + B.items.slice(0, 18).map(function (it) { return (it.s || 'c') + Math.round(Math.min(1, it.d / B.lang) * 999) + (it.d2 ? '-' + Math.round(Math.min(1, it.d2 / B.lang) * 999) : ''); }).join(';');
         if (r !== blVerz) { blVerz = r; klein(r.slice(0, 200)); } }
-      var tj = S.traj ? 'TJ:' + Math.round(trajAvg()) + '|' + (S.traj.limit || 0) + '|' + Math.max(0, Math.round((S.traj.len - S.traj.done) / 100)) : 'TJ:X';
+      var tj = S.traj ? 'TJ:' + Math.round(trajAvg()) + '|' + (S.traj.limit || 0) + '|' + Math.max(0, Math.round((S.traj.len - S.traj.done) / 100)) + '|' + Math.round(Math.min(1, S.traj.done / Math.max(1, S.traj.len)) * 1000) : 'TJ:X';
       if (tj !== tjVerz && !(tj === 'TJ:X' && tjVerz === '')) { tjVerz = tj; klein(tj); }
     }, 4000);
     function lijnenNaarScherm(lijnen) {
