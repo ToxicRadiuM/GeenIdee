@@ -133,7 +133,8 @@ body.car #carBack { display: block; }
   body.car.kaartrij .stage > *:not(.helmet) { display: none !important; }
   body.car.kaartrij .helmet { --hs: min(calc(var(--bw) - 28px), 80vh); pointer-events: auto; filter: drop-shadow(0 10px 24px rgba(0,0,0,.6)); }
   body.car.kaartrij { --bw: min(36vw, 92vh); }
-  body.car.kaartrij #carSpel, body.car.kaartrij #carSpel.zichtbaar, body.car.kaartrij #carRit { display: none !important; }
+  body.car.kaartrij #carSpel, body.car.kaartrij #carSpel.zichtbaar { display: none !important; }
+  body.car.kaartrij #carRit { left: 66px; top: 12px; right: auto; bottom: auto; } body.car.kaartrij #carRit::before { content: '✅'; }   /* v134: rit klaar is terug */
   body.car.kaartrij .rijRond { width: 46px !important; height: 46px !important; min-height: 0 !important; min-width: 0 !important; padding: 0 !important; border-radius: 23px !important; font-size: 0 !important; transform: none !important; display: flex !important; align-items: center; justify-content: center; border-width: 1px !important; background: rgba(16,20,24,.82) !important; box-shadow: 0 4px 12px rgba(0,0,0,.45); transition: opacity .4s; }
   body.car.kaartrij .rijRond::before { font-size: 21px; line-height: 1; }
   body.car.kaartrij #carStart { left: 12px; top: 12px; right: auto; bottom: auto; } body.car.kaartrij #carStart .vlag { width: 24px; }
@@ -155,7 +156,8 @@ body.car #carBack { display: block; }
   body.car.kaartrij .stage > *:not(.helmet) { display: none !important; }
   body.car.kaartrij .helmet { --hs: calc(var(--bw) - 16px); pointer-events: auto; filter: drop-shadow(0 10px 24px rgba(0,0,0,.6)); }
   body.car.kaartrij { --bw: min(46vw, 30vh); }
-  body.car.kaartrij #carSpel, body.car.kaartrij #carSpel.zichtbaar, body.car.kaartrij #carRit { display: none !important; }
+  body.car.kaartrij #carSpel, body.car.kaartrij #carSpel.zichtbaar { display: none !important; }
+  body.car.kaartrij #carRit { left: 66px; top: 12px; right: auto; bottom: auto; } body.car.kaartrij #carRit::before { content: '✅'; }   /* v134: rit klaar is terug */
   body.car.kaartrij .rijRond { width: 46px !important; height: 46px !important; min-height: 0 !important; min-width: 0 !important; padding: 0 !important; border-radius: 23px !important; font-size: 0 !important; transform: none !important; display: flex !important; align-items: center; justify-content: center; border-width: 1px !important; background: rgba(16,20,24,.82) !important; box-shadow: 0 4px 12px rgba(0,0,0,.45); transition: opacity .4s; }
   body.car.kaartrij .rijRond::before { font-size: 21px; line-height: 1; }
   body.car.kaartrij #carStart { left: 12px; top: calc(var(--bw) + 6px); right: auto; bottom: auto; } body.car.kaartrij #carStart .vlag { width: 24px; }
@@ -208,6 +210,7 @@ body:not(.ondeugend) .alleenOnd { display: none !important; }
 #rijPunten { position: fixed; left: calc(var(--bw, 0px) + (100vw - var(--bw, 0px)) * .5); top: 40vh; z-index: 34; transform: translateX(-50%); pointer-events: none; font: 900 30px/1.1 var(--f-display); color: #ffd60a; text-shadow: 0 3px 0 #a33, 0 0 14px rgba(0,0,0,.7); text-align: center; opacity: 0; }
 #rijPunten.op { animation: puntOp 1.8s ease-out; }
 @keyframes puntOp { 0% { opacity: 0; transform: translate(-50%, 20px) scale(.6); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); } 70% { opacity: 1; transform: translate(-50%, -20px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -60px) scale(.9); } }
+@media (orientation: portrait) { body.car.kaartrij #carRit { top: calc(var(--bw) + 6px); } }
 @media (orientation: portrait) {   /* v133: handjes, vloekwolk, punten en finish in het midden van het scherm */
   #rijHand { left: 50%; transform: translateX(-50%); font-size: min(34vh, 72vw); }
   #rijVloek { left: 50%; top: 34vh; margin-left: -90px; }
@@ -215,7 +218,7 @@ body:not(.ondeugend) .alleenOnd { display: none !important; }
   #rijPiek { left: -6vw; bottom: 34vh; width: 24vh; height: 24vh; }
   #rijFinish { left: 50%; top: 50%; }
 }
-@media (orientation: portrait) { #rijScore { top: calc(var(--bw, 0px) + 8px); left: 80px; } #rijAfslag { top: auto; bottom: 80px; left: 12px; right: 140px; } #rijZoek { left: 12px; right: 12px; top: calc(var(--bw, 0px) + 8px); } #rijStuur { height: 26vh; } #rijTerug { bottom: 140px; } }
+@media (orientation: portrait) { #rijScore { top: calc(var(--bw, 0px) + 8px); left: 80px; } body #rijAfslag { top: auto; bottom: calc(26vh + 8px); left: 64px; right: 12px; max-width: none; } #rijZoek { left: 12px; right: 12px; top: calc(var(--bw, 0px) + 8px); } #rijStuur { height: 26vh; } #rijTerug { bottom: 140px; } }
 #rijScore { position: fixed; top: 64px; left: calc(var(--bw, 0px) + 12px); z-index: 44; padding: 6px 12px; border-radius: 14px; background: rgba(0,0,0,.7); color: #ffd60a; font: 800 18px var(--f-display); }
 #rijScore[hidden] { display: none; }
 #rijPiek { position: fixed; left: calc(var(--bw, 0px) - 12vh); bottom: 24vh; width: 30vh; height: 30vh; z-index: 36; pointer-events: none; transform: translateX(-130%) rotate(-14deg); transition: transform .7s cubic-bezier(.3,1.3,.5,1); }
@@ -243,6 +246,15 @@ body.nacht #rijMap canvas { filter: brightness(.7) saturate(.85); }
 #rijZoekKnop { position: fixed; right: 12px; top: 174px; z-index: 50; width: 46px; height: 46px; border-radius: 23px; border: 1px solid #555; background: rgba(16,20,24,.85); color: #fff; font-size: 20px; }
 #rijAfslag { position: fixed; top: 10px; left: calc(var(--bw, 0px) + 12px); right: 124px; max-width: 460px; z-index: 45; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: rgba(10,90,70,.92); color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.45); font: 600 15px/1.25 var(--f-body); }
 #rijAfslag[hidden] { display: none; }
+/* v134: balk met wat er op je weg komt (zoals in de Tesla) */
+#rijBalk { position: fixed; z-index: 44; left: calc(var(--bw, 0px) + 10px); top: 74px; bottom: 74px; width: 44px; border-radius: 22px; background: rgba(20,24,28,.78); box-shadow: 0 4px 12px rgba(0,0,0,.45); pointer-events: none; }
+#rijBalk[hidden] { display: none; }
+#rbBaan { position: absolute; left: 19px; width: 6px; top: 34px; bottom: 34px; border-radius: 3px; background: #c7ccd3; }
+.rbKop { position: absolute; top: 4px; left: -10px; right: -10px; text-align: center; font: 700 11px/1.1 var(--f-body); color: #fff; background: rgba(0,0,0,.7); border-radius: 8px; padding: 3px 2px; }
+.rbIk { position: absolute; bottom: 6px; left: 0; right: 0; text-align: center; color: #3db7ff; font-size: 18px; text-shadow: 0 0 6px #fff; }
+.rbStuk { position: absolute; left: -3px; width: 12px; border-radius: 6px; }
+.rbPunt { position: absolute; left: -11px; width: 28px; height: 28px; margin-bottom: -14px; border-radius: 14px; background: #1b1f24; border: 2px solid #fff; font-size: 14px; line-height: 24px; text-align: center; }
+@media (orientation: portrait) { #rijBalk { left: 12px; top: calc(var(--bw, 0px) + 116px); bottom: calc(26vh + 70px); } }
 #rijAfslagD { font-size: 22px; white-space: nowrap; } #rijAfslagT { flex: 1; } #rijAfslagR { opacity: .85; white-space: nowrap; font-weight: 500; }
 #rijZoek { position: fixed; top: 10px; left: calc(var(--bw, 0px) + 12px); right: 124px; max-width: 520px; z-index: 70; padding: 10px; border-radius: 16px; background: rgba(16,20,24,.96); box-shadow: 0 8px 24px rgba(0,0,0,.6); }
 #rijZoek[hidden] { display: none; }
@@ -619,8 +631,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 <div id="rijFlits" aria-hidden="true"></div><div id="rijFinish" aria-hidden="true">🏁<b>AANGEKOMEN!</b></div><div id="rijVloek" aria-hidden="true">#@%&!</div><div id="rijPunten" aria-hidden="true"></div><div id="rijScore" aria-hidden="true" hidden></div>
 <div id="rijHand" aria-hidden="true"></div>
 <div id="rijPiek" aria-hidden="true"><svg viewBox="0 0 120 120"><rect x="10" y="22" width="100" height="86" rx="30" fill="#0d1117" stroke="#5ac8fa" stroke-width="5"/><path d="M14 52 Q60 40 106 52 L104 66 Q86 74 66 64 L54 64 Q34 74 16 66 Z" fill="#05070a"/><path d="M22 54 L34 52 L28 62 Z M70 54 L82 52 L76 62 Z" fill="#fff" opacity=".55"/><g id="rijPiekOog"><rect x="70" y="52" width="30" height="14" rx="6" fill="#05070a"/></g><path d="M44 88 Q60 98 78 86" stroke="#5ac8fa" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="50" y="6" width="20" height="18" rx="6" fill="#c8102e"/></svg></div>
-<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg class="dashBand" viewBox="0 0 400 170" preserveAspectRatio="none"><path d="M0 170 L0 112 Q200 66 400 112 L400 170 Z" fill="#111417"/><path d="M0 112 Q200 66 400 112" stroke="#2a2f35" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/></svg><svg class="dashWiel" viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><rect x="40" y="110" width="70" height="40" rx="6" fill="#0b0d10" stroke="#30363d"/><text x="75" y="136" text-anchor="middle" fill="#5ac8fa" font-size="16" font-family="sans-serif" id="rijStuurKmu">0</text><g transform="translate(170 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg><div id="rijWissers"><i></i><i></i></div><div id="rijKoplamp"></div></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
-<button id="carRit" type="button">🏁 Rit klaar</button>
+<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg class="dashBand" viewBox="0 0 400 170" preserveAspectRatio="none"><path d="M0 170 L0 112 Q200 66 400 112 L400 170 Z" fill="#111417"/><path d="M0 112 Q200 66 400 112" stroke="#2a2f35" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/></svg><svg class="dashWiel" viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><rect x="40" y="110" width="70" height="40" rx="6" fill="#0b0d10" stroke="#30363d"/><text x="75" y="136" text-anchor="middle" fill="#5ac8fa" font-size="16" font-family="sans-serif" id="rijStuurKmu">0</text><g transform="translate(170 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg><div id="rijWissers"><i></i><i></i></div><div id="rijKoplamp"></div></div><div id="rijBalk" aria-label="Wat komt eraan" hidden><span class="rbKop" id="rbKop"></span><div class="rbBaan" id="rbBaan"></div><span class="rbIk">▲</span></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
+<button id="carRit" class="rijRond rijWeg" type="button">🏁 Rit klaar</button>
 <button id="carSpel" type="button">🎲 Spel</button>
 <div id="spel" hidden role="dialog" aria-label="Spelletjes">
   <div class="spBox">
@@ -1387,8 +1399,18 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   window.__ritAutoKlaar = ritAutoKlaar;
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') ritAutoKlaar('app dicht', 60); });
   /* Rit afsluiten: automatisch na 5 min stilstaan, of met de knop "Rit klaar". Geeft true als de rit is meegeteld. */
+  /* v134: een lopende rit om de 10 s bewaren, zodat hij niet kwijt is als Android de app stopt of herlaadt */
+  var RITNUKEY = 'dashboardmaatje-ritnu-v1';
+  setInterval(function () { try { if (S.trip && S.live && S.ritStart) localStorage.setItem(RITNUKEY, JSON.stringify({ r0: S.ritStart, tripT: S.tripT, style: S.style, laatst: S.laatstRij || Date.now(), gmax: V.gmax, harsh: V.harsh, voel: V.ritVoel, upd: Date.now() })); } catch (e) {} }, 10000);
+  setTimeout(function () {
+    var o = null; try { o = JSON.parse(localStorage.getItem(RITNUKEY) || 'null'); } catch (e) {} if (!o || !o.r0) return;
+    if (Date.now() - o.upd < 10 * 60e3) { S.trip = true; S.ritStart = o.r0; S.tripT = o.tripT || 0; S.style = o.style || 100; S.laatstRij = o.laatst; V.gmax = o.gmax || 0; V.harsh = o.harsh || 0; V.ritVoel = !!o.voel; lg('rit hervat na herstart (' + Math.round((o.tripT || 0) / 60) + ' min)'); }
+    else { var wasLive = S.live; S.live = true; S.trip = true; S.ritStart = o.r0; S.tripT = o.tripT || 0; S.style = o.style || 100; S.laatstRij = o.laatst; V.gmax = o.gmax || 0; V.harsh = o.harsh || 0; V.ritVoel = !!o.voel; S.speed = 0;
+      var telt = ritAfsluiten(60); S.live = wasLive; lg('rit van ' + new Date(o.r0.t).toLocaleTimeString().slice(0, 5) + ' alsnog bewaard (app was gestopt)' + (telt ? '' : ', te kort')); }
+    try { localStorage.removeItem(RITNUKEY); } catch (e) {}
+  }, 2500);
   function ritAfsluiten(minT) {
-    var telt = false;
+    var telt = false; try { localStorage.removeItem(RITNUKEY); } catch (e) {}
     if (S.trip) {
       S.trip = false;
       if (S.tripT > minT) {
@@ -4691,7 +4713,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v133';
+  var VERSION = 'v134';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6215,7 +6237,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     var r0 = S.ritStart; S.ritStart = null;
     if (!r0) return;
     var km = Math.max(0, (mem.kmLive || 0) - r0.km), min = Math.max(1, Math.round((S.tripT || 0) / 60)), /* echte rijtijd, zonder het stilstaan aan het eind */ netjes = Math.max(0, (mem.netjes || 0) - r0.netjes);
-    if (km < 0.5) return;
+    if (km < 0.5) { lg('rit niet bewaard: maar ' + km.toFixed(2) + ' km'); return; }
     var r = { t0: r0.t, t1: Math.min(Date.now(), (S.laatstRij || Date.now()) + 60e3), km: Math.round(km * 10) / 10, min: min, stijl: Math.round(sc), netjes: netjes, vmax: Math.round(r0.vmax || 0), sec: Math.round(S.tripT || 0) };
     if (r0.nul) { r.nul = Math.round(r0.nul * 10) / 10; r.nt = r0.nulTelt ? 1 : 0; if (!r0.nulTelt) r.nw = r0.nulWaarom; }
     if (V.ritVoel) { r.g = Math.round(V.gmax * 100) / 100; r.sch = V.harsh; if (r.g > (mem.gmaxLive || 0) && r.g < 1.3) { mem.gmaxLive = r.g; mem.gmaxLiveD = Date.now(); setTimeout(function () { try { recordNieuw('gm'); } catch (e) {} }, 4000); } }
@@ -6225,7 +6247,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     r.van = r0.van || (r0.pts && r0.pts.length >= 2 ? [r0.pts[0], r0.pts[1]] : null);
     r.naar = lastPos ? [+lastPos.lat.toFixed(5), +lastPos.lon.toFixed(5)] : (r0.pts && r0.pts.length >= 2 ? [r0.pts[r0.pts.length - 2], r0.pts[r0.pts.length - 1]] : null);
     setTimeout(function () { try { if (window.ritAdressen) window.ritAdressen(r); } catch (e) {} }, 1500);
-    ritten.push(r); if (ritten.length > 80) ritten = ritten.slice(-80);
+    ritten.push(r); if (ritten.length > 80) ritten = ritten.slice(-80); lg('rit bewaard: ' + r.km + ' km, ' + r.min + ' min, stijl ' + r.stijl);   /* v134 */
     try { localStorage.setItem(RITKEY, JSON.stringify(ritten)); } catch (e) {}
     /* week en badges */
     var w = wk(); w.ritten++; w.stijlSom += r.stijl; if (r.g && r.g > (w.gmax || 0)) w.gmax = r.g; try { stijlWkAdd(r.t0, r.stijl); } catch (e) {}
@@ -8833,7 +8855,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     } };
   /* v96: keihard optrekken = Buddy schiet de ruimte in (eigen deuntje) */
   function synthMaak() {   /* v97: klein synthesizertje voor de sprint-deuntjes */
-    if (!sound || !ac || !meldAlles()) return null; audioGebruik(ac);
+    if (!sound || !ac || meldModus === 'stil') return null; audioGebruik(ac);   /* v134: shows hebben muziek, behalve in stil */
     var t0 = ac.currentTime + .05, mg = ac.createGain(); mg.gain.value = .9; mg.connect(ac.destination);
     return function (f, s, d, type, vol, f2) { var o = ac.createOscillator(), g = ac.createGain(); o.type = type || 'sawtooth'; o.frequency.setValueAtTime(f, t0 + s); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + s + d); g.gain.setValueAtTime(.0001, t0 + s); g.gain.exponentialRampToValueAtTime(vol || .045, t0 + s + .02); g.gain.exponentialRampToValueAtTime(.0001, t0 + s + d); o.connect(g); g.connect(mg); o.start(t0 + s); o.stop(t0 + s + d + .02); };
   }
@@ -8841,7 +8863,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   try { if (!localStorage.getItem('dashboardmaatje-stermig-v132')) { localStorage.setItem('dashboardmaatje-stermig-v132', '1'); var oud = localStorage.getItem(STERKEY); if (oud && oud.length < 75000) { localStorage.removeItem(STERKEY); setTimeout(function () { try { if (window.__sterWeg) window.__sterWeg(); } catch (e) {} }, 20000); } } } catch (e) {}   /* v132: oude korte kopie (6,4 s) weg, de nieuwe ingebouwde van 9,5 s gaat voor */
   function sterLees() { try { var b = localStorage.getItem(STERKEY); if (!b) return null; var t = atob(b), a = new Uint8Array(t.length); for (var i = 0; i < t.length; i++) a[i] = t.charCodeAt(i); return a; } catch (e) { return null; } }
   function sterSpeel(a) {   /* v106: eigen geluidje (8 kHz, 8 bit) op de telefoon afspelen */
-    if (!sound || !ac || !meldAlles()) return false; audioGebruik(ac);
+    if (!sound || !ac || meldModus === 'stil') return false; audioGebruik(ac);
     try { var buf = ac.createBuffer(1, a.length, 8000), d = buf.getChannelData(0); for (var i = 0; i < a.length; i++) d[i] = (a[i] - 128) / 128; var bs = ac.createBufferSource(); bs.buffer = buf; bs.connect(ac.destination); bs.start(); return true; } catch (e) { return false; }
   }
   (function () {   /* v106: geluidje kiezen, omzetten naar 8 kHz en bewaren */
@@ -8862,7 +8884,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     $('sterWeg').addEventListener('click', function () { try { localStorage.removeItem(STERKEY); } catch (e) {} st.textContent = 'Standaard sterren-geluidje terug.'; if (window.__sterWeg) window.__sterWeg(); });
   })();
   var sterStd = null;   /* v107: Ricardo's eigen sterren-geluidje zit standaard in de app */
-  function sterStdSpeel() { if (!sound || !ac || !meldAlles()) return false; audioGebruik(ac);
+  function sterStdSpeel() { if (!sound || !ac || meldModus === 'stil') return false; audioGebruik(ac);
     function speel(b) { try { var bs = ac.createBufferSource(); bs.buffer = b; bs.connect(ac.destination); bs.start(); } catch (e) {} }
     if (sterStd) { speel(sterStd); return true; }
     fetch('geluid/sterren.mp3').then(function (r) { return r.arrayBuffer(); }).then(function (ab) { return ac.decodeAudioData(ab); }).then(function (b) { sterStd = b; speel(b); }).catch(function () {});
@@ -9525,7 +9547,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       melding('Kaart laden…');
       laadGL().then(function () {
         var p = lastPos || { lat: 52.1, lon: 5.1 };
-        map = new maplibregl.Map({ container: 'rijMap', style: 'https://tiles.openfreemap.org/styles/liberty', center: [p.lon, p.lat], zoom: 17, pitch: 62, bearing: 0, maxPitch: 85, attributionControl: { compact: true }, interactive: true, doubleClickZoom: false });
+        map = new maplibregl.Map({ container: 'rijMap', style: 'https://tiles.openfreemap.org/styles/liberty', center: [p.lon, p.lat], zoom: 17, pitch: 62, bearing: 0, maxPitch: 85, attributionControl: { compact: true }, interactive: true, doubleClickZoom: false, pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5), fadeDuration: 0, maxTileCacheSize: 300, antialias: false });   /* v134: vloeiender (minder pixels, geen fade) */
         volgInstellen();
         map.on('load', function () { setTimeout(function () { try { window.__satZet(); } catch (e) {} try { lucht(); } catch (e) {} }, 300);
           melding(lastPos ? '' : 'Zet de GPS aan (Start), dan rijdt je auto mee.');
@@ -9612,6 +9634,35 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       }).catch(function () { $('rijZoekRes').textContent = 'Zoeken lukt niet (internet?).'; }); }, 350);
     });
     setInterval(function () { if (map && document.body.classList.contains('kaartrij')) { routeTeken(); afslagToon(); } }, 1000);
+    function balkToon() {   /* v134: alles wat je tegenkomt: met route tot je bestemming, anders 10 km vooruit */
+      var b = $('rijBalk'); if (!document.body.classList.contains('kaartrij') || !lastPos) { b.hidden = true; return; }
+      var N = window.__nav && window.__nav.nu(), la = lastPos.lat, lo = lastPos.lon, items = [], lang, opPad;
+      var cams = []; try { ((typeof camCache !== 'undefined' && camCache && camCache.cams) || []).forEach(function (c) { cams.push({ lat: c.lat, lon: c.lon, i: '📸', kl: '#ff453a' }); }); } catch (e) {}
+      try { (typeof flMeldingen === 'function' ? flMeldingen() : []).forEach(function (m) { cams.push({ lat: m.lat, lon: m.lon, i: m.k === 'mobile' ? '🚓' : '📸', kl: m.k === 'mobile' ? '#ff9f0a' : '#ff453a' }); }); } catch (e) {}
+      try { (window.__mobItems ? window.__mobItems() : []).forEach(function (m) { if (isFinite(m.lat)) cams.push({ lat: m.lat, lon: m.lon, i: '🚓', kl: '#bf5af2' }); }); } catch (e) {}
+      var vk = window.__verkeerItems ? window.__verkeerItems() : [];
+      var trj = []; try { (typeof TRAJ_ZONES !== 'undefined' ? TRAJ_ZONES : []).forEach(function (z) { trj.push([z.a, z.b]); }); (typeof TRAJ_EXTRA !== 'undefined' ? TRAJ_EXTRA : []).forEach(function (z) { trj.push([[z[0], z[1]], [z[2], z[3]]]); }); } catch (e) {}
+      if (N && N.geom && N.geom.length > 1) {   /* afstand langs de route */
+        var g = N.geom, cum = [0]; for (var i = 1; i < g.length; i++) cum.push(cum[i - 1] + gdist(g[i - 1].lat, g[i - 1].lon, g[i].lat, g[i].lon));
+        var i0 = Math.max(0, N.van || 0), d0 = cum[i0]; lang = Math.max(100, cum[g.length - 1] - d0);
+        opPad = function (pla, plo, max) { var best = 1e9, bi = -1; for (var k = i0; k < g.length; k += (g.length - i0 > 3000 ? 3 : 1)) { if (Math.abs(g[k].lat - pla) > .01) continue; var dd = gdist(pla, plo, g[k].lat, g[k].lon); if (dd < best) { best = dd; bi = k; } } return best < (max || 60) ? cum[bi] - d0 : -1; };
+        $('rbKop').textContent = (lang / 1000).toFixed(lang < 10000 ? 1 : 0).replace('.', ',') + ' km';
+      } else {   /* geen route: 10 km in je rijrichting */
+        lang = 10000; var hd = (lastPos.hd != null ? lastPos.hd : (S.heading || 0)) * Math.PI / 180, kx = 111320 * Math.cos(la * Math.PI / 180);
+        opPad = function (pla, plo) { var dx = (plo - lo) * kx, dy = (pla - la) * 110540, voor = dx * Math.sin(hd) + dy * Math.cos(hd), zij = Math.abs(dx * Math.cos(hd) - dy * Math.sin(hd)); return voor > 0 && voor < lang && zij < Math.max(150, voor * .25) ? voor : -1; };
+        $('rbKop').textContent = '10 km';
+      }
+      cams.forEach(function (c) { var d = opPad(c.lat, c.lon, 40); if (d >= 0) items.push({ d: d, i: c.i, kl: c.kl }); });
+      vk.forEach(function (it) { if (!it || !Array.isArray(it.pts) || !it.pts.length) return; var ds = it.pts.map(function (q) { q = Array.isArray(q) ? q : [q.lat, q.lon]; return opPad(q[0], q[1], 70); }).filter(function (x) { return x >= 0; }); if (!ds.length) return;
+        var a = Math.min.apply(null, ds), z = Math.max.apply(null, ds); items.push({ d: a, d2: Math.max(z, a + 150), kl: it.k === 'jam' || it.k === 'accident' ? '#ff2d2d' : it.k === 'closure' || it.k === 'ramp' ? '#5a0000' : '#ff9f0a', i: it.k === 'jam' ? '🚗' : it.k === 'accident' ? '💥' : it.k === 'closure' || it.k === 'ramp' ? '⛔' : '🚧' }); });
+      trj.forEach(function (t) { var a = opPad(t[0][0], t[0][1], 300), z = opPad(t[1][0], t[1][1], 300); if (a < 0 && z < 0) return; a = a < 0 ? 0 : a; z = z < 0 ? lang : z; if (z < a) { var w = a; a = z; z = w; } items.push({ d: a, d2: z, kl: '#bf5af2', i: '⏱️' }); });
+      var baan = $('rbBaan'); baan.textContent = '';
+      items.sort(function (x, y) { return x.d - y.d; }).forEach(function (it) {
+        if (it.d2) { var st = document.createElement('div'); st.className = 'rbStuk'; st.style.background = it.kl; st.style.bottom = Math.min(100, it.d / lang * 100) + '%'; st.style.height = Math.max(2, Math.min(100, (it.d2 - it.d) / lang * 100)) + '%'; baan.appendChild(st); }
+        var pt = document.createElement('div'); pt.className = 'rbPunt'; pt.style.borderColor = it.kl; pt.style.bottom = Math.min(100, it.d / lang * 100) + '%'; pt.textContent = it.i; baan.appendChild(pt); });
+      b.hidden = false;
+    }
+    setInterval(function () { try { balkToon(); } catch (e) {} }, 3000);
     function zetPadding() { if (!map) return; var h = $('rijKaart').clientHeight || 400, mn = document.querySelector('main') || {}, bw = mn.clientWidth || 0, staand = innerHeight > innerWidth; map.setPadding(staand ? { top: st.kijk === 2 ? 0 : Math.round(h * .5), bottom: 0, left: 0, right: 0 } : { top: st.kijk === 2 ? 0 : Math.round(h * .42), bottom: 0, left: Math.min(bw, innerWidth * .5), right: 0 }); }   /* v111: auto in het midden van het stuk naast Buddy */
     function opRoute(N, la, lo) {   /* dichtstbijzijnde punt op de route (alleen rond waar je bent) */
       var g = N.geom; if (!g || g.length < 2) return null; var kx = 111320 * Math.cos(la * Math.PI / 180), ky = 110540, best = null;
@@ -9660,7 +9711,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var zoom = sp > 90 ? 15.2 : sp > 60 ? 15.8 : sp > 30 ? 16.5 : 17.2, c = [p.lon, p.lat];
       if (fp) {   /* eerste persoon: camera laag, net achter de auto, kijkend over de weg */
         var vooruit = 22, rad = koers * Math.PI / 180; c = [p.lon + Math.sin(rad) * vooruit / (111320 * Math.cos(p.lat * Math.PI / 180)), p.lat + Math.cos(rad) * vooruit / 110540];
-        map.easeTo({ center: c, bearing: koers, zoom: 19.6, pitch: 84, duration: 950, easing: function (t) { return t; } });
+        map.easeTo({ center: c, bearing: koers, zoom: 19.2, pitch: 80, duration: 1000, easing: function (t) { return t; } });
       } else map.easeTo({ center: c, bearing: st.kijk === 1 ? 0 : koers, zoom: zoom, pitch: st.kijk === 1 ? 0 : 62, duration: 950, easing: function (t) { return t; } });
     }
     function toon() {
@@ -9682,7 +9733,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     function satZet() {   /* v127: luchtfoto's (PDOK, heel Nederland, scherp) onder de wegen, 3D-gebouwen erbovenop */
       $('rijSatKnop').classList.toggle('aan', !!st.sat); if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return;
       if (st.sat && !map.getLayer('lucht')) {
-        if (!map.getSource('lucht')) map.addSource('lucht', { type: 'raster', tiles: ['https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg'], tileSize: 256, maxzoom: 19, attribution: 'Luchtfoto © PDOK' });
+        if (!map.getSource('lucht')) map.addSource('lucht', { type: 'raster', maxzoom: 18, tiles: ['https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg'], tileSize: 256, attribution: 'Luchtfoto © PDOK' });
         var voor = null; map.getStyle().layers.some(function (l) { if (l.type === 'line' || l.type === 'symbol' || l.type === 'fill-extrusion') { voor = l.id; return true; } return false; });
         map.addLayer({ id: 'lucht', type: 'raster', source: 'lucht', paint: { 'raster-opacity': 1, 'raster-saturation': -.1 } }, voor || undefined);
         map.getStyle().layers.forEach(function (l) { if (l.type === 'fill-extrusion') try { map.setPaintProperty(l.id, 'fill-extrusion-opacity', .55); } catch (e) {} });
