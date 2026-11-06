@@ -4713,7 +4713,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v135';
+  var VERSION = 'v136';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8887,7 +8887,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function sterStdSpeel() { if (!sound || !ac || meldModus === 'stil') return false; audioGebruik(ac);
     function speel(b) { try { var bs = ac.createBufferSource(); bs.buffer = b; bs.connect(ac.destination); bs.start(); } catch (e) {} }
     if (sterStd) { speel(sterStd); return true; }
-    fetch('geluid/sterren.mp3').then(function (r) { return r.arrayBuffer(); }).then(function (ab) { return ac.decodeAudioData(ab); }).then(function (b) { sterStd = b; speel(b); }).catch(function () {});
+    fetch('geluid/sterren.mp3?v=95', { cache: 'no-cache' }).then(function (r) { return r.arrayBuffer(); }).then(function (ab) { return ac.decodeAudioData(ab); }).then(function (b) { sterStd = b; speel(b); }).catch(function () {});
     return true; }
   function ruimteDeuntje() {
     var eigen = sterLees(); if (eigen && sterSpeel(eigen)) return;
