@@ -4713,7 +4713,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v134';
+  var VERSION = 'v135';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9576,13 +9576,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (!map || !window.maplibregl || !lastPos) return; flT = Date.now(); try { filesRij(); } catch (e) {}
       flMk.forEach(function (m) { m.remove(); }); flMk = [];
       var la = lastPos.lat, lo = lastPos.lon, n = 0, gezien = [];
-      try { (typeof flMeldingen === 'function' ? flMeldingen() : []).forEach(function (m) { if (gdist(la, lo, m.lat, m.lon) > 25000) return; gezien.push(m);
+      var voorAf = function (pla, plo) { if (st.kijk !== 2) return true; var h = koers * Math.PI / 180, dx = (plo - lo) * 111320 * Math.cos(la * Math.PI / 180), dy = (pla - la) * 110540; return dx * Math.sin(h) + dy * Math.cos(h) > -50; };   /* v135: in eerste persoon alleen wat vóór je ligt */
+      try { (typeof flMeldingen === 'function' ? flMeldingen() : []).forEach(function (m) { if (gdist(la, lo, m.lat, m.lon) > 20000 || !voorAf(m.lat, m.lon)) return; gezien.push(m);
         var el = flPunt(window.__ondeugend && window.__ondeugend() ? '💩' : m.k === 'mobile' ? '🚓' : '📸', m.mijn ? '#0a84ff' : (m.k === 'mobile' ? '#ff9f0a' : '#ff453a'));
         el.title = (m.k === 'mobile' ? 'Mobiele controle' : 'Flitser') + (m.mijn ? ' (jij)' : ' (' + m.n + ')');
         flMk.push(new maplibregl.Marker({ element: el }).setLngLat([m.lon, m.lat]).addTo(map)); }); } catch (e) {}
-      try { (window.__mobItems ? window.__mobItems() : []).forEach(function (m) { if (!isFinite(m.lat) || gdist(la, lo, m.lat, m.lon) > 25000) return; if (gezien.some(function (x) { return gdist(x.lat, x.lon, m.lat, m.lon) < 80; })) return; gezien.push(m);
+      try { (window.__mobItems ? window.__mobItems() : []).forEach(function (m) { if (!isFinite(m.lat) || gdist(la, lo, m.lat, m.lon) > 20000 || !voorAf(m.lat, m.lon)) return; if (gezien.some(function (x) { return gdist(x.lat, x.lon, m.lat, m.lon) < 80; })) return; gezien.push(m);
         flMk.push(new maplibregl.Marker({ element: flPunt(window.__ondeugend && window.__ondeugend() ? '💩' : '🚓', '#bf5af2') }).setLngLat([m.lon, m.lat]).addTo(map)); }); } catch (e) {}
-      try { var cc = (typeof camCache !== 'undefined' && camCache && camCache.cams) || []; cc.forEach(function (c) { if (n > 150 || Math.abs(c.lat - la) > .15 || gdist(la, lo, c.lat, c.lon) > 12000) return;
+      try { var cc = (typeof camCache !== 'undefined' && camCache && camCache.cams) || []; cc.forEach(function (c) { if (n > 150 || Math.abs(c.lat - la) > .2 || gdist(la, lo, c.lat, c.lon) > 20000 || !voorAf(c.lat, c.lon)) return;
         if (gezien.some(function (m) { return gdist(m.lat, m.lon, c.lat, c.lon) < 60; })) return; n++;
         flMk.push(new maplibregl.Marker({ element: flPunt('📸', '#8e8e93', true) }).setLngLat([c.lon, c.lat]).addTo(map)); }); } catch (e) {}
     }
@@ -9690,7 +9691,6 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       melding(''); if (Date.now() - flT > 30000) flitsersOpKaart();
       if (S.cam && S.cam.dist != null && S.cam.dist < 25 && Date.now() - (stap.flitsT || 0) > 30000) { stap.flitsT = Date.now(); var fl = $('rijFlits'); fl.classList.remove('op'); void fl.offsetWidth; fl.classList.add('op'); }   /* v128: flitsje als je een flitser passeert */
       if (Nv && Nv.steps && Nv.steps[Nv.idx] && Nv.steps[Nv.idx].type === 'arrive' && gdist(p.lat, p.lon, Nv.dest.lat, Nv.dest.lon) < 40 && !stap.aankomst) { stap.aankomst = Nv.t; var fi = $('rijFinish'); fi.classList.add('op'); setTimeout(function () { fi.classList.remove('op'); }, 4000); }
-      mk.setLngLat([p.lon, p.lat]); mk.setRotation(koers);
       var dk = ((koers - (stap.vk == null ? koers : stap.vk) + 540) % 360) - 180; stap.vk = koers;   /* v118: stuur draait mee in bochten */
       stap.hoek = (stap.hoek || 0) * .4 + Math.max(-130, Math.min(130, sp > 3 ? dk * 7 : 0)) * .6;
       var wiel = document.getElementById('rijStuurWiel'); if (wiel) wiel.style.transform = 'rotate(' + stap.hoek.toFixed(1) + 'deg)';
@@ -9707,12 +9707,25 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         sc.hidden = false; sc.textContent = '🏁 ' + stap.score; } else sc.hidden = true;
       var fp = st.kijk === 2; $('rijGebaren').hidden = !fp; if (fp && sp > 25 && Date.now() > (stap.piekT || (stap.piekT = Date.now() + 120e3))) { stap.piekT = Date.now() + (240 + Math.random() * 300) * 1e3; buddyPiek(); }   /* v119: Buddy kijkt af en toe om */
       if (fp) { var km = $('rijStuurKmu'); if (km) km.textContent = Math.round(sp) + ' km/u'; } mkEl.style.visibility = fp ? 'hidden' : 'visible'; $('rijStuur').hidden = !fp;
-      if (!volg) return;
-      var zoom = sp > 90 ? 15.2 : sp > 60 ? 15.8 : sp > 30 ? 16.5 : 17.2, c = [p.lon, p.lat];
-      if (fp) {   /* eerste persoon: camera laag, net achter de auto, kijkend over de weg */
-        var vooruit = 22, rad = koers * Math.PI / 180; c = [p.lon + Math.sin(rad) * vooruit / (111320 * Math.cos(p.lat * Math.PI / 180)), p.lat + Math.cos(rad) * vooruit / 110540];
-        map.easeTo({ center: c, bearing: koers, zoom: 19.2, pitch: 80, duration: 1000, easing: function (t) { return t; } });
-      } else map.easeTo({ center: c, bearing: st.kijk === 1 ? 0 : koers, zoom: zoom, pitch: st.kijk === 1 ? 0 : 62, duration: 950, easing: function (t) { return t; } });
+      var zoom = sp > 90 ? 15.2 : sp > 60 ? 15.8 : sp > 30 ? 16.5 : 17.2;
+      anim = { lat: p.lat, lon: p.lon, t: performance.now(), v: sp > 2 ? sp / 3.6 : 0, brg: koers, fp: fp, noord: st.kijk === 1, zoom: fp ? 19.2 : zoom, pitch: fp ? 80 : st.kijk === 1 ? 0 : 62 };
+      if (!rafId) rafId = requestAnimationFrame(beeld);
+    }
+    /* v135: vloeiend rijden: tussen de GPS-punten rekent de kaart zelf door (30 beelden per seconde) in plaats van per seconde een sprongetje */
+    var anim = null, cam = null, rafId = 0, vorigBeeld = 0;
+    function beeld(ts) {
+      rafId = 0; if (!map || !mk || !anim || !document.body.classList.contains('kaartrij') || document.hidden) return;
+      if (ts - vorigBeeld < 30) { rafId = requestAnimationFrame(beeld); return; } vorigBeeld = ts;
+      var dt = Math.min(1.6, (ts - anim.t) / 1000), r = anim.brg * Math.PI / 180, d = anim.v * dt, cl = Math.cos(anim.lat * Math.PI / 180);
+      var lat = anim.lat + Math.cos(r) * d / 110540, lon = anim.lon + Math.sin(r) * d / (111320 * cl);
+      if (!cam || Math.abs(cam.lat - lat) > .01 || Math.abs(cam.lon - lon) > .01) cam = { lat: lat, lon: lon, brg: anim.brg, zoom: anim.zoom, pitch: anim.pitch };
+      cam.lat += (lat - cam.lat) * .3; cam.lon += (lon - cam.lon) * .3;
+      var db = ((anim.brg - cam.brg + 540) % 360) - 180; cam.brg = (cam.brg + db * .12 + 360) % 360;
+      cam.zoom += (anim.zoom - cam.zoom) * .06; cam.pitch += (anim.pitch - cam.pitch) * .08;
+      mk.setLngLat([cam.lon, cam.lat]); mk.setRotation(cam.brg);
+      if (volg) { var c = [cam.lon, cam.lat]; if (anim.fp) { var rr = cam.brg * Math.PI / 180; c = [cam.lon + Math.sin(rr) * 22 / (111320 * cl), cam.lat + Math.cos(rr) * 22 / 110540]; }
+        try { map.jumpTo({ center: c, bearing: anim.noord ? 0 : cam.brg, zoom: cam.zoom, pitch: cam.pitch }); } catch (e) {} }
+      rafId = requestAnimationFrame(beeld);
     }
     function toon() {
       var aan = st.aan && document.body.classList.contains('car');
@@ -9742,7 +9755,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     window.__satZet = satZet;
     $('rijSatKnop').addEventListener('click', function () { st.sat = !st.sat; bewaar(); satZet(); toast(st.sat ? '🛰️ Luchtfoto aan' : '🗺️ Gewone kaart'); });
     $('rijNoordKnop').addEventListener('click', function () { st.kijk = st.kijk === 0 ? 1 : 0; bewaar(); toast(['🧭 3D, achter de auto', '🧭 Van bovenaf, noorden boven'][st.kijk]); fpKnop(); zetPadding(); volgZet(true); });   /* v120: kompas wisselt alleen 3D/bovenaf */
-    $('rijFpKnop').addEventListener('click', function () { if (st.kijk === 2) { st.kijk = st.vorigeKijk || 0; toast('🎮 Eerste persoon uit'); } else { st.vorigeKijk = st.kijk; st.kijk = 2; toast('🎮 Eerste persoon: jij achter het stuur!'); } bewaar(); fpKnop(); zetPadding(); volgZet(true); });
+    $('rijFpKnop').addEventListener('click', function () { flT = 0; if (st.kijk === 2) { st.kijk = st.vorigeKijk || 0; toast('🎮 Eerste persoon uit'); } else { st.vorigeKijk = st.kijk; st.kijk = 2; toast('🎮 Eerste persoon: jij achter het stuur!'); } bewaar(); fpKnop(); zetPadding(); volgZet(true); });
     setTimeout(fpKnop, 0);
     $('rijTerug').addEventListener('click', function () { volgZet(true); });
     /* v119: gekke dingen in eerste persoon */
