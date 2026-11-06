@@ -218,7 +218,7 @@ body:not(.ondeugend) .alleenOnd { display: none !important; }
   #rijPiek { left: -6vw; bottom: 34vh; width: 24vh; height: 24vh; }
   #rijFinish { left: 50%; top: 50%; }
 }
-@media (orientation: portrait) { #rijScore { top: calc(var(--bw, 0px) + 8px); left: 80px; } body #rijAfslag { top: auto; bottom: calc(26vh + 8px); left: 64px; right: 12px; max-width: none; } #rijZoek { left: 12px; right: 12px; top: calc(var(--bw, 0px) + 8px); } #rijStuur { height: 26vh; } #rijTerug { bottom: 140px; } }
+@media (orientation: portrait) { #rijScore { top: calc(var(--bw, 0px) + 8px); left: 80px; } body #rijAfslag { top: auto; bottom: calc(26vh + 8px); left: 64px; right: 12px; max-width: none; } body #rijZoek { left: 12px; right: 12px; top: max(calc(var(--bw, 0px) + 8px), 232px); } #rijStuur { height: 26vh; } #rijTerug { bottom: 140px; } }
 #rijScore { position: fixed; top: 64px; left: calc(var(--bw, 0px) + 12px); z-index: 44; padding: 6px 12px; border-radius: 14px; background: rgba(0,0,0,.7); color: #ffd60a; font: 800 18px var(--f-display); }
 #rijScore[hidden] { display: none; }
 #rijPiek { position: fixed; left: calc(var(--bw, 0px) - 12vh); bottom: 24vh; width: 30vh; height: 30vh; z-index: 36; pointer-events: none; transform: translateX(-130%) rotate(-14deg); transition: transform .7s cubic-bezier(.3,1.3,.5,1); }
@@ -246,6 +246,7 @@ body.nacht #rijMap canvas { filter: brightness(.7) saturate(.85); }
 #rijZoekKnop { position: fixed; right: 12px; top: 174px; z-index: 50; width: 46px; height: 46px; border-radius: 23px; border: 1px solid #555; background: rgba(16,20,24,.85); color: #fff; font-size: 20px; }
 #rijAfslag { position: fixed; top: 10px; left: calc(var(--bw, 0px) + 12px); right: 124px; max-width: 460px; z-index: 45; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: rgba(10,90,70,.92); color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.45); font: 600 15px/1.25 var(--f-body); }
 #rijAfslag[hidden] { display: none; }
+#rijAfslag { flex-wrap: wrap; } #rijStroken { flex-basis: 100%; display: flex; gap: 4px; justify-content: center; } #rijStroken[hidden] { display: none; } #rijStroken span { min-width: 30px; padding: 2px 4px; border-radius: 6px; text-align: center; font-size: 20px; background: rgba(0,0,0,.25); color: rgba(255,255,255,.35); } #rijStroken span.ok { background: #fff; color: #0a5a46; }
 /* v134: balk met wat er op je weg komt (zoals in de Tesla) */
 #rijBalk { position: fixed; z-index: 44; left: calc(var(--bw, 0px) + 10px); top: 74px; bottom: 74px; width: 44px; border-radius: 22px; background: rgba(20,24,28,.78); box-shadow: 0 4px 12px rgba(0,0,0,.45); pointer-events: none; }
 #rijBalk[hidden] { display: none; }
@@ -261,6 +262,7 @@ body.nacht #rijMap canvas { filter: brightness(.7) saturate(.85); }
 #rijZoek .rzKop { display: flex; gap: 8px; } #rijZoekIn { flex: 1; font: 500 17px var(--f-body); padding: 10px 12px; border-radius: 10px; border: 1px solid #444; background: #0d1014; color: #fff; }
 #rijZoekSluit, #rijRouteStop { border: 1px solid #555; background: #1b1f24; color: #eee; border-radius: 10px; padding: 0 14px; font: 600 15px var(--f-body); min-height: 42px; }
 #rijRouteStop { margin-top: 8px; width: 100%; }
+#rijFav { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } #rijFav button { flex: 1 1 auto; min-height: 40px; border-radius: 10px; border: 1px solid #444; background: #1b2229; color: #eee; font: 600 14px var(--f-body); padding: 0 10px; }
 #rijZoekRes button { display: block; width: 100%; text-align: left; margin-top: 6px; padding: 10px 12px; border-radius: 10px; border: 1px solid #333; background: #15191e; color: #eee; font: 500 15px var(--f-body); }
 #rijAutoKnop, #rijNoordKnop { position: fixed; left: 10px; z-index: 50; width: 48px; height: 48px; border-radius: 24px; border: 1px solid #555; background: rgba(20,24,28,.85); color: #fff; font-size: 22px; }
 #rijMelding { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); margin: 0; padding: 10px 14px; border-radius: 12px; background: rgba(0,0,0,.75); color: #eee; font: 600 14px var(--f-body); text-align: center; z-index: 3; max-width: 80%; }
@@ -631,7 +633,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 <div id="rijFlits" aria-hidden="true"></div><div id="rijFinish" aria-hidden="true">🏁<b>AANGEKOMEN!</b></div><div id="rijVloek" aria-hidden="true">#@%&!</div><div id="rijPunten" aria-hidden="true"></div><div id="rijScore" aria-hidden="true" hidden></div>
 <div id="rijHand" aria-hidden="true"></div>
 <div id="rijPiek" aria-hidden="true"><svg viewBox="0 0 120 120"><rect x="10" y="22" width="100" height="86" rx="30" fill="#0d1117" stroke="#5ac8fa" stroke-width="5"/><path d="M14 52 Q60 40 106 52 L104 66 Q86 74 66 64 L54 64 Q34 74 16 66 Z" fill="#05070a"/><path d="M22 54 L34 52 L28 62 Z M70 54 L82 52 L76 62 Z" fill="#fff" opacity=".55"/><g id="rijPiekOog"><rect x="70" y="52" width="30" height="14" rx="6" fill="#05070a"/></g><path d="M44 88 Q60 98 78 86" stroke="#5ac8fa" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="50" y="6" width="20" height="18" rx="6" fill="#c8102e"/></svg></div>
-<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg class="dashBand" viewBox="0 0 400 170" preserveAspectRatio="none"><path d="M0 170 L0 112 Q200 66 400 112 L400 170 Z" fill="#111417"/><path d="M0 112 Q200 66 400 112" stroke="#2a2f35" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/></svg><svg class="dashWiel" viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><rect x="40" y="110" width="70" height="40" rx="6" fill="#0b0d10" stroke="#30363d"/><text x="75" y="136" text-anchor="middle" fill="#5ac8fa" font-size="16" font-family="sans-serif" id="rijStuurKmu">0</text><g transform="translate(170 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg><div id="rijWissers"><i></i><i></i></div><div id="rijKoplamp"></div></div><div id="rijBalk" aria-label="Wat komt eraan" hidden><span class="rbKop" id="rbKop"></span><div class="rbBaan" id="rbBaan"></div><span class="rbIk">▲</span></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
+<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg class="dashBand" viewBox="0 0 400 170" preserveAspectRatio="none"><path d="M0 170 L0 112 Q200 66 400 112 L400 170 Z" fill="#111417"/><path d="M0 112 Q200 66 400 112" stroke="#2a2f35" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/></svg><svg class="dashWiel" viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><rect x="40" y="110" width="70" height="40" rx="6" fill="#0b0d10" stroke="#30363d"/><text x="75" y="136" text-anchor="middle" fill="#5ac8fa" font-size="16" font-family="sans-serif" id="rijStuurKmu">0</text><g transform="translate(170 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg><div id="rijWissers"><i></i><i></i></div><div id="rijKoplamp"></div></div><div id="rijBalk" aria-label="Wat komt eraan" hidden><span class="rbKop" id="rbKop"></span><div class="rbBaan" id="rbBaan"></div><span class="rbIk">▲</span></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small><div id="rijStroken" hidden></div></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijFav" class="rzFav"></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
 <button id="carRit" class="rijRond rijWeg" type="button">🏁 Rit klaar</button>
 <button id="carSpel" type="button">🎲 Spel</button>
 <div id="spel" hidden role="dialog" aria-label="Spelletjes">
@@ -819,15 +821,16 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     <div class="kopIn">
       <div id="grKaart" class="grKaart"><div><b id="grKaartNaam">Jouw groep</b><span id="grKaartSub">nog niet geladen</span></div><button class="btn" id="grStuurKnop" type="button">📣 Stuur iets</button></div>
       <nav id="grNav" class="segNav" aria-label="Groep">
-        <button type="button" data-gp="ber" aria-pressed="true">💬 Berichten</button><button type="button" data-gp="rang" aria-pressed="false">🏆 Ranglijst</button><button type="button" data-gp="sprint" aria-pressed="false">⏱️ Sprints</button><button type="button" data-gp="graf" aria-pressed="false">📈 Rijstijl</button><button type="button" data-gp="inst" aria-pressed="false">⚙️ Instellen</button>
+        <button type="button" data-gp="ber" aria-pressed="true">💬 Berichten</button><button type="button" data-gp="rang" aria-pressed="false">🏆 Ranglijst</button><button type="button" data-gp="inst" aria-pressed="false">⚙️ Instellen</button>
       </nav>
       <div class="grPane" data-gp="ber">
-        <div class="grSnel"><button class="btn" type="button" data-snel="zwaai">👋 Zwaai</button><button class="btn" type="button" data-snel="koffie">☕ Koffie?</button><button class="btn" type="button" data-snel="hart">❤️ Hartjes</button><button class="btn" type="button" data-snel="file">🚗 File</button></div>
+        <div class="grSnel" hidden><button class="btn" type="button" data-snel="zwaai">👋 Zwaai</button><button class="btn" type="button" data-snel="koffie">☕ Koffie?</button><button class="btn" type="button" data-snel="hart">❤️ Hartjes</button><button class="btn" type="button" data-snel="file">🚗 File</button></div>
         <p class="chip" id="grBerStat">Groepsberichten: nog niet opgehaald.</p>
         <ol id="grLijst" class="grLijst"><li class="leeg">Nog geen berichten.</li></ol>
       </div>
       <div class="grPane" data-gp="rang" hidden>
-        <div id="grRangKop">
+        <div class="mobrow" id="bordKiesRij"><select id="bordKies" style="flex:1;min-width:0" aria-label="Welke ranglijst"></select><button class="btn" id="bordVervers2" type="button" aria-label="Verversen">↻</button></div>
+        <div id="grRangKop" hidden>
           <div id="bordGroep" class="btns" role="group" aria-label="Soort leaderboard"><button type="button" class="btn" data-g="week" aria-pressed="true">🏆 Deze week</button><button type="button" class="btn" data-g="alg" aria-pressed="false">📊 Algemeen</button><button type="button" class="btn" data-g="netjes" aria-pressed="false">🧘 Netjes</button><button type="button" class="btn" data-g="rec" aria-pressed="false">🚀 Records</button></div>
           <div id="bordTabs" role="group" aria-label="Soort ranglijst">
       <button type="button" class="btn" data-soort="week" aria-pressed="true">🏁 Week</button><button type="button" class="btn" data-soort="km" aria-pressed="false">Km</button><button type="button" class="btn" data-soort="netjes" aria-pressed="false">Netjes</button><button type="button" class="btn" data-soort="gemeld" aria-pressed="false">Meldingen</button><button type="button" class="btn" data-soort="sprint" aria-pressed="false">⏱️ Sprinttabel</button><button type="button" class="btn" data-soort="tachtig" aria-pressed="false">0–80</button><button type="button" class="btn" data-soort="nul" aria-pressed="false">0–100</button><button type="button" class="btn" data-soort="stijl" aria-pressed="false">Rijstijl</button><button type="button" class="btn" data-soort="stijlgraf" aria-pressed="false">📈 Grafiek</button><button type="button" class="btn" data-soort="zacht" aria-pressed="false">🧘 Soepel</button>
@@ -838,7 +841,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         <div id="sprintTabel" hidden></div>
         <div id="stijlGraf" hidden></div>
         <p class="chip" id="bordStat">Nog niet geladen.</p>
-        <button class="btn" id="bordVervers" type="button">↻ Verversen</button>
+        <button class="btn" id="bordVervers" type="button" hidden>↻ Verversen</button>
         <p class="foot">Alleen echte ritten met de GPS aan tellen mee. Elke week een nieuwe challenge; de winnaar hoort iedereen op maandag.</p>
       </div>
       <div class="grPane" data-gp="inst" hidden>
@@ -879,6 +882,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <div id="weekStaat" hidden></div>
       <div id="maandStat" hidden></div>
       <button class="btn" id="bReplay" type="button">Laatste rit afspelen (4x sneller)</button>
+      <button class="btn" id="bFilm" type="button">🎥 Ritfilmpje van je laatste rit (om te delen)</button>
       <p class="sub">Buddy’s level</p>
       <p class="chip" id="lvStat">⭐ Level 1</p>
       <div class="lvBalk"><i id="lvBar"></i></div>
@@ -4235,7 +4239,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var steps = [];
       (rt.legs || []).forEach(function (lg0) { (lg0.steps || []).forEach(function (s) {
         var m = s.maneuver || {}; if (!m.location) return;
-        steps.push({ lat: m.location[1], lon: m.location[0], type: m.type, mod: m.modifier, exit: m.exit, naam: s.name || '', ref: (s.ref || '').split(';')[0] });
+        var ln = s.intersections && s.intersections[0] && s.intersections[0].lanes; ln = Array.isArray(ln) && ln.length > 1 ? ln.map(function (l) { return { i: (l.indications || []).join(','), v: !!l.valid }; }) : null;   /* v137: rijstroken */
+        steps.push({ lat: m.location[1], lon: m.location[0], type: m.type, mod: m.modifier, exit: m.exit, naam: s.name || '', ref: (s.ref || '').split(';')[0], lanes: ln });
       }); });
       var geom = (rt.geometry && rt.geometry.coordinates || []).map(function (c) { return { lat: c[1], lon: c[0] }; });
       /* Voor elke afslag: waar ligt hij op de routelijn? Zo weet Buddy straks of je er voorbij bent, ook als je er niet heel dichtbij kwam */
@@ -4713,7 +4718,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v136';
+  var VERSION = 'v137';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6068,7 +6073,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function bordToon(fout) {
     try { grKaartToon(); } catch (e) {}
     var ol = $('bordLijst'), st = $('bordStat'); if (!ol) return;
-    document.querySelectorAll('#bordTabs button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.soort === bordSoort ? 'true' : 'false'); });
+    document.querySelectorAll('#bordTabs button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.soort === bordSoort ? 'true' : 'false'); }); try { if (window.__bordKiesZet) window.__bordKiesZet(); } catch (e) {}
     while (ol.firstChild) ol.removeChild(ol.firstChild);
     var stb = $('sprintTabel'), sgb = $('stijlGraf'); if (stb) stb.hidden = bordSoort !== 'sprint'; if (sgb) sgb.hidden = bordSoort !== 'stijlgraf'; ol.hidden = bordSoort === 'sprint' || bordSoort === 'stijlgraf';
     if (bordSoort === 'sprint' && grp && !fout) { sprintTabel(); return; }
@@ -6175,6 +6180,16 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   $('grKoffieJa').addEventListener('click', function () { grKoffieAntw(true); });
   $('grKoffieNee').addEventListener('click', function () { grKoffieAntw(false); });
   document.querySelectorAll('#bordTabs button').forEach(function (b) { b.addEventListener('click', function () { bordSoort = b.dataset.soort; bordToon(); }); });
+  (function () {   /* v137: alle ranglijsten in één keuzelijst */
+    var GRP = [['🏆 Deze week', ['week', 'zacht']], ['📊 Algemeen', ['km', 'gemeld']], ['🧘 Netjes', ['stijl', 'netjes']], ['🚀 Records', ['nul', 'tachtig']], ['⏱️ Sprints en rijstijl', ['sprint', 'stijlgraf']]];
+    var sel = $('bordKies'); if (!sel) return; var gezien = {};
+    GRP.forEach(function (g) { var og = document.createElement('optgroup'); og.label = g[0];
+      g[1].forEach(function (k) { var b = document.querySelector('#bordTabs button[data-soort="' + k + '"]'), o = document.createElement('option'); o.value = k; o.textContent = k === 'stijlgraf' ? '📈 Rijstijl-grafiek' : b ? b.textContent : k; og.appendChild(o); gezien[k] = 1; }); sel.appendChild(og); });
+    document.querySelectorAll('#bordTabs button').forEach(function (b) { if (gezien[b.dataset.soort]) return; var o = document.createElement('option'); o.value = b.dataset.soort; o.textContent = b.textContent; sel.appendChild(o); });
+    sel.addEventListener('change', function () { bordSoort = sel.value; bordToon(); });
+    $('bordVervers2').addEventListener('click', function () { $('bordVervers').click(); });
+    window.__bordKiesZet = function () { if (sel.value !== bordSoort) sel.value = bordSoort; };
+  })();
   $('bordVervers').addEventListener('click', function () { grLid(true); grBord(); });
   $('autoIn').value = mem.auto || '';
   $('autoSave').addEventListener('click', function () { mem.auto = $('autoIn').value.replace(/[^A-Za-z0-9À-ſ '\-]/g, '').trim().slice(0, 30); $('autoIn').value = mem.auto; save(); toast(mem.auto ? 'Auto bewaard.' : 'Auto gewist.'); grLid(true); });
@@ -7557,6 +7572,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (!lijnen.length) return; rtBezig = true; lijnenNaarScherm(lijnen).catch(function () {}).then(function () { rtBezig = false; });
     }
     setInterval(extraNaarScherm, 20000);
+    var blVerz = '', tjVerz = '';
+    setInterval(function () {   /* v137: de boog voor Buddy+ en de trajectcontrole-meter */
+      if (!rx || bezig || rtBezig) return;
+      var B = window.__balk; if (B && Date.now() - B.t < 10000) { var r = 'BL:' + Math.round(B.lang / 100) + '|' + B.items.slice(0, 18).map(function (it) { return (it.s || 'c') + Math.round(Math.min(1, it.d / B.lang) * 999) + (it.d2 ? '-' + Math.round(Math.min(1, it.d2 / B.lang) * 999) : ''); }).join(';');
+        if (r !== blVerz) { blVerz = r; klein(r.slice(0, 200)); } }
+      var tj = S.traj ? 'TJ:' + Math.round(trajAvg()) + '|' + (S.traj.limit || 0) + '|' + Math.max(0, Math.round((S.traj.len - S.traj.done) / 100)) : 'TJ:X';
+      if (tj !== tjVerz && !(tj === 'TJ:X' && tjVerz === '')) { tjVerz = tj; klein(tj); }
+    }, 4000);
     function lijnenNaarScherm(lijnen) {
       function regel(t, k) { var d = new TextEncoder().encode(t + '\n'); if (!rx) return Promise.reject(new Error('weg')); return (rx.writeValueWithResponse ? rx.writeValueWithResponse(d) : stuurTekst(t)).catch(function (e) { if ((k || 0) >= 3) throw e; return new Promise(function (r) { setTimeout(r, 300); }).then(function () { return regel(t, (k || 0) + 1); }); }); }
       bezig = true; return lijnen.reduce(function (p, l) { return p.then(function () { return regel(l); }); }, Promise.resolve()).then(function () { bezig = false; }, function (e) { bezig = false; throw e; });
@@ -7976,7 +7999,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       document.querySelectorAll('#grNav button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.gp === gp ? 'true' : 'false'); });
       var pane = gp === 'sprint' || gp === 'graf' ? 'rang' : gp;
       document.querySelectorAll('.grPane').forEach(function (d) { d.hidden = d.dataset.gp !== pane; });
-      var kop = $('grRangKop'); if (kop) kop.hidden = gp !== 'rang';
+      var kop = $('grRangKop'); if (kop) kop.hidden = true;   /* v137: één keuzelijst in plaats van twee rijen knoppen */
       if (gp === 'sprint') { bordSoort = 'sprint'; bordToon(); }
       else if (gp === 'graf') { bordSoort = 'stijlgraf'; bordToon(); }
       else if (gp === 'rang') { if (bordSoort === 'sprint' || bordSoort === 'stijlgraf') { var a = document.querySelector('#bordTabs button:not([hidden])'); if (a) a.click(); else { bordSoort = 'week'; bordToon(); } } else bordToon(); }
@@ -7985,7 +8008,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     document.querySelectorAll('#grNav button').forEach(function (b) { b.addEventListener('click', function () { kies(b.dataset.gp); }); });
     document.querySelectorAll('.grSnel button').forEach(function (b) { b.addEventListener('click', function () { if (typeof grKnop === 'function') grKnop(b.dataset.snel); }); });
     $('grStuurKnop').addEventListener('click', function () { if (typeof grPaneel === 'function') grPaneel(true); });
-    var start = 'ber'; try { start = localStorage.getItem(GPKEY) || 'ber'; } catch (e) {}
+    var start = 'ber'; try { start = localStorage.getItem(GPKEY) || 'ber'; } catch (e) {} if (start === 'sprint' || start === 'graf') start = 'rang';
     setTimeout(function () { kies(start); }, 0);
   })();
 
@@ -9313,6 +9336,17 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }
   /* v96: regen uit de Buienradar (echte radar, per 5 minuten, 2 uur vooruit) via de eigen Worker */
   var RADAR = null;
+  setInterval(function () {   /* v137: regen op je route: waar ben je over ~15 min, en regent het daar dan? */
+    try { if (!nav || !nav.geom || !lastPos || !pbase() || !S.live) return; var g = nav.geom, rest = 0, doelM = Math.max(3000, (S.speed || 60) / 3.6 * 900), i = Math.max(0, nav.van || 0);
+      for (; i < g.length - 1 && rest < doelM; i++) rest += gdist(g[i].lat, g[i].lon, g[i + 1].lat, g[i + 1].lon); var q = g[i];
+      fetch(pbase() + '/regen?lat=' + q.lat.toFixed(2) + '&lon=' + q.lon.toFixed(2)).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+        var mm = []; String(t).split(/\r?\n/).forEach(function (r0) { var m = r0.match(/^\s*(\d{1,3})\s*\|/); if (m) mm.push(+m[1] > 0 ? Math.pow(10, (+m[1] - 109) / 32) : 0); });
+        var w = mm.slice(2, 5), mx = w.length ? Math.max.apply(null, w) : 0;   /* rond het moment dat je daar bent */
+        if (mx >= .3 && Date.now() - (radarHaal.routeT || 0) > 20 * 60e3) { radarHaal.routeT = Date.now(); var min = Math.round(rest / Math.max(8, (S.speed || 60) / 3.6) / 60);
+          setEv('worried', 4, '🌧️ Over ongeveer ' + min + ' minuten rijd je de regen in.'); say('Let op, over ongeveer ' + min + ' minuten regen op je route.'); lg('regen op route over ~' + min + ' min (' + mx.toFixed(1) + ' mm/u)');
+          try { if (window.__scEvt) window.__scEvt('r', 'PARAPLU MEE!'); } catch (e) {} }
+      }).catch(function () {}); } catch (e) {}
+  }, 5 * 60e3);
   function radarHaal(lat, lon) {
     if (!pbase()) return;
     fetch(pbase() + '/regen?lat=' + lat.toFixed(2) + '&lon=' + lon.toFixed(2)).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }).then(function (t) {
@@ -9621,22 +9655,40 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var rest = 0; try { var g = N.geom, i0 = Math.max(0, N.van || 0); for (var i = i0 + 1; i < g.length; i++) rest += gdist(g[i - 1].lat, g[i - 1].lon, g[i].lat, g[i].lon); } catch (e) { rest = N.dist || 0; }
       var min = Math.round(rest / Math.max(1, N.dist || rest) * (N.dur || 0) / 60), aank = new Date(Date.now() + min * 60e3);
       $('rijAfslagR').textContent = (rest / 1000).toFixed(rest < 10000 ? 1 : 0).replace('.', ',') + ' km · ' + ('0' + aank.getHours()).slice(-2) + ':' + ('0' + aank.getMinutes()).slice(-2);
+      var sk = $('rijStroken'), ln = st0.lanes; if (ln && d < 1500) { var PIJL = { left: '↰', 'slight left': '↖', 'sharp left': '↰', right: '↱', 'slight right': '↗', 'sharp right': '↱', straight: '↑', uturn: '↶', none: '↑' }; sk.textContent = ''; ln.forEach(function (l) { var e = document.createElement('span'); e.className = l.v ? 'ok' : ''; e.textContent = (l.i || 'none').split(',').map(function (x) { return PIJL[x] || '↑'; }).join(''); sk.appendChild(e); }); sk.hidden = false; } else sk.hidden = true;
       b.hidden = false;
     }
-    var zoekT = null;
-    $('rijZoekKnop').addEventListener('click', function () { $('rijZoek').hidden = false; $('rijZoekRes').textContent = ''; var N = window.__nav && window.__nav.nu(); $('rijRouteStop').hidden = !N; setTimeout(function () { $('rijZoekIn').focus(); }, 50); });
+    var zoekT = null, FAVKEY = 'dashboardmaatje-fav-v1', zetFav = null;   /* v137: Thuis, Werk en je laatste bestemmingen */
+    function favLees() { try { return JSON.parse(localStorage.getItem(FAVKEY)) || {}; } catch (e) { return {}; } }
+    function favBewaar(f) { try { localStorage.setItem(FAVKEY, JSON.stringify(f)); } catch (e) {} }
+    function thuisFav() { try { var h = typeof thuisPlek === 'function' ? thuisPlek() : null; if (h) return { naam: 'Thuis', lat: h.lat, lon: h.lon }; } catch (e) {} return favLees().thuis || null; }
+    function favToon() {
+      var el = $('rijFav'), f = favLees(); el.textContent = '';
+      function knop(t, fn) { var b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.addEventListener('click', fn); el.appendChild(b); }
+      var th = thuisFav(); knop(th ? '🏠 Thuis' : '🏠 Thuis instellen', function () { if (th) { $('rijZoek').hidden = true; window.__nav.start(th); } else { zetFav = 'thuis'; toast('Zoek je thuisadres en tik erop.'); $('rijZoekIn').focus(); } });
+      knop(f.werk ? '💼 Werk' : '💼 Werk instellen', function () { if (f.werk) { $('rijZoek').hidden = true; window.__nav.start(f.werk); } else { zetFav = 'werk'; toast('Zoek je werkadres en tik erop.'); $('rijZoekIn').focus(); } });
+      (f.recent || []).slice(0, 4).forEach(function (r) { knop('🕘 ' + r.naam.split(',')[0], function () { $('rijZoek').hidden = true; window.__nav.start(r); }); });
+    }
+    function gekozen(r) {
+      var f = favLees();
+      if (zetFav) { f[zetFav] = { naam: zetFav === 'thuis' ? 'Thuis' : 'Werk', lat: r.lat, lon: r.lon }; favBewaar(f); toast((zetFav === 'thuis' ? '🏠 Thuis' : '💼 Werk') + ' bewaard!'); zetFav = null; favToon(); $('rijZoekIn').value = ''; $('rijZoekRes').textContent = ''; return; }
+      f.recent = [r].concat((f.recent || []).filter(function (x) { return gdist(x.lat, x.lon, r.lat, r.lon) > 100; })).slice(0, 6); favBewaar(f);
+      $('rijZoek').hidden = true; $('rijZoekIn').value = ''; window.__nav.start(r);
+    }
+    window.__favLees = favLees; window.__thuisFav = thuisFav;
+    $('rijZoekKnop').addEventListener('click', function () { $('rijZoek').hidden = false; $('rijZoekRes').textContent = ''; zetFav = null; favToon(); var N = window.__nav && window.__nav.nu(); $('rijRouteStop').hidden = !N; setTimeout(function () { $('rijZoekIn').focus(); }, 50); });
     $('rijZoekSluit').addEventListener('click', function () { $('rijZoek').hidden = true; });
     $('rijRouteStop').addEventListener('click', function () { if (window.__nav) window.__nav.stop(false); $('rijZoek').hidden = true; routeTeken(); afslagToon(); });
     $('rijZoekIn').addEventListener('input', function () {
       clearTimeout(zoekT); var q = $('rijZoekIn').value.trim(); if (q.length < 3) return;
       zoekT = setTimeout(function () { window.__nav.zoek(q).then(function (l) {
         var el = $('rijZoekRes'); el.textContent = ''; if (!l.length) { el.textContent = 'Niets gevonden.'; return; }
-        l.forEach(function (r) { var bt = document.createElement('button'); bt.type = 'button'; bt.textContent = r.naam; bt.addEventListener('click', function () { $('rijZoek').hidden = true; $('rijZoekIn').value = ''; window.__nav.start(r); }); el.appendChild(bt); });
+        l.forEach(function (r) { var bt = document.createElement('button'); bt.type = 'button'; bt.textContent = r.naam; bt.addEventListener('click', function () { gekozen(r); }); el.appendChild(bt); });
       }).catch(function () { $('rijZoekRes').textContent = 'Zoeken lukt niet (internet?).'; }); }, 350);
     });
     setInterval(function () { if (map && document.body.classList.contains('kaartrij')) { routeTeken(); afslagToon(); } }, 1000);
     function balkToon() {   /* v134: alles wat je tegenkomt: met route tot je bestemming, anders 10 km vooruit */
-      var b = $('rijBalk'); if (!document.body.classList.contains('kaartrij') || !lastPos) { b.hidden = true; return; }
+      var b = $('rijBalk'), zien = document.body.classList.contains('kaartrij'); if (!lastPos) { b.hidden = true; return; }   /* v137: ook zonder kaart uitrekenen (voor Buddy+) */
       var N = window.__nav && window.__nav.nu(), la = lastPos.lat, lo = lastPos.lon, items = [], lang, opPad;
       var cams = []; try { ((typeof camCache !== 'undefined' && camCache && camCache.cams) || []).forEach(function (c) { cams.push({ lat: c.lat, lon: c.lon, i: '📸', kl: '#ff453a' }); }); } catch (e) {}
       try { (typeof flMeldingen === 'function' ? flMeldingen() : []).forEach(function (m) { cams.push({ lat: m.lat, lon: m.lon, i: m.k === 'mobile' ? '🚓' : '📸', kl: m.k === 'mobile' ? '#ff9f0a' : '#ff453a' }); }); } catch (e) {}
@@ -9653,10 +9705,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         opPad = function (pla, plo) { var dx = (plo - lo) * kx, dy = (pla - la) * 110540, voor = dx * Math.sin(hd) + dy * Math.cos(hd), zij = Math.abs(dx * Math.cos(hd) - dy * Math.sin(hd)); return voor > 0 && voor < lang && zij < Math.max(150, voor * .25) ? voor : -1; };
         $('rbKop').textContent = '10 km';
       }
-      cams.forEach(function (c) { var d = opPad(c.lat, c.lon, 40); if (d >= 0) items.push({ d: d, i: c.i, kl: c.kl }); });
+      cams.forEach(function (c) { var d = opPad(c.lat, c.lon, 40); if (d >= 0) items.push({ d: d, i: c.i, kl: c.kl, s: c.i === '🚓' ? 'm' : 'c' }); });
       vk.forEach(function (it) { if (!it || !Array.isArray(it.pts) || !it.pts.length) return; var ds = it.pts.map(function (q) { q = Array.isArray(q) ? q : [q.lat, q.lon]; return opPad(q[0], q[1], 70); }).filter(function (x) { return x >= 0; }); if (!ds.length) return;
-        var a = Math.min.apply(null, ds), z = Math.max.apply(null, ds); items.push({ d: a, d2: Math.max(z, a + 150), kl: it.k === 'jam' || it.k === 'accident' ? '#ff2d2d' : it.k === 'closure' || it.k === 'ramp' ? '#5a0000' : '#ff9f0a', i: it.k === 'jam' ? '🚗' : it.k === 'accident' ? '💥' : it.k === 'closure' || it.k === 'ramp' ? '⛔' : '🚧' }); });
-      trj.forEach(function (t) { var a = opPad(t[0][0], t[0][1], 300), z = opPad(t[1][0], t[1][1], 300); if (a < 0 && z < 0) return; a = a < 0 ? 0 : a; z = z < 0 ? lang : z; if (z < a) { var w = a; a = z; z = w; } items.push({ d: a, d2: z, kl: '#bf5af2', i: '⏱️' }); });
+        var a = Math.min.apply(null, ds), z = Math.max.apply(null, ds); items.push({ d: a, d2: Math.max(z, a + 150), kl: it.k === 'jam' || it.k === 'accident' ? '#ff2d2d' : it.k === 'closure' || it.k === 'ramp' ? '#5a0000' : '#ff9f0a', i: it.k === 'jam' ? '🚗' : it.k === 'accident' ? '💥' : it.k === 'closure' || it.k === 'ramp' ? '⛔' : '🚧', s: it.k === 'jam' || it.k === 'accident' ? 'f' : it.k === 'closure' || it.k === 'ramp' ? 'x' : 'w' }); });
+      trj.forEach(function (t) { var a = opPad(t[0][0], t[0][1], 300), z = opPad(t[1][0], t[1][1], 300); if (a < 0 && z < 0) return; a = a < 0 ? 0 : a; z = z < 0 ? lang : z; if (z < a) { var w = a; a = z; z = w; } items.push({ d: a, d2: z, kl: '#bf5af2', i: '⏱️', s: 't' }); });
+      window.__balk = { lang: lang, items: items.slice(), t: Date.now() }; if (!zien) { b.hidden = true; return; }
       var baan = $('rbBaan'); baan.textContent = '';
       items.sort(function (x, y) { return x.d - y.d; }).forEach(function (it) {
         if (it.d2) { var st = document.createElement('div'); st.className = 'rbStuk'; st.style.background = it.kl; st.style.bottom = Math.min(100, it.d / lang * 100) + '%'; st.style.height = Math.max(2, Math.min(100, (it.d2 - it.d) / lang * 100)) + '%'; baan.appendChild(st); }
@@ -9690,6 +9743,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       try { document.body.classList.toggle('regen', !!(RADAR && Date.now() - RADAR.t < 20 * 60e3 && RADAR.nu >= .1)); } catch (e) {}
       melding(''); if (Date.now() - flT > 30000) flitsersOpKaart();
       if (S.cam && S.cam.dist != null && S.cam.dist < 25 && Date.now() - (stap.flitsT || 0) > 30000) { stap.flitsT = Date.now(); var fl = $('rijFlits'); fl.classList.remove('op'); void fl.offsetWidth; fl.classList.add('op'); }   /* v128: flitsje als je een flitser passeert */
+      try { if (Nv) spookStap(Nv, p); else if (spookMk) { spookMk.remove(); spookMk = null; } } catch (e) {}
       if (Nv && Nv.steps && Nv.steps[Nv.idx] && Nv.steps[Nv.idx].type === 'arrive' && gdist(p.lat, p.lon, Nv.dest.lat, Nv.dest.lon) < 40 && !stap.aankomst) { stap.aankomst = Nv.t; var fi = $('rijFinish'); fi.classList.add('op'); setTimeout(function () { fi.classList.remove('op'); }, 4000); }
       var dk = ((koers - (stap.vk == null ? koers : stap.vk) + 540) % 360) - 180; stap.vk = koers;   /* v118: stuur draait mee in bochten */
       stap.hoek = (stap.hoek || 0) * .4 + Math.max(-130, Math.min(130, sp > 3 ? dk * 7 : 0)) * .6;
@@ -9713,6 +9767,22 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     /* v135: vloeiend rijden: tussen de GPS-punten rekent de kaart zelf door (30 beelden per seconde) in plaats van per seconde een sprongetje */
     var anim = null, cam = null, rafId = 0, vorigBeeld = 0;
+    /* v137: spookauto: je snelste rit naar Thuis of Werk rijdt doorzichtig mee */
+    var SPOOKKEY = 'dashboardmaatje-spook-v1', spook = null, spookMk = null;
+    function favSleutel(N) { if (!N || !N.dest) return null; var f = window.__favLees ? window.__favLees() : {}, th = window.__thuisFav ? window.__thuisFav() : null;
+      if (th && gdist(N.dest.lat, N.dest.lon, th.lat, th.lon) < 200) return 'thuis'; if (f.werk && gdist(N.dest.lat, N.dest.lon, f.werk.lat, f.werk.lon) < 200) return 'werk'; return null; }
+    function spookStap(N, p) {
+      var k = favSleutel(N); if (!k) { if (spookMk) { spookMk.remove(); spookMk = null; } spook = null; return; }
+      if (!spook || spook.nt !== N.t) { var best = null; try { best = (JSON.parse(localStorage.getItem(SPOOKKEY)) || {})[k] || null; } catch (e) {} spook = { k: k, nt: N.t, t0: Date.now(), pts: [], best: best }; }
+      var sec = (Date.now() - spook.t0) / 1000; if (!spook.pts.length || sec - spook.pts[spook.pts.length - 1][0] >= 5) spook.pts.push([Math.round(sec), +p.lat.toFixed(5), +p.lon.toFixed(5)]);
+      if (spook.best && spook.best.pts && spook.best.pts.length > 2) { var bp = spook.best.pts, i = 0; while (i < bp.length - 2 && bp[i + 1][0] < sec) i++; var a = bp[i], b = bp[i + 1], f = Math.max(0, Math.min(1, (sec - a[0]) / Math.max(1, b[0] - a[0]))), gl = a[1] + (b[1] - a[1]) * f, go = a[2] + (b[2] - a[2]) * f;
+        if (!spookMk) { var el = document.createElement('div'); el.innerHTML = autoSvg({ k: '#e0f4ff', r: '#7fb7d9', vorm: 'suv' }); el.style.opacity = '.45'; spookMk = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' }).setLngLat([go, gl]).addTo(map); }
+        spookMk.setLngLat([go, gl]); var hd = Math.atan2((b[2] - a[2]) * Math.cos(gl * Math.PI / 180), b[1] - a[1]) * 180 / Math.PI; spookMk.setRotation(hd); }
+      if (N.dest && gdist(p.lat, p.lon, N.dest.lat, N.dest.lon) < 60 && !spook.klaar) { spook.klaar = true;
+        var tijd = Math.round(sec), oud = spook.best && spook.best.sec; if (!oud || tijd < oud) { var alle = {}; try { alle = JSON.parse(localStorage.getItem(SPOOKKEY)) || {}; } catch (e) {} alle[k] = { sec: tijd, pts: spook.pts.slice(0, 600) }; try { localStorage.setItem(SPOOKKEY, JSON.stringify(alle)); } catch (e) {}
+          toast(oud ? '👻 Nieuw record naar ' + (k === 'thuis' ? 'huis' : 'je werk') + '! ' + Math.round((oud - tijd) / 60) + ' min sneller dan je spookauto.' : '👻 Je spookauto is opgenomen. Volgende keer race je ertegen!'); }
+        else toast('👻 Je spookauto was ' + Math.round((tijd - oud) / 60) + ' min sneller. Volgende keer!'); }
+    }
     function beeld(ts) {
       rafId = 0; if (!map || !mk || !anim || !document.body.classList.contains('kaartrij') || document.hidden) return;
       if (ts - vorigBeeld < 30) { rafId = requestAnimationFrame(beeld); return; } vorigBeeld = ts;
@@ -9739,9 +9809,15 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     $('rijAutoKnop').addEventListener('click', function () { st.auto = (st.auto + 1) % AUTOS.length; bewaar(); if (mkEl) mkEl.innerHTML = autoSvg(AUTOS[st.auto]); toast('🚗 ' + AUTOS[st.auto].n); });
     function lucht() {   /* v129: echte lucht boven de horizon (dag blauw, nacht donker) */
       if (!map || !map.setSky) return; var n = document.body.classList.contains('nacht');
+      var zh = zonHoogte(); if (zh > -7 && zh < 7) { try { map.setSky({ 'sky-color': '#ff9a4d', 'horizon-color': '#ffd27a', 'fog-color': '#f6b48a', 'sky-horizon-blend': .7, 'horizon-fog-blend': .6, 'fog-ground-blend': .7 }); } catch (e) {} return; }   /* v137: zonsopkomst en -ondergang */
       try { map.setSky(n ? { 'sky-color': '#0b1a33', 'horizon-color': '#24324d', 'fog-color': '#1a2433', 'sky-horizon-blend': .6, 'horizon-fog-blend': .6, 'fog-ground-blend': .6 } : { 'sky-color': '#6fb4ff', 'horizon-color': '#cfe6ff', 'fog-color': '#e2eefb', 'sky-horizon-blend': .5, 'horizon-fog-blend': .5, 'fog-ground-blend': .85 }); } catch (e) {}
     }
-    window.__lucht = lucht;
+    window.__lucht = lucht; setInterval(lucht, 5 * 60e3);
+    function zonHoogte() {   /* hoe hoog de zon staat (graden), benadering */
+      var p = lastPos || { lat: 52, lon: 5 }, nu = new Date(), dag = Math.floor((nu - new Date(nu.getFullYear(), 0, 0)) / 864e5), dec = -23.44 * Math.cos(2 * Math.PI / 365 * (dag + 10)) * Math.PI / 180;
+      var uur = nu.getUTCHours() + nu.getUTCMinutes() / 60 + p.lon / 15, ha = (uur - 12) * 15 * Math.PI / 180, la = p.lat * Math.PI / 180;
+      return Math.asin(Math.sin(la) * Math.sin(dec) + Math.cos(la) * Math.cos(dec) * Math.cos(ha)) * 180 / Math.PI;
+    }
     function fpKnop() { $('rijFpKnop').classList.toggle('aan', st.kijk === 2); }
     function satZet() {   /* v127: luchtfoto's (PDOK, heel Nederland, scherp) onder de wegen, 3D-gebouwen erbovenop */
       $('rijSatKnop').classList.toggle('aan', !!st.sat); if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return;
@@ -9820,6 +9896,40 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       }
     }
   }
+  (function () {   /* v137: ritfilmpje: je laatste rit als vlucht over de 3D-kaart, opgenomen als video */
+    var b = $('bFilm'); if (!b) return;
+    b.addEventListener('click', function () {
+      var ks = Object.keys(ritPts || {}).sort(), last = ks.length ? ritPts[ks[ks.length - 1]] : null; if (!last || !last.p || last.p.length < 8) { toast('Nog geen rit met route bewaard.'); return; }
+      var pts = []; for (var i = 0; i < last.p.length; i += 2) pts.push([last.p[i + 1], last.p[i]]);
+      var ov = document.createElement('div'); ov.style.cssText = 'position:fixed;inset:0;z-index:95;background:#000'; var md = document.createElement('div'); md.style.cssText = 'position:absolute;inset:0'; ov.appendChild(md);
+      var info = document.createElement('div'); info.style.cssText = 'position:absolute;left:12px;right:12px;bottom:14px;color:#fff;font:700 16px var(--f-body);text-align:center;text-shadow:0 2px 6px #000'; info.textContent = '🎥 Filmpje maken…'; ov.appendChild(info);
+      var sluit = document.createElement('button'); sluit.textContent = '✕'; sluit.style.cssText = 'position:absolute;top:12px;right:12px;width:46px;height:46px;border-radius:23px;border:1px solid #555;background:#111;color:#fff;font-size:20px;z-index:2'; ov.appendChild(sluit);
+      document.body.appendChild(ov); var weg = false; sluit.onclick = function () { weg = true; ov.remove(); };
+      var laad = window.maplibregl ? Promise.resolve() : new Promise(function (ok, nee) { var c = document.createElement('link'); c.rel = 'stylesheet'; c.href = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css'; document.head.appendChild(c); var sc = document.createElement('script'); sc.src = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js'; sc.onload = ok; sc.onerror = nee; document.head.appendChild(sc); });
+      laad.then(function () {
+        var m = new maplibregl.Map({ container: md, style: 'https://tiles.openfreemap.org/styles/liberty', center: pts[0], zoom: 14, pitch: 60, attributionControl: false, interactive: false, preserveDrawingBuffer: true, pixelRatio: 1 });
+        m.on('load', function () {
+          m.addSource('rit', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: pts } } });
+          m.addLayer({ id: 'rit', type: 'line', source: 'rit', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#3db7ff', 'line-width': 6 } });
+          var canvas = m.getCanvas(), rec = null, stukjes = [];
+          try { var str = canvas.captureStream(30), mt = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'].filter(function (t) { return window.MediaRecorder && MediaRecorder.isTypeSupported(t); })[0]; rec = new MediaRecorder(str, mt ? { mimeType: mt, videoBitsPerSecond: 4e6 } : undefined); rec.ondataavailable = function (e) { if (e.data && e.data.size) stukjes.push(e.data); }; rec.start(500); } catch (e) { rec = null; }
+          var duur = 14000, t0 = performance.now(), cum = [0]; for (var k = 1; k < pts.length; k++) cum.push(cum[k - 1] + gdist(pts[k - 1][1], pts[k - 1][0], pts[k][1], pts[k][0]));
+          var totaal = cum[cum.length - 1] || 1, km = (totaal / 1000).toFixed(1).replace('.', ',');
+          function stap(ts) { if (weg) { try { rec && rec.stop(); } catch (e) {} return; } var f = Math.min(1, (ts - t0) / duur), d = f * totaal, j = 0; while (j < cum.length - 2 && cum[j + 1] < d) j++;
+            var a = pts[j], c = pts[Math.min(pts.length - 1, j + 1)], q = (d - cum[j]) / Math.max(1, cum[j + 1] - cum[j]), pos = [a[0] + (c[0] - a[0]) * q, a[1] + (c[1] - a[1]) * q], br = Math.atan2((c[0] - a[0]) * Math.cos(pos[1] * Math.PI / 180), c[1] - a[1]) * 180 / Math.PI;
+            m.jumpTo({ center: pos, bearing: br, zoom: 14.5 - Math.sin(f * Math.PI) * 1.5, pitch: 62 }); info.textContent = '🚗 ' + (d / 1000).toFixed(1).replace('.', ',') + ' / ' + km + ' km';
+            if (f < 1) requestAnimationFrame(stap); else setTimeout(klaar, 600); }
+          function klaar() {
+            info.textContent = '🏁 ' + km + ' km met Buddy'; if (!rec) { info.textContent += ' (video opnemen kan niet op deze telefoon)'; return; }
+            rec.onstop = function () { var blob = new Blob(stukjes, { type: rec.mimeType || 'video/webm' }), ext = /mp4/.test(blob.type) ? 'mp4' : 'webm', file = null; try { file = new File([blob], 'rit-met-buddy.' + ext, { type: blob.type }); } catch (e) {}
+              var deel = document.createElement('button'); deel.className = 'btn'; deel.textContent = '📤 Delen / bewaren'; deel.style.cssText = 'position:absolute;left:50%;bottom:56px;transform:translateX(-50%);z-index:2'; ov.appendChild(deel);
+              deel.onclick = function () { if (file && navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], title: 'Rit met Buddy' }).catch(function () {}); else { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'rit-met-buddy.' + ext; a.click(); } }; };
+            setTimeout(function () { try { rec.stop(); } catch (e) {} }, 300); }
+          requestAnimationFrame(stap);
+        });
+      }).catch(function () { info.textContent = 'Kaart laden lukt niet (geen internet?).'; });
+    });
+  })();
   $('bReplay').addEventListener('click', function () {
     if (rp) { rp = null; S.target = 0; speedEl.value = 0; $('bReplay').textContent = 'Laatste rit afspelen (4x sneller)'; return; }
     if (S.live) { toast('Zet eerst de telefoon-GPS uit om af te spelen.'); return; }
