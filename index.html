@@ -171,6 +171,14 @@ body.car #carBack { display: block; }
   body.car.kaartrij #rijMelding { left: calc(50% + var(--bw) / 2); }
 }
 #rijMap { position: absolute; inset: 0; }
+/* v152 */
+.helmet.salto { animation: salto 1.3s cubic-bezier(.3,.1,.3,1); } @keyframes salto { 0% { transform: translateY(0) rotate(0); } 35% { transform: translateY(-60px) rotate(180deg); } 70% { transform: translateY(-20px) rotate(360deg); } 85% { transform: translateY(6px) rotate(360deg) scale(1.05, .95); } 100% { transform: none; } }
+.zwaaiAuto { position: fixed; z-index: 90; top: 18vh; left: -120px; display: flex; align-items: center; gap: 2px; pointer-events: none; animation: zwaaiVlieg 4.2s ease-in-out forwards; }
+.zwaaiAuto span { font-size: 44px; transform: scaleX(-1); display: inline-block; } .zwaaiAuto b { font-size: 28px; animation: dakZwaai .3s ease-in-out infinite alternate; margin-left: -10px; margin-top: -26px; } .zwaaiAuto i { font: 700 13px var(--f-body); font-style: normal; background: rgba(0,0,0,.6); color: #fff; padding: 2px 8px; border-radius: 9px; } .zwaaiAuto i:empty { display: none; }
+@keyframes zwaaiVlieg { 0% { left: -140px; transform: translateY(0); } 25% { transform: translateY(-14px); } 50% { transform: translateY(0); } 75% { transform: translateY(-14px); } 100% { left: 110vw; transform: translateY(0); } }
+.toetBallon { position: fixed; z-index: 90; left: 50%; top: 32vh; transform: translate(-50%, 0) rotate(-6deg); padding: 10px 18px; background: #ffd60a; color: #111; border: 3px solid #111; border-radius: 22px; font: 900 30px var(--f-display); letter-spacing: 1px; pointer-events: none; box-shadow: 4px 4px 0 #111; animation: toet 1.4s ease-out forwards; }
+.toetBallon::after { content: ''; position: absolute; left: 30%; bottom: -18px; border: 9px solid transparent; border-top: 12px solid #111; }
+@keyframes toet { 0% { transform: translate(-50%, 10px) rotate(-6deg) scale(.3); opacity: 0; } 15% { transform: translate(-50%, 0) rotate(-6deg) scale(1.15); opacity: 1; } 25% { transform: translate(-50%, 0) rotate(-6deg) scale(1); } 80% { opacity: 1; } 100% { transform: translate(-50%, -30px) rotate(-6deg); opacity: 0; } }
 /* v150: gekke dingen in eerste persoon */
 #rijFun { position: absolute; inset: 0; z-index: 32; pointer-events: none; overflow: hidden; }
 .funEend { position: absolute; left: -30%; top: 52%; display: flex; gap: 4px; font-size: 34px; transform: scaleX(-1); animation: eendLoop 8.5s linear forwards; } .funEend span:not(:first-child) { font-size: 22px; align-self: flex-end; }
@@ -1386,8 +1394,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   /* v74: Buddy laat de audio weer los. Een AudioContext die blijft draaien houdt de geluidsuitgang van de telefoon bezet,
      waardoor de radio/muziek in de auto niet terugkomt (zoals bij Flitsmeister wel). Na elk geluidje gaat hij na 2 s weer slapen. */
   var audioLaatst = 0;
-  function audioGebruik(c) {
-    audioLaatst = Date.now();
+  function audioGebruik(c, ms) {   /* v152: ms = hoe lang het geluid nog duurt, zodat de app hem niet halverwege stillegt */
+    audioLaatst = Math.max(audioLaatst || 0, Date.now() + (ms || 0));
     try { if (c && c.state === 'suspended' && c.resume) c.resume(); } catch (e) {}
   }
   setInterval(function () {
@@ -2475,6 +2483,34 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       else S.gag.end = Math.max(S.gag.end, T + 2.5);
     }
   }
+  /* v152: sfeer-gloed achter Buddy, ogen die je vinger volgen, weer op zijn gezicht, salto met confetti */
+  var vinger = 0;
+  (function () { var h = document.querySelector('.helmet') || cv; function kijk(e) { var r = cv.getBoundingClientRect(); if (!r.width) return; var x = ((e.clientX - r.left) / r.width) * 2 - 1, y = ((e.clientY - r.top) / r.height) * 2 - 1;
+      tgx = Math.max(-1, Math.min(1, x * 1.4)); tgy = Math.max(-1, Math.min(1, y * 1.4)); nextGaze = T + 1.6; vinger = T; }
+    try { h.addEventListener('pointerdown', kijk, { passive: true }); h.addEventListener('pointermove', function (e) { if (e.buttons || e.pointerType === 'touch') kijk(e); }, { passive: true }); } catch (e) {} })();
+  function sfeerDraw(dt) {
+    if (reduce || S.asleep) return; var kl = null, puls = .6 + .4 * Math.sin(T * 1.6), lim = S.roadLim;
+    if (S.live && lim && (S.speed || 0) > lim + 5) { kl = '255,59,48'; puls = .5 + .5 * Math.sin(T * 6); }
+    else if (curKey === 'happy' || curKey === 'excited' || curKey === 'love') kl = '255,159,10';
+    else if (curKey === 'relaxed' || curKey === 'content' || curKey === 'neutral') kl = '64,156,255';
+    else if (curKey === 'sleepy' || curKey === 'bored') kl = '140,110,255';
+    if (!kl) return; var g = ctx.createRadialGradient(120, 120, 30, 120, 120, 104); g.addColorStop(0, 'rgba(' + kl + ',0)'); g.addColorStop(1, 'rgba(' + kl + ',' + (.16 + .14 * puls).toFixed(3) + ')');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 240, 240);
+  }
+  var helmDr = [];
+  function weerGezicht(dt, ox, oy) {
+    if (reduce || S.asleep) return; var f = wxFlags(), i;
+    if (f.rain) { while (helmDr.length < 3 + f.rain * 2) helmDr.push({ z: Math.random() < .5 ? -1 : 1, t: rand(.05, .9), v: rand(.04, .1), s: rand(2, 3.5) });   /* druppels die langs de rand naar beneden glijden */
+      ctx.fillStyle = 'rgba(200,235,255,.7)'; for (i = 0; i < helmDr.length; i++) { var d = helmDr[i]; d.t += d.v * dt; if (d.t > 1) { d.t = rand(.05, .3); d.z = Math.random() < .5 ? -1 : 1; } var an = -Math.PI / 2 + d.z * d.t * Math.PI;
+        ctx.beginPath(); ctx.ellipse(120 + Math.cos(an) * 97, 120 + Math.sin(an) * 97, d.s * .7, d.s, 0, 0, TAU); ctx.fill(); } } else helmDr.length = 0;
+    if (f.temp != null && f.temp >= 27) { var zt = (T % 2.6) / 2.6, zy = 62 + zt * 46; ctx.globalAlpha = Math.min(1, (1 - zt) * 2); ctx.fillStyle = '#8fd3ff'; ctx.beginPath(); ctx.moveTo(196 + ox * .4, zy - 9); ctx.quadraticCurveTo(203 + ox * .4, zy + 2, 196 + ox * .4, zy + 4); ctx.quadraticCurveTo(189 + ox * .4, zy + 2, 196 + ox * .4, zy - 9); ctx.fill(); ctx.globalAlpha = 1; }   /* zweetdruppel */
+    if (f.temp != null && f.temp <= 0) { ctx.fillStyle = 'rgba(225,245,255,.85)'; for (i = 0; i < 9; i++) { var a = -2.6 + i * .2, x = 120 + Math.cos(a) * 100, y = 120 + Math.sin(a) * 100, l = 7 + ((i * 37) % 9) + Math.sin(T * .5 + i) * .8; ctx.beginPath(); ctx.moveTo(x - 3, y - 1); ctx.lineTo(x + 3, y - 1); ctx.lineTo(x, y + l); ctx.closePath(); ctx.fill(); } }   /* ijspegeltjes */
+  }
+  window.__salto = function () {   /* salto + confetti bij een level of badge */
+    var h = document.querySelector('.helmet'); if (h) { h.classList.remove('salto'); void h.offsetWidth; h.classList.add('salto'); setTimeout(function () { h.classList.remove('salto'); }, 1400); }
+    var KL = ['#FF5A6E', '#FFD60A', '#34C759', '#0A84FF', '#BF5AF2', '#FF9F0A'];
+    for (var i = 0; i < 46; i++) parts.push({ k: 'c', x: rand(30, 210), y: rand(-20, 30), vx: rand(-20, 20), vy: rand(40, 110), l: 0, m: rand(1.6, 2.6), s: rand(4, 7), col: KL[i % KL.length] });
+  };
   function render(dt) {
     if (S.ruimteNa && T > S.ruimteNa && !(S.flagUntil > T)) { var ng = S.naGag || 'ruimte'; S.ruimteNa = 0; S.naGag = null; if (S.gag) endGag(true); startGag(ng); lg('sprint-animatie: ' + ng); }
     try { retroCheck(); } catch (e) {}
@@ -2496,6 +2532,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     ctx.fillStyle = SCREEN; ctx.fillRect(0, 0, 240, 240);
     ctx.save(); ctx.beginPath(); ctx.arc(120, 120, 102, 0, TAU); ctx.clip();
     tunnelFx();
+    try { sfeerDraw(dt); } catch (e) {}
     wxBack(dt);
     var ox = gx * 9, oy = gy * 7;
     var isClock = curKey === 'clock' && !S.asleep;
@@ -2543,6 +2580,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     moodFx(dt);
     wxFront(dt);
+    try { weerGezicht(dt, ox, oy); } catch (e) {}
     flagDraw();
     if (!S.grNote) gmeterDraw();
     grNoteDraw();
@@ -4693,6 +4731,17 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     var ks = Object.keys(ritPts).sort(); while (ks.length > 12) delete ritPts[ks.shift()];
     try { localStorage.setItem(RITPTSKEY, JSON.stringify(ritPts)); } catch (e) { ritPts = {}; ritPts[r.t0] = { p: r0.pts, f: r0.fl || [] }; try { localStorage.setItem(RITPTSKEY, JSON.stringify(ritPts)); } catch (e2) {} }
   }
+  function ritKaartRij(cv, r) {   /* v152: een autootje rijdt je rit nog een keer na over het kaartje */
+    var d = ritPts[r.t0]; if (!d || !d.p || d.p.length < 4 || cv.hidden) return; var t0 = performance.now(), dur = Math.min(8000, 2500 + d.p.length * 4), id = (ritKaartRij.id = (ritKaartRij.id || 0) + 1);
+    var p = d.p, mnA = 90, mxA = -90, mnO = 180, mxO = -180, i; for (i = 0; i < p.length; i += 2) { mnA = Math.min(mnA, p[i]); mxA = Math.max(mxA, p[i]); mnO = Math.min(mnO, p[i + 1]); mxO = Math.max(mxO, p[i + 1]); }
+    var W = cv.width, H = cv.height, k = Math.cos((mnA + mxA) / 2 * Math.PI / 180), sx = (mxO - mnO) * k || 1e-4, sy = (mxA - mnA) || 1e-4, pad = 18, lgH = d.o && d.o.length === p.length / 2 ? Math.round(W / 30 * 2) : 0;
+    var sc = Math.min((W - 2 * pad) / sx, (H - lgH - 2 * pad) / sy), ox = (W - sx * sc) / 2, oy = lgH + (H - lgH - sy * sc) / 2;
+    function stap(nu) { if (id !== ritKaartRij.id || cv.hidden || $('ritKaart').hidden) return; var f = Math.min(1, (nu - t0) / dur), n = p.length / 2, j = Math.min(n - 1, Math.floor(f * (n - 1))) * 2;
+      ritKaartTeken(cv, r); var c = cv.getContext('2d'), x = ox + (p[j + 1] - mnO) * k * sc, y = H - (oy + (p[j] - mnA) * sc);
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y, 9, 0, Math.PI * 2); c.fill(); c.fillStyle = '#0a84ff'; c.beginPath(); c.arc(x, y, 6, 0, Math.PI * 2); c.fill();
+      if (f < 1) requestAnimationFrame(stap); else { c.font = '22px sans-serif'; c.textAlign = 'center'; c.fillText('🏁', x + 4, y - 10); } }
+    requestAnimationFrame(stap);
+  }
   function ritKaartTeken(cv, r) {
     var d = ritPts[r.t0], c = cv.getContext('2d'), W = cv.width, H = cv.height;
     c.clearRect(0, 0, W, H);
@@ -4759,7 +4808,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (mem.level === undefined) { mem.level = l; save(); }
     else if (l > mem.level) {
       mem.level = l; save(); lg('level ' + l);
-      queueCheer('Level ' + l + '! Ik ben nu ' + lvNaam(l) + '.');
+      queueCheer('Level ' + l + '! Ik ben nu ' + lvNaam(l) + '.'); setTimeout(function () { try { window.__salto(); } catch (e) {} }, 4200);
       if (typeof grLid === 'function') setTimeout(function () { grLid(true); }, 2000);
     }
   }
@@ -4859,7 +4908,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v151';
+  var VERSION = 'v152';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5713,6 +5762,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     hart: ['❤️', 'hartjes'], flits: ['📸', 'meldt flitser'], thuis: ['🏁', 'bijna thuis'], mijlpaal: ['🏆', 'km'], feli: ['🎉', 'feliciteert je'], test: ['🧪', 'test'], buur: ['📍', 'vlakbij'] };
   function grInRondje(b, sub) {
     try { if (window.__dakZwaai) window.__dakZwaai(); } catch (e) {}
+    if (b && b.s === 'zwaai') try { var zv = document.createElement('div'); zv.className = 'zwaaiAuto'; zv.innerHTML = '<span>🚗</span><b>👋</b><i></i>'; zv.querySelector('i').textContent = b.n || ''; document.body.appendChild(zv); setTimeout(function () { zv.remove(); }, 4300); } catch (e) {}   /* v152 */
     var d = GRNOTE[b.s] || ['💬', 'bericht'], t = sub || d[1];
     if (b.s === 'mijlpaal') t = (b.w || 0) + ' km!';
     if ((b.s === 'file' || b.s === 'pech' || b.s === 'flits') && b.p) t += ' · ' + b.p;
@@ -6461,7 +6511,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     });
     $('ritKaartStijl').textContent = 'Rijstijl ' + r.stijl + '/100 · ' + (r.stijl >= 90 ? 'superzacht gereden!' : r.stijl >= 75 ? 'netjes gereden.' : 'pittig gereden, rustiger mag ook.') + (r.g ? ' · max ' + fmt1(r.g) + ' G' : '');
     $('ritKaartStijl').className = r.stijl >= 75 ? 'goed' : 'pittig';
-    try { ritKaartTeken($('ritKaartMap'), r); } catch (e) { $('ritKaartMap').hidden = true; }
+    try { ritKaartTeken($('ritKaartMap'), r); ritKaartRij($('ritKaartMap'), r); } catch (e) { $('ritKaartMap').hidden = true; }
     ritKaartHuidig = r; rkTitel('Rit klaar 🏁'); $('ritKaartDeel').hidden = false;
     el.hidden = false;
   }
@@ -6734,7 +6784,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     BADGES.forEach(function (b) { if (mem.badges.indexOf(b.k) < 0 && b.ok(mem)) { mem.badges.push(b.k); mem.badgeT[b.k] = Date.now(); nieuw.push(b); } });
     if (nieuw.length) {
       save(); badgeToon();
-      if (!stil) { var b = nieuw[0]; queueCheer('Nieuwe badge: ' + b.n + ' ' + b.i + '!'); if (window.__scEvt) window.__scEvt('f', 'Nieuwe badge: ' + b.n + '!'); }
+      if (!stil) { var b = nieuw[0]; queueCheer('Nieuwe badge: ' + b.n + ' ' + b.i + '!'); setTimeout(function () { try { window.__salto(); } catch (e) {} }, 4200); if (window.__scEvt) window.__scEvt('f', 'Nieuwe badge: ' + b.n + '!'); }
       if (typeof grLid === 'function') grLid(true);
     }
   }
@@ -9110,7 +9160,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     } };
   /* v96: keihard optrekken = Buddy schiet de ruimte in (eigen deuntje) */
   function synthMaak() {   /* v97: klein synthesizertje voor de sprint-deuntjes */
-    if (!sound || !ac || meldModus === 'stil') return null; audioGebruik(ac);   /* v134: shows hebben muziek, behalve in stil */
+    if (!sound || !ac || meldModus === 'stil') return null; audioGebruik(ac, 10000);   /* v134: shows hebben muziek, behalve in stil. v152: niet halverwege stilleggen */
     var t0 = ac.currentTime + .05, mg = ac.createGain(); mg.gain.value = .9; mg.connect(ac.destination);
     return function (f, s, d, type, vol, f2) { var o = ac.createOscillator(), g = ac.createGain(); o.type = type || 'sawtooth'; o.frequency.setValueAtTime(f, t0 + s); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + s + d); g.gain.setValueAtTime(.0001, t0 + s); g.gain.exponentialRampToValueAtTime(vol || .045, t0 + s + .02); g.gain.exponentialRampToValueAtTime(.0001, t0 + s + d); o.connect(g); g.connect(mg); o.start(t0 + s); o.stop(t0 + s + d + .02); };
   }
@@ -9119,7 +9169,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function sterLees() { try { var b = localStorage.getItem(STERKEY); if (!b) return null; var t = atob(b), a = new Uint8Array(t.length); for (var i = 0; i < t.length; i++) a[i] = t.charCodeAt(i); return a; } catch (e) { return null; } }
   function sterSpeel(a) {   /* v106: eigen geluidje (8 kHz, 8 bit) op de telefoon afspelen */
     if (!sound || !ac || meldModus === 'stil') return false; audioGebruik(ac);
-    try { var buf = ac.createBuffer(1, a.length, 8000), d = buf.getChannelData(0); for (var i = 0; i < a.length; i++) d[i] = (a[i] - 128) / 128; var bs = ac.createBufferSource(); bs.buffer = buf; bs.connect(ac.destination); bs.start(); return true; } catch (e) { return false; }
+    try { var buf = ac.createBuffer(1, a.length, 8000), d = buf.getChannelData(0); for (var i = 0; i < a.length; i++) d[i] = (a[i] - 128) / 128; var bs = ac.createBufferSource(); bs.buffer = buf; bs.connect(ac.destination); bs.start(); audioGebruik(ac, a.length / 8 + 300); return true; } catch (e) { return false; }
   }
   (function () {   /* v106: geluidje kiezen, omzetten naar 8 kHz en bewaren */
     var inp = $('sterBestand'), st = $('sterStat'); if (!inp) return;
@@ -9140,14 +9190,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   })();
   var sterStd = null;   /* v107: Ricardo's eigen sterren-geluidje zit standaard in de app */
   function sterStdSpeel() { if (!sound || !ac || meldModus === 'stil') return false; audioGebruik(ac);
-    function speel(b) { try { var bs = ac.createBufferSource(); bs.buffer = b; bs.connect(ac.destination); bs.start(); } catch (e) {} }
+    function speel(b) { try { var bs = ac.createBufferSource(); bs.buffer = b; bs.connect(ac.destination); bs.start(); audioGebruik(ac, b.duration * 1000 + 300); } catch (e) {} }
     if (sterStd) { speel(sterStd); return true; }
     fetch('geluid/sterren.mp3?v=95', { cache: 'no-cache' }).then(function (r) { return r.arrayBuffer(); }).then(function (ab) { return ac.decodeAudioData(ab); }).then(function (b) { sterStd = b; speel(b); }).catch(function () {});
     return true; }
   function ruimteDeuntje() {
     var eigen = sterLees(); if (eigen && sterSpeel(eigen)) return;
     if (sterStdSpeel()) return;
-    var noot = synthMaak(); if (!noot) return;
+    var noot = synthMaak(); if (!noot) return; audioGebruik(ac, 8000);
     noot(80, 0, 1.3, 'sawtooth', .06, 1400);   /* lancering: woesj omhoog */
     var AK = [[293.7, 370, 440], [329.6, 415.3, 493.9], [370, 466.2, 554.4], [440, 554.4, 659.3]], s = 1.3;   /* eigen deuntje: stijgende akkoorden */
     AK.forEach(function (a, i) { for (var r = 0; r < 4; r++) { var f = a[r % 3] * (r === 3 ? 2 : 1); noot(f, s + i * 1.2 + r * .15, .5, 'square', .03); } noot(a[0] / 2, s + i * 1.2, 1.1, 'triangle', .07); });
@@ -10335,7 +10385,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     /* v119: gekke dingen in eerste persoon */
     function buddyPiek() { var b = $('rijPiek'); b.classList.add('op'); setTimeout(function () { b.classList.add('knip'); }, 1300); setTimeout(function () { b.classList.remove('knip'); }, 1650); setTimeout(function () { b.classList.remove('op'); }, 2900); }
     window.__buddyPiek = buddyPiek;
-    function toeter() { try { funToet(); } catch (e) {} if (sound && ac && meldModus !== 'stil') { try { [[392, 0], [494, .02]].forEach(function (x) { var o = ac.createOscillator(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.value = x[0]; g.gain.setValueAtTime(.0001, ac.currentTime); g.gain.exponentialRampToValueAtTime(.12, ac.currentTime + .03); g.gain.setValueAtTime(.12, ac.currentTime + .45); g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + .6); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + .65); }); } catch (e) {} }
+    function toeter() { try { funToet(); } catch (e) {} try { var tb = document.createElement('div'); tb.className = 'toetBallon'; tb.textContent = pick(['TOET!', 'TOET TOET!', 'TÖÖÖT!', 'MEEP MEEP!']); document.body.appendChild(tb); setTimeout(function () { tb.remove(); }, 1500); } catch (e) {} if (sound && ac && meldModus !== 'stil') { try { [[392, 0], [494, .02]].forEach(function (x) { var o = ac.createOscillator(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.value = x[0]; g.gain.setValueAtTime(.0001, ac.currentTime); g.gain.exponentialRampToValueAtTime(.12, ac.currentTime + .03); g.gain.setValueAtTime(.12, ac.currentTime + .45); g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + .6); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + .65); }); } catch (e) {} }
       var k = $('rijKaart'); k.classList.remove('toeter'); void k.offsetWidth; k.classList.add('toeter'); }
     $('rijGebKnop').addEventListener('click', function () { var g = $('rijGebaren'); g.classList.toggle('open'); $('rijGebKnop').classList.toggle('aan', g.classList.contains('open')); clearTimeout(this._t); this._t = setTimeout(function () { g.classList.remove('open'); $('rijGebKnop').classList.remove('aan'); }, 8000); });
     document.querySelectorAll('#rijGebaren button:not(#rijGebKnop)').forEach(function (b) { b.addEventListener('click', function () {
