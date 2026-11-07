@@ -4414,16 +4414,28 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (!navSpk || meldModus === 'stil' || !('speechSynthesis' in window)) return;
     try { var u = new SpeechSynthesisUtterance(t); u.lang = 'nl-NL'; u.rate = 1.0; u.volume = 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
   }
+  function heeftPont(rt) { return (rt.legs || []).some(function (l) { return (l.steps || []).some(function (s) { return s.mode === 'ferry'; }); }); }
+  function pontVrij(j, van, naar, qs) {   /* v154: route met een pontje? Dan een andere route zonder, of via de dichtstbijzijnde brug */
+    if (!navPont || !j || !j.routes || !j.routes.length) return j;
+    var vrij = j.routes.filter(function (r) { return !heeftPont(r); }); if (vrij.length) { if (vrij[0] !== j.routes[0]) lg('route: alternatief zonder pontje gekozen'); j.routes = vrij; return j; }
+    lg('route: alle routes gaan over een pontje, ik probeer via een brug');
+    var BRUG = [[51.9077, 4.5384], [51.9186, 4.5861], [51.9935, 5.0936], [51.9620, 5.2300], [51.8197, 4.9690], [51.8100, 4.6510], [51.8836, 4.6230], [51.9550, 5.3920]], rec = gdist(van.lat, van.lon, naar.lat, naar.lon);
+    var kand = BRUG.map(function (b) { return { b: b, d: gdist(van.lat, van.lon, b[0], b[1]) + gdist(b[0], b[1], naar.lat, naar.lon) }; }).filter(function (x) { return x.d < rec * 2.5 + 30000; }).sort(function (a, b) { return a.d - b.d; }).slice(0, 3);
+    if (!kand.length) return j;
+    return Promise.all(kand.map(function (x) { var p = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + x.b[1].toFixed(4) + ',' + x.b[0].toFixed(4) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5);
+      return fetch('https://router.project-osrm.org/route/v1/driving/' + p + qs).then(function (r) { return r.json(); }).then(function (k) { return k && k.routes && k.routes[0] && !heeftPont(k.routes[0]) ? k : null; }).catch(function () { return null; }); }))
+      .then(function (rs) { var best = null; rs.forEach(function (k) { if (k && (!best || k.routes[0].duration < best.routes[0].duration)) best = k; }); if (best) { lg('route zonder pontje via een brug: ' + Math.round(best.routes[0].duration / 60) + ' min'); return best; } lg('geen route zonder pontje gevonden'); return j; });
+  }
   function navRoute(van, naar, opnieuw) {
     if (navBusy) return; navBusy = true; navLastRoute = T;
     var pad = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5);
-    var qs = '?overview=full&geometries=geojson&steps=true', qx = navPont ? qs + '&exclude=ferry' : qs;
+    var qs = '?overview=full&geometries=geojson&steps=true', qa = qs + (navPont ? '&alternatives=3' : ''), qx = navPont ? qa + '&exclude=ferry' : qs;
     if (!opnieuw) navStat('Route berekenen…');
-    navGet('/route/' + pad + qx, 'https://router.project-osrm.org/route/v1/driving/' + pad + qx).catch(function (e) { if (qx === qs) throw e; lg('route zonder pontjes lukt niet, toch mét'); return navGet('/route/' + pad + qs, 'https://router.project-osrm.org/route/v1/driving/' + pad + qs); }).then(function (j) {
+    navGet('/route/' + pad + qx, 'https://router.project-osrm.org/route/v1/driving/' + pad + qx).catch(function (e) { if (qx === qs) throw e; lg('route met exclude=ferry lukt niet, zelf een route zonder pontje zoeken'); return navGet('/route/' + pad + qa, 'https://router.project-osrm.org/route/v1/driving/' + pad + qa); }).then(function (j) { return pontVrij(j, van, naar, qs); }).then(function (j) {
       var rt = j && j.routes && j.routes[0]; if (!rt) throw new Error('geen route gevonden');
       var steps = [];
-      (rt.legs || []).forEach(function (lg0) { (lg0.steps || []).forEach(function (s) {
-        var m = s.maneuver || {}; if (!m.location) return;
+      (rt.legs || []).forEach(function (lg0, li) { (lg0.steps || []).forEach(function (s) {
+        var m = s.maneuver || {}; if (!m.location) return; if ((m.type === 'arrive' && li < rt.legs.length - 1) || (m.type === 'depart' && li > 0)) return;   /* v154: tussenpunt (brug) niet als aankomst */
         var ln = s.intersections && s.intersections[0] && s.intersections[0].lanes; ln = Array.isArray(ln) && ln.length > 1 ? ln.map(function (l) { return { i: (l.indications || []).join(','), v: !!l.valid }; }) : null;   /* v137: rijstroken */
         steps.push({ lat: m.location[1], lon: m.location[0], type: m.type, mod: m.modifier, exit: m.exit, naam: s.name || '', ref: (s.ref || '').split(';')[0], lanes: ln });
       }); });
@@ -4919,7 +4931,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v153';
+  var VERSION = 'v154';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
