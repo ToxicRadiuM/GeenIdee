@@ -633,6 +633,7 @@ async function groep(url, env, g, json) {
   const tachtig = getal(q('tachtig'), 1000); lid.tachtig = tachtig >= 25 && tachtig <= 90 ? tachtig : 0; // 0-80, idem
   // Weekchallenge: waarde van deze week; bij een nieuwe week schuift de oude door naar 'vorige' (voor de winnaar)
   const oud = leden.find((x) => x && x.van === van);
+  const gem = getal(q('gem'), 400); if (gem) lid.gem = gem; else if (oud && oud.gem) lid.gem = oud.gem;   // v149: aantal gemeenten (verzamelkaart)
   // Soepelste rijder van de week (0-100, gemeten met de bewegingssensor)
   const zw = getal(q('zw'), 1e5), zv = getal(q('zv'), 100);
   if (zw && zv) lid.zacht = { w: zw, v: zv }; else if (oud && oud.zacht) lid.zacht = oud.zacht;
