@@ -171,6 +171,43 @@ body.car #carBack { display: block; }
   body.car.kaartrij #rijMelding { left: calc(50% + var(--bw) / 2); }
 }
 #rijMap { position: absolute; inset: 0; }
+/* v147 */
+.rijLimBord { width: 40px; height: 40px; border-radius: 50%; background: #fff; border: 5px solid #e3121b; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font: 800 15px var(--f-display); color: #111; box-shadow: 0 3px 8px rgba(0,0,0,.5); letter-spacing: -.5px; }
+.rijRotNr { display: flex; flex-direction: column; align-items: center; padding: 4px 14px; border-radius: 14px; background: rgba(10,108,150,.92); border: 2px solid #fff; color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.5); animation: rotZweef 1.6s ease-in-out infinite alternate; }
+.rijRotNr b { font: 900 30px/1 var(--f-display); } .rijRotNr span { font: 700 11px var(--f-body); } @keyframes rotZweef { to { transform: translateY(-8px); } }
+.rijLaad { width: 28px; height: 28px; border-radius: 8px; background: #1f8f4e; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 3px 8px rgba(0,0,0,.5); } .rijLaad.tesla { background: #c8102e; }
+.rijThuis { font-size: 30px; filter: drop-shadow(0 3px 5px rgba(0,0,0,.6)); position: relative; } .rijThuis::after { content: '🚩'; position: absolute; left: 20px; top: -14px; font-size: 18px; }
+#rijSeizoen { position: absolute; inset: 0; z-index: 32; pointer-events: none; overflow: hidden; } #rijSeizoen i { position: absolute; top: -40px; font-style: normal; opacity: 0; display: none; }
+body.herfst #rijSeizoen .blad { display: block; font-size: 22px; animation: blad linear infinite; } body.sneeuw #rijSeizoen .vlok { display: block; color: #fff; font-size: 16px; text-shadow: 0 0 4px rgba(255,255,255,.8); animation: vlok linear infinite; }
+@keyframes blad { 0% { transform: translate(0, 0) rotate(0); opacity: 0; } 10% { opacity: .9; } 50% { transform: translate(40px, 55vh) rotate(200deg); } 100% { transform: translate(-20px, 110vh) rotate(420deg); opacity: .8; } }
+@keyframes vlok { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: .95; } 100% { transform: translate(-30px, 110vh); opacity: .7; } }
+body.vorst #rijKaart::after { content: ''; position: absolute; inset: 0; z-index: 33; pointer-events: none; background: radial-gradient(ellipse at 0 0, rgba(225,240,255,.55), rgba(225,240,255,0) 32%), radial-gradient(ellipse at 100% 0, rgba(225,240,255,.5), rgba(225,240,255,0) 30%), radial-gradient(ellipse at 0 100%, rgba(225,240,255,.4), rgba(225,240,255,0) 25%), radial-gradient(ellipse at 100% 100%, rgba(225,240,255,.4), rgba(225,240,255,0) 25%); }
+#rijBliksem { position: absolute; inset: 0; z-index: 34; pointer-events: none; background: #eaf2ff; opacity: 0; } #rijBliksem.op { animation: bliksem 1.1s ease-out; }
+@keyframes bliksem { 0% { opacity: 0; } 5% { opacity: .85; } 10% { opacity: .1; } 16% { opacity: .7; } 40% { opacity: 0; } }
+/* v146: extra's per stand */
+.rijChev { width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; font: 900 54px/1 sans-serif; color: #fff; opacity: .9; text-shadow: 0 0 4px rgba(0,0,0,.6); pointer-events: none; animation: chevPuls 1.2s ease-in-out infinite; }
+@keyframes chevPuls { 50% { opacity: .45; } }
+.rijPoort { display: flex; flex-direction: column; align-items: center; padding: 4px 12px 5px; border-radius: 6px; background: #0b4ea2; border: 2px solid #fff; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,.5); font: 800 11px/1.15 var(--f-body); letter-spacing: .5px; }
+.rijPoort span { font-size: 15px; } .rijPoort .tpGem { font: 700 11px var(--f-body); font-style: normal; color: #ffd60a; } .rijPoort .tpGem:empty { display: none; }
+.rijAnwb { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 5px; background: #0b4ea2; border: 2px solid #fff; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,.5); max-width: 220px; }
+.rijAnwb .ap { font: 900 26px/1 sans-serif; } .rijAnwb .at { display: flex; flex-direction: column; } .rijAnwb em { font: 800 11px var(--f-body); font-style: normal; background: #c8102e; border-radius: 3px; padding: 0 4px; align-self: flex-start; } .rijAnwb em:empty { display: none; } .rijAnwb b { font: 700 14px/1.15 var(--f-body); }
+.rijHoog { position: relative; } .flLamp { position: absolute; top: -5px; right: -5px; width: 11px; height: 11px; border-radius: 50%; background: #4a3a10; border: 1px solid #000; font-style: normal; }
+body.teHard .flLamp { animation: flLamp .5s steps(1) infinite; } @keyframes flLamp { 0% { background: #fff; box-shadow: 0 0 14px 6px #fff; } 50% { background: #4a3a10; box-shadow: none; } }
+#rijZon { position: fixed; z-index: 31; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; pointer-events: none; }
+#rijZon[hidden] { display: none; } #rijZon.zon { background: radial-gradient(circle, #fff9d6 0 40%, #ffd84d 60%, rgba(255,200,60,0) 72%); box-shadow: 0 0 60px 24px rgba(255,220,120,.45); }
+#rijZon.zon.laag { background: radial-gradient(circle, #ffe0a8 0 40%, #ff8a3d 60%, rgba(255,120,40,0) 72%); box-shadow: 0 0 70px 30px rgba(255,140,60,.45); }
+#rijZon.maan { width: 34px; height: 34px; margin: -17px 0 0 -17px; background: radial-gradient(circle at 38% 38%, #ffffff, #d9dde6 60%, #b9bfcc); box-shadow: 0 0 30px 8px rgba(220,230,255,.35); }
+.rijAuto .ach { transition: fill .15s; } .rem .rijAuto .ach { fill: #ff2020; filter: drop-shadow(0 0 3px #ff2020); }
+.rijAuto .kpL, .rijAuto .kpR { opacity: 0; } .knipL .rijAuto .kpL, .knipR .rijAuto .kpR { animation: autoKnip .8s steps(1) infinite; } @keyframes autoKnip { 0% { opacity: 1; } 50% { opacity: 0; } }
+.rijBundel { display: none; position: absolute; left: 50%; bottom: 100%; width: 90px; height: 120px; margin-left: -45px; pointer-events: none; background: radial-gradient(ellipse 50% 100% at 50% 100%, rgba(255,245,200,.55), rgba(255,245,200,0) 70%); clip-path: polygon(38% 100%, 62% 100%, 100% 0, 0 0); font-style: normal; }
+body.nacht .rijBundel { display: block; }
+.rijDakBuddy { position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #111; border: 2px solid #ff6b6b; display: flex; align-items: center; justify-content: center; gap: 2px; font-style: normal; pointer-events: none; }
+.rijDakBuddy b { width: 3px; height: 4px; border-radius: 2px; background: #9fb0b8; } .rijDakBuddy s { position: absolute; left: 12px; top: -16px; font-size: 14px; text-decoration: none; opacity: 0; }
+.zwaai .rijDakBuddy { animation: dakHup .5s ease-in-out 6 alternate; } .zwaai .rijDakBuddy s { opacity: 1; animation: dakZwaai .3s ease-in-out infinite alternate; }
+@keyframes dakHup { to { transform: translateY(-4px) scale(1.2); } } @keyframes dakZwaai { from { transform: rotate(-20deg); } to { transform: rotate(25deg); } }
+.rijVonk { display: none; position: absolute; left: 50%; top: 100%; width: 40px; height: 30px; margin-left: -20px; pointer-events: none; font-style: normal; background: radial-gradient(circle at 30% 20%, #fff 0 2px, transparent 3px), radial-gradient(circle at 70% 30%, #ffd60a 0 2px, transparent 3px), radial-gradient(circle at 50% 60%, #ff9f0a 0 2px, transparent 3px), radial-gradient(circle at 20% 70%, #ffd60a 0 1.5px, transparent 2.5px), radial-gradient(circle at 80% 80%, #fff 0 1.5px, transparent 2.5px), radial-gradient(ellipse at 50% 0, rgba(255,140,40,.8), rgba(255,60,0,0) 70%); animation: vonk .12s steps(2) infinite; }
+.vonk .rijVonk { display: block; } @keyframes vonk { 50% { transform: scaleX(-1) translateY(3px); } }
+.rijFileLbl { padding: 3px 8px; border-radius: 10px; background: #ff2d2d; color: #fff; font: 800 12px var(--f-body); box-shadow: 0 2px 6px rgba(0,0,0,.5); white-space: nowrap; }
 #rijTerug { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 46; padding: 10px 16px; border-radius: 22px; border: 1px solid #5ac8fa; background: rgba(10,31,43,.92); color: #b5e6ff; font: 600 15px var(--f-body); box-shadow: 0 4px 12px rgba(0,0,0,.5); }
 #rijTerug[hidden], #rijStuur[hidden], #rijGebaren[hidden] { display: none; }
 #rijGebaren { position: fixed; right: 76px; bottom: 12px; z-index: 46; display: flex; flex-direction: column-reverse; gap: 8px; }
@@ -705,7 +742,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 <div id="rijFlits" aria-hidden="true"></div><div id="rijFinish" aria-hidden="true">🏁<b>AANGEKOMEN!</b></div><div id="rijVloek" aria-hidden="true">#@%&!</div><div id="rijPunten" aria-hidden="true"></div><div id="rijScore" aria-hidden="true" hidden></div><canvas id="rijSpiegel" width="400" height="120" hidden aria-hidden="true"></canvas><div id="rijMsiBord" hidden aria-hidden="true"></div><div id="rijTurbo" aria-hidden="true"></div><div id="rijMist" aria-hidden="true"></div>
 <div id="rijHand" aria-hidden="true"></div>
 <div id="rijPiek" aria-hidden="true"><svg viewBox="0 0 120 120"><rect x="10" y="22" width="100" height="86" rx="30" fill="#0d1117" stroke="#5ac8fa" stroke-width="5"/><path d="M14 52 Q60 40 106 52 L104 66 Q86 74 66 64 L54 64 Q34 74 16 66 Z" fill="#05070a"/><path d="M22 54 L34 52 L28 62 Z M70 54 L82 52 L76 62 Z" fill="#fff" opacity=".55"/><g id="rijPiekOog"><rect x="70" y="52" width="30" height="14" rx="6" fill="#05070a"/></g><path d="M44 88 Q60 98 78 86" stroke="#5ac8fa" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="50" y="6" width="20" height="18" rx="6" fill="#c8102e"/></svg></div>
-<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg class="dashBand" viewBox="0 0 400 170" preserveAspectRatio="none"><path d="M0 170 L0 112 Q200 66 400 112 L400 170 Z" fill="#111417"/><path d="M0 112 Q200 66 400 112" stroke="#2a2f35" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/></svg><svg class="dashWiel" viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><g class="dashMeter" transform="translate(75 150)"><path d="M-34 0 A34 34 0 0 1 34 0 Z" fill="#0b0d10" stroke="#30363d" stroke-width="2"/><g id="rijMeterLim" style="transform: rotate(-90deg)"><line x1="0" y1="-24" x2="0" y2="-33" stroke="#ff453a" stroke-width="3"/></g><g id="rijNaald" style="transform: rotate(-90deg); transition: transform 1s linear"><line x1="0" y1="2" x2="0" y2="-29" stroke="#ffd60a" stroke-width="2.5" stroke-linecap="round" id="rijNaaldL"/></g><circle r="3.5" fill="#c8ccd0"/><text y="-9" text-anchor="middle" fill="#5ac8fa" font-size="11" font-weight="700" font-family="sans-serif" id="rijStuurKmu">0</text></g><g id="rijWielPos" transform="translate(170 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg><div id="rijWissers"><div id="rijDruppels"></div><i></i><i></i></div><i class="knip" id="rijKnipL">◀</i><i class="knip" id="rijKnipR">▶</i><div id="rijKoplamp"></div></div><div id="rijSnel" hidden><b id="rijSnelLim"></b><span id="rijSnelV">0</span><small>km/u</small></div><div id="rijBalk" aria-label="Wat komt eraan" hidden><span class="rbKop" id="rbKop"></span><div class="rbBaan" id="rbBaan"></div><span class="rbIk">▲</span></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small><div id="rijStroken" hidden></div></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijFav" class="rzFav"></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
+<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg class="dashBand" viewBox="0 0 400 170" preserveAspectRatio="none"><path d="M0 170 L0 112 Q200 66 400 112 L400 170 Z" fill="#111417"/><path d="M0 112 Q200 66 400 112" stroke="#2a2f35" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/></svg><svg class="dashWiel" viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><g class="dashMeter" transform="translate(75 150)"><path d="M-34 0 A34 34 0 0 1 34 0 Z" fill="#0b0d10" stroke="#30363d" stroke-width="2"/><g id="rijMeterLim" style="transform: rotate(-90deg)"><line x1="0" y1="-24" x2="0" y2="-33" stroke="#ff453a" stroke-width="3"/></g><g id="rijNaald" style="transform: rotate(-90deg); transition: transform 1s linear"><line x1="0" y1="2" x2="0" y2="-29" stroke="#ffd60a" stroke-width="2.5" stroke-linecap="round" id="rijNaaldL"/></g><circle r="3.5" fill="#c8ccd0"/><text y="-9" text-anchor="middle" fill="#5ac8fa" font-size="11" font-weight="700" font-family="sans-serif" id="rijStuurKmu">0</text></g><g id="rijWielPos" transform="translate(170 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg><div id="rijWissers"><div id="rijDruppels"></div><i></i><i></i></div><i class="knip" id="rijKnipL">◀</i><i class="knip" id="rijKnipR">▶</i><div id="rijKoplamp"></div></div><div id="rijSnel" hidden><b id="rijSnelLim"></b><span id="rijSnelV">0</span><small>km/u</small></div><div id="rijZon" hidden></div><div id="rijSeizoen" aria-hidden="true"></div><div id="rijBliksem" aria-hidden="true"></div><div id="rijBalk" aria-label="Wat komt eraan" hidden><span class="rbKop" id="rbKop"></span><div class="rbBaan" id="rbBaan"></div><span class="rbIk">▲</span></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small><div id="rijStroken" hidden></div></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijFav" class="rzFav"></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
 <button id="carRit" class="rijRond rijWeg" type="button">🏁 Rit klaar</button>
 <button id="carSpel" type="button">🎲 Spel</button>
 <div id="spel" hidden role="dialog" aria-label="Spelletjes">
@@ -4785,7 +4822,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v145';
+  var VERSION = 'v147';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5638,6 +5675,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   var GRNOTE = { zwaai: ['👋', 'zwaait'], koffie: ['☕', 'koffie?'], koffieJa: ['☕', 'ja, koffie!'], koffieStraks: ['☕', 'straks'], file: ['🚗', 'meldt file'], pech: ['⚠️', 'staat stil'],
     hart: ['❤️', 'hartjes'], flits: ['📸', 'meldt flitser'], thuis: ['🏁', 'bijna thuis'], mijlpaal: ['🏆', 'km'], feli: ['🎉', 'feliciteert je'], test: ['🧪', 'test'], buur: ['📍', 'vlakbij'] };
   function grInRondje(b, sub) {
+    try { if (window.__dakZwaai) window.__dakZwaai(); } catch (e) {}
     var d = GRNOTE[b.s] || ['💬', 'bericht'], t = sub || d[1];
     if (b.s === 'mijlpaal') t = (b.w || 0) + ' km!';
     if ((b.s === 'file' || b.s === 'pech' || b.s === 'flits') && b.p) t += ' · ' + b.p;
@@ -9657,7 +9695,9 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         : a.vorm === 'race' ? '<path d="M17 1 L24 10 L25 30 L32 34 L32 46 L25 48 L24 62 L10 62 L9 48 L2 46 L2 34 L9 30 L10 10 Z" fill="' + a.k + '"/><rect x="2" y="56" width="30" height="6" rx="2" fill="' + a.r + '"/><ellipse cx="17" cy="32" rx="4" ry="7" fill="' + a.r + '"/>'
         : a.vorm === 'sport' ? '<path d="M17 1 C27 1 30 8 30 18 L30 50 C30 59 26 63 17 63 C8 63 4 59 4 50 L4 18 C4 8 7 1 17 1 Z" fill="' + a.k + '"/><path d="M8 20 Q17 15 26 20 L25 30 Q17 28 9 30 Z" fill="' + a.r + '"/><path d="M9 44 Q17 46 25 44 L25 50 Q17 52 9 50 Z" fill="' + a.r + '"/>'
         : '<path d="M17 1 C27 1 31 7 31 16 L31 52 C31 59 27 63 17 63 C7 63 3 59 3 52 L3 16 C3 7 7 1 17 1 Z" fill="' + a.k + '"/><path d="M7 18 Q17 13 27 18 L26 27 Q17 25 8 27 Z" fill="' + a.r + '"/><rect x="8" y="29" width="18" height="16" rx="3" fill="' + a.r + '" opacity=".85"/><path d="M8 47 Q17 49 26 47 L26 53 Q17 55 8 53 Z" fill="' + a.r + '"/>';
-      return '<svg class="rijAuto" viewBox="0 0 34 64" xmlns="http://www.w3.org/2000/svg">' + b + '<rect x="6" y="2" width="5" height="2" rx="1" fill="#fff8c0"/><rect x="23" y="2" width="5" height="2" rx="1" fill="#fff8c0"/><rect x="6" y="60" width="6" height="2" rx="1" fill="#ff3b30"/><rect x="22" y="60" width="6" height="2" rx="1" fill="#ff3b30"/></svg>';
+      return '<svg class="rijAuto" viewBox="0 0 34 64" xmlns="http://www.w3.org/2000/svg">' + b + '<rect x="6" y="2" width="5" height="2" rx="1" fill="#fff8c0"/><rect x="23" y="2" width="5" height="2" rx="1" fill="#fff8c0"/><rect class="ach" x="6" y="59.5" width="7" height="3" rx="1" fill="#b3261e"/><rect class="ach" x="21" y="59.5" width="7" height="3" rx="1" fill="#b3261e"/>'
+        + '<rect class="kpL" x="1" y="5" width="4" height="4" rx="1.5" fill="#ffb02e"/><rect class="kpL" x="1" y="55" width="4" height="4" rx="1.5" fill="#ffb02e"/><rect class="kpR" x="29" y="5" width="4" height="4" rx="1.5" fill="#ffb02e"/><rect class="kpR" x="29" y="55" width="4" height="4" rx="1.5" fill="#ffb02e"/></svg>'
+        + '<i class="rijBundel"></i><i class="rijDakBuddy"><b></b><b></b><s>👋</s></i><i class="rijVonk"></i>';
     }
     var map = null, mk = null, mkEl = null, laden = null, vorige = null, koers = 0, tik = null;
     function laadGL() {
@@ -9703,7 +9743,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     function hv(a, b) { var d = Math.abs(((a - b) % 360 + 360) % 360); return d > 180 ? 360 - d : d; }
     function mkr(el, brug) {   /* v139: in eerste persoon staan flitsers op een paal en borden op een brug, als echte borden langs de weg */
       if (st.kijk !== 2) return new maplibregl.Marker({ element: el });
-      var w = document.createElement('div'); w.className = 'rijHoog' + (brug ? ' brug' : ''); w.appendChild(el); return new maplibregl.Marker({ element: w, anchor: 'bottom' });
+      var w = document.createElement('div'); w.className = 'rijHoog' + (brug ? ' brug' : ''); w.appendChild(el); if (!brug) { var lp = document.createElement('i'); lp.className = 'flLamp'; w.appendChild(lp); } return new maplibregl.Marker({ element: w, anchor: 'bottom' });
     }
     function msiVak(l, groot) { var c = document.createElement('span'), v = l ? l.v : '';
       c.className = 'msiV ' + (!l ? 'leeg' : v === 'X' ? 'x' : /^\d/.test(v) ? (l.r ? 'r' : '') : 'p'); c.textContent = !l ? '' : v === 'X' ? '✕' : v === '<' ? '↙' : v === '>' ? '↘' : v; return c; }
@@ -9711,15 +9751,15 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     function flitsersOpKaart() {
       if (!map || !window.maplibregl || !lastPos) return; flT = Date.now(); try { filesRij(); } catch (e) {}
       flMk.forEach(function (m) { m.remove(); }); flMk = [];
-      var la = lastPos.lat, lo = lastPos.lon, n = 0, gezien = [];
+      var la = lastPos.lat, lo = lastPos.lon, n = 0, gezien = [], R = st.kijk === 2 ? 10000 : 1e9;   /* v147: eerste persoon alleen flitsers binnen 10 km, andere standen alles */
       var voorAf = function (pla, plo) { if (st.kijk !== 2) return true; var h = koers * Math.PI / 180, dx = (plo - lo) * 111320 * Math.cos(la * Math.PI / 180), dy = (pla - la) * 110540; return dx * Math.sin(h) + dy * Math.cos(h) > -50; };   /* v135: in eerste persoon alleen wat vóór je ligt */
-      try { (typeof flMeldingen === 'function' ? flMeldingen() : []).forEach(function (m) { if (gdist(la, lo, m.lat, m.lon) > 20000 || !voorAf(m.lat, m.lon)) return; gezien.push(m);
+      try { (typeof flMeldingen === 'function' ? flMeldingen() : []).forEach(function (m) { if (gdist(la, lo, m.lat, m.lon) > R || !voorAf(m.lat, m.lon)) return; gezien.push(m);
         var el = flPunt(window.__ondeugend && window.__ondeugend() ? '💩' : m.k === 'mobile' ? '🚓' : '📸', m.mijn ? '#0a84ff' : (m.k === 'mobile' ? '#ff9f0a' : '#ff453a'));
         el.title = (m.k === 'mobile' ? 'Mobiele controle' : 'Flitser') + (m.mijn ? ' (jij)' : ' (' + m.n + ')');
         flMk.push(mkr(el).setLngLat([m.lon, m.lat]).addTo(map)); }); } catch (e) {}
-      try { (window.__mobItems ? window.__mobItems() : []).forEach(function (m) { if (!isFinite(m.lat) || gdist(la, lo, m.lat, m.lon) > 20000 || !voorAf(m.lat, m.lon)) return; if (gezien.some(function (x) { return gdist(x.lat, x.lon, m.lat, m.lon) < 80; })) return; gezien.push(m);
+      try { (window.__mobItems ? window.__mobItems() : []).forEach(function (m) { if (!isFinite(m.lat) || gdist(la, lo, m.lat, m.lon) > R || !voorAf(m.lat, m.lon)) return; if (gezien.some(function (x) { return gdist(x.lat, x.lon, m.lat, m.lon) < 80; })) return; gezien.push(m);
         flMk.push(mkr(flPunt(window.__ondeugend && window.__ondeugend() ? '💩' : '🚓', '#bf5af2')).setLngLat([m.lon, m.lat]).addTo(map)); }); } catch (e) {}
-      try { var cc = (typeof camCache !== 'undefined' && camCache && camCache.cams) || []; cc.forEach(function (c) { if (n > 150 || Math.abs(c.lat - la) > .2 || gdist(la, lo, c.lat, c.lon) > 20000 || !voorAf(c.lat, c.lon)) return;
+      try { var cc = (typeof camCache !== 'undefined' && camCache && camCache.cams) || []; cc.forEach(function (c) { if (n > (st.kijk === 2 ? 150 : 1500) || (st.kijk === 2 && Math.abs(c.lat - la) > .2) || gdist(la, lo, c.lat, c.lon) > R || !voorAf(c.lat, c.lon)) return;
         if (gezien.some(function (m) { return gdist(m.lat, m.lon, c.lat, c.lon) < 60; })) return; n++;
         flMk.push(mkr(flPunt('📸', '#8e8e93', true)).setLngLat([c.lon, c.lat]).addTo(map)); }); } catch (e) {}
       try { var nm = 0; (window.__msiItems ? window.__msiItems() : []).forEach(function (g) {   /* v139: matrixborden boven de weg */
@@ -9876,6 +9916,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var fp = st.kijk === 2; $('rijGebaren').hidden = !fp; if (fp && sp > 25 && Date.now() > (stap.piekT || (stap.piekT = Date.now() + 120e3))) { stap.piekT = Date.now() + (240 + Math.random() * 300) * 1e3; buddyPiek(); }   /* v119: Buddy kijkt af en toe om */
       if (fp) { var km = $('rijStuurKmu'); if (km) km.textContent = Math.round(sp) + ' km/u'; } mkEl.style.visibility = fp ? 'hidden' : 'visible'; $('rijStuur').hidden = !fp;
       try { fpExtra(p, sp, fp, Nv); } catch (e) {}
+      try { extraStap(p, sp, fp, Nv, dk); } catch (e) {}
       if (stap.kijkW !== st.kijk) { stap.kijkW = st.kijk; flT = 0; }
       var zoom = sp > 90 ? 15.2 : sp > 60 ? 15.8 : sp > 30 ? 16.5 : 17.2;
       anim = { lat: p.lat, lon: p.lon, t: performance.now(), v: sp > 2 ? sp / 3.6 : 0, brg: koers, fp: fp, noord: st.kijk === 1, zoom: fp ? 19.2 : zoom, pitch: fp ? 80 : st.kijk === 1 ? 0 : 62 };
@@ -9890,6 +9931,164 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         if (k === 'turbo') { var tb = $('rijTurbo'); tb.classList.remove('op'); void tb.offsetWidth; tb.classList.add('op'); var nd = $('rijNaald'); if (nd) nd.style.transform = 'rotate(36deg)'; }
         if (k === 'knipper') { $('rijStuur').classList.add('knipR'); var hg = false, iv = setInterval(function () { hg = !hg; if (window.__tikTak) window.__tikTak(hg); }, 400); setTimeout(function () { clearInterval(iv); $('rijStuur').classList.remove('knipR'); }, 15000); }
         setTimeout(function () { document.body.classList.remove('mist'); document.body.classList.remove('regen'); }, 15000); } };
+    /* v146: extra's per stand (eerste persoon, achter de auto, van boven) */
+    var ex = { chev: [], chevK: '', poort: [], poortK: '', anwb: [], anwbK: '', lbl: [], rad: null, radT: 0, radI: 0, radIv: 0, warmK: '', drift: [], remT: 0, vonkT: 0 };
+    function wisMk(a) { a.forEach(function (m) { m.remove(); }); return []; }
+    function brgVan(a, b) { var y = Math.sin((b.lon - a.lon) * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180), x = Math.cos(a.lat * Math.PI / 180) * Math.sin(b.lat * Math.PI / 180) - Math.sin(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.cos((b.lon - a.lon) * Math.PI / 180); return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; }
+    function voorMij(p, q, max) { var h = koers * Math.PI / 180, kx = 111320 * Math.cos(p.lat * Math.PI / 180), dx = (q.lon - p.lon) * kx, dy = (q.lat - p.lat) * 110540, v = dx * Math.sin(h) + dy * Math.cos(h); return v > -20 && v < max; }
+    function stapIdx(N, s0) { var g = N.geom, bi = 0, bd = 1e9; for (var i = Math.max(0, N.van || 0); i < g.length; i++) { var dd = gdist(g[i].lat, g[i].lon, s0.lat, s0.lon); if (dd < bd) { bd = dd; bi = i; } else if (dd > bd + 400) break; } return bi; }
+    function terugLangs(N, bi, afst) {   /* punten op de route 'afst' meter vóór punt bi, met de rijrichting */
+      var g = N.geom, acc = 0, uit = [], k = 0; afst = afst.slice();
+      for (var j = bi; j > 0 && k < afst.length; j--) { var a = g[j], b = g[j - 1], seg = gdist(a.lat, a.lon, b.lat, b.lon);
+        while (seg > 0 && k < afst.length && acc + seg >= afst[k]) { var f = (afst[k] - acc) / seg; uit.push({ lat: a.lat + (b.lat - a.lat) * f, lon: a.lon + (b.lon - a.lon) * f, brg: brgVan(b, a) }); k++; }
+        acc += seg; }
+      return uit;
+    }
+    function chevZet(p, Nv, aan) {   /* witte pijlen op het asfalt vlak voor je afslag */
+      var s0 = aan && Nv && Nv.steps && Nv.steps[Nv.idx], d = s0 ? gdist(p.lat, p.lon, s0.lat, s0.lon) : 1e9, m = s0 ? (s0.mod || '') : '', links = /left/.test(m), rechts = /right/.test(m);
+      var k = s0 && d < 260 && (links || rechts) && s0.type !== 'arrive' && s0.type !== 'depart' ? Nv.t + ':' + Nv.idx : '';
+      if (k === ex.chevK) return; ex.chevK = k; ex.chev = wisMk(ex.chev); if (!k) return;
+      terugLangs(Nv, stapIdx(Nv, s0), [14, 26, 38, 50, 62, 74]).forEach(function (q) { var el = document.createElement('div'); el.className = 'rijChev'; el.textContent = links ? '‹' : '›';
+        ex.chev.push(new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' }).setLngLat([q.lon, q.lat]).setRotation(q.brg).addTo(map)); });
+    }
+    function poortZet(p, fp) {   /* trajectcontrole als blauwe poort over de weg */
+      var zones = []; try { (typeof TRAJ_ZONES !== 'undefined' ? TRAJ_ZONES : []).forEach(function (z) { zones.push([{ lat: z.a[0], lon: z.a[1] }, { lat: z.b[0], lon: z.b[1] }]); }); (typeof TRAJ_EXTRA !== 'undefined' ? TRAJ_EXTRA : []).forEach(function (z) { zones.push([{ lat: z[0], lon: z[1] }, { lat: z[2], lon: z[3] }]); }); } catch (e) {}
+      var pnt = []; if (fp) zones.forEach(function (z) { z.forEach(function (q) { if (Math.abs(q.lat - p.lat) < .03 && gdist(p.lat, p.lon, q.lat, q.lon) < 2500 && voorMij(p, q, 2500)) pnt.push(q); }); });
+      var k = pnt.map(function (q) { return q.lat + ',' + q.lon; }).join('|') + (S.traj ? 'T' : '');
+      if (k !== ex.poortK) { ex.poortK = k; ex.poort = wisMk(ex.poort); pnt.forEach(function (q) { var el = document.createElement('div'); el.className = 'rijPoort'; el.innerHTML = '<b>TRAJECTCONTROLE</b><span>' + (S.traj ? 'EINDE' : 'BEGIN') + '</span><i class="tpGem"></i>'; ex.poort.push(mkr(el, true).setLngLat([q.lon, q.lat]).addTo(map)); }); }
+      var gem = null; try { gem = S.traj ? Math.round(trajAvg()) : null; } catch (e) {}
+      ex.poort.forEach(function (m) { var e = m.getElement().querySelector('.tpGem'); if (e) e.textContent = gem != null ? 'gemiddeld ' + gem + ' km/u' : ''; });
+    }
+    function anwbZet(p, Nv, fp) {   /* blauw ANWB-bord boven de weg vóór een afrit of splitsing */
+      var s0 = fp && Nv && Nv.steps && Nv.steps[Nv.idx], ok = !!(s0 && /off ramp|fork|on ramp|merge/.test(s0.type || '') && (s0.ref || s0.naam) && gdist(p.lat, p.lon, s0.lat, s0.lon) < 1500);
+      var k = ok ? Nv.t + ':' + Nv.idx : ''; if (k === ex.anwbK) return; ex.anwbK = k; ex.anwb = wisMk(ex.anwb); if (!ok) return;
+      var m = s0.mod || '', q = terugLangs(Nv, stapIdx(Nv, s0), [180])[0] || s0;
+      var el = document.createElement('div'); el.className = 'rijAnwb'; el.innerHTML = '<span class="ap"></span><span class="at"><em></em><b></b></span>';
+      el.querySelector('.ap').textContent = /left/.test(m) ? '↖' : /right/.test(m) ? '↗' : '↑'; el.querySelector('em').textContent = s0.ref || ''; el.querySelector('b').textContent = s0.naam || '';
+      ex.anwb.push(mkr(el, true).setLngLat([q.lon, q.lat]).addTo(map));
+    }
+    function zonStand() {   /* hoogte en richting van de zon (graden) */
+      var p = lastPos || { lat: 52, lon: 5 }, nu = new Date(), dag = Math.floor((nu - new Date(nu.getFullYear(), 0, 0)) / 864e5), dec = -23.44 * Math.cos(2 * Math.PI / 365 * (dag + 10)) * Math.PI / 180;
+      var uur = nu.getUTCHours() + nu.getUTCMinutes() / 60 + p.lon / 15, ha = (uur - 12) * 15 * Math.PI / 180, la = p.lat * Math.PI / 180;
+      var h = Math.asin(Math.sin(la) * Math.sin(dec) + Math.cos(la) * Math.cos(dec) * Math.cos(ha));
+      var az = Math.atan2(Math.sin(ha), Math.cos(ha) * Math.sin(la) - Math.tan(dec) * Math.cos(la)) * 180 / Math.PI + 180;
+      return { h: h * 180 / Math.PI, az: az };
+    }
+    function zonZet(p, toon) {   /* zon of maan aan de echte kant van de lucht */
+      var el = $('rijZon'); if (!el) return; if (!toon || !map) { el.hidden = true; return; }
+      var z = zonStand(), maan = z.h < -4, az = maan ? (z.az + 180) % 360 : z.az, h = maan ? Math.max(8, Math.min(40, -z.h)) : z.h;
+      if (h < -3) { el.hidden = true; return; }
+      var rel = ((az - map.getBearing() + 540) % 360) - 180; if (Math.abs(rel) > 70) { el.hidden = true; return; }
+      var a = az * Math.PI / 180, kx = 111320 * Math.cos(p.lat * Math.PI / 180), q = [p.lon + Math.sin(a) * 1500 / kx, p.lat + Math.cos(a) * 1500 / 110540], pt = map.project(q), H = map.getCanvas().clientHeight;
+      var y = pt.y - h * H / 36.9; if (!isFinite(pt.x) || !isFinite(y) || y < -60) { el.hidden = true; return; }
+      el.hidden = false; el.className = maan ? 'maan' : (z.h < 8 ? 'zon laag' : 'zon'); el.style.left = pt.x + 'px'; el.style.top = Math.max(20, y) + 'px';
+    }
+    function autoStaat(sp, dk, fp) {   /* remlichten, knipperlicht, vonken bij je eigen auto */
+      if (!mkEl) return; var dv = sp - (ex.vv == null ? sp : ex.vv), nu = Date.now(); ex.vv = sp;
+      if (dv <= -2.5 && sp > 3) ex.remT = nu + 1200; mkEl.classList.toggle('rem', nu < ex.remT || (sp < 1.5 && S.live));
+      var stu = $('rijStuur'); mkEl.classList.toggle('knipL', stu.classList.contains('knipL')); mkEl.classList.toggle('knipR', stu.classList.contains('knipR'));
+      var ond = window.__ondeugend && window.__ondeugend(), drift = ond && sp > 15 && Math.abs(dk) > 30;
+      if (ond && (dv >= 12 || drift)) ex.vonkT = nu + 1500; mkEl.classList.toggle('vonk', !fp && nu < ex.vonkT);
+      if (drift && !fp && lastPos) ex.drift.push({ lat: lastPos.lat, lon: lastPos.lon, t: nu });
+      ex.drift = ex.drift.filter(function (q) { return nu - q.t < 60e3; });
+      try { var data = { type: 'FeatureCollection', features: ex.drift.length > 1 ? [-1.1, 1.1].map(function (o) { var kx = 111320 * Math.cos(ex.drift[0].lat * Math.PI / 180), h = (koers + 90) * Math.PI / 180; return { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: ex.drift.map(function (q) { return [q.lon + Math.sin(h) * o / kx, q.lat + Math.cos(h) * o / 110540]; }) } }; }) : [] };
+        if (map.getSource('sporen')) map.getSource('sporen').setData(data); else if (map.isStyleLoaded()) { map.addSource('sporen', { type: 'geojson', data: data }); map.addLayer({ id: 'sporen', type: 'line', source: 'sporen', paint: { 'line-color': '#111', 'line-width': 3, 'line-opacity': .55, 'line-blur': 1 } }, map.getLayer('route-rand') ? 'route-rand' : undefined); } } catch (e) {}
+    }
+    window.__dakZwaai = function () { if (!mkEl) return; mkEl.classList.add('zwaai'); clearTimeout(window.__dakZwaai.t); window.__dakZwaai.t = setTimeout(function () { mkEl.classList.remove('zwaai'); }, 3500); };
+    function radarZet(boven) {   /* bewegende regenradar (RainViewer) als je van boven kijkt */
+      if (!map || !map.isStyleLoaded()) return;
+      if (boven && (!ex.rad || Date.now() - ex.radT > 10 * 60e3) && !ex.radBezig) { ex.radBezig = true;
+        fetch('https://api.rainviewer.com/public/weather-maps.json').then(function (r) { return r.json(); }).then(function (j) {
+          var fr = ((j && j.radar && j.radar.past) || []).slice(-6); if (!fr.length) return; ex.radT = Date.now();
+          for (var i = 0; i < 6; i++) { if (map.getLayer('rad' + i)) map.removeLayer('rad' + i); if (map.getSource('rad' + i)) map.removeSource('rad' + i); }
+          fr.forEach(function (f, i) { map.addSource('rad' + i, { type: 'raster', tiles: [j.host + f.path + '/256/{z}/{x}/{y}/2/1_1.png'], tileSize: 256, maxzoom: 7 }); map.addLayer({ id: 'rad' + i, type: 'raster', source: 'rad' + i, paint: { 'raster-opacity': 0, 'raster-opacity-transition': { duration: 0 } } }, map.getLayer('route-rand') ? 'route-rand' : undefined); });
+          ex.rad = fr.length; lg('regenradar: ' + fr.length + ' beelden');
+        }).catch(function (e) { lg('regenradar niet gelukt: ' + ((e && e.message) || e)); }).then(function () { ex.radBezig = false; }); }
+      if (boven && ex.rad && !ex.radIv) ex.radIv = setInterval(function () { if (!map || st.kijk !== 1) return; ex.radI = (ex.radI + 1) % (ex.rad + 2); for (var i = 0; i < ex.rad; i++) try { map.setPaintProperty('rad' + i, 'raster-opacity', i === Math.min(ex.radI, ex.rad - 1) ? .55 : 0); } catch (e) {} }, 650);
+      if (!boven && ex.radIv) { clearInterval(ex.radIv); ex.radIv = 0; for (var i = 0; i < (ex.rad || 0); i++) try { map.setPaintProperty('rad' + i, 'raster-opacity', 0); } catch (e) {} }
+    }
+    function warmZet(boven) {   /* warmtekaart van al je eigen ritten */
+      if (!map || !map.isStyleLoaded()) return;
+      if (boven && !map.getSource('warm')) { var f = [], n = 0; try { Object.keys(ritPts).forEach(function (k) { var a = (ritPts[k] && ritPts[k].p) || []; for (var i = 0; i + 1 < a.length && n < 25000; i += 2) { f.push({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [a[i + 1], a[i]] } }); n++; } }); } catch (e) {}
+        map.addSource('warm', { type: 'geojson', data: { type: 'FeatureCollection', features: f } });
+        map.addLayer({ id: 'warm', type: 'heatmap', source: 'warm', paint: { 'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 15, 18], 'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 8, .6, 15, 1.4], 'heatmap-opacity': .6, 'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(0,0,0,0)', .2, '#3db7ff', .5, '#ffd60a', .8, '#ff9f0a', 1, '#ff2d2d'] } }, map.getLayer('route-rand') ? 'route-rand' : undefined); }
+      if (map.getLayer('warm')) map.setLayoutProperty('warm', 'visibility', boven ? 'visible' : 'none');
+    }
+    function fileLabels(p, boven) {   /* files met hoeveel minuten vertraging (achter en boven) */
+      var k = boven + '|' + Math.floor(Date.now() / 60e3); if (k === ex.lblK) return; ex.lblK = k; ex.lbl = wisMk(ex.lbl); if (st.kijk === 2) return;
+      (window.__verkeerItems ? window.__verkeerItems() : []).forEach(function (it) { if (!it || it.k !== 'jam' || !(it.dl >= 60) || !Array.isArray(it.pts) || !it.pts.length || ex.lbl.length > 20) return;
+        var q = it.pts[Math.floor(it.pts.length / 2)]; q = Array.isArray(q) ? { lat: q[0], lon: q[1] } : q; if (gdist(p.lat, p.lon, q.lat, q.lon) > 40000) return;
+        var el = document.createElement('div'); el.className = 'rijFileLbl'; el.textContent = '🚗 +' + Math.round(it.dl / 60) + ' min'; ex.lbl.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([q.lon, q.lat]).addTo(map)); });
+    }
+    /* v147: limietborden, rotondenummer, laadpalen, seizoenen, thuis */
+    var ex2 = { limMk: [], limK: '', limT: 0, rotMk: [], rotK: '', laad: null, laadT: 0, laadBezig: false, laadMk: [], laadK: '', thMk: null, thK: '', thuisWeg: false, flitsT: 0 };
+    function limOp(q) {   /* limiet van de weg op dit punt (uit de geladen wegen) */
+      var best = null, bd = 18, kx = 111320 * Math.cos(q.lat * Math.PI / 180);
+      try { roadWays.forEach(function (w) { var f = w[2]; if (!f || Math.abs(f[0] - q.lat) > .05) return; for (var i = 2; i + 1 < f.length; i += 2) {
+        var ax = (f[i - 1] - q.lon) * kx, ay = (f[i - 2] - q.lat) * 110540, bx = (f[i + 1] - q.lon) * kx, by = (f[i] - q.lat) * 110540, dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L)) : 0, d = Math.hypot(ax + dx * t, ay + dy * t);
+        if (d < bd || (best && best[1] && !w[1] && d < bd + 6)) { bd = d; best = w; } } }); } catch (e) {}
+      return best ? best[0] : null;
+    }
+    function limZet(p, Nv, aan) {   /* rond bord langs de weg waar de limiet verandert */
+      if (!aan) { if (ex2.limK) { ex2.limK = ''; ex2.limMk = wisMk(ex2.limMk); } return; }
+      if (Date.now() - ex2.limT < 4000) return; ex2.limT = Date.now();
+      var pts = [], nu = S.roadLim;
+      if (Nv && Nv.geom) { var g = Nv.geom, i0 = Math.max(0, Nv.van || 0), acc = 0, vlg = 60; for (var i = i0 + 1; i < g.length && acc < 900; i++) { var sg = gdist(g[i - 1].lat, g[i - 1].lon, g[i].lat, g[i].lon); while (sg > 0 && acc + sg >= vlg && vlg <= 900) { var f = (vlg - acc) / sg; pts.push({ lat: g[i - 1].lat + (g[i].lat - g[i - 1].lat) * f, lon: g[i - 1].lon + (g[i].lon - g[i - 1].lon) * f }); vlg += 30; } acc += sg; } }
+      else { var h = koers * Math.PI / 180, kx = 111320 * Math.cos(p.lat * Math.PI / 180); for (var dd = 60; dd <= 500; dd += 30) pts.push({ lat: p.lat + Math.cos(h) * dd / 110540, lon: p.lon + Math.sin(h) * dd / kx }); }
+      var hit = null, vorig = nu; pts.some(function (q) { var l = limOp(q); if (l == null) return false; if (vorig != null && l !== vorig) { hit = { q: q, l: l }; return true; } vorig = l; return false; });
+      var k = hit ? Math.round(hit.q.lat * 2000) + ',' + Math.round(hit.q.lon * 2000) + ',' + hit.l : '';
+      if (k === ex2.limK) return; ex2.limK = k; ex2.limMk = wisMk(ex2.limMk); if (!hit) return;
+      var el = document.createElement('div'); el.className = 'rijLimBord'; el.textContent = hit.l; ex2.limMk.push(mkr(el).setLngLat([hit.q.lon, hit.q.lat]).addTo(map));
+    }
+    function rotZet(p, Nv, aan) {   /* groot afslagnummer boven de rotonde */
+      var s0 = aan && Nv && Nv.steps && Nv.steps[Nv.idx], ok = !!(s0 && /roundabout|rotary/.test(s0.type || '') && s0.exit && gdist(p.lat, p.lon, s0.lat, s0.lon) < 600);
+      var k = ok ? Nv.t + ':' + Nv.idx : ''; if (k === ex2.rotK) return; ex2.rotK = k; ex2.rotMk = wisMk(ex2.rotMk); if (!ok) return;
+      var el = document.createElement('div'); el.className = 'rijRotNr'; el.innerHTML = '<b></b><span>afslag</span>'; el.querySelector('b').textContent = s0.exit + 'e';
+      ex2.rotMk.push(new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -40] }).setLngLat([s0.lon, s0.lat]).addTo(map));
+    }
+    function laadZet(p, fp) {   /* snelladers en Superchargers (OpenStreetMap) */
+      if ((!ex2.laad || gdist(p.lat, p.lon, ex2.laad.lat, ex2.laad.lon) > 8000) && !ex2.laadBezig && Date.now() - ex2.laadT > 120e3 && typeof fetchOverpass === 'function') { ex2.laadBezig = true; ex2.laadT = Date.now();
+        fetchOverpass('[out:json][timeout:20];node["amenity"="charging_station"](around:20000,' + p.lat.toFixed(4) + ',' + p.lon.toFixed(4) + ');out 600;', 25000).then(function (j) {
+          var l = []; (j.elements || []).forEach(function (e) { var t = e.tags || {}, tx = ((t.brand || '') + ' ' + (t.operator || '') + ' ' + (t.name || '') + ' ' + (t.network || '')).toLowerCase(), tesla = /tesla|supercharger/.test(tx), snel = tesla || t['socket:type2_combo'] || t['socket:chademo'] || /fastned|ionity|allego|shell recharge|snel|hpc|fast/.test(tx);
+            if (snel && isFinite(e.lat)) l.push({ lat: e.lat, lon: e.lon, tesla: tesla, n: t.name || t.brand || t.operator || 'Snellader' }); });
+          ex2.laad = { lat: p.lat, lon: p.lon, l: l }; ex2.laadK = ''; lg('laadpalen: ' + l.length + ' snelladers in de buurt');
+        }).catch(function (e) { lg('laadpalen niet gelukt: ' + ((e && e.message) || e)); }).then(function () { ex2.laadBezig = false; }); }
+      if (!ex2.laad) return; var k = st.kijk + '|' + ex2.laad.l.length + '|' + (fp ? Math.round(p.lat * 200) + ',' + Math.round(p.lon * 200) : '');
+      if (k === ex2.laadK) return; ex2.laadK = k; ex2.laadMk = wisMk(ex2.laadMk);
+      ex2.laad.l.forEach(function (c) { if (fp && (gdist(p.lat, p.lon, c.lat, c.lon) > 5000 || !voorMij(p, c, 5000))) return; if (ex2.laadMk.length > 80) return;
+        var el = document.createElement('div'); el.className = 'rijLaad' + (c.tesla ? ' tesla' : ''); el.textContent = '⚡'; el.title = c.n; ex2.laadMk.push(mkr(el).setLngLat([c.lon, c.lat]).addTo(map)); });
+    }
+    function seizoenZet(fp) {   /* herfstblaadjes, sneeuw, ijs op de ruit en bliksem */
+      var wx = typeof WX !== 'undefined' && WX && Date.now() - WX.t < 60 * 60e3 ? WX : null, m = new Date().getMonth(), c = wx ? wx.code : -1, b = document.body.classList;
+      var sneeuw = !!(fp && wx && ((c >= 71 && c <= 77) || c === 85 || c === 86)), vorst = !!(fp && wx && wx.temp != null && wx.temp <= 0), onweer = !!(fp && wx && c >= 95);
+      var herfst = !!(fp && !sneeuw && (m === 9 || m === 10) && !document.body.classList.contains('nacht'));
+      b.toggle('herfst', herfst); b.toggle('sneeuw', sneeuw); b.toggle('vorst', vorst);
+      var sz = $('rijSeizoen'); if (sz && !sz.childNodes.length) for (var i = 0; i < 18; i++) { var e = document.createElement('i'); e.textContent = i < 7 ? ['🍂', '🍁', '🍂'][i % 3] : '❄'; e.className = i < 7 ? 'blad' : 'vlok'; e.style.left = (Math.random() * 96) + '%'; e.style.animationDelay = (-Math.random() * 9).toFixed(1) + 's'; e.style.animationDuration = (i < 7 ? 7 + Math.random() * 5 : 4 + Math.random() * 4).toFixed(1) + 's'; sz.appendChild(e); }
+      if (onweer && Date.now() > ex2.flitsT) { ex2.flitsT = Date.now() + 15e3 + Math.random() * 30e3; var bl = $('rijBliksem'); bl.classList.remove('op'); void bl.offsetWidth; bl.classList.add('op'); }
+    }
+    function thuisZet(p) {   /* huisje met vlag bij thuis, en Buddy blij als je je straat in rijdt */
+      var th = null; try { th = typeof thuisPlek === 'function' ? thuisPlek() : null; } catch (e) {} if (!th) return;
+      var k = th.lat.toFixed(5) + ',' + th.lon.toFixed(5); if (k !== ex2.thK) { ex2.thK = k; if (ex2.thMk) ex2.thMk.remove(); var el = document.createElement('div'); el.className = 'rijThuis'; el.textContent = '🏠'; ex2.thMk = mkr(el).setLngLat([th.lon, th.lat]).addTo(map); }
+      var d = gdist(p.lat, p.lon, th.lat, th.lon); if (d > 1500) ex2.thuisWeg = true;
+      if (ex2.thuisWeg && d < 200) { ex2.thuisWeg = false; try { setEv('excited', 5, 'Thuis! Lekker gereden.'); } catch (e) {} try { beep('pet'); } catch (e) {} toast('🏠 Welkom thuis!'); var fi = $('rijFinish'); if (fi) { fi.classList.add('op'); setTimeout(function () { fi.classList.remove('op'); }, 3000); } }
+    }
+    function extraStap(p, sp, fp, Nv, dk) {
+      var boven = st.kijk === 1;
+      try { chevZet(p, Nv, st.kijk !== 1); } catch (e) {}
+      try { poortZet(p, fp); } catch (e) {}
+      try { anwbZet(p, Nv, fp); } catch (e) {}
+      try { zonZet(p, st.kijk !== 1); } catch (e) {}
+      try { autoStaat(sp, dk, fp); } catch (e) {}
+      try { radarZet(boven); } catch (e) {}
+      try { warmZet(boven); } catch (e) {}
+      try { fileLabels(p, boven); } catch (e) {}
+      try { limZet(p, Nv, st.kijk !== 1); } catch (e) {}
+      try { rotZet(p, Nv, st.kijk !== 1); } catch (e) {}
+      try { laadZet(p, fp); } catch (e) {}
+      try { seizoenZet(fp); } catch (e) {}
+      try { thuisZet(p); } catch (e) {}
+      var lim = S.cam && S.cam.dist != null && S.cam.dist < 600 && S.cam.limit ? S.cam.limit : S.roadLim; document.body.classList.toggle('teHard', !!(lim && sp > lim + 3));
+    }
     function fpExtra(p, sp, fp, Nv) {
       if (!spoor.length || gdist(spoor[spoor.length - 1].lat, spoor[spoor.length - 1].lon, p.lat, p.lon) > 8) { spoor.push({ lat: p.lat, lon: p.lon }); if (spoor.length > 90) spoor.shift(); }
       var wx = typeof WX !== 'undefined' && WX && Date.now() - WX.t < 60 * 60e3 ? WX : null;
