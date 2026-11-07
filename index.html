@@ -483,6 +483,18 @@ body.kmNiet #flKaartLijst, body.kmNiet #flDruk, body.kmNiet #flDrukKop { display
 .segNav button[aria-pressed="true"] { color: var(--ink); border-color: #5ac8fa; background: rgba(90,200,250,.14); }
 .grKaart { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(135deg, rgba(90,200,250,.10), transparent); }
 .grKaart b { display: block; font-size: 17px; }
+.grTand { width: 46px; min-width: 46px; height: 46px; padding: 0 !important; border-radius: 23px !important; font-size: 20px !important; }
+.grLeden { display: flex; gap: 8px; overflow-x: auto; padding: 10px 2px 4px; scrollbar-width: none; } .grLeden:empty { display: none; }
+.grLid { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 64px; border: 0; background: none; padding: 0; color: inherit; font: 600 12px var(--f-body); }
+.grLid i { width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; font: 800 18px var(--f-display); font-style: normal; background: #e7f6fe; color: #0a6c96; border: 2px solid #5ac8fa; }
+.grLid.ik i { background: #ffe9e9; color: #c8102e; border-color: #ff6b6b; }
+.grLid span { max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; } .grLid small { display: block; font-weight: 500; font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.grKopje { margin-top: 18px !important; }
+.grPane[data-gp="rang"]:not(.open) .grAlleen { display: none; }
+.grMeer { width: 100%; margin-top: 8px; background: none !important; border-style: dashed !important; }
+.grStuur { width: 100%; margin-top: 18px; min-height: 52px; }
+#grBerStat[hidden], #bordVervers2[hidden] { display: none; }
+#rijMap .maplibregl-ctrl-attrib, #rijMap .maplibregl-ctrl-bottom-right { display: none !important; }   /* v145: geen bronbalk (luchtfoto PDOK) over de kaart */
 .grKaart span { display: block; font-size: 13px; color: var(--muted); }
 .grSnel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
 .grSnel .btn { padding: 10px 4px; font-size: 13px; }
@@ -877,33 +889,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="foot">Telefoon-GPS werkt alleen als deze pagina via https is geopend en je locatie toestaat. Het scherm blijft dan aan. Bedien de pagina niet tijdens het rijden: zet je telefoon in een houder.</p>
     </div>
   </details>
-  <details class="kop" id="kopGroep" open><summary><span class="kopT">👥 Groep</span><span class="kopS">berichten, ranglijst, sprints</span></summary>
+  <details class="kop" id="kopGroep" open><summary><span class="kopT">👥 Groep</span><span class="kopS">wie, ranglijst, berichten</span></summary>
     <div class="kopIn">
-      <div id="grKaart" class="grKaart"><div><b id="grKaartNaam">Jouw groep</b><span id="grKaartSub">nog niet geladen</span></div><button class="btn" id="grStuurKnop" type="button">📣 Stuur iets</button></div>
-      <nav id="grNav" class="segNav" aria-label="Groep">
-        <button type="button" data-gp="ber" aria-pressed="true">💬 Berichten</button><button type="button" data-gp="rang" aria-pressed="false">🏆 Ranglijst</button><button type="button" data-gp="inst" aria-pressed="false">⚙️ Instellen</button>
-      </nav>
-      <div class="grPane" data-gp="ber">
-        <div class="grSnel" hidden><button class="btn" type="button" data-snel="zwaai">👋 Zwaai</button><button class="btn" type="button" data-snel="koffie">☕ Koffie?</button><button class="btn" type="button" data-snel="hart">❤️ Hartjes</button><button class="btn" type="button" data-snel="file">🚗 File</button></div>
-        <p class="chip" id="grBerStat">Groepsberichten: nog niet opgehaald.</p>
-        <ol id="grLijst" class="grLijst"><li class="leeg">Nog geen berichten.</li></ol>
-      </div>
-      <div class="grPane" data-gp="rang" hidden>
-        <div class="mobrow" id="bordKiesRij"><select id="bordKies" style="flex:1;min-width:0" aria-label="Welke ranglijst"></select><button class="btn" id="bordVervers2" type="button" aria-label="Verversen">↻</button></div>
-        <div id="grRangKop" hidden>
-          <div id="bordGroep" class="btns" role="group" aria-label="Soort leaderboard"><button type="button" class="btn" data-g="week" aria-pressed="true">🏆 Deze week</button><button type="button" class="btn" data-g="alg" aria-pressed="false">📊 Algemeen</button><button type="button" class="btn" data-g="netjes" aria-pressed="false">🧘 Netjes</button><button type="button" class="btn" data-g="rec" aria-pressed="false">🚀 Records</button></div>
-          <div id="bordTabs" role="group" aria-label="Soort ranglijst">
-      <button type="button" class="btn" data-soort="week" aria-pressed="true">🏁 Week</button><button type="button" class="btn" data-soort="km" aria-pressed="false">Km</button><button type="button" class="btn" data-soort="netjes" aria-pressed="false">Netjes</button><button type="button" class="btn" data-soort="gemeld" aria-pressed="false">Meldingen</button><button type="button" class="btn" data-soort="sprint" aria-pressed="false">⏱️ Sprinttabel</button><button type="button" class="btn" data-soort="tachtig" aria-pressed="false">0–80</button><button type="button" class="btn" data-soort="nul" aria-pressed="false">0–100</button><button type="button" class="btn" data-soort="stijl" aria-pressed="false">Rijstijl</button><button type="button" class="btn" data-soort="stijlgraf" aria-pressed="false">📈 Grafiek</button><button type="button" class="btn" data-soort="zacht" aria-pressed="false">🧘 Soepel</button>
-      </div>
-        </div>
-        <p class="foot" id="bordUitleg" style="text-align:left"></p>
-        <ol id="bordLijst"></ol>
-        <div id="sprintTabel" hidden></div>
-        <div id="stijlGraf" hidden></div>
-        <p class="chip" id="bordStat">Nog niet geladen.</p>
-        <button class="btn" id="bordVervers" type="button" hidden>↻ Verversen</button>
-        <p class="foot">Alleen echte ritten met de GPS aan tellen mee. Elke week een nieuwe challenge; de winnaar hoort iedereen op maandag.</p>
-      </div>
+      <div id="grKaart" class="grKaart"><div><b id="grKaartNaam">Jouw groep</b><span id="grKaartSub">nog niet geladen</span></div><button class="btn grTand" id="grInstKnop" type="button" aria-label="Groep instellen" aria-expanded="false">⚙️</button></div>
+      <div id="grLeden" class="grLeden" aria-label="Wie zitten er in de groep"></div>
       <div class="grPane" data-gp="inst" hidden>
         <p class="sub">Jouw groep</p>
         <div class="mobrow"><input type="text" id="grpCode" maxlength="32" autocomplete="off" autocapitalize="none" placeholder="Groepscode"><button class="btn" id="grpSave" type="button">Opslaan</button></div>
@@ -926,6 +915,32 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         <button class="btn" id="grpWeg" type="button">Haal mij uit de groep</button>
         <div hidden><div id="badgeLijst" aria-label="Jouw badges"></div><p class="chip" id="badgeInfo" hidden></p></div>
       </div>
+      <p class="sub grKopje" id="grRangTitel">🏆 Deze week</p>
+      <div class="grPane" data-gp="rang">
+        <div class="mobrow grAlleen" id="bordKiesRij"><select id="bordKies" style="flex:1;min-width:0" aria-label="Welke ranglijst"></select><button class="btn" id="bordVervers2" type="button" aria-label="Verversen" hidden>↻</button></div>
+        <div id="grRangKop" hidden>
+          <div id="bordGroep" class="btns" role="group" aria-label="Soort leaderboard"><button type="button" class="btn" data-g="week" aria-pressed="true">🏆 Deze week</button><button type="button" class="btn" data-g="alg" aria-pressed="false">📊 Algemeen</button><button type="button" class="btn" data-g="netjes" aria-pressed="false">🧘 Netjes</button><button type="button" class="btn" data-g="rec" aria-pressed="false">🚀 Records</button></div>
+          <div id="bordTabs" role="group" aria-label="Soort ranglijst">
+      <button type="button" class="btn" data-soort="week" aria-pressed="true">🏁 Week</button><button type="button" class="btn" data-soort="km" aria-pressed="false">Km</button><button type="button" class="btn" data-soort="netjes" aria-pressed="false">Netjes</button><button type="button" class="btn" data-soort="gemeld" aria-pressed="false">Meldingen</button><button type="button" class="btn" data-soort="sprint" aria-pressed="false">⏱️ Sprinttabel</button><button type="button" class="btn" data-soort="tachtig" aria-pressed="false">0–80</button><button type="button" class="btn" data-soort="nul" aria-pressed="false">0–100</button><button type="button" class="btn" data-soort="stijl" aria-pressed="false">Rijstijl</button><button type="button" class="btn" data-soort="stijlgraf" aria-pressed="false">📈 Grafiek</button><button type="button" class="btn" data-soort="zacht" aria-pressed="false">🧘 Soepel</button>
+      </div>
+        </div>
+        <p class="foot grAlleen" id="bordUitleg" style="text-align:left"></p>
+        <ol id="bordLijst"></ol>
+        <div id="sprintTabel" hidden></div>
+        <div id="stijlGraf" hidden></div>
+        <p class="chip" id="bordStat">Nog niet geladen.</p>
+        <button class="btn" id="bordVervers" type="button" hidden>↻ Verversen</button>
+        <p class="foot grAlleen" hidden>Alleen echte ritten met de GPS aan tellen mee. Elke week een nieuwe challenge; de winnaar hoort iedereen op maandag.</p>
+        <button class="btn grMeer" id="grAlleRang" type="button">Alle ranglijsten ›</button>
+      </div>
+      <p class="sub grKopje">💬 Berichten</p>
+      <div class="grPane" data-gp="ber">
+        <div class="grSnel" hidden><button class="btn" type="button" data-snel="zwaai">👋 Zwaai</button><button class="btn" type="button" data-snel="koffie">☕ Koffie?</button><button class="btn" type="button" data-snel="hart">❤️ Hartjes</button><button class="btn" type="button" data-snel="file">🚗 File</button></div>
+        <p class="chip" id="grBerStat">Groepsberichten: nog niet opgehaald.</p>
+        <ol id="grLijst" class="grLijst"><li class="leeg">Nog geen berichten.</li></ol>
+        <button class="btn grMeer" id="grMeerBer" type="button" hidden>Meer berichten ›</button>
+      </div>
+      <button class="btn primary grStuur" id="grStuurKnop" type="button">📣 Stuur iets naar de groep</button>
     </div>
   </details>
   <details class="kop" id="kopRitten"><summary><span class="kopT">🏁 Mijn ritten</span><span class="kopS">ritten, level, records</span></summary>
@@ -4770,7 +4785,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v144';
+  var VERSION = 'v145';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5602,6 +5617,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function grLijstToon() {
     var ol = $('grLijst'); if (!ol) return; ol.textContent = '';
     var nu = Date.now(), l = grLijst.filter(function (x) { return nu - x.t < 24 * 3600e3; });
+    var mb = $('grMeerBer'); if (mb) { mb.hidden = l.length <= 5; mb.textContent = grBerOpen ? '‹ Minder' : 'Meer berichten (' + (l.length - 5) + ') ›'; } if (!grBerOpen) l = l.slice(-5);
     if (!l.length) { var e0 = document.createElement('li'); e0.className = 'leeg'; e0.textContent = 'Nog geen berichten vandaag.'; ol.appendChild(e0); return; }
     l.forEach(function (x) {
       var li = document.createElement('li'); if (x.r === 'uit') li.className = 'uit';
@@ -5613,7 +5629,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }
   setTimeout(grLijstToon, 0);
   function grBerStat(n, nieuw, fout) {
-    var e = $('grBerStat'); if (!e) return;
+    var e = $('grBerStat'); if (!e) return; e.hidden = !(grp && n < 0);   /* v145: alleen tonen als er iets misgaat */
     if (!grp) { e.textContent = 'Geen groepscode ingevuld.'; return; }
     if (n < 0) { e.textContent = 'Berichten ophalen mislukt: ' + fout + '. Ik probeer het steeds opnieuw.'; return; }
     e.textContent = 'Groep “' + grp + '”: verbonden, laatst gekeken om ' + tijdStr(Date.now()) + ':' + ('0' + new Date().getSeconds()).slice(-2) + ' (' + n + ' bericht' + (n === 1 ? '' : 'en') + ' van de laatste uren).';
@@ -6122,9 +6138,12 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     stijlgraf: { naam: 'Rijstijl-grafiek', w: function () { return 0; }, f: function () { return ''; } },
     sprint: { naam: 'Sprinttabel', w: function (l) { return l.nul ? -l.nul : -1e9; }, f: function () { return ''; } },
     stijl: { naam: 'Rijstijl', w: function (l) { return (l.ritten || 0) >= 3 ? l.stijl || 0 : -1; }, f: function (l) { return (l.ritten || 0) >= 3 ? (l.stijl || 0) + '/100' : 'nog te weinig ritten'; } } };
+  var grRangOpen = false, grBerOpen = false;   /* v145 */
   function bordToon(fout) {
     try { grKaartToon(); } catch (e) {}
     var ol = $('bordLijst'), st = $('bordStat'); if (!ol) return;
+    if (!grRangOpen && bordSoort !== 'week') bordSoort = 'week';
+    var rp = document.querySelector('.grPane[data-gp="rang"]'); if (rp) rp.classList.toggle('open', grRangOpen); if ($('grAlleRang')) $('grAlleRang').textContent = grRangOpen ? '‹ Alleen deze week' : 'Alle ranglijsten ›'; if ($('grRangTitel')) $('grRangTitel').textContent = grRangOpen ? '🏆 Ranglijsten' : '🏆 Deze week';
     document.querySelectorAll('#bordTabs button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.soort === bordSoort ? 'true' : 'false'); }); try { if (window.__bordKiesZet) window.__bordKiesZet(); } catch (e) {}
     while (ol.firstChild) ol.removeChild(ol.firstChild);
     var stb = $('sprintTabel'), sgb = $('stijlGraf'); if (stb) stb.hidden = bordSoort !== 'sprint'; if (sgb) sgb.hidden = bordSoort !== 'stijlgraf'; ol.hidden = bordSoort === 'sprint' || bordSoort === 'stijlgraf';
@@ -6145,10 +6164,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     };
     if ($('bordUitleg')) $('bordUitleg').textContent = UITB[bordSoort] || '';
     st.textContent = lijst.length ? (bordSoort === 'week' ? 'Deze week: ' + chal(weekIdx()).naam + '. De winnaar hoor je maandag. ' : B.naam + ' · ') + lijst.length + ' in de groep. Alleen echte ritten met GPS tellen mee.' : 'Nog niemand op het leaderboard. Rij een stukje met de GPS aan.';
+    if (!grRangOpen) st.textContent = lijst.length ? 'Challenge: ' + chal(weekIdx()).naam + '. Tik op een naam voor meer.' : 'Nog niemand op de ranglijst. Rij een stukje met de GPS aan.';
     var vw = weekIdx() - 1, beker = null, bekerV = 0;   /* v77: wisselbeker voor de winnaar van vorige week */
     bordData.forEach(function (l) { var v = l.week && l.week.w === vw ? l.week.v : (l.vorige && l.vorige.w === vw ? l.vorige.v : 0); if (v > bekerV) { bekerV = v; beker = l.van; } });
     window.__ikBeker = !!(beker && beker === mijnId);   /* v81: schermpje viert het mee */
+    var ikPlek = -1; lijst.forEach(function (l, i) { if (l.van === mijnId) ikPlek = i; });
     lijst.forEach(function (l, i) {
+      if (!grRangOpen && i >= 3 && i !== ikPlek) return;   /* kort: top 3 (en jij) */
       var li = document.createElement('li'); if (l.van === mijnId) li.className = 'ik';
       var a = document.createElement('span'); a.className = 'pl'; a.textContent = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
       var n = document.createElement('span'); n.className = 'nm'; n.textContent = (l.n || 'Naamloos') + (l.van === mijnId ? ' (jij)' : '') + (l.lv ? ' · Lv ' + l.lv : '') + (l.jr && l.jr === mmdd(new Date()) ? ' 🎂' : '');
@@ -6157,13 +6179,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var w = document.createElement('span'); w.className = 'wd'; w.textContent = B.f(l);
       if (beker && l.van === beker) { var bk = document.createElement('span'); bk.textContent = ' 🏆'; bk.title = 'Wisselbeker: winnaar van de weekchallenge van vorige week'; n.insertBefore(bk, n.childNodes[1] || null); }
       li.appendChild(a); li.appendChild(n); li.appendChild(w);
-      n.style.cursor = 'pointer'; n.addEventListener('click', function () { bordInfo = bordInfo === l.van ? null : l.van; bordToon(); });
-      if (l.van !== mijnId) {
-        var mk = document.createElement('button'); mk.type = 'button'; mk.className = 'lidMeer'; mk.textContent = '⋯';
-        mk.setAttribute('aria-label', 'Opties voor ' + (l.n || 'dit lid'));
-        mk.addEventListener('click', function () { bordOpen = bordOpen === l.van ? null : l.van; bordArm = null; bordToon(); });
-        li.appendChild(mk);
-      }
+      li.style.cursor = 'pointer'; li.addEventListener('click', function () { bordInfo = bordInfo === l.van ? null : l.van; bordOpen = bordInfo && l.van !== mijnId ? l.van : null; bordArm = null; bordToon(); });
       ol.appendChild(li);
       if (bordInfo === l.van) {  /* v74: records van deze persoon, met de dag waarop ze gereden zijn */
         var inf = document.createElement('li'); inf.className = 'lidOpties';
@@ -6194,7 +6210,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         b1.addEventListener('click', function () { if (bordArm !== 'samen') { bordArm = 'samen'; bordToon(); return; } lidSamenvoegen(l); });
         var b2 = document.createElement('button'); b2.type = 'button'; b2.className = 'btn'; b2.textContent = bordArm === 'weg' ? 'Zeker? Tik nog eens' : '🗑️ Verwijder uit de groep';
         b2.addEventListener('click', function () { if (bordArm !== 'weg') { bordArm = 'weg'; bordToon(); return; } lidWeg(l, 'verwijderd'); });
-        var b3 = document.createElement('button'); b3.type = 'button'; b3.className = 'btn'; b3.textContent = 'Annuleer';
+        var b3 = document.createElement('button'); b3.type = 'button'; b3.className = 'btn'; b3.textContent = 'Sluiten';
         b3.addEventListener('click', function () { bordOpen = null; bordArm = null; bordToon(); });
         op.appendChild(tx); op.appendChild(b1); op.appendChild(b2); op.appendChild(b3); ol.appendChild(op);
       }
@@ -8070,25 +8086,23 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (!grp) { n.textContent = 'Nog geen groep'; s.textContent = 'Vul een groepscode in bij ⚙️ Instellen'; return; }
     n.textContent = (grp === STANDAARD_GROEP ? 'Groep ' : 'Groep “') + grp + (grp === STANDAARD_GROEP ? '' : '”');
     var jarig = bordData.filter(function (l) { return l.jr && l.jr === mmdd(new Date()); }).map(function (l) { return l.n; });
-    s.textContent = (bordData.length ? bordData.length + ' in de groep' : 'leden laden…') + ' · deze week: ' + chal(weekIdx()).naam + (jarig.length ? ' · 🎂 ' + jarig.join(', ') : '');
+    s.textContent = (bordData.length ? bordData.length + ' in de groep' : 'leden laden…') + (jarig.length ? ' · 🎂 ' + jarig.join(', ') : '');
+    var ld = $('grLeden'); if (ld) { ld.textContent = ''; bordData.slice().sort(function (a, b) { return (b.van === mijnId) - (a.van === mijnId) || String(a.n || '').localeCompare(String(b.n || '')); }).forEach(function (l) {
+      var c = document.createElement('button'); c.type = 'button'; c.className = 'grLid' + (l.van === mijnId ? ' ik' : '');
+      var r = document.createElement('i'); r.textContent = String(l.n || '?').trim().charAt(0).toUpperCase() || '?';
+      var t = document.createElement('span'); t.textContent = l.van === mijnId ? 'Jij' : (l.n || 'Naamloos'); var a = document.createElement('small'); a.textContent = l.a || ''; t.appendChild(a);
+      c.appendChild(r); c.appendChild(t); c.addEventListener('click', function () { grRangOpen = true; bordSoort = 'km'; bordInfo = l.van; bordOpen = l.van !== mijnId ? l.van : null; bordArm = null; bordToon(); var rp = document.querySelector('.grPane[data-gp="rang"]'); if (rp) rp.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+      ld.appendChild(c); }); }
   }
   (function () {
-    var GPKEY = 'dashboardmaatje-grpane-v1';
-    function kies(gp) {
-      document.querySelectorAll('#grNav button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.gp === gp ? 'true' : 'false'); });
-      var pane = gp === 'sprint' || gp === 'graf' ? 'rang' : gp;
-      document.querySelectorAll('.grPane').forEach(function (d) { d.hidden = d.dataset.gp !== pane; });
-      var kop = $('grRangKop'); if (kop) kop.hidden = true;   /* v137: één keuzelijst in plaats van twee rijen knoppen */
-      if (gp === 'sprint') { bordSoort = 'sprint'; bordToon(); }
-      else if (gp === 'graf') { bordSoort = 'stijlgraf'; bordToon(); }
-      else if (gp === 'rang') { if (bordSoort === 'sprint' || bordSoort === 'stijlgraf') { var a = document.querySelector('#bordTabs button:not([hidden])'); if (a) a.click(); else { bordSoort = 'week'; bordToon(); } } else bordToon(); }
-      try { localStorage.setItem(GPKEY, gp); } catch (e) {}
-    }
-    document.querySelectorAll('#grNav button').forEach(function (b) { b.addEventListener('click', function () { kies(b.dataset.gp); }); });
+    /* v145: geen tabbladen meer: alles op één pagina, instellingen achter ⚙️, ranglijst kort met 'Alle ranglijsten' */
+    var kop = $('grRangKop'); if (kop) kop.hidden = true;
+    $('grInstKnop').addEventListener('click', function () { var p = document.querySelector('.grPane[data-gp="inst"]'); p.hidden = !p.hidden; this.setAttribute('aria-expanded', p.hidden ? 'false' : 'true'); if (!p.hidden) p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+    $('grAlleRang').addEventListener('click', function () { grRangOpen = !grRangOpen; if (!grRangOpen) { bordSoort = 'week'; bordInfo = null; bordOpen = null; } bordToon(); });
+    $('grMeerBer').addEventListener('click', function () { grBerOpen = !grBerOpen; grLijstToon(); });
     document.querySelectorAll('.grSnel button').forEach(function (b) { b.addEventListener('click', function () { if (typeof grKnop === 'function') grKnop(b.dataset.snel); }); });
     $('grStuurKnop').addEventListener('click', function () { if (typeof grPaneel === 'function') grPaneel(true); });
-    var start = 'ber'; try { start = localStorage.getItem(GPKEY) || 'ber'; } catch (e) {} if (start === 'sprint' || start === 'graf') start = 'rang';
-    setTimeout(function () { kies(start); }, 0);
+    setTimeout(function () { bordSoort = 'week'; bordToon(); }, 0);
   })();
 
   /* ---------- v85: leaderboard in 3 groepjes ---------- */
