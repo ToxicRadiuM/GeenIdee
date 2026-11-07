@@ -4978,7 +4978,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v155';
+  var VERSION = 'v156';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7837,6 +7837,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     ['scLicht', 'scVol', 'scAnim', 'scWarn'].forEach(function (id) { $(id).addEventListener('change', function () { sc.l = +$('scLicht').value; sc.v = +$('scVol').value; sc.a = $('scAnim').value; sc.w = $('scWarn').value; try { localStorage.setItem(SCKEY, JSON.stringify(sc)); } catch (e) {} stuurInst(); }); });
     window.__scStuur = function () { stuurInst(); setTimeout(persStuur, 900); };
     window.__scDoe = function (t) { if (rx) klein('DOE:' + t); };
+    window.__scVerbonden = function () { return !!rx; };   /* v156 */
     window.__scEvt = function (c, t) {   /* v104: groepsgebeurtenis op Buddy+ (alleen gewone letters, het schermpje kent geen emoji) */
       if (!rx) return; var s = String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
       if (s) klein('EVT:' + c + '|' + s);
@@ -8384,6 +8385,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       c.appendChild(r); c.appendChild(t); c.addEventListener('click', function () { weekOpen = l.van; weekToon(); var wl = $('grWeekLijst'); if (wl) wl.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
       ld.appendChild(c); }); }
     try { weekToon(); } catch (e) { lg('FOUT weekToon ' + e.message); }
+    try { var vd = mmdd(new Date()), jr = bordData.filter(function (l) { return l.van !== mijnId && l.jr === vd; }).map(function (l) { return l.n || 'Een collega'; });   /* v156: collega jarig -> Buddy+ feesthoedje */
+      if (jr.length) { var sl = vd + jr.join(), tj = jr.slice(0, 2).join(' en ') + (jr.length > 2 ? ' en meer' : '') + (jr.length > 1 ? ' zijn' : ' is') + ' jarig!'; if (mem.colJarigC !== sl) { mem.colJarigC = sl; save(); queueCheer('🎂 ' + tj + ' Stuur even een felicitatie!'); } if (mem.colJarig !== sl && window.__scEvt && window.__scVerbonden && window.__scVerbonden()) { window.__scEvt('j', tj); mem.colJarig = sl; save(); } } } catch (e) {}
   }
   (function () {
     /* v145: geen tabbladen meer: alles op één pagina, instellingen achter ⚙️, ranglijst kort met 'Alle ranglijsten' */
