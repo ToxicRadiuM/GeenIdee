@@ -37,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 88;   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
+static const int FW_VERSIE = 89;   // v89: groter tikvlak voor zijn ogen, 7 nieuwe thuis-animaties   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
 static uint32_t schaapT = 0, streepTot = 0; static int klokKwartier = -1;   // v87: duidelijkere kaart (lichtere wegen met rand, snelweg oranje, files rood, raster, noordpijl)
 // v86: kookwekker (menu TIMER), schudden = dobbelsteen of magische 8-bal, boos op zijn kop, nachtlampje met klok, hij mist je
 static uint32_t timerTot = 0, timerLen = 0, timerAlarmT = 0, nachtKlokTot = 0; static uint8_t timerMin = 10, timerFase = 0, timerAlarmN = 0; static bool gemist = false; static int8_t schudUitkomst = 0;
@@ -1577,6 +1577,13 @@ static const GagDef GAGS[] = {
   {3.5f, 0, HAPPY, "Goeiemorgen! *uitrek*"},                            // 54 uitrekken
   {4.0f, 0, ALERT, "Hé, zet me rechtop!"},                              // 55 scheef/plat/op zijn kop
   {3.0f, 0, BORED, "Ik heb trek... tik op het koekje!"},                // 56 trek
+  {6.0f, G_IDLE, EXCITED, "Kijk, ik kan jongleren!"},                   // 57 jongleren (v89)
+  {6.5f, G_IDLE, LOVE, "Een vlindertje..."},                            // 58 vlinder op zijn neus
+  {5.5f, G_IDLE, WORRIED, "Waarom regent het alleen op mij?"},          // 59 eigen regenwolkje
+  {6.5f, G_IDLE, FOCUSED, "Even vissen..."},                            // 60 vissen
+  {7.0f, G_IDLE, RELAXED, "Ommmm..."},                                  // 61 mediteren
+  {6.0f, G_IDLE, CONTENT, "Ik maak een tekening voor je!"},             // 62 tekenen
+  {5.5f, G_IDLE, BLOW, "Kauwgom!"},                                     // 63 kauwgombel
 };
 static constexpr int GAG_N = sizeof(GAGS) / sizeof(GAGS[0]);
 static inline void gdir(float x, float y) { tgx = x; tgy = y; nextGaze = t + .3f; }
@@ -1728,6 +1735,13 @@ static void gagStep(float dt) {
     case 29: gdir(.4f, -.6f + fminf(0, -(tt - 2.6f) * .3f)); if (tt < 2.6f) gagMsg = tt < .9f ? "3..." : (tt < 1.8f ? "2..." : "1..."); else { gagMsg = "Lancering!"; if (!g_b) { g_b = true; burstAt(176, 190, 12); } } break;
     case 30: g_fy = 230 - tt * 40; gdir(.5f, (g_fy - 120) / 120); if (g_fy < 60 && !g_b) { g_b = true; burstAt(176, g_fy, 14); gagMood = STARTLED; gagMsg = "Pang! Oei..."; } break;
     case 31: gdir(sinf(tt * 1.3f) * .7f, cosf(tt * 1.1f) * .4f - .2f); break;
+    case 57: { float b = fmodf(tt * 1.6f, 3.f); gdir(cosf(b * 2.094f) * .5f, -.7f); if (tt > 5 && !g_b) { g_b = true; gagMood = STARTLED; gagMsg = "Oeps! Eentje op mijn hoofd."; } } break;
+    case 58: { float k = fminf(1, tt / 3.f); gdir((1 - k) * sinf(tt * 2) * .8f, -.2f + k * .5f); if (tt > 3 && tt < 5.5f) { fxNoBlink = true; eyeL = eyeR = .8f; gagMsg = "Ik durf niet te bewegen..."; } if (tt > 5.5f) gagMsg = "Daaag vlindertje!"; } break;
+    case 59: gdir(0, -.8f); if (tt > 4.2f) { gagMood = HAPPY; gagMsg = "Hè hè, zon!"; } break;
+    case 60: gdir(.5f, .4f); if (tt > 3.5f && !g_b) { g_b = true; gagMood = EXCITED; gagMsg = "BEET! Een vis!"; playGeluid(GL_PLING); } break;
+    case 61: eyeL = eyeR = .12f; fxNoBlink = true; fdy = sinf(tt * 1.5f) * 4 - 6; gdir(0, 0); break;
+    case 62: gdir(.3f + sinf(tt * 4) * .15f, .6f); if (tt > 4.6f) { gdir(0, 0); gagMood = HAPPY; gagMsg = "Voor jou!"; } break;
+    case 63: gdir(0, .5f); if (tt > 3.8f && !g_b) { g_b = true; gagMood = STARTLED; gagMsg = "PLOF! Het zit op mijn neus..."; playGeluid(GL_OEPS); } break;
     case 32: g_fx = -30 + tt / 6.f * 300; gdir((g_fx - 120) / 110, -.9f); if (tt > 2.2f && tt < 3.8f) { gagMood = STARTLED; gagMsg = "Ze nemen me mee!"; fdy = -4; } else if (tt >= 3.8f) { gagMood = HAPPY; gagMsg = "Pfiew. Ze waren vriendelijk."; } break;
     case 33: g_fx = 260 - tt * 16; gdir((g_fx - 120) / 120, .8f); if (tt > 4.5f) gagMsg = "Sneller dan de file, haha."; break;
     case 34: g_fx = 250 - tt * 55; gdir((g_fx - 120) / 100, -.4f); if (tt > 2.4f && tt < 3.4f) { gagMood = STARTLED; gagMsg = "BOE! Aaah!"; if (!g_b) { g_b = true; burstAt(120, 110, 10); } fdy = -6; } else if (tt >= 3.4f) { gagMood = HAPPY; gagMsg = "Haha, een lief spookje."; } break;
@@ -1787,6 +1801,19 @@ static void gagDraw() {
       for (int b = 0; b < 6; b++) { float r = 64 - b * 6; int n = (int)(18 * k); for (int i = 0; i < n; i++) { float a1 = PI2 / 2 + i * PI2 / 36, a2 = a1 + PI2 / 36; line(120 + cosf(a1) * r, 96 + sinf(a1) * r, 120 + cosf(a2) * r, 96 + sinf(a2) * r, kl[b], 3); } } } break;
     case 29: { float y = tt < 2.6f ? 190 : 190 - (tt - 2.6f) * (tt - 2.6f) * 60; if (y > -30) { roundRect(170, y - 18, 12, 30, 5, 0xFFFF); triF(170, y - 16, 182, y - 16, 176, y - 30, RED); triF(170, y + 4, 164, y + 14, 170, y + 12, RED); triF(182, y + 4, 188, y + 14, 182, y + 12, RED); circle(176, y - 6, 3, 0x7E5F); if (tt >= 2.6f) { circle(176, y + 18, 4 + sinf(t * 40) * 1.5f, GOLD); circle(176, y + 24, 3, 0xFC00); } } } break;
     case 30: if (!g_b) { float x = 176 + sinf(tt * 2) * 6; line(x, g_fy + 16, x + sinf(tt * 3) * 4, g_fy + 44, 0xC618, 1); ellipseF(x, g_fy, 13, 16, 0xF8B2); triF(x - 3, g_fy + 16, x + 3, g_fy + 16, x, g_fy + 20, 0xF8B2); circle(x - 5, g_fy - 6, 3, 0xFE9F); } break;
+    case 57: for (int i = 0; i < 3; i++) { float b = fmodf(tt * 1.6f + i, 3.f), x = 120 + cosf(b * 2.094f) * 36, y = 40 + fabsf(sinf(b * 3.1416f)) * -14 + 14; if (g_b && i == 0) { x = 120; y = 46 + fminf(30, (tt - 5) * 80); } circle(x, y, 7, i == 0 ? 0xF8A6 : i == 1 ? 0xFEA0 : 0x35E6); } break;
+    case 58: { float k = fminf(1, tt / 3.f), x = tt < 5.5f ? 200 - k * 80 + sinf(tt * 5) * 10 * (1 - k) : 120 + (tt - 5.5f) * 120, y = tt < 5.5f ? 40 + k * 100 + cosf(tt * 4) * 8 * (1 - k) : 140 - (tt - 5.5f) * 120, w = 8 + 5 * fabsf(sinf(tt * (k < 1 || tt > 5.5f ? 14 : 3)));
+      ellipseF(x - w * .6f, y - 3, w * .6f, 6, 0xFD20); ellipseF(x + w * .6f, y - 3, w * .6f, 6, 0xFD20); ellipseF(x - w * .45f, y + 4, w * .4f, 4, 0xFEA0); ellipseF(x + w * .45f, y + 4, w * .4f, 4, 0xFEA0); dikLijn(x, y - 6, x, y + 6, 2, 0x2104); } break;
+    case 59: if (tt < 4.2f) { float x = 120 + sinf(tt * 2) * 4; ellipseF(x - 16, 34, 18, 12, 0x8C71); ellipseF(x + 10, 30, 22, 15, 0x8C71); ellipseF(x + 26, 37, 14, 10, 0x8C71); for (int i = 0; i < 7; i++) { float dy = fmodf(tt * 120 + i * 23, 70); dikLijn(x - 26 + i * 9, 46 + dy, x - 27 + i * 9, 52 + dy, 1.5f, 0x3A9F); } }
+      else { float k = fminf(1, (tt - 4.2f) * 2); circle(120, 30, 12 * k, 0xFEA0); } break;
+    case 60: { dikLijn(170, 210, 214, 90, 2.5f, 0x9A60); float hy = 150 + sinf(tt * 3) * 3 + (tt > 3.5f && tt < 4.2f ? 20 : 0); line(214, 90, 214, hy, 0xC618, 1); circle(214, hy, 3, 0xF800);
+      if (tt > 3.5f) { float k = tt - 3.5f, fx = 214 - k * 30, fy = hy - fminf(80, k * 160) + k * k * 40; ellipseF(fx, fy, 12, 6, 0x5D1F); triF(fx + 10, fy, fx + 18, fy - 6, fx + 18, fy + 6, 0x5D1F); circle(fx - 6, fy - 1, 1.6f, 0x0000); } } break;
+    case 61: for (int i = 0; i < 3; i++) { float k = fmodf(tt * .5f + i * .33f, 1.f); showTekst(i == 1 ? "Om" : "m", 60 + i * 60, 60 - k * 40, 2, k < .8f ? 0x8C71 : 0x4208); } for (int i = 0; i < 2; i++) { float a = tt * 1.2f + i * 3.1416f; circle(120 + cosf(a) * 96, 120 + sinf(a) * 96, 4, 0x780F); } break;
+    case 62: { roundRect(150, 140, 70, 54, 6, 0xFFFF); float k = fminf(1, tt / 4.5f); int n = (int)(k * 30); for (int i = 1; i <= n; i++) { float a1 = (i - 1) / 30.f * 6.283f, a2 = i / 30.f * 6.283f;
+        float x1 = 185 + 16 * powf(sinf(a1), 3) * .9f, y1 = 165 - (13 * cosf(a1) - 5 * cosf(2 * a1) - 2 * cosf(3 * a1)) * .9f, x2 = 185 + 16 * powf(sinf(a2), 3) * .9f, y2 = 165 - (13 * cosf(a2) - 5 * cosf(2 * a2) - 2 * cosf(3 * a2)) * .9f; dikLijn(x1, y1, x2, y2, 2, 0xE1A6); }
+      if (n < 30) { float a = k * 6.283f; float px = 185 + 16 * powf(sinf(a), 3) * .9f, py = 165 - (13 * cosf(a) - 5 * cosf(2 * a) - 2 * cosf(3 * a)) * .9f; dikLijn(px, py, px + 10, py - 18, 3, 0xFEA0); } } break;
+    case 63: { float r = tt < 3.8f ? 4 + tt * 9 : 0; if (r > 0) { circle(120 + faceOx * .5f, 184 + faceOy * .5f, r, 0xFB56); circle(114 + faceOx * .5f - r * .3f, 178 + faceOy * .5f - r * .3f, r * .25f, 0xFDFB); }
+      else { for (int i = 0; i < 5; i++) circle(104 + i * 8 + faceOx * .5f, 150 + (i % 2) * 6 + faceOy * .5f, 5, 0xFB56); } } break;
     case 31: for (int i = 0; i < 7; i++) { float x = 120 + sinf(tt * (.7f + i * .13f) + i * 2) * 90, y = 100 + cosf(tt * (.5f + i * .11f) + i) * 70; float hl = .5f + .5f * sinf(tt * 5 + i * 1.7f); if (hl > .35f) circle(x, y, 1.5f + hl * 2.5f, hl > .7f ? 0xFFF0 : 0xAFE0); } break;
     case 32: { float x = g_fx, y = 34 + sinf(tt * 2) * 4; ellipseF(x, y, 24, 7, 0x9CF3); ellipseF(x, y - 6, 10, 7, 0x7E5F); for (int i = -2; i <= 2; i++) circle(x + i * 9, y + 2, 1.8f, (int)(tt * 6 + i) % 2 ? GOLD : RED);
       if (tt > 2.2f && tt < 3.8f) { triF(x - 6, y + 7, x + 6, y + 7, x + 30, y + 150, 0x3A7F); triF(x - 6, y + 7, x - 30, y + 150, x + 30, y + 150, 0x3A7F); } } break;
@@ -3433,7 +3460,7 @@ void handleTouch(){
      else if (lY > 188.0f && !(koekjeZichtbaar && robotModus && fabsf(lX - 196) < 24)) openVenster(2);   // onderaan tikken = volume
      else if (koekjeZichtbaar && robotModus && fabsf(lX - 196) < 24 && fabsf(lY - 176) < 24) {   // v48: koekje!
        koekjeZichtbaar = false; energie = 100; startGag(51); playGeluid(GL_PLING); vriendPlus(1); laatsteActie = now; }
-     else if (gagAct != 1 && (hypotf(lX - (73 + faceOx), lY - (106 + faceOy)) < 22 || hypotf(lX - (167 + faceOx), lY - (106 + faceOy)) < 22)) {   // v48: in zijn oog
+     else if (gagAct != 1 && lY > 60 && lY < 150 && (fabsf(lX - (73 + faceOx)) < 32 || fabsf(lX - (167 + faceOx)) < 32)) {   // v48: in zijn oog (v89: zo groot als het hele oog)
        auKant = lX > 120 ? 1 : 0; startGag(47); playGeluid(GL_OEPS); }
      else if (gagAct != 1 && lY > 132 && lY < 172 && (lX < 72 || lX > 168)) { startGag(48); playGeluid(GL_GIECHEL); aaiTot = now + 2000; }   // op zijn wang
      else if ([&]() { static uint32_t tk[3] = {0}; tk[0] = tk[1]; tk[1] = tk[2]; tk[2] = now; return tk[0] && now - tk[0] < 1300; }() && gagAct != 1 && robotModus) { startGag(50); playGeluid(GL_HOI); }   // v49: 3x snel tikken = kiekeboe
