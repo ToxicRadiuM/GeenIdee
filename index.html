@@ -266,21 +266,31 @@ body.car.kaartrij main { left: 50% !important; top: auto !important; bottom: 6px
 body.car.kaartrij .stage { width: var(--bh) !important; height: var(--bh) !important; min-height: 0 !important; }
 body.car.kaartrij .helmet { --hs: calc(var(--bh) - 8px) !important; }
 body.car.kaartrij #rijStuurWiel { display: none; }
-body.car.kaartrij #rijKnipL { left: calc(50% - var(--bh) / 2 - 34px); bottom: calc(var(--bh) / 2); } body.car.kaartrij #rijKnipR { left: calc(50% + var(--bh) / 2 + 10px); bottom: calc(var(--bh) / 2); }
+body.car.kaartrij #rijStuur .dashBand, body.car.kaartrij #rijStuur .dashMeter { display: none; }   /* v143: geen dashboard meer, alleen het stuur */
+body.car.kaartrij .knip { width: 30px; text-align: center; } body.car.kaartrij #rijKnipL { left: calc(50% - var(--bh) / 2 - 42px); bottom: calc(var(--bh) / 2); } body.car.kaartrij #rijKnipR { left: calc(50% + var(--bh) / 2 + 12px); bottom: calc(var(--bh) / 2); }
 body.car.kaartrij #carStart { top: 12px !important; } body.car.kaartrij #carRit { top: 12px !important; }
 body.car.kaartrij #rijScore { top: 66px; left: 66px; }
 body.car.kaartrij #carAdd, body.car.kaartrij #carAddM { left: auto !important; }   /* vaste en mobiele flitser altijd samen rechtsonder */
 body.car.kaartrij #rijTerug { bottom: calc(var(--bh) + 16px); }
+#rijSnel { position: fixed; right: 16px; top: 236px; z-index: 44; display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; }   /* v143: bord met wat je mag, daaronder hoe hard je rijdt */
+#rijSnel[hidden], #rijSnelLim[hidden] { display: none; }
+#rijSnelLim { width: 62px; height: 62px; border-radius: 50%; background: #fff; border: 7px solid #e3121b; box-sizing: border-box; color: #111; font: 800 22px/48px var(--f-display); letter-spacing: -1px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,.5); }
+#rijSnelV { font: 800 34px/1 var(--f-display); color: #fff; text-shadow: 0 2px 8px #000, 0 0 2px #000; margin-top: 4px; }
+#rijSnel small { font: 700 11px var(--f-body); color: #cfd4da; text-shadow: 0 1px 3px #000; }
+#rijSnel.te #rijSnelV { color: #ff453a; }
+@media (orientation: landscape) { #rijSnel { right: 124px; top: 74px; } }
 @media (orientation: landscape) { body.car.kaartrij #rijAfslag, body.car.kaartrij #rijZoek { left: 50%; right: auto; transform: translateX(-50%); width: min(460px, calc(100vw - 248px)); } }   /* v141: liggend precies in het midden */
 @media (orientation: portrait) { body.car.kaartrij #rijAfslag { top: 8px; bottom: auto; left: 12px; right: 12px; } body.car.kaartrij #rijBalk { top: 116px; bottom: calc(var(--bh) + 24px); } body.car.kaartrij #rijTerug { bottom: calc(var(--bh) + 110px); } body.car.kaartrij #rijZoek { top: 66px; } }
 @media (orientation: landscape) {   /* v141: liggend zit Buddy linksonder als teller, in plaats van de km/u-meter */
   body.car.kaartrij { --bw: 0px; --bh: min(36vh, 24vw); }
   body.car.kaartrij main { left: 12px !important; transform: rotate(var(--stuurDraai, 0deg)) !important; }
-  body.car.kaartrij #rijStuur .dashMeter { display: none; }
   body.car.kaartrij #rijStuurWiel { display: inline; }   /* stuur terug, Buddy is nu de teller */
+  body.car.kaartrij #rijWielPos { transform: translate(200px, 150px); }   /* v142: stuur precies in het midden */
   body.car.kaartrij #carGroep { left: calc(var(--bh) + 24px) !important; }
-  body.car.kaartrij #rijBalk { bottom: calc(var(--bh) + 18px); }
-  body.car.kaartrij #rijKnipL { left: calc(50% - 90px); bottom: 21vh; } body.car.kaartrij #rijKnipR { left: calc(50% + 66px); bottom: 21vh; }
+  body.car.kaartrij #rijBalk { left: auto; right: 12px; top: 74px; bottom: 12px; }   /* v143: balk helemaal rechts en langer */
+  body.car.kaartrij #carAdd { right: auto !important; left: calc(50% - 145px) !important; bottom: 12px !important; }   /* vaste flitser links van het stuur */
+  body.car.kaartrij #carAddM { right: auto !important; left: calc(50% + 89px) !important; bottom: 12px !important; }   /* mobiele flitser rechts van het stuur */
+  body.car.kaartrij #rijKnipL { left: calc(50% - 96px); bottom: 21vh; } body.car.kaartrij #rijKnipR { left: calc(50% + 66px); bottom: 21vh; }
 }
 #rijWissers { position: fixed; left: 0; right: 0; top: 0; bottom: 0; display: none; pointer-events: none; }
 body.regen #rijWissers { display: block; }
@@ -683,7 +693,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 <div id="rijFlits" aria-hidden="true"></div><div id="rijFinish" aria-hidden="true">🏁<b>AANGEKOMEN!</b></div><div id="rijVloek" aria-hidden="true">#@%&!</div><div id="rijPunten" aria-hidden="true"></div><div id="rijScore" aria-hidden="true" hidden></div><canvas id="rijSpiegel" width="400" height="120" hidden aria-hidden="true"></canvas><div id="rijMsiBord" hidden aria-hidden="true"></div><div id="rijTurbo" aria-hidden="true"></div><div id="rijMist" aria-hidden="true"></div>
 <div id="rijHand" aria-hidden="true"></div>
 <div id="rijPiek" aria-hidden="true"><svg viewBox="0 0 120 120"><rect x="10" y="22" width="100" height="86" rx="30" fill="#0d1117" stroke="#5ac8fa" stroke-width="5"/><path d="M14 52 Q60 40 106 52 L104 66 Q86 74 66 64 L54 64 Q34 74 16 66 Z" fill="#05070a"/><path d="M22 54 L34 52 L28 62 Z M70 54 L82 52 L76 62 Z" fill="#fff" opacity=".55"/><g id="rijPiekOog"><rect x="70" y="52" width="30" height="14" rx="6" fill="#05070a"/></g><path d="M44 88 Q60 98 78 86" stroke="#5ac8fa" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="50" y="6" width="20" height="18" rx="6" fill="#c8102e"/></svg></div>
-<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg class="dashBand" viewBox="0 0 400 170" preserveAspectRatio="none"><path d="M0 170 L0 112 Q200 66 400 112 L400 170 Z" fill="#111417"/><path d="M0 112 Q200 66 400 112" stroke="#2a2f35" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/></svg><svg class="dashWiel" viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><g class="dashMeter" transform="translate(75 150)"><path d="M-34 0 A34 34 0 0 1 34 0 Z" fill="#0b0d10" stroke="#30363d" stroke-width="2"/><g id="rijMeterLim" style="transform: rotate(-90deg)"><line x1="0" y1="-24" x2="0" y2="-33" stroke="#ff453a" stroke-width="3"/></g><g id="rijNaald" style="transform: rotate(-90deg); transition: transform 1s linear"><line x1="0" y1="2" x2="0" y2="-29" stroke="#ffd60a" stroke-width="2.5" stroke-linecap="round" id="rijNaaldL"/></g><circle r="3.5" fill="#c8ccd0"/><text y="-9" text-anchor="middle" fill="#5ac8fa" font-size="11" font-weight="700" font-family="sans-serif" id="rijStuurKmu">0</text></g><g transform="translate(170 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg><div id="rijWissers"><div id="rijDruppels"></div><i></i><i></i></div><i class="knip" id="rijKnipL">◀</i><i class="knip" id="rijKnipR">▶</i><div id="rijKoplamp"></div></div><div id="rijBalk" aria-label="Wat komt eraan" hidden><span class="rbKop" id="rbKop"></span><div class="rbBaan" id="rbBaan"></div><span class="rbIk">▲</span></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small><div id="rijStroken" hidden></div></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijFav" class="rzFav"></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
+<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg class="dashBand" viewBox="0 0 400 170" preserveAspectRatio="none"><path d="M0 170 L0 112 Q200 66 400 112 L400 170 Z" fill="#111417"/><path d="M0 112 Q200 66 400 112" stroke="#2a2f35" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/></svg><svg class="dashWiel" viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><g class="dashMeter" transform="translate(75 150)"><path d="M-34 0 A34 34 0 0 1 34 0 Z" fill="#0b0d10" stroke="#30363d" stroke-width="2"/><g id="rijMeterLim" style="transform: rotate(-90deg)"><line x1="0" y1="-24" x2="0" y2="-33" stroke="#ff453a" stroke-width="3"/></g><g id="rijNaald" style="transform: rotate(-90deg); transition: transform 1s linear"><line x1="0" y1="2" x2="0" y2="-29" stroke="#ffd60a" stroke-width="2.5" stroke-linecap="round" id="rijNaaldL"/></g><circle r="3.5" fill="#c8ccd0"/><text y="-9" text-anchor="middle" fill="#5ac8fa" font-size="11" font-weight="700" font-family="sans-serif" id="rijStuurKmu">0</text></g><g id="rijWielPos" transform="translate(170 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg><div id="rijWissers"><div id="rijDruppels"></div><i></i><i></i></div><i class="knip" id="rijKnipL">◀</i><i class="knip" id="rijKnipR">▶</i><div id="rijKoplamp"></div></div><div id="rijSnel" hidden><b id="rijSnelLim"></b><span id="rijSnelV">0</span><small>km/u</small></div><div id="rijBalk" aria-label="Wat komt eraan" hidden><span class="rbKop" id="rbKop"></span><div class="rbBaan" id="rbBaan"></div><span class="rbIk">▲</span></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small><div id="rijStroken" hidden></div></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijFav" class="rzFav"></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
 <button id="carRit" class="rijRond rijWeg" type="button">🏁 Rit klaar</button>
 <button id="carSpel" type="button">🎲 Spel</button>
 <div id="spel" hidden role="dialog" aria-label="Spelletjes">
@@ -2522,7 +2532,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }
   function hudBreedte(doel) { hudW = hudW ? hudW + (doel - hudW) * .25 : doel; if (Math.abs(hudW - doel) < .3) hudW = doel; return hudW; }
   function speedDraw() {
-    var mode = S.spdMode | 0;
+    var mode = S.spdMode | 0; if (document.body.classList.contains('kaartrij')) mode &= ~1;   /* v143: in de kaart staan bord en snelheid rechtsboven, niet in Buddy */
     if (!mode || S.asleep || S.flagUntil > T || curKey === 'clock' || (S.gag && GAGS[S.gag.k] && (GAGS[S.gag.k].noFace || (GAGS[S.gag.k].laag && S.speed < 3)))) return;
     var v = Math.round(S.speed), camOn = S.cam && S.cam.dist <= 600, lim = camOn && S.cam.limit != null ? S.cam.limit : S.roadLim;
     var est = !(camOn && S.cam.limit != null) && !!S.roadEst, bad = lim != null && !est && v > lim, col = bad ? HEART : EYE;
@@ -4760,7 +4770,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v141';
+  var VERSION = 'v144';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9877,7 +9887,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (fp && ((dv >= 7 && sp > 20) || (fpTest('turbo') && Date.now() - (fpExtra.tt || 0) > 3000))) { fpExtra.tt = Date.now(); var tb = $('rijTurbo'); tb.classList.remove('op'); void tb.offsetWidth; tb.classList.add('op'); }
       var lim = S.cam && S.cam.dist != null && S.cam.dist < 600 && S.cam.limit ? S.cam.limit : S.roadLim, sv = fpTest('turbo') ? 140 : sp;
       var nd = $('rijNaald'); if (nd) nd.style.transform = 'rotate(' + (-90 + Math.min(1, sv / 200) * 180).toFixed(1) + 'deg)';
-      var nl = $('rijNaaldL'); if (nl) nl.setAttribute('stroke', lim && sv > lim + 3 ? '#ff453a' : '#ffd60a');
+      var nl = $('rijNaaldL'); if (nl) nl.setAttribute('stroke', lim && sv > lim + 3 ? '#ff453a' : '#ffd60a'); var rs = $('rijSnel'), rl = $('rijSnelLim'); if (rs) { rs.hidden = false; rl.hidden = !lim; if (lim) rl.textContent = lim; $('rijSnelV').textContent = Math.round(sv); rs.classList.toggle('te', !!(lim && sv > lim + 3)); }
       var ml = $('rijMeterLim'); if (ml) { ml.style.display = lim ? '' : 'none'; if (lim) ml.style.transform = 'rotate(' + (-90 + Math.min(1, lim / 200) * 180) + 'deg)'; }
       var kant = '';   /* knipperlicht vlak voor een afslag */
       if (Nv && Nv.steps && Nv.steps[Nv.idx] && sp > 3) { var s0 = Nv.steps[Nv.idx], d = gdist(p.lat, p.lon, s0.lat, s0.lon), m = s0.mod || '';
