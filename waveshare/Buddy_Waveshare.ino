@@ -37,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 90;   // v90: reageert meer op geluid (3x klappen = dansje, wakker schrikken, 'hoi' als je gaat praten), 12 nieuwe animaties die uit het scherm komen, nieuwe geluidjes   // v89: groter tikvlak voor zijn ogen, 7 nieuwe thuis-animaties   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
+static const int FW_VERSIE = 91;   // v91: popcorn, bowling, papieren vliegtuigje, goocheltruc, DJ en selfie   // v90: reageert meer op geluid (3x klappen = dansje, wakker schrikken, 'hoi' als je gaat praten), 12 nieuwe animaties die uit het scherm komen, nieuwe geluidjes   // v89: groter tikvlak voor zijn ogen, 7 nieuwe thuis-animaties   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
 static uint32_t schaapT = 0, streepTot = 0; static int klokKwartier = -1;   // v87: duidelijkere kaart (lichtere wegen met rand, snelweg oranje, files rood, raster, noordpijl)
 // v86: kookwekker (menu TIMER), schudden = dobbelsteen of magische 8-bal, boos op zijn kop, nachtlampje met klok, hij mist je
 static uint32_t timerTot = 0, timerLen = 0, timerAlarmT = 0, nachtKlokTot = 0; static uint8_t timerMin = 10, timerFase = 0, timerAlarmN = 0; static bool gemist = false; static int8_t schudUitkomst = 0;
@@ -1596,6 +1596,12 @@ static const GagDef GAGS[] = {
   {5.0f, G_IDLE, FOCUSED, "Eens even goed kijken..."},                  // 73 vergrootglas
   {5.0f, G_IDLE, EXCITED, "Boem-tsjak! Boem-tsjak!"},                   // 74 beatboxen
   {4.6f, G_IDLE, EXCITED, "Boing... boing..."},                         // 75 bal stuitert naar je toe
+  {5.5f, G_IDLE, HAPPY, "Popcorn!"},                                    // 76 popcorn springt naar je toe (v91)
+  {5.0f, G_IDLE, EXCITED, "Strike?!"},                                  // 77 bowlen naar het glas
+  {4.6f, G_IDLE, CONTENT, "Een vliegtuigje voor jou..."},               // 78 papieren vliegtuigje
+  {5.5f, G_IDLE, ANTICIPATE, "Simsalabim..."},                          // 79 goocheltruc: konijn uit de hoed
+  {5.5f, G_IDLE, EXCITED, "DJ Buddy in the house!"},                    // 80 DJ met draaitafel
+  {3.6f, G_IDLE, HAPPY, "Even een selfie!"},                            // 81 selfie met flits
 };
 static constexpr int GAG_N = sizeof(GAGS) / sizeof(GAGS[0]);
 static inline void gdir(float x, float y) { tgx = x; tgy = y; nextGaze = t + .3f; }
@@ -1765,6 +1771,12 @@ static void gagStep(float dt) {
     case 73: gdir(sinf(tt * 1.4f) * .8f, cosf(tt * 1.1f) * .4f); break;
     case 74: fdy = -fabsf(sinf(tt * 7.5f)) * 6; fdx = sinf(tt * 3.7f) * 3; if (!g_b) { g_b = true; playGeluid(GL_BEAT); } if (fmodf(tt, .5f) < .05f) noot(frand(60, 180), 60); break;
     case 75: gdir(0, .2f); if (tt > 3.6f && !g_b) { g_b = true; playGeluid(GL_TOK); gagMood = STARTLED; gagMsg = "BONK! Au, het glas..."; } break;
+    case 76: gdir(sinf(tt * 2) * .4f, -.3f); if (fmodf(tt, .45f) < .04f && tt < 4.5f) playGeluid(GL_TOK); break;
+    case 77: gdir(0, .3f); if (tt > 2.6f && !g_b) { g_b = true; playGeluid(GL_KNAL); gagMood = HAPPY; gagMsg = "STRIKE! Alle kegels om!"; } break;
+    case 78: gdir(cosf(tt * 2) * .3f, -.2f); if (tt > 3.2f && !g_b) { g_b = true; playGeluid(GL_TOK); gagMsg = "Tik! Landing op het glas."; } break;
+    case 79: gdir(0, .4f); if (tt > 2.4f && !g_b) { g_b = true; playGeluid(GL_TADA); gagMood = EXCITED; gagMsg = "TADAA! Een konijn!"; } break;
+    case 80: fdy = -fabsf(sinf(tt * 8)) * 4; gdir(sinf(tt * 4) * .6f, .5f); if (!g_b) { g_b = true; playGeluid(GL_BEAT); } if (tt > 2.6f && g_nn == 0) { g_nn = 1; playGeluid(GL_TRIP); } break;
+    case 81: gdir(0, 0); if (tt > 1.6f && !g_b) { g_b = true; playGeluid(GL_PLING); gagMsg = "Klik! Mooi samen."; } break;
     case 63: gdir(0, .5f); if (tt > 3.8f && !g_b) { g_b = true; gagMood = STARTLED; gagMsg = "PLOF! Het zit op mijn neus..."; playGeluid(GL_OEPS); } break;
     case 32: g_fx = -30 + tt / 6.f * 300; gdir((g_fx - 120) / 110, -.9f); if (tt > 2.2f && tt < 3.8f) { gagMood = STARTLED; gagMsg = "Ze nemen me mee!"; fdy = -4; } else if (tt >= 3.8f) { gagMood = HAPPY; gagMsg = "Pfiew. Ze waren vriendelijk."; } break;
     case 33: g_fx = 260 - tt * 16; gdir((g_fx - 120) / 120, .8f); if (tt > 4.5f) gagMsg = "Sneller dan de file, haha."; break;
@@ -1861,6 +1873,23 @@ static void gagDraw() {
     case 74: { for (int i = 0; i < 2; i++) { float a = tt * 7.5f + i * 3.14f, r = 104; circle(120 + cosf(a) * r, 120 + sinf(a) * r, 5, i ? 0xFEA0 : 0x5DFF); } float p = fabsf(sinf(tt * 7.5f)); frame->drawCircle(X(120), Y(120), S(100 + p * 10), 0x780F); } break;
     case 75: { float k = fminf(1, tt / 3.6f), bounce = fabsf(sinf(tt * 3.6f * 1.25f)), r = 6 + k * k * 70, by = 200 - bounce * 60 * (1 - k * .6f) - k * 80; if (tt < 3.6f) { circle(120, by, r, 0xFB00); line(120 - r, by, 120 + r, by, 0x8000, 2); }
       else { float sl = (tt - 3.6f) * 120; circle(120, 120 + sl, 76, 0xFB00); line(44, 120 + sl, 196, 120 + sl, 0x8000, 3); } } break;
+    case 76: { roundRect(98, 196, 44, 30, 4, 0xF8A6); for (int i = 0; i < 4; i++) roundRect(101 + i * 10, 196, 5, 30, 1, 0xFFFF);
+      for (int i = 0; i < 9; i++) { float ts = .2f + i * .45f; if (tt < ts) continue; float k = (tt - ts) / 1.2f; if (k > 1) continue; float a = -1.5708f + (i % 5 - 2) * .35f, r = 8 + k * k * 34, x = 120 + cosf(a) * k * 110, y = 196 + sinf(a) * k * 150 + k * k * 30;
+        circle(x, y, r * .5f, 0xFFF0); circle(x + r * .3f, y - r * .2f, r * .35f, 0xFFF0); circle(x - r * .25f, y + r * .15f, r * .3f, 0xFEA0); } } break;
+    case 77: { float k = fminf(1, tt / 2.6f), r = 8 + k * k * 60, y = 200 - k * 70; for (int i = 0; i < 6; i++) { int rij = i < 3 ? 0 : i < 5 ? 1 : 2; float px = 120 + (i < 3 ? (i - 1) * 22 : i < 5 ? (i - 3.5f) * 22 : 0), py = 70 + rij * 14, om = tt > 2.6f ? fminf(1.4f, (tt - 2.6f) * 3) * (i % 2 ? 1 : -1) : 0;
+        if (tt < 2.6f || tt < 4.2f) { float dx = sinf(om) * 16, dy = -cosf(om) * 16; dikLijn(px, py, px + dx, py + dy, 7, 0xFFFF); line(px + dx * .6f - 3, py + dy * .6f, px + dx * .6f + 3, py + dy * .6f, 0xF800, 2); } }
+      if (tt < 2.8f) { circle(120 + sinf(tt * 2) * 8, y, r, 0x2945); circle(120 - r * .25f, y - r * .3f, r * .12f, 0x0000); circle(120 + r * .1f, y - r * .35f, r * .12f, 0x0000); } else showTekst("STRIKE!", 120, 140, 4, 0xFFE0); } break;
+    case 78: { float k = fminf(1, tt / 3.2f), x = 30 + k * 90 + sinf(k * 6) * 30 * (1 - k), y = 60 + k * 60 + cosf(k * 5) * 20 * (1 - k), sc = .4f + k * k * 2.2f; if (tt > 3.2f) { y += (tt - 3.2f) * 60; }
+      triF(x - 24 * sc, y + 6 * sc, x + 24 * sc, y, x - 10 * sc, y - 2 * sc, 0xFFFF); triF(x - 24 * sc, y + 6 * sc, x + 24 * sc, y, x - 6 * sc, y + 12 * sc, 0xC618); line(x - 14 * sc, y + 4 * sc, x + 24 * sc, y, 0x8410, 1); } break;
+    case 79: { float hx = 120, hy = 196; roundRect(hx - 30, hy - 30, 60, 34, 4, 0x0000); frame->drawRoundRect(X(hx - 30), Y(hy - 30), S(60), S(34), S(4), 0x8410); roundRect(hx - 42, hy + 2, 84, 8, 4, 0x2104); roundRect(hx - 30, hy - 12, 60, 6, 1, 0xC000);
+      if (tt < 2.4f) { float a = sinf(tt * 9) * .6f; dikLijn(150, 170, 150 + cosf(a - 1) * 40, 170 + sinf(a - 1) * 40, 3, 0x0000); circle(150 + cosf(a - 1) * 40, 170 + sinf(a - 1) * 40, 3, 0xFFFF); if (tt > 1.6f) for (int i = 0; i < 5; i++) star(hx + frand(-30, 30), hy - 40 + frand(-20, 10), 4, 0xFFE0); }
+      else { float k = fminf(1, (tt - 2.4f) * 2.5f), ry = hy - 30 - k * 46; ellipseF(hx, ry, 20, 18, 0xFFFF); ellipseF(hx - 8, ry - 26, 5, 16, 0xFFFF); ellipseF(hx + 8, ry - 26, 5, 16, 0xFFFF); ellipseF(hx - 8, ry - 26, 2.5f, 11, 0xFC9F); ellipseF(hx + 8, ry - 26, 2.5f, 11, 0xFC9F);
+        circle(hx - 7, ry - 3, 2.5f, 0x0000); circle(hx + 7, ry - 3, 2.5f, 0x0000); circle(hx, ry + 4, 2.5f, 0xFC9F); } } break;
+    case 80: { float rot = tt * 9; circle(70, 196, 30, 0x18E3); circle(70, 196, 11, 0xF8A6); for (int i = 0; i < 3; i++) frame->drawCircle(X(70), Y(196), S(16 + i * 5), 0x4208); dikLijn(70, 196, 70 + cosf(rot) * 26, 196 + sinf(rot) * 26, 2, 0x8410);
+      circle(170, 196, 30, 0x18E3); circle(170, 196, 11, 0x5DFF); dikLijn(170, 196, 170 + cosf(-rot * 1.1f) * 26, 196 + sinf(-rot * 1.1f) * 26, 2, 0x8410); for (int i = 0; i < 12; i++) { float a = i * .5236f + tt * 2; uint16_t c = hsv565(i * 30 + tt * 200, 1, 1); circle(120 + cosf(a) * 108, 120 + sinf(a) * 108, 4, c); } } break;
+    case 81: { if (tt < 1.6f) { roundRect(154, 150, 52, 76, 10, 0x2104); roundRect(158, 156, 44, 60, 6, 0x4208); circle(194, 160, 3, 0x0000); showTekst(tt < .6f ? "3" : tt < 1.1f ? "2" : "1", 120, 40, 4, 0xFFFF); }
+      else if (tt < 1.9f) { boxAdd(0, 0, 240, 240); circle(120, 120, 119, 0xFFFF); }
+      else { float k = fminf(1, (tt - 1.9f) * 3); roundRect(60, 60 - (1 - k) * 60, 120, 120, 6, 0xFFFF); roundRect(68, 68 - (1 - k) * 60, 104, 88, 3, 0x0861); miniBuddy(120, 112 - (1 - k) * 60, .7f, false, 2); showTekst("JIJ + IK", 120, 168 - (1 - k) * 60, 1, 0x2104); } } break;
     case 63: { float r = tt < 3.8f ? 4 + tt * 9 : 0; if (r > 0) { circle(120 + faceOx * .5f, 184 + faceOy * .5f, r, 0xFB56); circle(114 + faceOx * .5f - r * .3f, 178 + faceOy * .5f - r * .3f, r * .25f, 0xFDFB); }
       else { for (int i = 0; i < 5; i++) circle(104 + i * 8 + faceOx * .5f, 150 + (i % 2) * 6 + faceOy * .5f, 5, 0xFB56); } } break;
     case 31: for (int i = 0; i < 7; i++) { float x = 120 + sinf(tt * (.7f + i * .13f) + i * 2) * 90, y = 100 + cosf(tt * (.5f + i * .11f) + i) * 70; float hl = .5f + .5f * sinf(tt * 5 + i * 1.7f); if (hl > .35f) circle(x, y, 1.5f + hl * 2.5f, hl > .7f ? 0xFFF0 : 0xAFE0); } break;

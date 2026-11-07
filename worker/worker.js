@@ -634,6 +634,7 @@ async function groep(url, env, g, json) {
   // Weekchallenge: waarde van deze week; bij een nieuwe week schuift de oude door naar 'vorige' (voor de winnaar)
   const oud = leden.find((x) => x && x.van === van);
   const gem = getal(q('gem'), 400); if (gem) lid.gem = gem; else if (oud && oud.gem) lid.gem = oud.gem;   // v149: aantal gemeenten (verzamelkaart)
+  { const wdv = String(q('wd') || ''), wdw = getal(q('ww'), 1e5); if (/^\d{1,4}(\.\d{1,4}){6}$/.test(wdv) && wdw) lid.wd = { w: wdw, v: wdv }; else if (oud && oud.wd) lid.wd = oud.wd; }   // v153: km per dag van deze week (groep-grafiekje)
   // Soepelste rijder van de week (0-100, gemeten met de bewegingssensor)
   const zw = getal(q('zw'), 1e5), zv = getal(q('zv'), 100);
   if (zw && zv) lid.zacht = { w: zw, v: zv }; else if (oud && oud.zacht) lid.zacht = oud.zacht;

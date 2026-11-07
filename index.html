@@ -548,6 +548,16 @@ body.kmNiet #flKaartLijst, body.kmNiet #flDruk, body.kmNiet #flDrukKop { display
 .segNav button[aria-pressed="true"] { color: var(--ink); border-color: #5ac8fa; background: rgba(90,200,250,.14); }
 .grKaart { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(135deg, rgba(90,200,250,.10), transparent); }
 .grKaart b { display: block; font-size: 17px; }
+/* v153: groep 'Deze week' */
+.grWeekKop { margin: -2px 0 6px !important; } .grWeek { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.grWk { border: 1px solid var(--line, rgba(128,128,128,.25)); border-radius: 14px; padding: 10px 12px 8px; cursor: pointer; background: var(--card, transparent); }
+.grWk.ik { border-color: #ff6b6b; box-shadow: 0 0 0 1px rgba(255,107,107,.3) inset; } .grWk.leeg { cursor: default; color: var(--muted); }
+.grWk .r1 { display: flex; align-items: center; gap: 8px; } .grWk .pl { width: 26px; text-align: center; font-weight: 700; } .grWk .nm { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grWk .nm small, .grWk .wd small { display: block; font-weight: 500; font-size: 11px; color: var(--muted); } .grWk .wd { text-align: right; font-weight: 800; font-size: 16px; white-space: nowrap; }
+.grWk .grSpark { width: 70px; height: 22px; flex: 0 0 auto; } .grWk .balk { height: 6px; border-radius: 3px; background: rgba(128,128,128,.18); margin: 7px 0 0 34px; overflow: hidden; } .grWk .balk i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #5ac8fa, #0a84ff); transition: width .6s; } .grWk.ik .balk i { background: linear-gradient(90deg, #ff9f9f, #ff453a); }
+.grWeekGraf { margin: 4px 0 10px; } .grWeekGraf b { display: block; font-size: 13px; margin-bottom: 4px; } .grWeekGraf .grSpark { width: 100%; height: auto; display: block; } .grSpark text { font: 600 8px var(--f-body); fill: var(--muted, #888); } .grSpark text.nu { fill: #0a84ff; font-weight: 800; } .grSpark text.w { font-size: 7px; fill: currentColor; }
+.lidSt { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(128,128,128,.3); cursor: default; } .lidSt .btn { width: 100%; margin-top: 6px; }
+.stTegels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; } .stTegels div { display: flex; flex-direction: column; align-items: center; padding: 6px 2px; border-radius: 10px; background: rgba(128,128,128,.1); text-align: center; } .stTegels span { font-size: 16px; } .stTegels b { font-size: 13px; } .stTegels small { font-size: 10px; color: var(--muted); line-height: 1.15; }
 .dbLijst { margin-top: 8px; text-align: left; } .dbLijst p { margin: 0 0 8px; font-size: 14px; line-height: 1.4; }
 .gmBalkW { height: 8px; border-radius: 4px; background: rgba(120,130,140,.2); overflow: hidden; margin: 6px 0 8px; } #gmBalk { height: 100%; width: 0; background: linear-gradient(90deg, #34c759, #0a84ff); }
 .rzPont { display: block; margin: 6px 0 2px; padding: 8px 12px; border-radius: 18px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: inherit; font: 600 14px var(--f-body); } .rzPont.aan { background: rgba(10,132,255,.25); border-color: #0a84ff; }
@@ -558,7 +568,7 @@ body.kmNiet #flKaartLijst, body.kmNiet #flDruk, body.kmNiet #flDrukKop { display
 .grLid.ik i { background: #ffe9e9; color: #c8102e; border-color: #ff6b6b; }
 .grLid span { max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; } .grLid small { display: block; font-weight: 500; font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
 .grKopje { margin-top: 18px !important; }
-.grPane[data-gp="rang"]:not(.open) .grAlleen { display: none; }
+.grPane[data-gp="rang"]:not(.open) .grAlleen, .grPane[data-gp="rang"]:not(.open) #bordLijst, .grPane[data-gp="rang"]:not(.open) #bordStat { display: none; }
 .grMeer { width: 100%; margin-top: 8px; background: none !important; border-style: dashed !important; }
 .grStuur { width: 100%; margin-top: 18px; min-height: 52px; }
 #grBerStat[hidden], #bordVervers2[hidden] { display: none; }
@@ -984,7 +994,15 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         <button class="btn" id="grpWeg" type="button">Haal mij uit de groep</button>
         <div hidden><div id="badgeLijst" aria-label="Jouw badges"></div><p class="chip" id="badgeInfo" hidden></p></div>
       </div>
-      <p class="sub grKopje" id="grRangTitel">🏆 Deze week</p>
+      <p class="sub grKopje">🗓️ Deze week</p><p class="foot grWeekKop" id="grWeekKop"></p><div id="grWeekTot"></div><ol id="grWeekLijst" class="grWeek"></ol>
+      <p class="sub grKopje">💬 Berichten</p>
+      <div class="grPane" data-gp="ber">
+        <div class="grSnel" hidden><button class="btn" type="button" data-snel="zwaai">👋 Zwaai</button><button class="btn" type="button" data-snel="koffie">☕ Koffie?</button><button class="btn" type="button" data-snel="hart">❤️ Hartjes</button><button class="btn" type="button" data-snel="file">🚗 File</button></div>
+        <p class="chip" id="grBerStat">Groepsberichten: nog niet opgehaald.</p>
+        <ol id="grLijst" class="grLijst"><li class="leeg">Nog geen berichten.</li></ol>
+        <button class="btn grMeer" id="grMeerBer" type="button" hidden>Meer berichten ›</button>
+      </div>
+      <p class="sub grKopje" id="grRangTitel">📊 Alle ranglijsten</p>
       <div class="grPane" data-gp="rang">
         <div class="mobrow grAlleen" id="bordKiesRij"><select id="bordKies" style="flex:1;min-width:0" aria-label="Welke ranglijst"></select><button class="btn" id="bordVervers2" type="button" aria-label="Verversen" hidden>↻</button></div>
         <div id="grRangKop" hidden>
@@ -1001,13 +1019,6 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         <button class="btn" id="bordVervers" type="button" hidden>↻ Verversen</button>
         <p class="foot grAlleen" hidden>Alleen echte ritten met de GPS aan tellen mee. Elke week een nieuwe challenge; de winnaar hoort iedereen op maandag.</p>
         <button class="btn grMeer" id="grAlleRang" type="button">Alle ranglijsten ›</button>
-      </div>
-      <p class="sub grKopje">💬 Berichten</p>
-      <div class="grPane" data-gp="ber">
-        <div class="grSnel" hidden><button class="btn" type="button" data-snel="zwaai">👋 Zwaai</button><button class="btn" type="button" data-snel="koffie">☕ Koffie?</button><button class="btn" type="button" data-snel="hart">❤️ Hartjes</button><button class="btn" type="button" data-snel="file">🚗 File</button></div>
-        <p class="chip" id="grBerStat">Groepsberichten: nog niet opgehaald.</p>
-        <ol id="grLijst" class="grLijst"><li class="leeg">Nog geen berichten.</li></ol>
-        <button class="btn grMeer" id="grMeerBer" type="button" hidden>Meer berichten ›</button>
       </div>
       <button class="btn primary grStuur" id="grStuurKnop" type="button">📣 Stuur iets naar de groep</button>
     </div>
@@ -4908,7 +4919,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v152';
+  var VERSION = 'v153';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5899,7 +5910,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   var grLidT = -9999, grLidLaatst = '', bordData = [], bordSoort = 'week';
   function grLid(nu) {
     if (!grp || !pbase() || !myWho()) return;   /* v126: zonder naam niet in de ranglijst (anders 'Naamloos') */
-    var st = 'km=' + Math.round(mem.kmLive || 0) + '&netjes=' + (mem.netjes || 0) + '&gemeld=' + (mem.gemeld || 0) + '&stijl=' + Math.round(mem.stijlLive || 0) + '&ritten=' + (mem.ritLive || 0) + '&nul=' + (mem.best100Live ? Math.round(mem.best100Live * 10) : 0) + '&tachtig=' + (mem.best80Live ? Math.round(mem.best80Live * 10) : 0) + '&ww=' + weekIdx() + '&wv=' + weekWaarde() + '&gem=' + Object.keys(mem.gemeenten || {}).length + '&bd=' + badgeCodes() + '&lv=' + lvVan(lvXp()) + '&jr=' + mijnJr() + '&zw=' + weekIdx() + '&zv=' + weekZacht() + (function () { var dg = function (t) { return t ? Math.floor(t / 864e5) : 0; }; return '&nd=' + dg(mem.best100LiveD) + '&td=' + dg(mem.best80LiveD) + '&gm=' + Math.round((mem.gmaxLive || 0) * 100) + '&gd=' + dg(mem.gmaxLiveD) + (function () { var rk = mijnStijlReeks(); return rk.v.some(function (v) { return v > 0; }) ? '&swb=' + rk.b + '&sw=' + rk.v.join('.') : ''; })() + (mem.best100Kurve ? '&nk=' + mem.best100Kurve.g.join('.') + '&nv=' + mem.best100Kurve.v.join('.') : ''); })();
+    var st = 'km=' + Math.round(mem.kmLive || 0) + '&netjes=' + (mem.netjes || 0) + '&gemeld=' + (mem.gemeld || 0) + '&stijl=' + Math.round(mem.stijlLive || 0) + '&ritten=' + (mem.ritLive || 0) + '&nul=' + (mem.best100Live ? Math.round(mem.best100Live * 10) : 0) + '&tachtig=' + (mem.best80Live ? Math.round(mem.best80Live * 10) : 0) + '&ww=' + weekIdx() + '&wv=' + weekWaarde() + '&gem=' + Object.keys(mem.gemeenten || {}).length + '&wd=' + mijnWeekDagen().join('.') + '&bd=' + badgeCodes() + '&lv=' + lvVan(lvXp()) + '&jr=' + mijnJr() + '&zw=' + weekIdx() + '&zv=' + weekZacht() + (function () { var dg = function (t) { return t ? Math.floor(t / 864e5) : 0; }; return '&nd=' + dg(mem.best100LiveD) + '&td=' + dg(mem.best80LiveD) + '&gm=' + Math.round((mem.gmaxLive || 0) * 100) + '&gd=' + dg(mem.gmaxLiveD) + (function () { var rk = mijnStijlReeks(); return rk.v.some(function (v) { return v > 0; }) ? '&swb=' + rk.b + '&sw=' + rk.v.join('.') : ''; })() + (mem.best100Kurve ? '&nk=' + mem.best100Kurve.g.join('.') + '&nv=' + mem.best100Kurve.v.join('.') : ''); })();
     var sleutel = st + '|' + myWho() + '|' + mijnAuto();
     if (!nu && (T - grLidT < 900 || sleutel === grLidLaatst)) return;
     grLidT = T; grLidLaatst = sleutel;
@@ -6269,7 +6280,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     try { grKaartToon(); } catch (e) {}
     var ol = $('bordLijst'), st = $('bordStat'); if (!ol) return;
     if (!grRangOpen && bordSoort !== 'week') bordSoort = 'week';
-    var rp = document.querySelector('.grPane[data-gp="rang"]'); if (rp) rp.classList.toggle('open', grRangOpen); if ($('grAlleRang')) $('grAlleRang').textContent = grRangOpen ? '‹ Alleen deze week' : 'Alle ranglijsten ›'; if ($('grRangTitel')) $('grRangTitel').textContent = grRangOpen ? '🏆 Ranglijsten' : '🏆 Deze week';
+    var rp = document.querySelector('.grPane[data-gp="rang"]'); if (rp) rp.classList.toggle('open', grRangOpen); if ($('grAlleRang')) $('grAlleRang').textContent = grRangOpen ? '‹ Inklappen' : 'Alle ranglijsten bekijken ›'; 
     document.querySelectorAll('#bordTabs button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.soort === bordSoort ? 'true' : 'false'); }); try { if (window.__bordKiesZet) window.__bordKiesZet(); } catch (e) {}
     while (ol.firstChild) ol.removeChild(ol.firstChild);
     var stb = $('sprintTabel'), sgb = $('stijlGraf'); if (stb) stb.hidden = bordSoort !== 'sprint'; if (sgb) sgb.hidden = bordSoort !== 'stijlgraf'; ol.hidden = bordSoort === 'sprint' || bordSoort === 'stijlgraf';
@@ -8258,6 +8269,49 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   })();
 
   /* ---------- v104: Groep-tab met knoppen bovenin (één onderdeel tegelijk) ---------- */
+  /* v153: groep - kaart 'Deze week': km per collega met balkjes, grafiekje per dag, tik voor alle stats */
+  var weekOpen = null, DAGK = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
+  function mijnWeekDagen() { var a = [0, 0, 0, 0, 0, 0, 0], w = weekIdx(); (ritten || []).forEach(function (r) { var d = new Date(r.t0); if (weekIdx(d) === w) a[(d.getDay() + 6) % 7] += r.km || 0; }); return a.map(function (x) { return Math.round(x); }); }
+  function lidWeek(l) { var w = weekIdx(); if (l.van === mijnId) { var a = mijnWeekDagen(); return { km: a.reduce(function (s, x) { return s + x; }, 0), d: a }; }
+    if (l.wd && l.wd.w === w) { var d = String(l.wd.v).split('.').map(Number); return { km: d.reduce(function (s, x) { return s + x; }, 0), d: d }; }
+    if (l.wk && l.wk.w === w) return { km: l.wk.v, d: null }; return null; }
+  function svgBalk(d, max, hoog, breed, kleur, labels) {   /* klein staafgrafiekje van 7 dagen */
+    var ns = 'http://www.w3.org/2000/svg', s = document.createElementNS(ns, 'svg'), bw = breed / 7; s.setAttribute('viewBox', '0 0 ' + breed + ' ' + (hoog + (labels ? 14 : 0))); s.setAttribute('class', 'grSpark'); var vandaag = (new Date().getDay() + 6) % 7;
+    d.forEach(function (v, i) { var h = max ? Math.max(v ? 2 : 0, v / max * hoog) : 0, r = document.createElementNS(ns, 'rect'); r.setAttribute('x', i * bw + bw * .18); r.setAttribute('y', hoog - h); r.setAttribute('width', bw * .64); r.setAttribute('height', h || .8); r.setAttribute('rx', Math.min(3, bw * .2)); r.setAttribute('fill', h ? kleur : 'rgba(128,128,128,.25)'); s.appendChild(r);
+      if (labels) { var t = document.createElementNS(ns, 'text'); t.setAttribute('x', i * bw + bw / 2); t.setAttribute('y', hoog + 11); t.setAttribute('text-anchor', 'middle'); t.setAttribute('class', i === vandaag ? 'nu' : ''); t.textContent = DAGK[i]; s.appendChild(t); if (v) { var t2 = document.createElementNS(ns, 'text'); t2.setAttribute('x', i * bw + bw / 2); t2.setAttribute('y', Math.max(9, hoog - h - 3)); t2.setAttribute('text-anchor', 'middle'); t2.setAttribute('class', 'w'); t2.textContent = v; s.appendChild(t2); } } });
+    return s; }
+  function weekToon() {
+    var ol = $('grWeekLijst'), kop = $('grWeekKop'), tot = $('grWeekTot'); if (!ol) return; ol.textContent = ''; if (tot) tot.textContent = '';
+    var lijst = bordData.map(function (l) { return { l: l, w: lidWeek(l) }; }), heeftWeek = lijst.some(function (x) { return x.w; });
+    lijst.sort(function (a, b) { return heeftWeek ? ((b.w ? b.w.km : -1) - (a.w ? a.w.km : -1)) : (b.l.km || 0) - (a.l.km || 0); });
+    var max = Math.max.apply(null, lijst.map(function (x) { return heeftWeek ? (x.w ? x.w.km : 0) : (x.l.km || 0); }).concat([1]));
+    var vw = weekIdx() - 1, beker = null, bekerV = 0; bordData.forEach(function (l) { var v = l.week && l.week.w === vw ? l.week.v : (l.vorige && l.vorige.w === vw ? l.vorige.v : 0); if (v > bekerV) { bekerV = v; beker = l; } });
+    if (kop) kop.textContent = 'Challenge: ' + chal(weekIdx()).naam + (beker ? '  ·  🏆 ' + (beker.n || '?') : '');
+    var groep = [0, 0, 0, 0, 0, 0, 0], som = 0; lijst.forEach(function (x) { if (x.w && x.w.d) x.w.d.forEach(function (v, i) { groep[i] += v || 0; }); if (x.w) som += x.w.km; });
+    if (tot && heeftWeek) { var gm = Math.max.apply(null, groep.concat([1])); var wr = document.createElement('div'); wr.className = 'grWeekGraf'; var b = document.createElement('b'); b.textContent = 'Samen ' + Math.round(som).toLocaleString('nl-NL') + ' km deze week'; wr.appendChild(b); wr.appendChild(svgBalk(groep, gm, 46, 280, '#0a84ff', true)); tot.appendChild(wr); }
+    if (!lijst.length) { var li0 = document.createElement('li'); li0.className = 'leeg'; li0.textContent = 'Nog niemand in de groep geladen.'; ol.appendChild(li0); return; }
+    lijst.forEach(function (x, i) { var l = x.l, ik = l.van === mijnId, li = document.createElement('li'); li.className = 'grWk' + (ik ? ' ik' : '') + (weekOpen === l.van ? ' open' : '');
+      var km = heeftWeek ? (x.w ? x.w.km : 0) : (l.km || 0);
+      var r1 = document.createElement('div'); r1.className = 'r1'; var pl = document.createElement('span'); pl.className = 'pl'; pl.textContent = i === 0 && km ? '🥇' : i === 1 && km ? '🥈' : i === 2 && km ? '🥉' : (i + 1) + '.';
+      var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = (l.n || 'Naamloos') + (ik ? ' (jij)' : '') + (beker && beker.van === l.van ? ' 🏆' : ''); var au = document.createElement('small'); au.textContent = l.a || ''; nm.appendChild(au);
+      var wd = document.createElement('span'); wd.className = 'wd'; wd.textContent = Math.round(km).toLocaleString('nl-NL') + ' km'; var tt = document.createElement('small'); tt.textContent = heeftWeek ? 'totaal ' + Math.round(l.km || 0).toLocaleString('nl-NL') : 'totaal'; wd.appendChild(tt);
+      r1.appendChild(pl); r1.appendChild(nm); if (x.w && x.w.d) r1.appendChild(svgBalk(x.w.d, Math.max.apply(null, x.w.d.concat([1])), 22, 70, ik ? '#ff6b6b' : '#5ac8fa', false)); r1.appendChild(wd); li.appendChild(r1);
+      var bl = document.createElement('div'); bl.className = 'balk'; var bi = document.createElement('i'); bi.style.width = Math.max(2, km / max * 100) + '%'; bl.appendChild(bi); li.appendChild(bl);
+      if (weekOpen === l.van) li.appendChild(lidStats(l, x.w));
+      li.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('.lidSt button')) return; weekOpen = weekOpen === l.van ? null : l.van; weekToon(); });
+      ol.appendChild(li); });
+  }
+  function lidStats(l, w) {
+    var d = document.createElement('div'); d.className = 'lidSt';
+    if (w && w.d) { var g = document.createElement('div'); g.className = 'grWeekGraf'; var b = document.createElement('b'); b.textContent = 'Km per dag'; g.appendChild(b); g.appendChild(svgBalk(w.d, Math.max.apply(null, w.d.concat([1])), 50, 280, l.van === mijnId ? '#ff6b6b' : '#5ac8fa', true)); d.appendChild(g); }
+    var dg = function (dn) { if (!dn) return ''; var d0 = new Date(dn * 864e5 + 12 * 3600e3); return d0.getDate() + ' ' + MAANDEN[d0.getMonth()]; };
+    var T = [['🛣️', Math.round(l.km || 0).toLocaleString('nl-NL') + ' km', (l.ritten || 0) + ' ritten'], ['🏁', l.nul ? (l.nul / 10).toFixed(1).replace('.', ',') + ' s' : '–', '0–100 ' + dg(l.nd)], ['🏁', l.tachtig ? (l.tachtig / 10).toFixed(1).replace('.', ',') + ' s' : '–', '0–80 ' + dg(l.td)],
+      ['🌀', l.gm ? (l.gm / 100).toFixed(2).replace('.', ',') + ' G' : '–', 'hoogste G'], ['🧘', (l.ritten || 0) >= 3 ? (l.stijl || 0) + '/100' : '–', 'rijstijl'], ['📸', (l.netjes || 0) + '×', 'netjes langs flitser'], ['📣', (l.gemeld || 0) + '×', 'meldingen'], ['🗺️', (l.gem || 0) + '', 'gemeenten']];
+    var gr = document.createElement('div'); gr.className = 'stTegels'; T.forEach(function (t) { var c = document.createElement('div'); var i = document.createElement('span'); i.textContent = t[0]; var b = document.createElement('b'); b.textContent = t[1]; var s = document.createElement('small'); s.textContent = t[2]; c.appendChild(i); c.appendChild(b); c.appendChild(s); gr.appendChild(c); }); d.appendChild(gr);
+    var bds = String(l.bd || '').split('.').map(function (k) { return BADGEMAP[k] ? BADGEMAP[k].i : ''; }).join(''); if (bds) { var p = document.createElement('p'); p.className = 'foot'; p.textContent = 'Badges: ' + bds; d.appendChild(p); }
+    if (l.van !== mijnId) { var k = document.createElement('button'); k.type = 'button'; k.className = 'btn'; k.textContent = '⋯ Meer opties (samenvoegen, verwijderen)'; k.addEventListener('click', function () { grRangOpen = true; bordSoort = 'km'; bordInfo = l.van; bordOpen = l.van; bordArm = null; bordToon(); var rp = document.querySelector('.grPane[data-gp="rang"]'); if (rp) rp.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); d.appendChild(k); }
+    return d;
+  }
   function grKaartToon() {
     var n = $('grKaartNaam'), s = $('grKaartSub'); if (!n) return;
     if (!grp) { n.textContent = 'Nog geen groep'; s.textContent = 'Vul een groepscode in bij ⚙️ Instellen'; return; }
@@ -8268,8 +8322,9 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var c = document.createElement('button'); c.type = 'button'; c.className = 'grLid' + (l.van === mijnId ? ' ik' : '');
       var r = document.createElement('i'); r.textContent = String(l.n || '?').trim().charAt(0).toUpperCase() || '?';
       var t = document.createElement('span'); t.textContent = l.van === mijnId ? 'Jij' : (l.n || 'Naamloos'); var a = document.createElement('small'); a.textContent = l.a || ''; t.appendChild(a);
-      c.appendChild(r); c.appendChild(t); c.addEventListener('click', function () { grRangOpen = true; bordSoort = 'km'; bordInfo = l.van; bordOpen = l.van !== mijnId ? l.van : null; bordArm = null; bordToon(); var rp = document.querySelector('.grPane[data-gp="rang"]'); if (rp) rp.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+      c.appendChild(r); c.appendChild(t); c.addEventListener('click', function () { weekOpen = l.van; weekToon(); var wl = $('grWeekLijst'); if (wl) wl.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
       ld.appendChild(c); }); }
+    try { weekToon(); } catch (e) { lg('FOUT weekToon ' + e.message); }
   }
   (function () {
     /* v145: geen tabbladen meer: alles op één pagina, instellingen achter ⚙️, ranglijst kort met 'Alle ranglijsten' */
@@ -9904,11 +9959,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var la = lastPos.lat, lo = lastPos.lon, n = 0, gezien = [], R = st.kijk === 2 ? 10000 : 1e9;   /* v147: eerste persoon alleen flitsers binnen 10 km, andere standen alles */
       var voorAf = function (pla, plo) { if (st.kijk !== 2) return true; var h = koers * Math.PI / 180, dx = (plo - lo) * 111320 * Math.cos(la * Math.PI / 180), dy = (pla - la) * 110540; return dx * Math.sin(h) + dy * Math.cos(h) > -50; };   /* v135: in eerste persoon alleen wat vóór je ligt */
       try { (typeof flMeldingen === 'function' ? flMeldingen() : []).forEach(function (m) { if (gdist(la, lo, m.lat, m.lon) > R || !voorAf(m.lat, m.lon)) return; gezien.push(m);
-        var el = flPunt(window.__ondeugend && window.__ondeugend() ? '💩' : m.k === 'mobile' ? '🚓' : '📸', m.mijn ? '#0a84ff' : (m.k === 'mobile' ? '#ff9f0a' : '#ff453a'));
+        var el = flPunt(m.k === 'mobile' ? '🚓' : '📸', m.mijn ? '#0a84ff' : (m.k === 'mobile' ? '#ff9f0a' : '#ff453a'));
         el.title = (m.k === 'mobile' ? 'Mobiele controle' : 'Flitser') + (m.mijn ? ' (jij)' : ' (' + m.n + ')');
         flMk.push(mkr(el).setLngLat([m.lon, m.lat]).addTo(map)); }); } catch (e) {}
       try { (window.__mobItems ? window.__mobItems() : []).forEach(function (m) { if (!isFinite(m.lat) || gdist(la, lo, m.lat, m.lon) > R || !voorAf(m.lat, m.lon)) return; if (gezien.some(function (x) { return gdist(x.lat, x.lon, m.lat, m.lon) < 80; })) return; gezien.push(m);
-        flMk.push(mkr(flPunt(window.__ondeugend && window.__ondeugend() ? '💩' : '🚓', '#bf5af2')).setLngLat([m.lon, m.lat]).addTo(map)); }); } catch (e) {}
+        flMk.push(mkr(flPunt('🚓', '#bf5af2')).setLngLat([m.lon, m.lat]).addTo(map)); }); } catch (e) {}
       try { var cc = (typeof camCache !== 'undefined' && camCache && camCache.cams) || []; cc.forEach(function (c) { if (n > (st.kijk === 2 ? 150 : 1500) || (st.kijk === 2 && Math.abs(c.lat - la) > .2) || gdist(la, lo, c.lat, c.lon) > R || !voorAf(c.lat, c.lon)) return;
         if (gezien.some(function (m) { return gdist(m.lat, m.lon, c.lat, c.lon) < 60; })) return; n++;
         flMk.push(mkr(flPunt('📸', '#8e8e93', true)).setLngLat([c.lon, c.lat]).addTo(map)); }); } catch (e) {}
