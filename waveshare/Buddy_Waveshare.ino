@@ -37,7 +37,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 87;   // v87: duidelijkere kaart (lichtere wegen met rand, snelweg oranje, files rood, raster, noordpijl)
+static const int FW_VERSIE = 88;   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
+static uint32_t schaapT = 0, streepTot = 0; static int klokKwartier = -1;   // v87: duidelijkere kaart (lichtere wegen met rand, snelweg oranje, files rood, raster, noordpijl)
 // v86: kookwekker (menu TIMER), schudden = dobbelsteen of magische 8-bal, boos op zijn kop, nachtlampje met klok, hij mist je
 static uint32_t timerTot = 0, timerLen = 0, timerAlarmT = 0, nachtKlokTot = 0; static uint8_t timerMin = 10, timerFase = 0, timerAlarmN = 0; static bool gemist = false; static int8_t schudUitkomst = 0;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
@@ -1988,6 +1989,7 @@ static void slaapStap() {
   }
   if (geparkeerd && nu - laatsteActie > 10UL * 60000 && nu - laatsteBeweging > 60000 && !menuOpen && otaPct < 0) diepSlapen("10 minuten niets");
   bool moetSlapen = nu - laatsteActie > 3UL * 60000 && !menuOpen;   // 3 minuten niks = dommelen (scherm zacht)
+  if (moetSlapen && !slaapt) { if (!schaapT) schaapT = nu; if (nu - schaapT < 4500) moetSlapen = false; } else if (!moetSlapen) schaapT = 0;   // v88: eerst een schaapje over zijn hoofd
   if (moetSlapen != slaapt) { slaapt = moetSlapen; if (!slaapt) { mood = STARTLED; lastMood = -1; idleMoodUntilMs = nu + 1500; } }
   int hh = 12, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
   bool nacht = hh >= 21 || hh < 7;
@@ -2446,7 +2448,8 @@ static void persStap(float dt) {
     if (s == 'r') { showSoort = 13; showStart = millis(); showTot = millis() + 4500; playGeluid(GL_PLING); logRegel("regen op de route"); }   // v84: paraplu
     else if (s == 'g' || s == 'c') { gooiKoe = s == 'c'; showSoort = 10; showStart = millis(); showTot = millis() + 3200; playGeluid(GL_OEPS); logRegel("gebaar: gooien"); }   // v79: flitspaal naar het scherm
     else if (s == 'v' || s == 'd' || s == 'k') { handGebaar = s; showSoort = 9; showStart = millis(); showTot = millis() + 2600; playGeluid(s == 'v' ? GL_OEPS : s == 'k' ? GL_GIECHEL : GL_TADA); logRegel("gebaar: %c", s); }   // v77: handje uit de app
-    else { int g = s == 'f' ? 38 : s == 'm' ? 44 : s == 'z' ? 22 : 7; startGag(g); gagMsg = evtTxt;
+    else { int g = s == 'f' ? 38 : s == 'm' ? 44 : s == 'z' ? 25 : 7; startGag(g);   // v88: zwaai van een collega = hartjesogen
+      gagMsg = evtTxt;
     playGeluid(s == 'f' ? GL_TADA : s == 'm' ? GL_OEPS : s == 'z' ? GL_HOI : s == 'h' ? GL_GIECHEL : GL_PLING); logRegel("gebeurtenis: %s", evtTxt); } }
   if (sndAntw && bleConnected && !logBezig) { uint8_t a = sndAntw; sndAntw = 0;   // v72: eigen geluidje bewaren of wissen
     if (a == 1) { File f = LittleFS.open("/sterren.raw", "w"); bool ok = f && f.write(sndNieuw, sndNieuwLen) == sndNieuwLen; if (f) f.close();
@@ -2553,6 +2556,8 @@ static void robotStap(float dt) {
   // v86: hij mist je (meer dan een dag niet geaaid)
   { static bool gecheckt = false; if (!gecheckt && ntpOk()) { gecheckt = true; uint32_t e = buddyPrefs.getUInt("aaiE", 0), nuE = (uint32_t)time(nullptr); if (e && nuE > e + 86400UL) { gemist = true; logRegel("hij mist je: %lu uur niet geaaid", (unsigned long)((nuE - e) / 3600)); } else if (!e) buddyPrefs.putUInt("aaiE", nuE); }
     static uint32_t mistT = 0; if (gemist && !slaapt && gagAct < 0 && nu - mistT > 120000UL) { mistT = nu; startGag(44); gagMsg = nu % 2 ? "Ik heb je gemist... aai me even?" : "Waar was je nou? *snif*"; } }
+  // v88: elk kwartier even een klokgezicht (zijn ogen worden de wijzers)
+  if (klokOk() && !slaapt && gagAct < 0 && (int32_t)(showTot - nu) <= 0 && !showNa && !menuOpen && !venster) { int hh, mm; lokaleTijd(hh, mm); if (mm % 15 == 0 && mm != 0 && klokKwartier != hh * 60 + mm) { klokKwartier = hh * 60 + mm; showSoort = 16; showNa = nu; } }
   // elk heel uur zwaaien
   if (klokOk()) { static int laatsteU = -1; int hh, mm; lokaleTijd(hh, mm);
     if (mm == 0 && hh != laatsteU && gagAct < 0 && !slaapt) { laatsteU = hh; startGag(22); snprintf(robotTxt, sizeof robotTxt, "Het is %d uur!", hh); gagMsg = robotTxt; playGeluid(GL_DINGDONG); }
@@ -2666,6 +2671,11 @@ static void drawShow() {
       for (int i = 0; i < 6; i++) { float a1 = i * 1.047f, a2 = a1 + 1.047f; dikLijn(120 + cosf(a1) * 26, 120 + sinf(a1) * 26, 120 + cosf(a2) * 26, 120 + sinf(a2) * 26, 1.4f, 0xFFFF); }
       if (tt < 1.6f) showTekst(gooiKoe ? "BOEEE!" : "BAM!", 120, 46, 4, gooiKoe ? 0xFFFF : 0xF800);
     }
+  } else if (showSoort == 16) {   // v88: klokgezicht: ogen als wijzers, knipoog
+    int hh = 12, mm = 0; if (klokOk()) lokaleTijd(hh, mm); for (int i = 0; i < 12; i++) { float a = i * .5236f; circle(120 + cosf(a) * 100, 120 + sinf(a) * 100, i % 3 ? 2.5f : 5, i % 3 ? 0x8410 : EYE); }
+    float au = ((hh % 12) + mm / 60.f) * .5236f - 1.5708f, am = mm * .10472f - 1.5708f; bool knip = tt > 3 && tt < 3.4f;
+    dikLijn(120, 120, 120 + cosf(au) * 52, 120 + sinf(au) * 52, knip ? 3 : 16, EYE); dikLijn(120, 120, 120 + cosf(am) * 82, 120 + sinf(am) * 82, 11, EYE); circle(120, 120, 9, 0xFFFF);
+    char kt[8]; snprintf(kt, sizeof kt, "%02d:%02d", hh, mm); showTekst(kt, 120, 178, 2, 0xFFFF);
   } else if (showSoort == 14) {   // v86: dobbelsteen (na schudden)
     float rolt = fmaxf(0, 1.4f - tt); int oog = rolt > 0 ? 1 + (int)(fmodf(tt * 13, 6)) : schudUitkomst; float rot = rolt * rolt * 6, hz = 46;
     float ca = cosf(rot), sa = sinf(rot); auto P = [&](float px, float py, float &ux, float &uy) { ux = 120 + px * ca - py * sa; uy = 112 + px * sa + py * ca; };
@@ -2910,6 +2920,19 @@ void drawFace(){
  }}
  drawOutfit(); gagDraw(); drawFlag(); drawRitKlaar(); drawGmeter();
  if (robotModus && koekjeZichtbaar && gagAct != 51) { float b = sinf(t * 3) * 2; circle(196, 176 + b, 12, 0xA2A0); circle(192, 172 + b, 1.8f, 0x3180); circle(200, 179 + b, 1.8f, 0x3180); circle(198, 170 + b, 1.4f, 0x3180); }   // v48: koekje
+ { float vNu = spdNow(); static float vVorig = 0; static uint32_t vT = 0; uint32_t mNu = millis();   // v88: snelheidsstrepen bij flink optrekken
+   if (mNu - vT > 500) { if (vNu - vVorig > 4.5f && vNu > 10) streepTot = mNu + 1500; vVorig = vNu; vT = mNu; }
+   if ((int32_t)(streepTot - mNu) > 0) { boxAdd(0, 0, 240, 240); for (int i = 0; i < 10; i++) { float a = i * .628f + .3f, k = fmodf(mNu / 140.f + i * .37f, 1.f), r1 = 84 + k * 30, r2 = r1 + 10 + k * 8; dikLijn(120 + cosf(a) * r1, 120 + sinf(a) * r1, 120 + cosf(a) * r2, 120 + sinf(a) * r2, 1.6f, k < .5f ? 0xFFFF : 0x8410); } } }
+ if (mood == STARTLED && gagAct < 0) { circle(73 + faceOx, 106 + faceOy, 5, BG); circle(167 + faceOx, 106 + faceOy, 5, BG); }   // v88: verbaasd: kleine pupillen
+ { bool file = spdNow() < 12 && ((phoneFresh() && phone.fileD >= 0 && phone.fileD < 400) || (lokFileD >= 0 && lokFileD < 400 && millis() - lokT < 60000));   // v88: geconcentreerd in de file: tong uit
+   if (file && gagAct < 0 && (millis() / 3000) % 3 == 0) { float y = 174 + faceOy * .5f; roundRect(122 + faceOx * .5f, y, 15, 12, 6, 0xF986); line(129 + faceOx * .5f, y + 2, 129 + faceOx * .5f, y + 8, 0xB000, 1); } }
+ if (schaapT && !slaapt && millis() - schaapT < 4500) { float k = (millis() - schaapT) / 1500.f; k = fmodf(k, 1.f); float sx = 40 + k * 160, sy = 52 - sinf(k * 3.1416f) * 34;   // v88: schaapje springt over zijn hoofd
+   boxAdd(0, 0, 240, 240); ellipseF(sx, sy, 15, 10, 0xFFFF); circle(sx - 8, sy - 6, 6, 0xFFFF); circle(sx + 7, sy - 5, 6, 0xFFFF); ellipseF(sx + 15, sy - 2, 6, 5, 0x2104);
+   for (int l = -1; l <= 1; l += 2) { dikLijn(sx + l * 7, sy + 8, sx + l * 7 + (k < .5f ? -3 : 3), sy + 16, 2, 0x2104); } showTekst("1... 2... 3...", 120, 214, 1, 0x8410); }
+ if (persJarig) { float bx = 206 + faceOx * .2f, by = 66 + sinf(t * 1.6f) * 5; boxAdd(180, 30, 236, 200); ellipseF(bx, by, 13, 16, 0xF8A6); triF(bx - 3, by + 17, bx + 3, by + 17, bx, by + 13, 0xF8A6); circle(bx - 4, by - 6, 3, 0xFCF3);   // v88: ballonnetje op je verjaardag
+   for (int i = 0; i < 8; i++) { float y1 = by + 17 + i * 9, y2 = y1 + 9; line(bx + sinf(t * 2 + i) * 3, y1, bx + sinf(t * 2 + i + 1) * 3, y2, 0xBDF7, 1); } }
+ if (robotModus && klokOk()) { int hh, mm; lokaleTijd(hh, mm); float u = hh + mm / 60.f; uint16_t rk = u < 5.5f || u >= 22 ? 0x0846 : u < 8 ? 0xFC60 : u < 17 ? 0x2B3F : u < 19.5f ? 0xFB00 : u < 22 ? 0x780F : 0x0846;   // v88: rand kleurt mee met de lucht
+   boxAdd(0, 0, 240, 240); for (int i = 0; i < 2; i++) frame->drawCircle(X(120), Y(120), S(118 - i), rk); }
  if (slaapt && slaapMuts) { triF(150 + faceOx, 28 + faceOy, 96 + faceOx, 62 + faceOy, 176 + faceOx, 58 + faceOy, 0x319F); roundRect(92 + faceOx, 56 + faceOy, 88, 9, 4, 0xFFFF); circle(152 + faceOx, 26 + faceOy, 6, 0xFFFF); }   // slaapmutsje
  if ((int32_t)(focusTot - millis()) > 0) {   // focusmaatje: brilletje + aftellen
    for (int s2 = -1; s2 <= 1; s2 += 2) { float ex = 120 + s2 * 47 + faceOx, ey = 106 + faceOy; for (int i = 0; i < 3; i++) frame->drawRoundRect(X(ex - 28) + i, Y(ey - 26) + i, S(56) - 2 * i, S(52) - 2 * i, S(10), 0x8C51); boxAdd(ex - 28, ey - 26, ex + 28, ey + 26); }
@@ -3164,7 +3187,10 @@ void updateMood(float dt){
  float tgxL = tgx + fmaxf(-.6f, fminf(.6f, -leanX * 2.5f * LEAN_RICHTING));   // v19: kijkt de bocht in
  float kg=1-expf(-dt*9.0f);gx+=(tgxL-gx)*kg;gy+=(tgy-gy)*kg;
  breathe += dt*1.7f; headBob = sinf(breathe)*1.25f;
- blink=1;if(mood!=SLEEPING && !fxNoBlink){if(t>nextBlink){blinkStart=t;nextBlink=t+((random(100)<22)? .3f:random(22,56)/10.f);}float bt=(t-blinkStart)/.16f;if(bt>=0&&bt<1)blink=1-.92f*sinf(3.14159f*bt);}
+ { static float bDiep = .92f, bDuur = .16f; bool moe = mood == SLEEPY || mood == BORED || energie < 30;   // v88: soms half, soms dubbel, traag als hij moe is
+   blink=1;if(mood!=SLEEPING && !fxNoBlink){if(t>nextBlink){blinkStart=t;bDuur=moe?.5f:.16f;bDiep=random(100)<15?.5f:.92f;nextBlink=t+((random(100)<22)? .3f:random(22,56)/10.f);}float bt=(t-blinkStart)/bDuur;if(bt>=0&&bt<1)blink=1-bDiep*sinf(3.14159f*bt);}
+   if (moe && mood != SLEEPING) blink = fminf(blink, .62f + .08f * sinf(t * .7f)); }
+ if (phoneFresh() && phone.nav && phone.navD > 0 && phone.navD < 220) { char c = phone.nav; if (c == 'L' || c == 'l') { tgx = -.9f; nextGaze = t + .4f; } else if (c == 'R' || c == 'r') { tgx = .9f; nextGaze = t + .4f; } }   // v88: kijkt al naar de bocht
 }
 
 void updateParticles(float dt){
@@ -3606,8 +3632,8 @@ void loop(){
        { static uint32_t losShowT = 0; if (meterStart == nu && !showNa && random(4) == 0 && (!losShowT || nu - losShowT > 600000UL)) { losShowT = nu; showSoort = SHOWRIJ[sprintI % 6]; showNa = nu + 6500; sprintI++; buddyPrefs.putUChar("spri", sprintI); } }   // v57: af en toe ook na gewoon flink optrekken
      }
      if (showNa && (int32_t)(nu - showNa) >= 0) {   // v56: na de vlag de sprint-show
-       static const uint16_t DUUR[16] = {0, 9500, 7000, 7500, 8000, 6000, 5000, 7000, 7000, 2600, 3200, 4000, 4500, 4500, 4500, 5000};
-       showNa = 0; showStart = nu; showTot = nu + DUUR[showSoort]; if (showSoort == 1) speelSter(); else if (showSoort >= 14) playGeluid(GL_PLING); else playGeluid(showSoort == 5 ? GL_VROEM : showSoort == 6 ? GL_GIECHEL : showSoort >= 7 ? GL_TRIP : GL_RUIMTE + showSoort - 1); logRegel("sprint-show %d", (int)showSoort);
+       static const uint16_t DUUR[17] = {0, 9500, 7000, 7500, 8000, 6000, 5000, 7000, 7000, 2600, 3200, 4000, 4500, 4500, 4500, 5000, 5000};
+       showNa = 0; showStart = nu; showTot = nu + DUUR[showSoort]; if (showSoort == 1) speelSter(); else if (showSoort >= 14) playGeluid(showSoort == 16 ? GL_DINGDONG : GL_PLING); else playGeluid(showSoort == 5 ? GL_VROEM : showSoort == 6 ? GL_GIECHEL : showSoort >= 7 ? GL_TRIP : GL_RUIMTE + showSoort - 1); logRegel("sprint-show %d", (int)showSoort);
      }
      float doel = vn; naaldV += ((doel - naald) * 55.f - naaldV * 6.5f) * dt; naald += naaldV * dt;   // veer + demper: schiet door en trilt na
      if (naald < 0) { naald = 0; naaldV = 0; }
