@@ -1588,6 +1588,12 @@ static void noot(float x, float y) { addParticleAt(3, x, y, frand(-8, 8), -frand
 static void ellipseF(float x, float y, float rx, float ry, uint16_t c) { boxAdd(x - rx, y - ry, x + rx, y + ry); frame->fillEllipse(X(x), Y(y), S(rx), S(ry), c); }
 static void triF(float x1, float y1, float x2, float y2, float x3, float y3, uint16_t c) { boxAdd(fminf(x1, fminf(x2, x3)), fminf(y1, fminf(y2, y3)), fmaxf(x1, fmaxf(x2, x3)), fmaxf(y1, fmaxf(y2, y3))); frame->fillTriangle(X(x1), Y(y1), X(x2), Y(y2), X(x3), Y(y3), c); }
 // ===================== v27: outfits (zelfde als in de app) en feestdagen =====================
+static const char *weerOutfit() {   // v86: zonnebril als het warm en zonnig is, muts bij vorst
+  if (!wxVers()) return nullptr; int hh = 12, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
+  if (wxTemp >= 22 && wxCode <= 2 && hh >= 9 && hh < 20) return "zonnebril";
+  if (wxTemp <= 2) return "muts";
+  return nullptr;
+}
 static const char *feestOutfit() {
   int d = 0, m = 0;
   if (gpsDate[0] >= '0' && gpsDate[4] >= '0' && !(gpsDate[4] == '8' && gpsDate[5] == '0')) { d = (gpsDate[0] - '0') * 10 + gpsDate[1] - '0'; m = (gpsDate[2] - '0') * 10 + gpsDate[3] - '0'; }
@@ -1603,6 +1609,7 @@ static const char *feestOutfit() {
 }
 static void drawOutfit() {
   const char *k = (outfitK[0] && millis() - outfitT < 24UL * 3600000) ? outfitK : feestOutfit();
+  if (!k || !strcmp(k, "geen")) k = weerOutfit();   // v86
   if (!k || !strcmp(k, "geen")) return;
   float x = faceOx * .4f, y = faceOy * .4f;
   const uint16_t ROOD = 0xE1A6, WIT = 0xF79E, GOUDK = 0xFE4A, ORANJE = 0xFBC0, PAARS = 0x7AB8;
@@ -1623,6 +1630,9 @@ static void drawOutfit() {
   else if (!strcmp(k, "oren")) { triF(56 + x, 64 + y, 70 + x, 18 + y, 100 + x, 50 + y, EYE); triF(184 + x, 64 + y, 170 + x, 18 + y, 140 + x, 50 + y, EYE); triF(66 + x, 56 + y, 72 + x, 32 + y, 88 + x, 50 + y, BLUSH); triF(174 + x, 56 + y, 168 + x, 32 + y, 152 + x, 50 + y, BLUSH); }
   else if (!strcmp(k, "koptel")) { for (int i = 0; i < 12; i++) { float a1 = 3.39f + i * .2f, a2 = a1 + .2f; line(120 + cosf(a1) * 88 + x, 112 + sinf(a1) * 88 + y, 120 + cosf(a2) * 88 + x, 112 + sinf(a2) * 88 + y, 0x9533, 6); } roundRect(22 + x, 90 + y, 20, 46, 8, 0x5373); roundRect(198 + x, 90 + y, 20, 46, 8, 0x5373); }
   else if (!strcmp(k, "helm")) { for (int i = 0; i < 16; i++) { float a1 = 3.46f + i * .157f, a2 = a1 + .16f; line(120 + cosf(a1) * 88 + x, 120 + sinf(a1) * 88 + y, 120 + cosf(a2) * 88 + x, 120 + sinf(a2) * 88 + y, ROOD, 13); } }
+  else if (!strcmp(k, "zonnebril")) { float gx = faceOx, gy = faceOy; for (int e = -1; e <= 1; e += 2) { roundRect(120 + e * 47 - 30 + gx, 106 - 20 + gy, 60, 38, 12, 0x10A2); roundRect(120 + e * 47 - 24 + gx, 106 - 15 + gy, 14, 6, 3, 0x6B6D); }
+    line(102 + gx, 100 + gy, 138 + gx, 100 + gy, 0x10A2, 4); line(60 + gx, 98 + gy, 42 + gx, 92 + gy, 0x10A2, 3); line(180 + gx, 98 + gy, 198 + gx, 92 + gy, 0x10A2, 3); }
+  else if (!strcmp(k, "muts")) { ellipseF(120 + x, 54 + y, 60, 30, 0x1C9F); roundRect(58 + x, 52 + y, 124, 14, 7, 0xF79E); circle(120 + x, 20 + y, 10, 0xF79E); }
   else if (!strcmp(k, "hartjes")) { float w = sinf(t * 4) * 2; heart(96 + w + x, 36 + y, 12, HEART); heart(144 - w + x, 36 + y, 12, HEART); }
 }
 static void spiraal(float cx, float cy) { float px = cx, py = cy; for (int i = 1; i <= 40; i++) { float a = i * .5f + t * 6, r = i * .55f; float x = cx + cosf(a) * r, y = cy + sinf(a) * r; line(px, py, x, y, EYE, 3); px = x; py = y; } }
