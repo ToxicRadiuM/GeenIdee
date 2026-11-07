@@ -548,6 +548,11 @@ body.kmNiet #flKaartLijst, body.kmNiet #flDruk, body.kmNiet #flDrukKop { display
 .segNav button[aria-pressed="true"] { color: var(--ink); border-color: #5ac8fa; background: rgba(90,200,250,.14); }
 .grKaart { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(135deg, rgba(90,200,250,.10), transparent); }
 .grKaart b { display: block; font-size: 17px; }
+#routeKeuze { position: fixed; z-index: 120; left: 10px; right: 10px; bottom: 10px; max-width: 520px; margin: 0 auto; padding: 12px; border-radius: 20px; background: rgba(18,22,28,.96); color: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.5); display: flex; flex-direction: column; gap: 8px; }
+#routeKeuze[hidden] { display: none; } #routeKeuze .rkKop { font: 700 16px var(--f-body); padding: 2px 4px 4px; }
+.rkOptie { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); color: inherit; font: inherit; }
+.rkOptie .rkKl { width: 10px; align-self: stretch; border-radius: 5px; flex: 0 0 auto; } .rkOptie .rkTxt { flex: 1; min-width: 0; } .rkOptie b { display: block; font-size: 17px; } .rkOptie small { display: block; color: #b8c0c8; font-size: 12px; margin-top: 2px; } .rkOptie .rkTag { font-size: 12px; color: #ffd60a; white-space: nowrap; }
+.rkAnnuleer { padding: 8px; border-radius: 12px; border: 0; background: none; color: #b8c0c8; font: 600 14px var(--f-body); }
 /* v153: groep 'Deze week' */
 .grWeekKop { margin: -2px 0 6px !important; } .grWeek { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .grWk { border: 1px solid var(--line, rgba(128,128,128,.25)); border-radius: 14px; padding: 10px 12px 8px; cursor: pointer; background: var(--card, transparent); }
@@ -4426,13 +4431,22 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       return fetch('https://router.project-osrm.org/route/v1/driving/' + p + qs).then(function (r) { return r.json(); }).then(function (k) { return k && k.routes && k.routes[0] && !heeftPont(k.routes[0]) ? k : null; }).catch(function () { return null; }); }))
       .then(function (rs) { var best = null; rs.forEach(function (k) { if (k && (!best || k.routes[0].duration < best.routes[0].duration)) best = k; }); if (best) { lg('route zonder pontje via een brug: ' + Math.round(best.routes[0].duration / 60) + ' min'); return best; } lg('geen route zonder pontje gevonden'); return j; });
   }
-  function navRoute(van, naar, opnieuw) {
-    if (navBusy) return; navBusy = true; navLastRoute = T;
-    var pad = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5);
-    var qs = '?overview=full&geometries=geojson&steps=true', qa = qs + (navPont ? '&alternatives=3' : ''), qx = navPont ? qa + '&exclude=ferry' : qs;
-    if (!opnieuw) navStat('Route berekenen…');
-    navGet('/route/' + pad + qx, 'https://router.project-osrm.org/route/v1/driving/' + pad + qx).catch(function (e) { if (qx === qs) throw e; lg('route met exclude=ferry lukt niet, zelf een route zonder pontje zoeken'); return navGet('/route/' + pad + qa, 'https://router.project-osrm.org/route/v1/driving/' + pad + qa); }).then(function (j) { return pontVrij(j, van, naar, qs); }).then(function (j) {
-      var rt = j && j.routes && j.routes[0]; if (!rt) throw new Error('geen route gevonden');
+  function routeInfo(rt) {   /* v155: korte omschrijving van een route: welke grote wegen, hoeveel snelweg, pontje */
+    var refs = {}, snel = 0, tot = 0; (rt.legs || []).forEach(function (l) { (l.steps || []).forEach(function (s) { var r = (s.ref || '').split(';')[0].trim(), d = s.distance || 0; tot += d; if (/^A\s?\d/.test(r)) snel += d; if (/^[AN]\s?\d/.test(r)) refs[r] = (refs[r] || 0) + d; }); });
+    var top = Object.keys(refs).sort(function (x, y) { return refs[y] - refs[x]; }).slice(0, 3);
+    return { via: top.length ? 'via ' + top.join(', ') : 'binnendoor', snel: tot ? Math.round(snel / tot * 100) : 0, pont: heeftPont(rt) };
+  }
+  function routeKandidaten(van, naar, qs) {   /* gewone alternatieven + routes via de bruggen, ontdubbeld */
+    var pad = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5), qa = qs + '&alternatives=3', uit = [];
+    var BRUG = [[51.9077, 4.5384], [51.9186, 4.5861], [51.9935, 5.0936], [51.9620, 5.2300], [51.8197, 4.9690], [51.8100, 4.6510], [51.8836, 4.6230], [51.9550, 5.3920]], rec = gdist(van.lat, van.lon, naar.lat, naar.lon);
+    var kand = BRUG.map(function (b) { return { b: b, d: gdist(van.lat, van.lon, b[0], b[1]) + gdist(b[0], b[1], naar.lat, naar.lon) }; }).filter(function (x) { return x.d < rec * 1.8 + 15000; }).sort(function (a, b) { return a.d - b.d; }).slice(0, 3);
+    var vragen = [navGet('/route/' + pad + qa, 'https://router.project-osrm.org/route/v1/driving/' + pad + qa).then(function (j) { return (j && j.routes || []).map(function (rt) { return { rt: rt, via: null }; }); }).catch(function () { return []; })];
+    kand.forEach(function (x) { var p = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + x.b[1].toFixed(4) + ',' + x.b[0].toFixed(4) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5);
+      vragen.push(fetch('https://router.project-osrm.org/route/v1/driving/' + p + qs).then(function (r) { return r.json(); }).then(function (k) { return k && k.routes && k.routes[0] ? [{ rt: k.routes[0], via: x.b }] : []; }).catch(function () { return []; })); });
+    return Promise.all(vragen).then(function (rs) { rs.forEach(function (l) { l.forEach(function (c) { if (!uit.some(function (u) { return Math.abs(u.rt.distance - c.rt.distance) < c.rt.distance * .02 && Math.abs(u.rt.duration - c.rt.duration) < 60; })) uit.push(c); }); });
+      uit.sort(function (a, b) { return a.rt.duration - b.rt.duration; }); return uit.slice(0, 4); });
+  }
+  function navBouw(rt, naar, opnieuw, via) {
       var steps = [];
       (rt.legs || []).forEach(function (lg0, li) { (lg0.steps || []).forEach(function (s) {
         var m = s.maneuver || {}; if (!m.location) return; if ((m.type === 'arrive' && li < rt.legs.length - 1) || (m.type === 'depart' && li > 0)) return;   /* v154: tussenpunt (brug) niet als aankomst */
@@ -4442,7 +4456,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var geom = (rt.geometry && rt.geometry.coordinates || []).map(function (c) { return { lat: c[1], lon: c[0] }; });
       /* Voor elke afslag: waar ligt hij op de routelijn? Zo weet Buddy straks of je er voorbij bent, ook als je er niet heel dichtbij kwam */
       var gi = 0; steps.forEach(function (st0) { var bd = 1e9, bi = gi; for (var q = gi; q < geom.length; q++) { var dd = gdist(st0.lat, st0.lon, geom[q].lat, geom[q].lon); if (dd < bd) { bd = dd; bi = q; } if (bd < 5 && dd > 400) break; } st0.gi = bi; gi = bi; });
-      nav = { dest: naar, steps: steps, geom: geom, idx: 1, min: 1e9, said: {}, dist: rt.distance, dur: rt.duration, t: Date.now(), van: 0 };
+      nav = { dest: naar, steps: steps, geom: geom, idx: 1, min: 1e9, said: {}, dist: rt.distance, dur: rt.duration, t: Date.now(), van: 0, via: via || null, pont: heeftPont(rt) };
       try { localStorage.setItem(NAVKEY, JSON.stringify({ dest: naar, t: Date.now() })); } catch (e) {}
       lg('route: ' + Math.round(rt.distance / 100) / 10 + ' km, ' + steps.length + ' stappen' + (opnieuw ? ' (opnieuw berekend)' : ''));
       $('navStop').hidden = false;
@@ -4454,6 +4468,39 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         if (!S.live) toast('Route klaar. Zet de telefoon-GPS aan, dan rijd ik mee.');
       }
       navToon();
+  }
+  function routeKies(lijst, naar) {   /* keuzescherm zoals Google Maps */
+    var ov = $('routeKeuze'); if (!ov) { ov = document.createElement('div'); ov.id = 'routeKeuze'; document.body.appendChild(ov); }
+    ov.textContent = ''; var h = document.createElement('div'); h.className = 'rkKop'; h.textContent = 'Welke route naar ' + naar.naam.split(',')[0] + '?'; ov.appendChild(h);
+    var snelste = Math.min.apply(null, lijst.map(function (c) { return c.rt.duration; }));
+    lijst.forEach(function (c, i) { var inf = routeInfo(c.rt), b = document.createElement('button'); b.type = 'button'; b.className = 'rkOptie';
+      var m = Math.round(c.rt.duration / 60), ex = Math.round((c.rt.duration - snelste) / 60);
+      b.innerHTML = '<span class="rkKl"></span><span class="rkTxt"><b></b><small></small></span><span class="rkTag"></span>';
+      b.querySelector('.rkKl').style.background = ['#0a84ff', '#34c759', '#ff9f0a', '#bf5af2'][i];
+      b.querySelector('b').textContent = (m >= 60 ? Math.floor(m / 60) + ' u ' + (m % 60) + ' min' : m + ' min') + (ex > 0 ? '  (+' + ex + ' min)' : '  · snelste');
+      b.querySelector('small').textContent = (Math.round(c.rt.distance / 100) / 10).toString().replace('.', ',') + ' km · ' + inf.via + (inf.snel ? ' · ' + inf.snel + '% snelweg' : '');
+      b.querySelector('.rkTag').textContent = inf.pont ? '⛴️ pontje' : '';
+      b.addEventListener('click', function () { ov.hidden = true; try { if (window.__keuzeLijnen) window.__keuzeLijnen(null); } catch (e) {} navBouw(c.rt, naar, false, c.via); });
+      ov.appendChild(b); });
+    var x = document.createElement('button'); x.type = 'button'; x.className = 'rkAnnuleer'; x.textContent = 'Annuleren'; x.addEventListener('click', function () { ov.hidden = true; try { if (window.__keuzeLijnen) window.__keuzeLijnen(null); } catch (e) {} navStat(''); }); ov.appendChild(x);
+    ov.hidden = false; try { if (window.__keuzeLijnen) window.__keuzeLijnen(lijst.map(function (c) { return c.rt; })); } catch (e) {}
+  }
+  function navRoute(van, naar, opnieuw) {
+    if (navBusy) return; navBusy = true; navLastRoute = T;
+    var qs = '?overview=full&geometries=geojson&steps=true';
+    if (!opnieuw) navStat('Routes zoeken…');
+    var oud = opnieuw && nav ? nav : null;
+    if (oud && oud.via && gdist(van.lat, van.lon, oud.via[0], oud.via[1]) < 400) oud.via = null;   /* brug al gepasseerd */
+    var p0;
+    if (oud && oud.via) { var p = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + oud.via[1].toFixed(4) + ',' + oud.via[0].toFixed(4) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5);
+      p0 = fetch('https://router.project-osrm.org/route/v1/driving/' + p + qs).then(function (r) { return r.json(); }).then(function (k) { return k && k.routes && k.routes[0] ? [{ rt: k.routes[0], via: oud.via }] : []; }); }
+    else p0 = routeKandidaten(van, naar, qs);
+    p0.then(function (lijst) {
+      if (!lijst.length) throw new Error('geen route gevonden');
+      if (opnieuw) { var wilPont = oud ? oud.pont : !navPont, ok = lijst.filter(function (c) { return wilPont || !heeftPont(c.rt); }); var c = (ok.length ? ok : lijst)[0]; navBouw(c.rt, naar, true, c.via); return; }
+      if (navPont) { var vrij = lijst.filter(function (c) { return !heeftPont(c.rt); }); if (vrij.length) lijst = vrij.concat(lijst.filter(function (c) { return heeftPont(c.rt); })); }
+      if (lijst.length === 1) { navBouw(lijst[0].rt, naar, false, lijst[0].via); return; }
+      navStat('Kies een route.'); routeKies(lijst, naar);
     }).catch(function (e) { navStat('Route berekenen mislukt (' + (e.message || e) + ').'); lg('FOUT route ' + (e.message || e)); })
       .then(function () { navBusy = false; });
   }
@@ -4931,7 +4978,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v154';
+  var VERSION = 'v155';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -10011,6 +10058,12 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (N && N.dest) { var d = document.createElement('div'); d.style.cssText = 'font-size:30px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.6))'; d.textContent = '🏁'; doelMk = new maplibregl.Marker({ element: d, anchor: 'bottom-left' }).setLngLat([N.dest.lon, N.dest.lat]).addTo(map); }
       $('rijRouteStop').hidden = !N;
     }
+    window.__keuzeLijnen = function (rts) {   /* v155: alle routekeuzes op de kaart, elk in zijn eigen kleur */
+      if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return; var KL = ['#0a84ff', '#34c759', '#ff9f0a', '#bf5af2'];
+      var data = { type: 'FeatureCollection', features: (rts || []).map(function (rt, i) { return { type: 'Feature', properties: { kl: KL[i] || '#888', z: 4 - i }, geometry: rt.geometry }; }).reverse() };
+      if (map.getSource('keuze')) map.getSource('keuze').setData(data); else { map.addSource('keuze', { type: 'geojson', data: data }); map.addLayer({ id: 'keuze', type: 'line', source: 'keuze', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'kl'], 'line-width': 6, 'line-opacity': .85 } }); }
+      if (rts && rts.length) { var b = new maplibregl.LngLatBounds(); rts.forEach(function (rt) { (rt.geometry.coordinates || []).forEach(function (c, k) { if (k % 5 === 0) b.extend(c); }); }); try { volgZet(false); map.fitBounds(b, { padding: 60, pitch: 0, bearing: 0, duration: 800 }); } catch (e) {} } else { try { volgZet(true); } catch (e) {} }
+    };
     function afslagToon() {
       var N = window.__nav && window.__nav.nu(), b = $('rijAfslag');
       if (!N || !lastPos || !N.steps || !N.steps[N.idx]) { b.hidden = true; return; }
