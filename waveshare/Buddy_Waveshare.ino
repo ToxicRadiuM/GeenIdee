@@ -37,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 86;
+static const int FW_VERSIE = 87;   // v87: duidelijkere kaart (lichtere wegen met rand, snelweg oranje, files rood, raster, noordpijl)
 // v86: kookwekker (menu TIMER), schudden = dobbelsteen of magische 8-bal, boos op zijn kop, nachtlampje met klok, hij mist je
 static uint32_t timerTot = 0, timerLen = 0, timerAlarmT = 0, nachtKlokTot = 0; static uint8_t timerMin = 10, timerFase = 0, timerAlarmN = 0; static bool gemist = false; static int8_t schudUitkomst = 0;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
@@ -1217,7 +1217,7 @@ static void parsePhone(char *line) {
     bool opA = (awPt != awA); float *doel = opA ? awA : awB; uint8_t *fl = opA ? awFA : awFB; const char *a = line + 3;
     if (a[0] == 'B') { awNieuwN = 0; awBezig = true; }
     else if (a[0] == 'W' && awBezig) { char *e; long lim = strtol(a + 2, &e, 10); if (*e != '|') return; const char *q = e + 1; bool eerste = true;
-      while (*q && awNieuwN < AW_MAX) { float la = strtof(q, &e); if (*e != ',') break; float lo = strtof(e + 1, &e); doel[awNieuwN * 2] = la; doel[awNieuwN * 2 + 1] = lo; fl[awNieuwN] = (eerste ? 1 : 0) | (lim >= 80 ? 2 : 0); eerste = false; awNieuwN++; if (*e == ';') q = e + 1; else break; } }
+      while (*q && awNieuwN < AW_MAX) { float la = strtof(q, &e); if (*e != ',') break; float lo = strtof(e + 1, &e); doel[awNieuwN * 2] = la; doel[awNieuwN * 2 + 1] = lo; fl[awNieuwN] = (eerste ? 1 : 0) | (lim >= 70 ? 2 : 0) | (lim >= 100 ? 4 : 0); eerste = false; awNieuwN++; if (*e == ';') q = e + 1; else break; } }
     else if (a[0] == 'E' && awBezig) { awBezig = false; awPt = doel; awF = fl; awN = awNieuwN; }
     return; }
   if (pinOk && !strncmp(line, "FL:", 3)) {   // v81: flitsers om je heen van de app (B, P = lat,lon,lim,type;..., E)
@@ -2781,15 +2781,24 @@ static void drawKaart() {
   auto proj = [&](float la, float lo, float &x, float &y) { float dx = (lo - lon) * kx, dy = (la - lat) * ky; x = CX + (dx * ch - dy * sh) / mpp; y = CY - (dx * sh + dy * ch) / mpp; };
   auto binnen = [](float x, float y) { return x > -30 && x < 270 && y > -30 && y < 270; };
   float bereik = 190 * mpp, dla = bereik / ky, dlo = bereik / kx;
-  if (wegen && wegPt) for (int i = 0; i < wegN; i++) {   // wegen om je heen
-    const Weg &g = wegen[i]; const float *pt = wegPt + g.p0 * 2; float px = 0, py = 0; bool pv = false;
-    uint16_t kl = g.lim >= 80 ? 0x52AA : 0x3186; float br = g.lim >= 80 ? 3.2f : 2.2f;
-    for (int k = 0; k < g.n; k++) { float la = pt[k * 2], lo = pt[k * 2 + 1];
-      if (fabsf(la - lat) > dla || fabsf(lo - lon) > dlo) { pv = false; continue; }
-      float x, y; proj(la, lo, x, y); if (pv && (binnen(x, y) || binnen(px, py))) dikLijn(px, py, x, y, br, kl); px = x; py = y; pv = true; } }
-  if ((!wegen || !wegPt || !wegN) && awPt && awF) { float px = 0, py = 0; bool pv = false; int n = awN;   // v85: wegen om je heen van de app
-    for (int k = 0; k < n; k++) { float la = awPt[k * 2], lo = awPt[k * 2 + 1]; if (awF[k] & 1) pv = false; if (fabsf(la - lat) > dla || fabsf(lo - lon) > dlo) { pv = false; continue; }
-      float x, y; proj(la, lo, x, y); bool groot = awF[k] & 2; if (pv && (binnen(x, y) || binnen(px, py))) dikLijn(px, py, x, y, groot ? 3.2f : 2.2f, groot ? 0x52AA : 0x3186); px = x; py = y; pv = true; } }
+  { float stap = mpp * 34, ox0 = fmodf((lon * kx), stap), oy0 = fmodf((lat * ky), stap);   // v87: raster van stipjes, zo zie je ook zonder wegen dat je beweegt
+    for (int gx2 = -4; gx2 <= 4; gx2++) for (int gy2 = -4; gy2 <= 4; gy2++) { float dx = gx2 * stap - ox0, dy = gy2 * stap - oy0, x = CX + (dx * ch - dy * sh) / mpp, y = CY - (dx * sh + dy * ch) / mpp;
+      if (x > 8 && x < 232 && y > 8 && y < 232 && (x - 120) * (x - 120) + (y - 120) * (y - 120) < 112 * 112) circle(x, y, 1.1f, 0x2945); } }
+  triF(CX, CY - 12, CX - 26, CY - 62, CX + 26, CY - 62, 0x10A2);   // v87: lichtbundel vooruit (onder de wegen)
+  auto wegKl = [](int soort, bool rand) -> uint16_t { return rand ? (soort == 2 ? 0x8200 : 0x18E3) : (soort == 2 ? 0xFD60 : soort == 1 ? 0xC618 : 0x7BEF); };
+  auto wegBr = [](int soort) -> float { return soort == 2 ? 4.6f : soort == 1 ? 3.6f : 2.4f; };
+  for (int pass = 0; pass < 2; pass++) {   // v87: eerst de donkere rand, dan de lichte weg erover
+    if (wegen && wegPt) for (int i = 0; i < wegN; i++) {   // wegen om je heen
+      const Weg &g = wegen[i]; const float *pt = wegPt + g.p0 * 2; float px = 0, py = 0; bool pv = false; int soort = g.lim >= 100 ? 2 : g.lim >= 70 ? 1 : 0;
+      for (int k = 0; k < g.n; k++) { float la = pt[k * 2], lo = pt[k * 2 + 1];
+        if (fabsf(la - lat) > dla || fabsf(lo - lon) > dlo) { pv = false; continue; }
+        float x, y; proj(la, lo, x, y); if (pv && (binnen(x, y) || binnen(px, py))) dikLijn(px, py, x, y, wegBr(soort) + (pass ? 0 : 2.2f), wegKl(soort, !pass)); px = x; py = y; pv = true; } }
+    if ((!wegen || !wegPt || !wegN) && awPt && awF) { float px = 0, py = 0; bool pv = false; int n = awN;   // v85: wegen om je heen van de app
+      for (int k = 0; k < n; k++) { float la = awPt[k * 2], lo = awPt[k * 2 + 1]; if (awF[k] & 1) pv = false; if (fabsf(la - lat) > dla || fabsf(lo - lon) > dlo) { pv = false; continue; }
+        float x, y; proj(la, lo, x, y); int soort = (awF[k] & 4) ? 2 : (awF[k] & 2) ? 1 : 0; if (pv && (binnen(x, y) || binnen(px, py))) dikLijn(px, py, x, y, wegBr(soort) + (pass ? 0 : 2.2f), wegKl(soort, !pass)); px = x; py = y; pv = true; } } }
+  if (jams && jamPt) for (int i = 0; i < jamN; i++) { const Jam &jm = jams[i]; float px = 0, py = 0; bool pv = false;   // v87: files als rode stukken weg
+    for (int k = 0; k < jm.n; k++) { float la = jamPt[(jm.p0 + k) * 2], lo = jamPt[(jm.p0 + k) * 2 + 1]; if (fabsf(la - lat) > dla || fabsf(lo - lon) > dlo) { pv = false; continue; }
+      float x, y; proj(la, lo, x, y); if (pv && (binnen(x, y) || binnen(px, py))) dikLijn(px, py, x, y, 5, jm.k == 'w' ? 0xFD20 : 0xF800); px = x; py = y; pv = true; } }
   { float px = 0, py = 0; bool pv = false; const float *r = rtPt; int n = rtN;   // de route
     for (int pass = 0; pass < 2; pass++) { pv = false;
       for (int k = 0; k < n; k++) { float la = r[k * 2], lo = r[k * 2 + 1]; if (fabsf(la - lat) > dla * 1.3f || fabsf(lo - lon) > dlo * 1.3f) { pv = false; continue; }
@@ -2806,6 +2815,7 @@ static void drawKaart() {
     circle(x, y, 6, 0xFFFF); circle(x, y, 4.5f, c.type == 3 ? 0xFD20 : c.type == 2 ? 0x041F : 0xF800); }
   triF(CX, CY - 12, CX - 9, CY + 9, CX + 9, CY + 9, 0xFFFF); triF(CX, CY - 7, CX - 5, CY + 6, CX + 5, CY + 6, 0x3D7F);   // jouw auto
   circle(120, 36, 27, 0x0000); circle(120, 36, 27, 0x2945); circle(120, 36, 25, 0x0000); miniBuddy(120, 38, .4f, false, 0);   // Buddy klein bovenin
+  { float nx = 120 - sh * 110, ny = 120 - ch * 110; circle(nx, ny, 9, 0xF800); frame->setTextColor(0xFFFF); frame->setTextSize(1); frame->setCursor(X(nx) - 3, Y(ny) - 4); frame->print("N"); }   // v87: noorden
   char sp[8]; snprintf(sp, sizeof sp, "%d", (int)lroundf(v)); segTekst(sp, 200, 120, 18, EYE);   // snelheid rechts
   int lim = phoneFresh() && phone.lim > 0 ? phone.lim : wegLimiet;
   if (lim > 0) { circle(40, 120, 16, 0xD800); circle(40, 120, 12.5f, 0xFFFF); char lt[6]; snprintf(lt, sizeof lt, "%d", lim); segTekst(lt, 40, 120, lim >= 100 ? 9 : 12, 0x0000); }
