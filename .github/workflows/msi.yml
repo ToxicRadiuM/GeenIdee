@@ -30,8 +30,8 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: msi_locaties.json
-          key: msi-loc-${{ github.run_id }}
-          restore-keys: msi-loc-
+          key: msi-loc2-${{ github.run_id }}
+          restore-keys: msi-loc2-
       - run: pip install pyshp pyproj
       - run: mkdir -p uit && python tools/msi.py uit/msi.json msi_locaties.json
       - name: Publiceren op branch msi

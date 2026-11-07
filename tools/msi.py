@@ -9,6 +9,7 @@ from pyproj import Transformer
 U = 'https://opendata.ndw.nu/'
 uit = sys.argv[1] if len(sys.argv) > 1 else 'msi.json'
 cache = sys.argv[2] if len(sys.argv) > 2 else 'msi_locaties.json'
+VERSIE = 2
 
 def haal(naam, tries=3):
     for i in range(tries):
@@ -25,11 +26,12 @@ loc = None
 if os.path.exists(cache) and time.time() - os.path.getmtime(cache) < 7 * 86400:
     try: loc = json.load(open(cache))
     except Exception: loc = None
+    if loc and loc.get('v') != VERSIE: loc = None
 if not loc:
     z = zipfile.ZipFile(io.BytesIO(haal('ndw_msi_shapefiles_latest.zip')))
     namen = z.namelist(); print('in zip:', namen[:20])
     shp = [n for n in namen if n.lower().endswith('.shp')]
-    loc = {'id': {}, 'pos': {}}
+    loc = {'v': VERSIE, 'id': {}, 'pos': {}}
     for s in shp:
         b = s[:-4]
         try:
@@ -48,7 +50,7 @@ if not loc:
             else: lo, la = x, y
             rec = dict(zip(velden, sr.record))
             if eerste: print('voorbeeld:', rec, la, lo); eerste = False
-            p = [round(la, 5), round(lo, 5), int(float(rec.get('bearing') or -1))]
+            p = [round(la, 5), round(lo, 5), int(float(rec.get('bearing') or -1)), str(rec.get('road') or ''), str(rec.get('carriagew0') or ''), str(rec.get('lane') or '')]
             for k, v in rec.items():   # alles wat op een uuid lijkt
                 if isinstance(v, str) and len(v) == 36 and v.count('-') == 4: loc['id'][v.lower()] = p
             low = {k.lower(): v for k, v in rec.items()}
@@ -94,6 +96,6 @@ for u, (ts, toon, red, d) in laatst.items():
     if not toon or toon == 'E': continue
     p = loc['id'].get(u)
     if not p: continue
-    borden.append([p[0], p[1], p[2] if len(p) > 2 else -1, d.get('road', ''), d.get('carriageway', ''), d.get('lane', ''), toon + ('!' if red and toon not in 'X<>' else '')])
+    borden.append([p[0], p[1], p[2], p[3], p[4], p[5], toon + ('!' if red and toon not in 'X<>' else '')])
 print('events:', n, 'borden:', len(laatst), 'borden met beeld en plek:', len(borden))
 json.dump({'t': int(time.time()), 'b': borden}, open(uit, 'w'), separators=(',', ':'))
