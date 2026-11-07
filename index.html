@@ -171,6 +171,26 @@ body.car #carBack { display: block; }
   body.car.kaartrij #rijMelding { left: calc(50% + var(--bw) / 2); }
 }
 #rijMap { position: absolute; inset: 0; }
+/* v150: gekke dingen in eerste persoon */
+#rijFun { position: absolute; inset: 0; z-index: 32; pointer-events: none; overflow: hidden; }
+.funEend { position: absolute; left: -30%; top: 52%; display: flex; gap: 4px; font-size: 34px; transform: scaleX(-1); animation: eendLoop 8.5s linear forwards; } .funEend span:not(:first-child) { font-size: 22px; align-self: flex-end; }
+.funEend span { display: inline-block; animation: waggel .35s ease-in-out infinite alternate; } .funEend.ren { animation: eendRen 1.2s ease-in forwards; } .funEend.ren span { animation-duration: .12s; }
+@keyframes eendLoop { to { left: 110%; } } @keyframes eendRen { from { left: 40%; } to { left: 120%; top: 46%; } } @keyframes waggel { from { transform: rotate(-10deg); } to { transform: rotate(10deg) translateY(-3px); } }
+.funPoep { position: absolute; left: 38%; top: 18%; width: 90px; height: 70px; background: radial-gradient(circle at 45% 40%, #fff 0 22%, #e8e4d8 30%, rgba(230,225,210,.9) 42%, transparent 46%), radial-gradient(circle at 68% 70%, #f4f1e8 0 12%, transparent 14%), radial-gradient(circle at 25% 72%, #f4f1e8 0 9%, transparent 11%); animation: poepPlets .25s ease-out; transition: opacity .8s, transform .8s; }
+.funPoep.weg { opacity: 0; transform: translateX(60px) scaleX(1.8); } @keyframes poepPlets { from { transform: scale(.2); } }
+body.wis #rijWissers { display: block; }
+.funMug { position: absolute; width: 12px; height: 6px; border-radius: 50%; background: radial-gradient(circle, #2a1d14 0 35%, rgba(60,40,20,.6) 55%, transparent 70%); animation: mugPlets .2s ease-out; } .funMug::after { content: ''; position: absolute; left: 10px; top: 2px; width: 8px; height: 1px; background: rgba(40,30,20,.6); }
+@keyframes mugPlets { from { transform: scale(3); opacity: 0; } }
+.funSter { position: absolute; width: 140px; height: 2px; background: linear-gradient(90deg, rgba(255,255,255,0), #fff); border-radius: 2px; transform: rotate(-18deg); animation: ster 1.4s ease-out forwards; box-shadow: 0 0 8px #fff; }
+@keyframes ster { from { opacity: 0; transform: translate(0, 0) rotate(-18deg); } 20% { opacity: 1; } to { opacity: 0; transform: translate(260px, 84px) rotate(-18deg); } }
+.funBoog { position: absolute; left: 10%; right: 10%; top: 2%; height: 34vh; border-radius: 50% 50% 0 0 / 100% 100% 0 0; background: radial-gradient(ellipse at 50% 100%, transparent 54%, rgba(148,0,211,.35) 55%, rgba(75,0,130,.35) 57%, rgba(0,0,255,.35) 59%, rgba(0,200,0,.35) 61%, rgba(255,255,0,.35) 63%, rgba(255,127,0,.35) 65%, rgba(255,0,0,.35) 67%, transparent 69%); animation: boog 60s ease-in-out forwards; }
+@keyframes boog { 0% { opacity: 0; } 8% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+.funSlee { position: absolute; left: 110%; top: 8%; display: flex; gap: 2px; font-size: 26px; transform: scaleX(-1); animation: slee 8.5s linear forwards; } .funSlee b { font-size: 18px; margin-left: -18px; margin-top: -6px; }
+@keyframes slee { 0% { left: 110%; top: 12%; } 50% { top: 5%; } 100% { left: -40%; top: 10%; } }
+.funUfo { position: absolute; right: 12%; top: 16%; font-size: 40px; filter: drop-shadow(0 0 10px #7cf); animation: ufoIn 1.5s ease-out, ufoBob 2.4s ease-in-out 1.5s infinite alternate; transition: transform .6s ease-in, opacity .6s; }
+.funUfo.weg { transform: translate(200px, -300px) scale(.2) !important; opacity: 0; animation: none; } @keyframes ufoIn { from { transform: translate(120px, -120px) scale(.3); opacity: 0; } } @keyframes ufoBob { from { transform: translate(-20px, 0); } to { transform: translate(20px, -12px); } }
+body.warp #rijFun::before { content: ''; position: absolute; inset: -20%; background: repeating-conic-gradient(from 0deg at 50% 38%, rgba(255,255,255,.55) 0 .4deg, transparent .4deg 9deg); -webkit-mask: radial-gradient(circle at 50% 38%, transparent 8%, #000 40%); mask: radial-gradient(circle at 50% 38%, transparent 8%, #000 40%); animation: warp .35s linear infinite; }
+@keyframes warp { from { transform: scale(1); opacity: .9; } to { transform: scale(1.25); opacity: .4; } }
 /* v147 */
 .rijLimBord { width: 40px; height: 40px; border-radius: 50%; background: #fff; border: 5px solid #e3121b; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font: 800 15px var(--f-display); color: #111; box-shadow: 0 3px 8px rgba(0,0,0,.5); letter-spacing: -.5px; }
 .rijRotNr { display: flex; flex-direction: column; align-items: center; padding: 4px 14px; border-radius: 14px; background: rgba(10,108,150,.92); border: 2px solid #fff; color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.5); animation: rotZweef 1.6s ease-in-out infinite alternate; }
@@ -744,7 +764,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 <div id="rijFlits" aria-hidden="true"></div><div id="rijFinish" aria-hidden="true">🏁<b>AANGEKOMEN!</b></div><div id="rijVloek" aria-hidden="true">#@%&!</div><div id="rijPunten" aria-hidden="true"></div><div id="rijScore" aria-hidden="true" hidden></div><canvas id="rijSpiegel" width="400" height="120" hidden aria-hidden="true"></canvas><div id="rijMsiBord" hidden aria-hidden="true"></div><div id="rijTurbo" aria-hidden="true"></div><div id="rijMist" aria-hidden="true"></div>
 <div id="rijHand" aria-hidden="true"></div>
 <div id="rijPiek" aria-hidden="true"><svg viewBox="0 0 120 120"><rect x="10" y="22" width="100" height="86" rx="30" fill="#0d1117" stroke="#5ac8fa" stroke-width="5"/><path d="M14 52 Q60 40 106 52 L104 66 Q86 74 66 64 L54 64 Q34 74 16 66 Z" fill="#05070a"/><path d="M22 54 L34 52 L28 62 Z M70 54 L82 52 L76 62 Z" fill="#fff" opacity=".55"/><g id="rijPiekOog"><rect x="70" y="52" width="30" height="14" rx="6" fill="#05070a"/></g><path d="M44 88 Q60 98 78 86" stroke="#5ac8fa" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="50" y="6" width="20" height="18" rx="6" fill="#c8102e"/></svg></div>
-<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg class="dashBand" viewBox="0 0 400 170" preserveAspectRatio="none"><path d="M0 170 L0 112 Q200 66 400 112 L400 170 Z" fill="#111417"/><path d="M0 112 Q200 66 400 112" stroke="#2a2f35" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/></svg><svg class="dashWiel" viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><g class="dashMeter" transform="translate(75 150)"><path d="M-34 0 A34 34 0 0 1 34 0 Z" fill="#0b0d10" stroke="#30363d" stroke-width="2"/><g id="rijMeterLim" style="transform: rotate(-90deg)"><line x1="0" y1="-24" x2="0" y2="-33" stroke="#ff453a" stroke-width="3"/></g><g id="rijNaald" style="transform: rotate(-90deg); transition: transform 1s linear"><line x1="0" y1="2" x2="0" y2="-29" stroke="#ffd60a" stroke-width="2.5" stroke-linecap="round" id="rijNaaldL"/></g><circle r="3.5" fill="#c8ccd0"/><text y="-9" text-anchor="middle" fill="#5ac8fa" font-size="11" font-weight="700" font-family="sans-serif" id="rijStuurKmu">0</text></g><g id="rijWielPos" transform="translate(170 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg><div id="rijWissers"><div id="rijDruppels"></div><i></i><i></i></div><i class="knip" id="rijKnipL">◀</i><i class="knip" id="rijKnipR">▶</i><div id="rijKoplamp"></div></div><div id="rijSnel" hidden><b id="rijSnelLim"></b><span id="rijSnelV">0</span><small>km/u</small></div><div id="rijZon" hidden></div><div id="rijSeizoen" aria-hidden="true"></div><div id="rijBliksem" aria-hidden="true"></div><div id="rijBalk" aria-label="Wat komt eraan" hidden><span class="rbKop" id="rbKop"></span><div class="rbBaan" id="rbBaan"></div><span class="rbIk">▲</span></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small><div id="rijStroken" hidden></div></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijFav" class="rzFav"></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
+<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg class="dashBand" viewBox="0 0 400 170" preserveAspectRatio="none"><path d="M0 170 L0 112 Q200 66 400 112 L400 170 Z" fill="#111417"/><path d="M0 112 Q200 66 400 112" stroke="#2a2f35" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/></svg><svg class="dashWiel" viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><g class="dashMeter" transform="translate(75 150)"><path d="M-34 0 A34 34 0 0 1 34 0 Z" fill="#0b0d10" stroke="#30363d" stroke-width="2"/><g id="rijMeterLim" style="transform: rotate(-90deg)"><line x1="0" y1="-24" x2="0" y2="-33" stroke="#ff453a" stroke-width="3"/></g><g id="rijNaald" style="transform: rotate(-90deg); transition: transform 1s linear"><line x1="0" y1="2" x2="0" y2="-29" stroke="#ffd60a" stroke-width="2.5" stroke-linecap="round" id="rijNaaldL"/></g><circle r="3.5" fill="#c8ccd0"/><text y="-9" text-anchor="middle" fill="#5ac8fa" font-size="11" font-weight="700" font-family="sans-serif" id="rijStuurKmu">0</text></g><g id="rijWielPos" transform="translate(170 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg><div id="rijWissers"><div id="rijDruppels"></div><i></i><i></i></div><i class="knip" id="rijKnipL">◀</i><i class="knip" id="rijKnipR">▶</i><div id="rijKoplamp"></div></div><div id="rijSnel" hidden><b id="rijSnelLim"></b><span id="rijSnelV">0</span><small>km/u</small></div><div id="rijZon" hidden></div><div id="rijFun" aria-hidden="true"></div><div id="rijSeizoen" aria-hidden="true"></div><div id="rijBliksem" aria-hidden="true"></div><div id="rijBalk" aria-label="Wat komt eraan" hidden><span class="rbKop" id="rbKop"></span><div class="rbBaan" id="rbBaan"></div><span class="rbIk">▲</span></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small><div id="rijStroken" hidden></div></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijFav" class="rzFav"></div><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
 <button id="carRit" class="rijRond rijWeg" type="button">🏁 Rit klaar</button>
 <button id="carSpel" type="button">🎲 Spel</button>
 <div id="spel" hidden role="dialog" aria-label="Spelletjes">
@@ -4835,7 +4855,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v149';
+  var VERSION = 'v150';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8907,7 +8927,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   /* Alle animaties testen. Rij-animaties krijgen een nep-snelheid, stilstaan-animaties zetten de snelheid op 0. Alleen met de GPS uit (of stilstaand). */
   (function () {
     var sel = $('gagTest'); if (!sel) return;
-    var extra = [['__vlag', '0→100 met vlag (de echte show)'], ['__fpregen', '🎮 Eerste persoon: regen op de ruit'], ['__fpmist', '🎮 Eerste persoon: mist'], ['__fpturbo', '🎮 Eerste persoon: turbo + naald in het rood'], ['__fpknipper', '🎮 Eerste persoon: knipperlicht']];
+    var extra = [['__vlag', '0→100 met vlag (de echte show)'], ['__fpregen', '🎮 Eerste persoon: regen op de ruit'], ['__fpmist', '🎮 Eerste persoon: mist'], ['__fpturbo', '🎮 Eerste persoon: turbo + naald in het rood'], ['__fpknipper', '🎮 Eerste persoon: knipperlicht'], ['__fpeend', '🎮 Eendjes steken over'], ['__fppoep', '🎮 Vogelpoep + wissers'], ['__fpmug', '🎮 Muggen op de ruit'], ['__fpster', '🎮 Vallende ster'], ['__fpregenboog', '🎮 Regenboog'], ['__fprendier', '🎮 Kerstrendieren'], ['__fpufo', '🎮 UFO'], ['__fpwarp', '🎮 Warp-sterren']];
     /* pas vullen als alle animaties geladen zijn (sommige staan verderop in de code) */
     setTimeout(function () {
     var lijst = Object.keys(GAGS).map(function (k) { var d = GAGS[k]; return [k, d.name + (d.drive && !d.idle ? ' (rijden)' : !d.drive ? ' (stilstaan)' : '')]; })
@@ -10001,7 +10021,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     /* v139: eerste persoon: binnenspiegel, snelheidsmeter met naald, knipperlicht, regendruppels, turbo en mist */
     var fpT = { soort: '', tot: 0 }, spoor = [], knipT = 0, knipAan = '';
     function fpTest(k) { return fpT.soort === k && Date.now() < fpT.tot; }
-    window.__fpTest = function (k) { fpT = { soort: k, tot: Date.now() + 15000 }; if (st.kijk !== 2 || !st.aan) { toast('Zet de kaart aan en tik op 🎮 (eerste persoon), dan zie je het.'); return; } toast('🎮 Test: ' + k + ' (15 s)');
+    window.__fpTest = function (k) { fpT = { soort: k, tot: Date.now() + 15000 }; if (st.kijk !== 2 || !st.aan) { toast('Zet de kaart aan en tik op 🎮 (eerste persoon), dan zie je het.'); return; } toast('🎮 Test: ' + k + ' (15 s)'); if (window.__fun && /^(eend|poep|mug|ster|regenboog|rendier|ufo|warp)$/.test(k)) { $('rijStuur').hidden = false; window.__fun(k); return; }
       if (!lastPos) {   /* geen GPS: dan zelf even het effect laten zien */
         $('rijStuur').hidden = false; if (k === 'regen') document.body.classList.add('regen'); if (k === 'mist') document.body.classList.add('mist');
         if (k === 'turbo') { var tb = $('rijTurbo'); tb.classList.remove('op'); void tb.offsetWidth; tb.classList.add('op'); var nd = $('rijNaald'); if (nd) nd.style.transform = 'rotate(36deg)'; }
@@ -10148,6 +10168,38 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var d = gdist(p.lat, p.lon, th.lat, th.lon); if (d > 1500) ex2.thuisWeg = true;
       if (ex2.thuisWeg && d < 200) { ex2.thuisWeg = false; try { setEv('excited', 5, 'Thuis! Lekker gereden.'); } catch (e) {} try { beep('pet'); } catch (e) {} toast('🏠 Welkom thuis!'); var fi = $('rijFinish'); if (fi) { fi.classList.add('op'); setTimeout(function () { fi.classList.remove('op'); }, 3000); } }
     }
+    /* v150: gekke dingen in eerste persoon */
+    var fun = { t: {}, wasRegen: false, regenUitT: 0 };
+    function funEl(cls, html, ms) { var c = $('rijFun'); if (!c) return null; var e = document.createElement('div'); e.className = cls; e.innerHTML = html || ''; c.appendChild(e); setTimeout(function () { e.remove(); }, ms); return e; }
+    function funZeg(m) { try { setEv('excited', 3, m); } catch (e) {} try { toast(m); } catch (e) {} }
+    function wis(ms) { document.body.classList.add('wis'); clearTimeout(wis.t); wis.t = setTimeout(function () { document.body.classList.remove('wis'); }, ms || 3000); }
+    var FUN = {
+      eend: function () { var e = funEl('funEend', '<span>🦆</span><span>🐤</span><span>🐤</span><span>🐤</span>', 9000); funZeg('Eendjes! Even remmen… 🦆'); },
+      poep: function () { var e = funEl('funPoep', '', 7000); funZeg(pick(['Bah! Vogelpoep! Wissers aan…', 'Nee hè, precies op de ruit!', 'Die meeuw had het op ons gemunt.'])); setTimeout(function () { wis(3200); if (e) e.classList.add('weg'); }, 1800); },
+      mug: function () { var n = 1 + Math.floor(Math.random() * 3); for (var i = 0; i < n; i++) { var e = funEl('funMug', '', 45000); if (e) { e.style.left = (12 + Math.random() * 76) + '%'; e.style.top = (14 + Math.random() * 40) + '%'; e.style.transform = 'rotate(' + Math.round(Math.random() * 360) + 'deg) scale(' + (.7 + Math.random() * .6).toFixed(2) + ')'; } } if (Math.random() < .4) funZeg('Splets. Weer een mug.'); },
+      ster: function () { var e = funEl('funSter', '', 2500); if (e) { e.style.left = (15 + Math.random() * 50) + '%'; e.style.top = (4 + Math.random() * 14) + '%'; } setTimeout(function () { funZeg(pick(['Een vallende ster! Ik doe een wens… ✨', 'Zag je dat? Snel een wens doen!', 'Ster! Ik wens… dat het groen blijft bij de stoplichten.'])); }, 900); },
+      regenboog: function () { funEl('funBoog', '', 60000); funZeg('Kijk, een regenboog! 🌈'); },
+      rendier: function () { funEl('funSlee', '<span>🦌</span><span>🦌</span><span>🛷</span><b>🎅</b>', 9000); setTimeout(function () { funZeg('Ho ho ho! Was dat nou… de Kerstman?!'); }, 2500); },
+      ufo: function () { var e = funEl('funUfo', '🛸', 22000); fun.ufo = e; funZeg(pick(['Eh… zie jij dat ook?', 'Een UFO rijdt met ons mee!', 'We worden gevolgd…'])); setTimeout(function () { if (fun.ufo === e) fun.ufo = null; }, 22000); },
+      warp: function () { document.body.classList.add('warp'); setTimeout(function () { document.body.classList.remove('warp'); }, 15000); }
+    };
+    window.__fun = function (k) { if (FUN[k]) FUN[k](); };
+    function funToet() { document.querySelectorAll('#rijFun .funEend').forEach(function (e) { e.classList.add('ren'); }); }
+    function funKlaar(k, minMin, maxMin) { var nu = Date.now(); if (!fun.t[k]) { fun.t[k] = nu + (minMin + Math.random() * (maxMin - minMin)) * 60e3 * .5; return false; } if (nu < fun.t[k]) return false; fun.t[k] = nu + (minMin + Math.random() * (maxMin - minMin)) * 60e3; return true; }
+    function funStap(p, sp, fp) {
+      if (!fp) { document.body.classList.remove('warp'); return; }
+      var d = new Date(), h = d.getHours(), m = d.getMonth(), nacht = document.body.classList.contains('nacht'), regen = document.body.classList.contains('regen'), ond = window.__ondeugend && window.__ondeugend();
+      if (sp > 15 && sp < 60 && funKlaar('eend', 8, 16)) FUN.eend();
+      if (sp > 20 && funKlaar('poep', 15, 28)) FUN.poep();
+      if (m >= 5 && m <= 7 && h >= 19 && h <= 22 && sp > 40 && funKlaar('mug', 3, 7)) FUN.mug();
+      if (nacht && funKlaar('ster', 4, 9)) FUN.ster();
+      if (fun.wasRegen && !regen && !nacht) FUN.regenboog(); fun.wasRegen = regen;
+      if (m === 11 && funKlaar('rendier', 10, 20)) FUN.rendier();
+      if (sp > 30 && funKlaar('ufo', 18, 35)) FUN.ufo();
+      if (fun.ufo && S.cam && S.cam.dist != null && S.cam.dist < 800 && !fun.ufo.classList.contains('weg')) { fun.ufo.classList.add('weg'); funZeg('De UFO schrok van de flitser en is weg! 🛸💨'); }
+      document.body.classList.toggle('warp', !!(ond && sp > 120) || (document.body.classList.contains('warp') && sp > 110));
+      if (regen) document.querySelectorAll('#rijFun .funMug').forEach(function (e) { e.remove(); });
+    }
     function extraStap(p, sp, fp, Nv, dk) {
       var boven = st.kijk === 1;
       try { chevZet(p, Nv, st.kijk !== 1); } catch (e) {}
@@ -10163,6 +10215,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       try { laadZet(p, fp); } catch (e) {}
       try { seizoenZet(fp); } catch (e) {}
       try { thuisZet(p); } catch (e) {}
+      try { funStap(p, sp, fp); } catch (e) {}
       var lim = S.cam && S.cam.dist != null && S.cam.dist < 600 && S.cam.limit ? S.cam.limit : S.roadLim; document.body.classList.toggle('teHard', !!(lim && sp > lim + 3));
     }
     function fpExtra(p, sp, fp, Nv) {
@@ -10278,7 +10331,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     /* v119: gekke dingen in eerste persoon */
     function buddyPiek() { var b = $('rijPiek'); b.classList.add('op'); setTimeout(function () { b.classList.add('knip'); }, 1300); setTimeout(function () { b.classList.remove('knip'); }, 1650); setTimeout(function () { b.classList.remove('op'); }, 2900); }
     window.__buddyPiek = buddyPiek;
-    function toeter() { if (sound && ac && meldModus !== 'stil') { try { [[392, 0], [494, .02]].forEach(function (x) { var o = ac.createOscillator(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.value = x[0]; g.gain.setValueAtTime(.0001, ac.currentTime); g.gain.exponentialRampToValueAtTime(.12, ac.currentTime + .03); g.gain.setValueAtTime(.12, ac.currentTime + .45); g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + .6); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + .65); }); } catch (e) {} }
+    function toeter() { try { funToet(); } catch (e) {} if (sound && ac && meldModus !== 'stil') { try { [[392, 0], [494, .02]].forEach(function (x) { var o = ac.createOscillator(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.value = x[0]; g.gain.setValueAtTime(.0001, ac.currentTime); g.gain.exponentialRampToValueAtTime(.12, ac.currentTime + .03); g.gain.setValueAtTime(.12, ac.currentTime + .45); g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + .6); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + .65); }); } catch (e) {} }
       var k = $('rijKaart'); k.classList.remove('toeter'); void k.offsetWidth; k.classList.add('toeter'); }
     $('rijGebKnop').addEventListener('click', function () { var g = $('rijGebaren'); g.classList.toggle('open'); $('rijGebKnop').classList.toggle('aan', g.classList.contains('open')); clearTimeout(this._t); this._t = setTimeout(function () { g.classList.remove('open'); $('rijGebKnop').classList.remove('aan'); }, 8000); });
     document.querySelectorAll('#rijGebaren button:not(#rijGebKnop)').forEach(function (b) { b.addEventListener('click', function () {
