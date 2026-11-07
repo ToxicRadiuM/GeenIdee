@@ -37,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 91;   // v91: popcorn, bowling, papieren vliegtuigje, goocheltruc, DJ en selfie   // v90: reageert meer op geluid (3x klappen = dansje, wakker schrikken, 'hoi' als je gaat praten), 12 nieuwe animaties die uit het scherm komen, nieuwe geluidjes   // v89: groter tikvlak voor zijn ogen, 7 nieuwe thuis-animaties   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
+static const int FW_VERSIE = 92;   // v92: aan de pc nooit diep slapen (dan blijft klappen werken), op tafel pas na een uur   // v91: popcorn, bowling, papieren vliegtuigje, goocheltruc, DJ en selfie   // v90: reageert meer op geluid (3x klappen = dansje, wakker schrikken, 'hoi' als je gaat praten), 12 nieuwe animaties die uit het scherm komen, nieuwe geluidjes   // v89: groter tikvlak voor zijn ogen, 7 nieuwe thuis-animaties   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
 static uint32_t schaapT = 0, streepTot = 0; static int klokKwartier = -1;   // v87: duidelijkere kaart (lichtere wegen met rand, snelweg oranje, files rood, raster, noordpijl)
 // v86: kookwekker (menu TIMER), schudden = dobbelsteen of magische 8-bal, boos op zijn kop, nachtlampje met klok, hij mist je
 static uint32_t timerTot = 0, timerLen = 0, timerAlarmT = 0, nachtKlokTot = 0; static uint8_t timerMin = 10, timerFase = 0, timerAlarmN = 0; static bool gemist = false; static int8_t schudUitkomst = 0;
@@ -2084,7 +2084,7 @@ static void slaapStap() {
   if (v > 3 || fabsf(pushZ) > .12f || hop > .5f || !laatsteActie) laatsteActie = nu;
   // v26: deur dicht en daarna stil (en je telefoon niet meer verbonden) = je bent uitgestapt -> uit
   bool geparkeerd = !ok || v < 1;
-  if (geparkeerd && laatsteDeur && nu - laatsteDeur > 60000 && nu - laatsteDeur < 120000 && nu - laatsteBeweging > 45000
+  if (geparkeerd && !Serial.isPlugged() && laatsteDeur && nu - laatsteDeur > 60000 && nu - laatsteDeur < 120000 && nu - laatsteBeweging > 45000
       && nu - laatsteActie > 45000 && !bleConnected && !menuOpen && otaPct < 0) {
     static uint32_t afscheidT = 0;   // v42: eerst even zwaaien
     if (!afscheidT) { afscheidT = nu; static char tt[44]; char nm[20]; naamDeel(nm, sizeof nm); int hh = -1, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
@@ -2092,7 +2092,8 @@ static void slaapStap() {
       snprintf(tt, sizeof tt, w, nm); startGag(22); gagMsg = tt; playGeluid((hh >= 22 || hh < 5) ? GL_SLAAP : GL_HOI); }
     else if (nu - afscheidT > 3200) { afscheidT = 0; diepSlapen("deur dicht en daarna stil"); }
   }
-  if (geparkeerd && nu - laatsteActie > 10UL * 60000 && nu - laatsteBeweging > 60000 && !menuOpen && otaPct < 0) diepSlapen("10 minuten niets");
+  { bool aanPc = Serial.isPlugged(); uint32_t wacht = robotModus ? 60UL * 60000 : 10UL * 60000;   // v92: aan de pc (usb-verbinding) nooit, als robotje op tafel pas na een uur
+    if (geparkeerd && !aanPc && nu - laatsteActie > wacht && nu - laatsteBeweging > 60000 && !menuOpen && otaPct < 0) diepSlapen(robotModus ? "een uur niets op tafel" : "10 minuten niets"); }
   bool moetSlapen = nu - laatsteActie > 3UL * 60000 && !menuOpen;   // 3 minuten niks = dommelen (scherm zacht)
   if (moetSlapen && !slaapt) { if (!schaapT) schaapT = nu; if (nu - schaapT < 4500) moetSlapen = false; } else if (!moetSlapen) schaapT = 0;   // v88: eerst een schaapje over zijn hoofd
   if (moetSlapen != slaapt) { slaapt = moetSlapen; if (!slaapt) { mood = STARTLED; lastMood = -1; idleMoodUntilMs = nu + 1500; } }
