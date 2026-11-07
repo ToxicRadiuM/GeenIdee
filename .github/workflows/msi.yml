@@ -1,0 +1,42 @@
+# Buddy: elke 10 minuten de matrixborden boven de snelweg (NDW) omzetten naar een klein lijstje.
+# Het lijstje komt op branch "msi" (elke keer helemaal vervangen); de app haalt het op via raw.githubusercontent.com.
+name: Matrixborden bijwerken
+
+on:
+  schedule:
+    - cron: '*/10 5-22 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: msi
+  cancel-in-progress: true
+
+jobs:
+  msi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: tools/msi.py
+      - uses: actions/cache@v4
+        with:
+          path: msi_locaties.json
+          key: msi-loc-${{ github.run_id }}
+          restore-keys: msi-loc-
+      - run: pip install pyshp pyproj
+      - run: mkdir -p uit && python tools/msi.py uit/msi.json msi_locaties.json
+      - name: Publiceren op branch msi
+        run: |
+          cd uit
+          git init -q && git checkout -q -b msi && git add -A
+          git -c user.name="Buddy-bot" -c user.email="buddy-bot@users.noreply.github.com" commit -q -m "Matrixborden $(date -u +%H:%M)"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" msi
