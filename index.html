@@ -3767,15 +3767,19 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       ms.items = msGroepeer(j); ms.arr = ms.items; ms.t = T; ms.bron = j.t || 0;
       var sp = ms.items.filter(function (g) { return g.s != null; }).length, kr = ms.items.filter(function (g) { return g.x > 0 || g.a > 0; }).length, d = new Date((j.t || 0) * 1000), oud = Math.round(Date.now() / 60e3 - (j.t || 0) / 60);
       var el = $('msiStat'); if (el) el.textContent = 'Matrixborden: ' + sp + ' met snelheid, ' + kr + ' met kruis of pijl in heel Nederland. Stand van ' + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes() + '.';
-      lg('matrix geladen: ' + sp + ' snelheid, ' + kr + ' kruis/pijl (' + oud + ' min oud)');
+      lg('matrix geladen: ' + sp + ' snelheid, ' + kr + ' kruis/pijl (' + oud + ' min oud' + (oud > MSI_VERS ? ', te oud: Buddy gebruikt ze niet' : '') + ')');
+      if (el && oud > MSI_VERS) el.textContent += ' Te oud (' + oud + ' min), dus Buddy waarschuwt er niet voor: hij gebruikt ze alleen als ze minder dan ' + MSI_VERS + ' minuten oud zijn.';
     }).catch(function (e) { ms.fail = T; lg('FOUT matrix ' + (e.message || e)); var el = $('msiStat'); if (el) el.textContent = 'Matrixborden laden mislukt (' + (e.message || e) + ').'; }).then(function () { ms.busy = false; });
   }
-  window.__msiItems = function () { return T - ms.t < 1200 ? ms.items : []; };
+  var MSI_VERS = 5;   /* v157: matrixborden alleen gebruiken als de gegevens minder dan 5 minuten oud zijn (ze waren vaak 20-30 min oud) */
+  function msVers() { return ms.bron && (Date.now() / 1000 - ms.bron) / 60 <= MSI_VERS; }
+  window.__msiItems = function () { return T - ms.t < 1200 && msVers() ? ms.items : []; };
   window.__msiLaad = function () { if (!ms.busy && T - ms.t > 240 && T - ms.fail > 120) msLoad(); };
   function msFix(lat, lon, acc) {
     var on = $('msiOn'); if (on && !on.checked) return;
     window.__msiLaad(); if (!ms.arr || acc >= 60 || S.liveSpeed < 30) return;
     var hdg = ndwHdg; if (hdg == null || T - ms.t > 600) return;
+    if (!msVers()) { if (msHold) { msHold = null; lg('matrixlimiet losgelaten: gegevens te oud'); } return; }
     var best = null;
     ms.items.forEach(function (g) {
       var d = gdist(lat, lon, g.lat, g.lon), pv = ms.prev[g.k]; ms.prev[g.k] = d;
@@ -4973,12 +4977,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   /* ---------- Testlog (zonder locatie) ---------- */
   var LOGKEY = 'dashboardmaatje-log-v1', logs = [], logT = 0, logSave = 0;
   try { logs = JSON.parse(localStorage.getItem(LOGKEY)) || []; } catch (e) { logs = []; }
+  try { logs.forEach(function (x) { x.m = String(x.m).replace(/\b(5[0-3]|[3-7])\.(\d{2})\d{2,}\b/g, '$1.$2'); }); } catch (e) {}   /* v157: ook oude regels afronden */
   function lg(m) {
-    logs.push({ t: Date.now(), m: String(m).slice(0, 200) });
+    m = String(m).replace(/\b(5[0-3]|[3-7])\.(\d{2})\d{2,}\b/g, '$1.$2');   /* v157: coördinaten in het logboek afgerond op ~1 km (privacy) */
+    logs.push({ t: Date.now(), m: m.slice(0, 200) });
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v156';
+  var VERSION = 'v157';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {

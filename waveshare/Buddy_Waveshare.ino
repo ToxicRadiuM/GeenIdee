@@ -37,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 95;   // v95: luistert echt mee als je praat, 'ik ben al wakker', handen over zijn oren bij herrie, schrikreactie, fluistert 's nachts, mist de muziek, kletspraatje   // v94: hoort zijn eigen geluidjes niet meer als klappen (geen hartjes-chaos meer), niks meer door elkaar, rustiger stemmingen, 8 nieuwe bureau-animaties   // v93: menu SPEL (reactiespel, Simon zegt, ademhalen, stats), feesthoedje als een collega jarig is   // v92: aan de pc nooit diep slapen (dan blijft klappen werken), op tafel pas na een uur   // v91: popcorn, bowling, papieren vliegtuigje, goocheltruc, DJ en selfie   // v90: reageert meer op geluid (3x klappen = dansje, wakker schrikken, 'hoi' als je gaat praten), 12 nieuwe animaties die uit het scherm komen, nieuwe geluidjes   // v89: groter tikvlak voor zijn ogen, 7 nieuwe thuis-animaties   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
+static const int FW_VERSIE = 96;   // v96: coördinaten in het logboek afgerond op ~1 km (privacy)   // v95: luistert echt mee als je praat, 'ik ben al wakker', handen over zijn oren bij herrie, schrikreactie, fluistert 's nachts, mist de muziek, kletspraatje   // v94: hoort zijn eigen geluidjes niet meer als klappen (geen hartjes-chaos meer), niks meer door elkaar, rustiger stemmingen, 8 nieuwe bureau-animaties   // v93: menu SPEL (reactiespel, Simon zegt, ademhalen, stats), feesthoedje als een collega jarig is   // v92: aan de pc nooit diep slapen (dan blijft klappen werken), op tafel pas na een uur   // v91: popcorn, bowling, papieren vliegtuigje, goocheltruc, DJ en selfie   // v90: reageert meer op geluid (3x klappen = dansje, wakker schrikken, 'hoi' als je gaat praten), 12 nieuwe animaties die uit het scherm komen, nieuwe geluidjes   // v89: groter tikvlak voor zijn ogen, 7 nieuwe thuis-animaties   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
 static uint32_t schaapT = 0, streepTot = 0, collegaJarigTot = 0, slaapUitT = 0, hmhmTot = 0; static uint8_t spel = 0; static bool slaapt = false; static const char *hmhmTxt = "hmhm"; static int klokKwartier = -1;   // v87: duidelijkere kaart (lichtere wegen met rand, snelweg oranje, files rood, raster, noordpijl)
 // v86: kookwekker (menu TIMER), schudden = dobbelsteen of magische 8-bal, boos op zijn kop, nachtlampje met klok, hij mist je
 static uint32_t timerTot = 0, timerLen = 0, timerAlarmT = 0, nachtKlokTot = 0; static uint8_t timerMin = 10, timerFase = 0, timerAlarmN = 0; static bool gemist = false; static int8_t schudUitkomst = 0;
@@ -104,6 +104,12 @@ static void logRegel(const char *fmt, ...) {
   char buf[200]; va_list ap; va_start(ap, fmt);
   uint32_t s0 = millis() / 1000; int n = snprintf(buf, sizeof buf, "[%02lu:%02lu:%02lu] ", (unsigned long)(s0 / 3600), (unsigned long)(s0 / 60 % 60), (unsigned long)(s0 % 60));
   vsnprintf(buf + n, sizeof buf - n, fmt, ap); va_end(ap);
+  { char *w = buf; for (char *r = buf; *r; ) {   // v96: getallen als 51.99591 of 4.77715 (coördinaten in NL) worden 51.99 / 4.77
+      if (isdigit((unsigned char)*r) && (r == buf || !isdigit((unsigned char)r[-1]))) { char *p = r; int ip = 0, nd = 0; while (isdigit((unsigned char)*p)) { ip = ip * 10 + (*p - '0'); p++; nd++; }
+        if (*p == '.' && nd <= 2 && ((ip >= 3 && ip <= 7) || (ip >= 50 && ip <= 53))) { char *q = p + 1; int dec = 0; while (isdigit((unsigned char)q[dec])) dec++;
+          if (dec >= 4) { while (r < p + 3) *w++ = *r++; r = q + dec; continue; } } }
+      *w++ = *r++; }
+    *w = 0; }
   Serial.println(buf);
   if (!logFs || !logMutex || xSemaphoreTake(logMutex, pdMS_TO_TICKS(50)) != pdTRUE) return;
   File f = logFs->open(LOGF, FILE_APPEND);
