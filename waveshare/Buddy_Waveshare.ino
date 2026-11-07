@@ -37,7 +37,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 84;
+static const int FW_VERSIE = 85;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
 static volatile int doeOpdracht = 0;     // v52: DOE:... vanuit de app (1 koekje, 2 focus, 3 weer, 4 zwaai)
 // v48: robotje voor op tafel
@@ -1161,6 +1161,9 @@ static uint8_t kaartStand = 0; static uint32_t kaartGezichtTot = 0, kaartOvergan
 static uint8_t *rtFile = nullptr;   // v81: 1 = dit stukje route ligt in een file (rood)
 struct BlItem { char s; int16_t a, b; }; static BlItem blItems[20]; static volatile int blN = 0; static int blLang = 0; static uint32_t blT = 0;   // v84: de boog (wat komt eraan)
 static int tjAvg = 0, tjLim = 0, tjRest = 0; static float tjFrac = 0; static uint32_t tjT = 0;   // v84: trajectcontrole van de app
+static char nvNaam[26] = "", nvEta[6] = ""; static int nvRest = -1; static uint32_t nvT = 0;   // v85: straat van de volgende afslag, resterende afstand (100 m) en aankomsttijd
+struct StapPt { float lat, lon; char c; }; static StapPt *stA = nullptr, *stB = nullptr, *stappen = nullptr; static volatile int stapN = 0; static int stNieuwN = 0; static bool stBezig = false;   // v85: afslagen en rotondes op de route
+static const int AW_MAX = 900; static float *awA = nullptr, *awB = nullptr, *awPt = nullptr; static uint8_t *awFA = nullptr, *awFB = nullptr, *awF = nullptr; static volatile int awN = 0; static int awNieuwN = 0; static bool awBezig = false;   // v85: wegen om je heen van de app (bit 1 = begin van een weg, bit 2 = grote weg)
 struct AppCam { float lat, lon; int16_t lim; uint8_t type; }; static AppCam *acA = nullptr, *acB = nullptr, *appCams = nullptr; static volatile int appCamN = 0; static int acNieuwN = 0; static bool acBezig = false;   // v81: flitsers van de app   // v77: twee handjes trekken het gezicht opzij   // 0 = gezicht, 1 = kaart; na tikken naar het gezicht even geen automatische kaart
 // v72: eigen geluidje voor de sterren-show (komt van de app, bewaard in /sterren.raw: 8 kHz, 8 bit, max 7,5 s)
 static uint8_t *sterBuf = nullptr; static uint32_t sterLen = 0; static uint8_t *sndNieuw = nullptr; static uint32_t sndNieuwLen = 0, sndOntv = 0; static volatile uint8_t sndAntw = 0;
@@ -1184,7 +1187,7 @@ static void parsePhone(char *line) {
     if (a[0] == 'B') { rtNieuwN = 0; rtBezig = true; }
     else if (a[0] == 'P' && rtBezig) { const char *q = a + 2; while (*q && rtNieuwN < RT_MAX) { char *e; float la = strtof(q, &e); if (*e != ',') break; float lo = strtof(e + 1, &e); doel[rtNieuwN * 2] = la; doel[rtNieuwN * 2 + 1] = lo; rtNieuwN++; if (*e == ';') q = e + 1; else break; } }
     else if (a[0] == 'E' && rtBezig) { rtBezig = false; if (rtNieuwN >= 2) { rtPt = doel; rtN = rtNieuwN; if (rtFile) memset(rtFile, 0, RT_MAX); logRegel("route ontvangen: %d punten", rtNieuwN); } }
-    else if (a[0] == 'X') { rtN = 0; rtBezig = false; kaartStand = 0; logRegel("route gestopt"); }
+    else if (a[0] == 'X') { rtN = 0; rtBezig = false; kaartStand = 0; stapN = 0; nvT = 0; logRegel("route gestopt"); }
     else if (a[0] == 'F') { if (!rtFile) rtFile = (uint8_t *)ps_malloc(RT_MAX); if (rtFile) { memset(rtFile, 0, RT_MAX); const char *q = a + 2; int nf = 0;   // v81: file-stukken
         while (*q) { char *e; long x = strtol(q, &e, 10); if (*e != '-') break; long y = strtol(e + 1, &e, 10); for (long k = x; k <= y && k < RT_MAX; k++) if (k >= 0) rtFile[k] = 1; nf++; if (*e == ';') q = e + 1; else break; }
         if (nf) logRegel("route: %d stukken met file", nf); } }
@@ -1195,6 +1198,26 @@ static void parsePhone(char *line) {
     blN = n; blT = millis(); return; }
   if (pinOk && !strncmp(line, "TJ:", 3)) {   // v84: TJ:<gem>|<limiet>|<rest in 100 m>|<voortgang promille> of TJ:X
     if (line[3] == 'X') { tjT = 0; return; } char *q; tjAvg = strtol(line + 3, &q, 10); if (*q == '|') tjLim = strtol(q + 1, &q, 10); if (*q == '|') tjRest = strtol(q + 1, &q, 10); if (*q == '|') tjFrac = strtol(q + 1, &q, 10) / 1000.f; tjT = millis(); return; }
+  if (pinOk && !strncmp(line, "NV:", 3)) {   // v85: NV:<straat>|<rest in 100 m>|<HH:MM> of NV:X
+    if (line[3] == 'X' && !line[4]) { nvT = 0; nvNaam[0] = 0; return; }
+    char *q = strchr(line + 3, '|'); if (q) *q = 0; strncpy(nvNaam, line + 3, sizeof nvNaam - 1); nvNaam[sizeof nvNaam - 1] = 0;
+    if (q) { char *e; nvRest = strtol(q + 1, &e, 10); if (*e == '|') { strncpy(nvEta, e + 1, 5); nvEta[5] = 0; } } nvT = millis(); return; }
+  if (pinOk && !strncmp(line, "ST:", 3)) {   // v85: ST:B, ST:P|lat,lon,c;..., ST:E
+    if (!stA) { stA = (StapPt *)ps_malloc(80 * sizeof(StapPt)); stB = (StapPt *)ps_malloc(80 * sizeof(StapPt)); } if (!stA || !stB) return;
+    StapPt *doel = (stappen == stA) ? stB : stA; const char *a = line + 3;
+    if (a[0] == 'B') { stNieuwN = 0; stBezig = true; }
+    else if (a[0] == 'P' && stBezig) { const char *q = a + 2; while (*q && stNieuwN < 80) { char *e; float la = strtof(q, &e); if (*e != ',') break; float lo = strtof(e + 1, &e); if (*e != ',') break; doel[stNieuwN].lat = la; doel[stNieuwN].lon = lo; doel[stNieuwN].c = e[1] ? e[1] : 'S'; stNieuwN++; e += 2; if (*e == ';') q = e + 1; else break; } }
+    else if (a[0] == 'E' && stBezig) { stBezig = false; stappen = doel; stapN = stNieuwN; }
+    return; }
+  if (pinOk && !strncmp(line, "WG:", 3)) {   // v85: WG:B, WG:W|<limiet>|lat,lon;..., WG:E
+    if (!awA) { awA = (float *)ps_malloc(AW_MAX * 2 * sizeof(float)); awB = (float *)ps_malloc(AW_MAX * 2 * sizeof(float)); awFA = (uint8_t *)ps_malloc(AW_MAX); awFB = (uint8_t *)ps_malloc(AW_MAX); }
+    if (!awA || !awB || !awFA || !awFB) return;
+    bool opA = (awPt != awA); float *doel = opA ? awA : awB; uint8_t *fl = opA ? awFA : awFB; const char *a = line + 3;
+    if (a[0] == 'B') { awNieuwN = 0; awBezig = true; }
+    else if (a[0] == 'W' && awBezig) { char *e; long lim = strtol(a + 2, &e, 10); if (*e != '|') return; const char *q = e + 1; bool eerste = true;
+      while (*q && awNieuwN < AW_MAX) { float la = strtof(q, &e); if (*e != ',') break; float lo = strtof(e + 1, &e); doel[awNieuwN * 2] = la; doel[awNieuwN * 2 + 1] = lo; fl[awNieuwN] = (eerste ? 1 : 0) | (lim >= 80 ? 2 : 0); eerste = false; awNieuwN++; if (*e == ';') q = e + 1; else break; } }
+    else if (a[0] == 'E' && awBezig) { awBezig = false; awPt = doel; awF = fl; awN = awNieuwN; }
+    return; }
   if (pinOk && !strncmp(line, "FL:", 3)) {   // v81: flitsers om je heen van de app (B, P = lat,lon,lim,type;..., E)
     if (!acA) { acA = (AppCam *)ps_malloc(320 * sizeof(AppCam)); acB = (AppCam *)ps_malloc(320 * sizeof(AppCam)); } if (!acA || !acB) return;
     AppCam *doel = (appCams == acA) ? acB : acA; const char *a = line + 3;
@@ -2719,10 +2742,18 @@ static void drawKaart() {
     for (int k = 0; k < g.n; k++) { float la = pt[k * 2], lo = pt[k * 2 + 1];
       if (fabsf(la - lat) > dla || fabsf(lo - lon) > dlo) { pv = false; continue; }
       float x, y; proj(la, lo, x, y); if (pv && (binnen(x, y) || binnen(px, py))) dikLijn(px, py, x, y, br, kl); px = x; py = y; pv = true; } }
+  if ((!wegen || !wegPt || !wegN) && awPt && awF) { float px = 0, py = 0; bool pv = false; int n = awN;   // v85: wegen om je heen van de app
+    for (int k = 0; k < n; k++) { float la = awPt[k * 2], lo = awPt[k * 2 + 1]; if (awF[k] & 1) pv = false; if (fabsf(la - lat) > dla || fabsf(lo - lon) > dlo) { pv = false; continue; }
+      float x, y; proj(la, lo, x, y); bool groot = awF[k] & 2; if (pv && (binnen(x, y) || binnen(px, py))) dikLijn(px, py, x, y, groot ? 3.2f : 2.2f, groot ? 0x52AA : 0x3186); px = x; py = y; pv = true; } }
   { float px = 0, py = 0; bool pv = false; const float *r = rtPt; int n = rtN;   // de route
     for (int pass = 0; pass < 2; pass++) { pv = false;
       for (int k = 0; k < n; k++) { float la = r[k * 2], lo = r[k * 2 + 1]; if (fabsf(la - lat) > dla * 1.3f || fabsf(lo - lon) > dlo * 1.3f) { pv = false; continue; }
         float x, y; proj(la, lo, x, y); bool rood = rtFile && k > 0 && rtFile[k - 1] && rtFile[k]; if (pv) dikLijn(px, py, x, y, pass ? 4.5f : 7.5f, pass ? (rood ? 0xF800 : 0x3D7F) : (rood ? 0x7800 : 0x0A4E)); px = x; py = y; pv = true; } } }
+  if (rtN >= 2 && rtPt && stappen) for (int i = 0; i < stapN; i++) { const StapPt &q = stappen[i]; if (q.c == 'A' || q.c == 'S' || fabsf(q.lat - lat) > dla || fabsf(q.lon - lon) > dlo) continue;   // v85: witte stipjes bij afslagen, een ringetje bij rotondes
+    float x, y; proj(q.lat, q.lon, x, y); if (!binnen(x, y)) continue; if (q.c == 'O') { circle(x, y, 5.5f, 0xFFFF); circle(x, y, 3, 0x0A4E); } else { circle(x, y, 4.5f, 0x0000); circle(x, y, 3.2f, 0xFFFF); } }
+  if (rtN >= 2 && rtPt) { float la = rtPt[(rtN - 1) * 2], lo = rtPt[(rtN - 1) * 2 + 1];   // v85: finishvlag op de bestemming
+    if (fabsf(la - lat) < dla && fabsf(lo - lon) < dlo) { float x, y; proj(la, lo, x, y); if (binnen(x, y)) { dikLijn(x, y, x, y - 16, 1.6f, 0xFFFF);
+      for (int r2 = 0; r2 < 2; r2++) for (int c2 = 0; c2 < 3; c2++) showRect(x + 1 + c2 * 4, y - 16 + r2 * 4, 4, 4, ((r2 + c2) & 1) ? 0x0000 : 0xFFFF); circle(x, y, 2.5f, 0xF800); } } }
   for (int pass = 0; pass < 2; pass++) { const NetCam *cs = pass ? extraCams : netCams; int n = pass ? extraCamN : netCamN; if (!cs) continue;   // flitsers
     for (int i = 0; i < n; i++) { if (fabsf(cs[i].lat - lat) > dla || fabsf(cs[i].lon - lon) > dlo) continue; float x, y; proj(cs[i].lat, cs[i].lon, x, y); if (!binnen(x, y)) continue;
       circle(x, y, 5.5f, 0xFFFF); circle(x, y, 4, cs[i].type == 3 ? 0xFD20 : 0xF800); } }
@@ -2740,6 +2771,11 @@ static void drawKaart() {
     else { float rd = a * .0174533f, dx = sinf(rd), dy = -cosf(rd); dikLijn(cx - dx * 6, cy - dy * 6, cx + dx * 4, cy + dy * 4, 3, c); triF(cx + dx * 10, cy + dy * 10, cx + dx * 3 - dy * 6, cy + dy * 3 + dx * 6, cx + dx * 3 + dy * 6, cy + dy * 3 - dx * 6, c); }
     char nd[16]; if (phone.navD >= 950) snprintf(nd, sizeof nd, "%d,%dkm", phone.navD / 1000, (phone.navD % 1000) / 100); else snprintf(nd, sizeof nd, "%dm", (phone.navD / 10) * 10);
     frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(100), Y(203)); frame->print(nd); }
+  if (nvT && millis() - nvT < 15000) {   // v85: straatnaam van de volgende afslag, en bovenin hoe ver nog en hoe laat je er bent
+    if (nvNaam[0] && phoneFresh() && phone.nav) { int L = strlen(nvNaam); if (L > 18) L = 18; char nm[20]; memcpy(nm, nvNaam, L); nm[L] = 0;
+      float w = L * 6.4f; roundRect(120 - w / 2 - 6, 176, w + 12, 18, 9, 0x0000); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - L * 6, Y(180)); frame->print(nm); }
+    if (nvRest >= 0) { char rt[20]; if (nvRest >= 100) snprintf(rt, sizeof rt, "%d km %s", nvRest / 10, nvEta); else snprintf(rt, sizeof rt, "%d,%d km %s", nvRest / 10, nvRest % 10, nvEta);
+      int L = strlen(rt); frame->setTextColor(0xBDF7); frame->setTextSize(2); frame->setCursor(X(120) - L * 6, Y(68)); frame->print(rt); } }
   uint32_t ov = millis() - kaartOvergangT;   // v77: overgang: twee handjes trekken het gezicht open
   if (kaartOvergangT && ov < 1500) { float t = ov / 1500.f; kaartGordijn(t < .3f ? 0 : powf((t - .3f) / .7f, 1.6f) * 135, t < .3f ? t / .3f : 1); }
 }
@@ -2757,7 +2793,8 @@ static void drawRand(bool kaart) {
     boogStuk(0, 1, R, W + 3, 0x0841); boogStuk(0, 1, R, 2, 0x8C71);
     for (int i = 0; i < blN; i++) { const BlItem &it = blItems[i]; if (it.b >= 0) { uint16_t kl = it.s == 'f' ? 0xF800 : it.s == 'x' ? 0x8000 : it.s == 't' ? 0xB81F : 0xFD20; boogStuk(it.a / 1000.f, it.b / 1000.f, R, W, kl); } }
     for (int i = 0; i < blN; i++) { const BlItem &it = blItems[i]; if (it.b >= 0 && it.s != 'f') continue; if (it.b >= 0) continue;
-      float a = A0 + (A1 - A0) * (it.a / 1000.f), x = 120 + cosf(a) * R, y = 120 + sinf(a) * R; circle(x, y, 5, 0xFFFF); circle(x, y, 3.6f, it.s == 'm' ? 0xFD20 : 0xF800); }
+      float a = A0 + (A1 - A0) * (it.a / 1000.f), x = 120 + cosf(a) * R, y = 120 + sinf(a) * R;
+      if (it.s == 'b') { circle(x, y, 5, 0xF800); circle(x, y, 3.2f, 0xFFFF); } else { circle(x, y, 5, 0xFFFF); circle(x, y, 3.6f, it.s == 'm' ? 0xFD20 : 0xF800); } }
     float a = A1, x = 120 + cosf(a) * R, y = 120 + sinf(a) * R; circle(x, y, 4, 0xFFFF);   // eind (bestemming / 10 km)
     char kt[8]; if (blLang >= 100) snprintf(kt, sizeof kt, "%d", blLang / 10); else snprintf(kt, sizeof kt, "%d,%d", blLang / 10, blLang % 10);
     frame->setTextColor(0xBDF7, BG); frame->setTextSize(1); frame->setCursor(X(x - 16), Y(y - 14)); frame->print(kt);
