@@ -62,29 +62,38 @@ if not loc:
     print('locaties:', len(loc['id']), 'met id,', len(loc['pos']), 'met weg/km')
     json.dump(loc, open(cache, 'w'))
 
-# 2. wat de borden nu tonen
+# 2. wat de borden nu tonen (per bord het nieuwste beeld)
 data = gzip.decompress(haal('Matrixsignaalinformatie.xml.gz'))
-borden, n = [], 0
+from collections import Counter
+soorten = Counter(); laatst = {}; n = 0
 for ev, el in ET.iterparse(io.BytesIO(data), events=('end',)):
     if ln(el.tag) != 'event': continue
-    n += 1; d = {}; toon = None; red = False
-    if n <= 3 or (n < 4000 and n % 1000 == 0): print('voorbeeld event:', ET.tostring(el, encoding='unicode')[:900].replace('\n', ' '))
+    n += 1; d = {}; toon = None; red = False; heeftBeeld = False; ts = ''
     for c in el.iter():
         t = ln(c.tag)
-        if t in ('sign_id', 'road', 'carriageway', 'lane', 'km'): d[t] = (c.text or '').strip()
-        elif t == 'speedlimit': toon = (c.text or '').strip()
-        elif t == 'lane_closed': toon = 'X'
-        elif t == 'merge_left': toon = '<'
-        elif t == 'merge_right': toon = '>'
-        elif t == 'lane_closed_ahead' and not toon: toon = '<'
-        elif t == 'red_ring' and (c.text or '').strip().lower() in ('true', '1'): red = True
+        if t == 'uuid': d['sign_id'] = (c.text or '').strip().lower()
+        elif t == 'ts_event': ts = (c.text or '').strip()
+        elif t in ('road', 'carriageway', 'lane', 'km'): d[t] = (c.text or '').strip()
+        elif t == 'display': heeftBeeld = True
+        elif heeftBeeld and t not in ('display',):
+            soorten[t] += 1
+            if t == 'speedlimit': toon = (c.text or '').strip()
+            elif t == 'lane_closed': toon = 'X'
+            elif t == 'merge_left': toon = '<'
+            elif t == 'merge_right': toon = '>'
+            elif t == 'lane_closed_ahead' and not toon: toon = '<'
+            elif t == 'restriction_end' and not toon: toon = 'E'
+            if c.get('red_ring') in ('true', '1') or (t == 'red_ring' and (c.text or '').strip().lower() in ('true', '1')): red = True
     el.clear()
-    if not toon: continue
-    p = loc['id'].get(d.get('sign_id', '').lower())
-    if not p:
-        try: p = loc['pos'].get('%s|%s|%s|%.2f' % (d.get('road', '').upper().replace(' ', ''), d.get('carriageway', '').upper(), d.get('lane', ''), float(d.get('km') or 0)))
-        except Exception: p = None
+    if not heeftBeeld: continue
+    u = d.get('sign_id', '')
+    if u and (u not in laatst or ts > laatst[u][0]): laatst[u] = (ts, toon, red, d)
+print('soorten beeld:', dict(soorten.most_common(25)))
+borden = []
+for u, (ts, toon, red, d) in laatst.items():
+    if not toon or toon == 'E': continue
+    p = loc['id'].get(u)
     if not p: continue
     borden.append([p[0], p[1], p[2] if len(p) > 2 else -1, d.get('road', ''), d.get('carriageway', ''), d.get('lane', ''), toon + ('!' if red and toon not in 'X<>' else '')])
-print('events:', n, 'borden met beeld en plek:', len(borden))
+print('events:', n, 'borden:', len(laatst), 'borden met beeld en plek:', len(borden))
 json.dump({'t': int(time.time()), 'b': borden}, open(uit, 'w'), separators=(',', ':'))
