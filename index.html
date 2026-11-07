@@ -9864,11 +9864,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var stu = $('rijStuur'); stu.classList.toggle('knipL', kant === 'L'); stu.classList.toggle('knipR', kant === 'R');
       if (kant && fp && !knipT) { var hoog = false; knipT = setInterval(function () { hoog = !hoog; if (window.__tikTak) window.__tikTak(hoog); }, 400); }
       if ((!kant || !fp) && knipT) { clearInterval(knipT); knipT = 0; }
+      var bw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bw')) || 0, staand = innerHeight > innerWidth, af = $('rijAfslag');
+      var top = staand ? bw + 8 : 8; if (!staand && af && !af.hidden) top = af.getBoundingClientRect().bottom + 8; if (!fp) top = Math.max(top, staand ? bw + 60 : 66);
+      var midX = staand ? innerWidth / 2 : (bw + innerWidth - 60) / 2, mb = $('rijMsiBord'); mb.style.top = (top + (fp ? 70 : 0)) + 'px'; mb.style.left = midX + 'px';
       if (fp) {   /* binnenspiegel: weg achter je met de flitsers die je net voorbij bent */
-        var bw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bw')) || 0, staand = innerHeight > innerWidth, af = $('rijAfslag');
-        var top = staand ? bw + 8 : 8; if (!staand && af && !af.hidden) top = af.getBoundingClientRect().bottom + 8;
-        sg.style.top = top + 'px'; sg.style.left = ((staand ? innerWidth / 2 : (bw + innerWidth - 60) / 2) - 100) + 'px';
-        var mb = $('rijMsiBord'); mb.style.top = (top + 70) + 'px'; mb.style.left = ((staand ? innerWidth / 2 : (bw + innerWidth - 60) / 2)) + 'px';
+        sg.style.top = top + 'px'; sg.style.left = (midX - 100) + 'px';
         var c = sg.getContext('2d'), W = sg.width, H = sg.height, hor = H * .3, h = koers * Math.PI / 180, kx = 111320 * Math.cos(p.lat * Math.PI / 180);
         function rel(q) { var dx = (q.lon - p.lon) * kx, dy = (q.lat - p.lat) * 110540; return { b: -(dx * Math.sin(h) + dy * Math.cos(h)), l: dx * Math.cos(h) - dy * Math.sin(h) }; }
         function scr(r) { var k = 40 / (40 + Math.max(0, r.b)); return { x: W / 2 + r.l * 6 * k, y: hor + (H - hor) * k, k: k }; }
@@ -10061,7 +10061,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 
   try { drawHist(); updateInsight(); updateUI(); } catch (e) { lg('FOUT start ' + e.message); }
   setTimeout(function () { try { hello(); } catch (e) { lg('FOUT hello ' + e.message); } }, 900);
-  window.__ndw = { msParse: msParse, brParse: brParse, parse: ndwParse, get: function () { return ndw; }, anwb: function () { return anwbV; }, items: verkeerItems, anwbLoad: anwbLoad, alert: ndwAlert, fix: ndwFix,
+  window.__ndw = { msParse: msGroepeer, brParse: brParse, parse: ndwParse, get: function () { return ndw; }, anwb: function () { return anwbV; }, items: verkeerItems, anwbLoad: anwbLoad, alert: ndwAlert, fix: ndwFix,
     zet: function (a, n) { if (a) anwbV = a; if (n) ndw = n; vkMerged = { a: -1, n: -1, items: [], dub: 0 }; verkeerStat(); } };
   window.__mm = { hello: hello, cheer: cheer, bump: bump, S: S, mem: function () { return mem; }, GAGS: GAGS, startGag: startGag, submitChat: submitChat, localReply: localReply };
   requestAnimationFrame(frame);
