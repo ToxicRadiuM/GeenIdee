@@ -553,6 +553,12 @@ body.kmNiet #flKaartLijst, body.kmNiet #flDruk, body.kmNiet #flDrukKop { display
 .rkOptie { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); color: inherit; font: inherit; }
 .rkOptie .rkKl { width: 10px; align-self: stretch; border-radius: 5px; flex: 0 0 auto; } .rkOptie .rkTxt { flex: 1; min-width: 0; } .rkOptie b { display: block; font-size: 17px; } .rkOptie small { display: block; color: #b8c0c8; font-size: 12px; margin-top: 2px; } .rkOptie .rkTag { font-size: 12px; color: #ffd60a; white-space: nowrap; }
 .rkAnnuleer { padding: 8px; border-radius: 12px; border: 0; background: none; color: #b8c0c8; font: 600 14px var(--f-body); }
+/* v159 */
+.wdKaart { display: flex; align-items: center; gap: 12px; margin: 10px 0; padding: 12px 14px; border-radius: 16px; border: 1px solid rgba(128,128,128,.25); background: linear-gradient(135deg, rgba(10,132,255,.12), rgba(191,90,242,.12)); }
+.wdKaart.ok { background: linear-gradient(135deg, rgba(52,199,89,.18), rgba(10,132,255,.1)); border-color: #34c759; } .wdKaart .wdI { font-size: 30px; } .wdKaart em { display: block; font-style: normal; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; } .wdKaart b { display: block; font-size: 15px; } .wdKaart small { display: block; font-size: 12px; color: var(--muted); }
+body.auto3d .rijAuto, body.auto3d .rijDakBuddy { opacity: 0; }
+#rijReplay { position: absolute; z-index: 47; left: 50%; top: 12px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-radius: 22px; background: rgba(16,20,24,.9); color: #fff; font: 600 13px var(--f-body); box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+#rijReplay[hidden] { display: none; } #rijReplay i { width: 80px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.2); overflow: hidden; } #rijReplay em { display: block; height: 100%; width: 0; background: #0a84ff; } #rijReplay button { width: 32px; height: 32px; border-radius: 16px; border: 0; background: rgba(255,255,255,.15); color: #fff; font-size: 15px; }
 /* v153: groep 'Deze week' */
 .grWeekKop { margin: -2px 0 6px !important; } .grWeek { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .grWk { border: 1px solid var(--line, rgba(128,128,128,.25)); border-radius: 14px; padding: 10px 12px 8px; cursor: pointer; background: var(--card, transparent); }
@@ -806,7 +812,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     <div id="ritKaartGrid"></div>
     <canvas id="ritKaartMap" width="600" height="300" hidden></canvas>
     <p id="ritKaartStijl"></p>
-    <div class="rkKnoppen"><button id="ritKaartOpKaart" type="button">🗺️ Kaart</button><button id="ritKaartDeel" type="button">📤 Delen</button><button id="ritKaartSluit" type="button">Sluiten</button></div>
+    <div class="rkKnoppen"><button id="ritKaartReplay" type="button">▶️ Replay</button><button id="ritKaartOpKaart" type="button">🗺️ Kaart</button><button id="ritKaartDeel" type="button">📤 Delen</button><button id="ritKaartSluit" type="button">Sluiten</button></div>
   </div>
 </div>
 <button id="carAdd" class="rijRond" type="button">Vaste<br>flitser</button>
@@ -1055,6 +1061,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     <p class="sub">📅 Weekoverzicht</p><div class="btns"><button class="btn" id="wkVorigKnop" type="button">Vorige week</button><button class="btn" id="wkNuKnop" type="button">Deze week tot nu</button></div><div id="weekKaartBox" hidden></div>
       <p class="foot">Sprints tellen alleen met echte GPS en op wegen waar het mag. Alles telt vanaf de eerste rit met de telefoon-GPS aan.</p></div>
   </details>
+  <div class="wdKaart" id="wdKaart"><span class="wdI">🎯</span><span class="wdT"><em>Weekdoel van Buddy</em><b></b><small></small></span></div>
   <details class="kop" id="kopGemeente"><summary><span class="kopT">🗺️ Verzamelkaart</span><span class="kopS">elke gemeente waar je doorheen reed</span></summary>
     <div class="kopIn"><p class="chip" id="gmStat">Nog niks verzameld.</p><div class="gmBalkW"><div id="gmBalk"></div></div><ol id="gmLijst" class="v77lijst"></ol>
       <p class="foot">Buddy kijkt tijdens het rijden elke 2 km in welke gemeente je bent (via PDOK). Alleen het aantal gaat naar de groep, voor de ranglijst "Gemeenten".</p></div>
@@ -2548,7 +2555,6 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     ctx.fillStyle = SCREEN; ctx.fillRect(0, 0, 240, 240);
     ctx.save(); ctx.beginPath(); ctx.arc(120, 120, 102, 0, TAU); ctx.clip();
     tunnelFx();
-    try { sfeerDraw(dt); } catch (e) {}
     wxBack(dt);
     var ox = gx * 9, oy = gy * 7;
     var isClock = curKey === 'clock' && !S.asleep;
@@ -4984,7 +4990,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v158';
+  var VERSION = 'v159';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6557,7 +6563,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     setTimeout(function () { try { if (window.__plekHerinner) window.__plekHerinner(r.t0); } catch (e) {} }, 15000);
     try { var bm = besteMoment(r); if (bm) { r.bm = bm; m += ' ⭐ Beste moment: ' + bm; setTimeout(function () { queueCheer('⭐ Beste moment: ' + bm); }, 7000); } } catch (e) {}
     if (r.cijfer) { m += ' Cijfer: ' + cijferTxt(r.cijfer) + '.'; setTimeout(function () { queueCheer(ritZin(r)); }, 3500); } if (r.eur != null) m += ' Stroom: ± ' + euro(r.eur) + '.';
-    setTimeout(dagboekBewaar, 2000);
+    setTimeout(dagboekBewaar, 2000); setTimeout(weekdoelCheck, 8000);
     toast(m); lg('rit: ' + JSON.stringify(r)); ritToon(); ritKaart(r); routeOverzicht();
     if (typeof grLid === 'function') grLid(true);
     if (V.ritVoel && r.min >= 10 && !V.harsh) queueCheer('Geen enkele schok deze rit. Wat een zen-rit 🧘');
@@ -6567,6 +6573,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   /* Kaartje na een rit, groot genoeg voor de autostand. Verdwijnt vanzelf als je weer gaat rijden. */
   function ritKaart(r) {
     var el = $('ritKaart'); if (!el || !r) return;
+    var rb = $('ritKaartReplay'); if (rb) { rb.hidden = !(ritPts[r.t0] && ritPts[r.t0].p && ritPts[r.t0].p.length >= 6); rb.onclick = function () { el.hidden = true; if (window.__replay) window.__replay(r.t0); }; }   /* v159 */
     var uren = (r.sec || r.min * 60) / 3600, gem = uren > 0 ? Math.round(r.km / uren) : 0;
     var rij = [
       ['🛣️', String(r.km).replace('.', ',') + ' km', 'afstand'],
@@ -6668,7 +6675,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       gmVorig = p; var n = j && j.response && j.response.docs && j.response.docs[0] && j.response.docs[0].gemeentenaam; if (!n) return;
       mem.gemeenten = mem.gemeenten || {}; if (mem.gemeenten[n]) return;
       mem.gemeenten[n] = Date.now(); save(); var tot = Object.keys(mem.gemeenten).length; lg('nieuwe gemeente: ' + n + ' (' + tot + ')');
-      if (tot > 1) queueCheer('🗺️ Nieuwe gemeente: ' + n + '! Dat is nummer ' + tot + ' op onze verzamelkaart.'); gmToon(); try { grLid(true); } catch (e) {}
+      if (tot > 1) { queueCheer('🗺️ Nieuwe gemeente: ' + n + '! Dat is nummer ' + tot + ' op onze verzamelkaart.'); gmWeetje(n); } gmToon(); try { grLid(true); } catch (e) {}
     }).catch(function () {}).then(function () { gmBezig = false; });
   }
   setInterval(function () { try { gmCheck(); } catch (e) {} }, 20000);
@@ -6682,6 +6689,27 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     var el = $('dbLijst'); if (!el) return; dagboekBewaar(); el.hidden = !el.hidden; if (el.hidden) return; el.textContent = '';
     var ks = Object.keys(dagboek).sort().reverse(); if (!ks.length) { el.textContent = 'Nog geen dagboek. Na een dag rijden schrijft Buddy hier iets.'; return; }
     ks.forEach(function (k) { var d = new Date(k + 'T12:00:00'), p = document.createElement('p'), b = document.createElement('b'); b.textContent = d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }) + ': '; p.appendChild(b); p.appendChild(document.createTextNode(dagboek[k])); el.appendChild(p); });
+  }
+  /* v159: weekdoel van Buddy */
+  var WDOELEN = [
+    { id: 'rem', n: 'Geen enkele harde rem of schok', i: '🧘', st: function (rs) { var s = rs.reduce(function (a, r) { return a + (r.sch || 0); }, 0); return { ok: rs.length >= 3 && s === 0, txt: s ? s + ' schok(ken)' : rs.length + ' ritten zonder schok' + (rs.length < 3 ? ' (minstens 3 ritten)' : '') }; } },
+    { id: 'netjes', n: '5× netjes langs een flitser', i: '📸', st: function (rs) { var s = rs.reduce(function (a, r) { return a + (r.netjes || 0); }, 0); return { ok: s >= 5, txt: s + ' van de 5' }; } },
+    { id: 'stijl', n: 'Gemiddelde rijstijl 85 of hoger', i: '⭐', st: function (rs) { var g = rs.length ? Math.round(rs.reduce(function (a, r) { return a + (r.stijl || 0); }, 0) / rs.length) : 0; return { ok: rs.length >= 3 && g >= 85, txt: rs.length ? 'nu gemiddeld ' + g : 'nog geen ritten' }; } },
+    { id: 'max', n: 'Nooit harder dan 125 km/u', i: '🐢', st: function (rs) { var m = rs.reduce(function (a, r) { return Math.max(a, r.vmax || 0); }, 0); return { ok: rs.length >= 3 && m <= 125, txt: rs.length ? 'hardst: ' + m + ' km/u' : 'nog geen ritten' }; } },
+    { id: 'cijfer', n: 'Elke rit een 8 of hoger', i: '🎓', st: function (rs) { var l = rs.filter(function (r) { return r.cijfer && r.cijfer < 8; }).length; return { ok: rs.length >= 3 && !l, txt: l ? l + ' rit(ten) lager dan een 8' : rs.length + ' ritten op rij goed' }; } }];
+  function weekRitten(w) { return (ritten || []).filter(function (r) { return weekIdx(new Date(r.t0)) === w; }); }
+  function weekdoel() { var w = weekIdx(); if (!mem.wdoel || mem.wdoel.w !== w) { var vorige = mem.wdoel; if (vorige) { var d0 = WDOELEN.filter(function (x) { return x.id === vorige.id; })[0]; if (d0 && !vorige.klaar) { var st0 = d0.st(weekRitten(vorige.w)); if (st0.ok) { mem.wdoelGehaald = (mem.wdoelGehaald || 0) + 1; setTimeout(function () { queueCheer('🎯 Weekdoel van vorige week gehaald: ' + d0.n + '! Trots op je.'); try { window.__salto(); } catch (e) {} }, 6000); } } }
+      var opties = WDOELEN.filter(function (x) { return !vorige || x.id !== vorige.id; }); mem.wdoel = { w: w, id: opties[Math.floor(Math.random() * opties.length)].id }; save(); }
+    return WDOELEN.filter(function (x) { return x.id === mem.wdoel.id; })[0] || WDOELEN[0]; }
+  function weekdoelToon() { var el = $('wdKaart'); if (!el) return; var d = weekdoel(), s = d.st(weekRitten(weekIdx()));
+    el.querySelector('.wdI').textContent = d.i; el.querySelector('b').textContent = d.n; el.querySelector('small').textContent = (s.ok ? '✅ Gelukt tot nu toe · ' : '') + s.txt + (mem.wdoelGehaald ? ' · al ' + mem.wdoelGehaald + '× gehaald' : ''); el.classList.toggle('ok', s.ok); }
+  function weekdoelCheck() { try { var d = weekdoel(), s = d.st(weekRitten(weekIdx())); if (s.ok && !mem.wdoel.klaar && d.id !== 'rem' && d.id !== 'max' && d.id !== 'cijfer') { mem.wdoel.klaar = true; mem.wdoelGehaald = (mem.wdoelGehaald || 0) + 1; save(); queueCheer('🎯 Weekdoel gehaald: ' + d.n + '!'); setTimeout(function () { try { window.__salto(); } catch (e) {} }, 3500); } weekdoelToon(); } catch (e) {} }
+  /* v159: weetje over een nieuwe gemeente (Wikipedia) */
+  function gmWeetje(n) {
+    fetch('https://nl.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(n.replace(/ /g, '_'))).then(function (r) { return r.json(); }).then(function (j) {
+      var zin = String(j && j.extract || '').replace(/\s*\([^)]*\)/g, '').split(/(?<=[.!?])\s+/).filter(function (z) { return z.length > 30 && z.length < 170 && !/^\s*(Het|De)?\s*gemeente telt|inwoners op|bestuurlijk|provincie\s+\w+\.$/.test(z); });
+      var w = zin.length > 1 ? zin[1] : zin[0]; if (w) setTimeout(function () { queueCheer('💡 Wist je dat? ' + w); }, 9000);
+    }).catch(function () {});
   }
   /* Zondagavond (of de eerste keer daarna) een weekoverzicht */
   function weekoverzicht() {
@@ -8651,7 +8679,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   $('dbKnop').addEventListener('click', dagboekLijst);   /* v149 */
   if (mem.verbruik) $('verbruikIn').value = String(mem.verbruik).replace('.', ',');
   $('verbruikIn').addEventListener('change', function () { var v = parseFloat(String(this.value).replace(',', '.')); if (v > 5 && v < 60) { mem.verbruik = v; save(); toast('Verbruik: ' + String(v).replace('.', ',') + ' kWh/100 km'); } });
-  setTimeout(gmToon, 500);
+  setTimeout(gmToon, 500); setTimeout(weekdoelToon, 700);
   $('outfitIn').addEventListener('change', function () { mem.outfit = $('outfitIn').value; save(); outfitKeuze(); setEv('happy', 2.5, 'Staat me goed, hè?'); if (window.__scStuur) window.__scStuur(); });
   $('feestIn').checked = mem.feestAan !== false;
   $('feestIn').addEventListener('change', function () { mem.feestAan = $('feestIn').checked; save(); outfitKeuze(); });
@@ -10461,8 +10489,54 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
           toast(oud ? '👻 Nieuw record naar ' + (k === 'thuis' ? 'huis' : 'je werk') + '! ' + Math.round((oud - tijd) / 60) + ' min sneller dan je spookauto.' : '👻 Je spookauto is opgenomen. Volgende keer race je ertegen!'); }
         else toast('👻 Je spookauto was ' + Math.round((tijd - oud) / 60) + ' min sneller. Volgende keer!'); }
     }
+    /* v159: 3D-auto als je achter de auto kijkt, en ritreplay in 3D */
+    var a3dKnip = 0;
+    function auto3d(lat, lon, brg) {
+      if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return; var aan = st.kijk === 0 && st.aan; document.body.classList.toggle('auto3d', aan);
+      var f = [];
+      if (aan) { var a = AUTOS[st.auto % AUTOS.length], S3 = Math.max(1.5, 60 * 156543.03 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom()) / 4.75),   /* even groot op je scherm als het oude plaatje (~60 px) */ b = brg * Math.PI / 180, cb = Math.cos(b), sb = Math.sin(b), kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+        var rem = mkEl && mkEl.classList.contains('rem'), kL = mkEl && mkEl.classList.contains('knipL'), kR = mkEl && mkEl.classList.contains('knipR'), knipAan = (Date.now() % 800) < 400, nacht = document.body.classList.contains('nacht');
+        var L = a.vorm === 'bus' ? 2.6 : 2.37, W = a.vorm === 'race' ? .9 : .96, H = a.vorm === 'bus' ? 1.9 : a.vorm === 'sport' || a.vorm === 'race' ? .85 : 1.0;
+        function doos(x0, x1, y0, y1, h0, h1, kl) { var pt = [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(function (q) { var x = q[0] * S3, y = q[1] * S3; return [lon + (x * cb + y * sb) / kx, lat + (-x * sb + y * cb) / ky]; }); f.push({ type: 'Feature', properties: { b: h0 * S3, h: h1 * S3, kl: kl }, geometry: { type: 'Polygon', coordinates: [pt] } }); }
+        doos(-W, W, -L, L, .28, H, a.k);   /* carrosserie */
+        if (a.vorm === 'bus') doos(-W + .08, W - .08, -L + .2, L - .5, H, H + .5, a.r); else if (a.vorm !== 'race') { doos(-W + .16, W - .16, -1.1, .95, H, H + .5, a.r); doos(-W + .24, W - .24, -.9, .7, H + .5, H + .56, a.k); }
+        else { doos(-.35, .35, -.6, .4, H, H + .35, a.r); doos(-W - .1, W + .1, -L - .1, -L + .3, H, H + .12, a.r); }
+        [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(function (w) { doos(w[0] > 0 ? W - .12 : -W - .04, w[0] > 0 ? W + .04 : -W + .12, w[1] * 1.45 - .36, w[1] * 1.45 + .36, 0, .62, '#111'); });   /* wielen */
+        doos(-W + .1, -W + .55, -L - .05, -L, .6, .78, rem ? '#ff2020' : '#7a1414'); doos(W - .55, W - .1, -L - .05, -L, .6, .78, rem ? '#ff2020' : '#7a1414');   /* achterlichten */
+        doos(-W + .12, -W + .52, L, L + .05, .55, .7, nacht ? '#ffffff' : '#fff8c0'); doos(W - .52, W - .12, L, L + .05, .55, .7, nacht ? '#ffffff' : '#fff8c0');   /* koplampen */
+        if (kL && knipAan) { doos(-W - .06, -W, L - .5, L - .1, .6, .74, '#ffb02e'); doos(-W - .06, -W, -L + .1, -L + .5, .6, .74, '#ffb02e'); }
+        if (kR && knipAan) { doos(W, W + .06, L - .5, L - .1, .6, .74, '#ffb02e'); doos(W, W + .06, -L + .1, -L + .5, .6, .74, '#ffb02e'); } }
+      var data = { type: 'FeatureCollection', features: f };
+      if (map.getSource('auto3d')) map.getSource('auto3d').setData(data); else if (aan) { map.addSource('auto3d', { type: 'geojson', data: data }); map.addLayer({ id: 'auto3d', type: 'fill-extrusion', source: 'auto3d', paint: { 'fill-extrusion-color': ['get', 'kl'], 'fill-extrusion-base': ['get', 'b'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': 1 } }); }
+    }
+    var replay = null;
+    window.__replay = function (t0) {
+      var d = (typeof ritPts !== 'undefined' && ritPts[t0]) || null; if (!d || !d.p || d.p.length < 6) { toast('Van deze rit is geen route bewaard.'); return; }
+      if (!st.aan) { st.aan = true; bewaar(); toon(); }
+      var pts = [], cum = [0]; for (var i = 0; i + 1 < d.p.length; i += 2) pts.push({ lat: d.p[i], lon: d.p[i + 1] });
+      for (i = 1; i < pts.length; i++) cum.push(cum[i - 1] + gdist(pts[i - 1].lat, pts[i - 1].lon, pts[i].lat, pts[i].lon));
+      var tot = cum[cum.length - 1] || 1, dur = Math.max(25, Math.min(70, tot / 400)) * 1000;
+      replay = { pts: pts, cum: cum, tot: tot, dur: dur, t: 0, brg: null, o: d.o || null };
+      var hud = $('rijReplay'); if (!hud) { hud = document.createElement('div'); hud.id = 'rijReplay'; hud.innerHTML = '<b>▶ Replay</b><span class="rpI"></span><i><em></em></i><button type="button">✕</button>'; $('rijKaart').appendChild(hud); hud.querySelector('button').addEventListener('click', function () { replayStop(); }); }
+      hud.hidden = false; volgZet(false);
+      function wacht() { if (!replay) return; if (!map || !map.isStyleLoaded || !map.isStyleLoaded() || !mk) { setTimeout(wacht, 300); return; } replay.t = performance.now(); requestAnimationFrame(rpStap); }
+      wacht();
+    };
+    function replayStop() { replay = null; var h = $('rijReplay'); if (h) h.hidden = true; volgZet(true); }
+    function rpStap(ts) {
+      if (!replay) return; var R = replay, f = Math.min(1, (ts - R.t) / R.dur), want = f * R.tot, i = 1; while (i < R.cum.length - 1 && R.cum[i] < want) i++;
+      var a = R.pts[i - 1], b = R.pts[i], seg = (R.cum[i] - R.cum[i - 1]) || 1, k = Math.max(0, Math.min(1, (want - R.cum[i - 1]) / seg)), lat = a.lat + (b.lat - a.lat) * k, lon = a.lon + (b.lon - a.lon) * k;
+      var y = Math.sin((b.lon - a.lon) * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180), x = Math.cos(a.lat * Math.PI / 180) * Math.sin(b.lat * Math.PI / 180) - Math.sin(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.cos((b.lon - a.lon) * Math.PI / 180), brg = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+      if (R.brg == null) R.brg = brg; R.brg = (R.brg + ((((brg - R.brg) + 540) % 360) - 180) * .08 + 360) % 360;
+      mk.setLngLat([lon, lat]); mk.setRotation(R.brg); auto3d(lat, lon, R.brg);
+      try { map.jumpTo({ center: [lon, lat], bearing: R.brg, zoom: 16.2, pitch: 62 }); } catch (e) {}
+      var hud = $('rijReplay'); if (hud) { hud.querySelector('.rpI').textContent = (want / 1000).toFixed(1).replace('.', ',') + ' / ' + (R.tot / 1000).toFixed(1).replace('.', ',') + ' km' + (R.o && R.o[i] ? ' · ⚠️ te hard' : ''); hud.querySelector('em').style.width = (f * 100) + '%'; }
+      if (f >= 1) { setTimeout(replayStop, 1500); toast('🏁 Einde van de replay'); return; }
+      requestAnimationFrame(rpStap);
+    }
     function beeld(ts) {
       rafId = 0; if (!map || !mk || !anim || !document.body.classList.contains('kaartrij') || document.hidden) return;
+      if (replay) { rafId = requestAnimationFrame(beeld); return; }   /* v159: tijdens een replay stuurt de replay de camera */
       if (ts - vorigBeeld < 30) { rafId = requestAnimationFrame(beeld); return; } vorigBeeld = ts;
       var dt = Math.min(1.6, (ts - anim.t) / 1000), r = anim.brg * Math.PI / 180, d = anim.v * dt, cl = Math.cos(anim.lat * Math.PI / 180);
       var lat = anim.lat + Math.cos(r) * d / 110540, lon = anim.lon + Math.sin(r) * d / (111320 * cl);
@@ -10470,7 +10544,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       cam.lat += (lat - cam.lat) * .3; cam.lon += (lon - cam.lon) * .3;
       var db = ((anim.brg - cam.brg + 540) % 360) - 180; cam.brg = (cam.brg + db * .12 + 360) % 360;
       cam.zoom += (anim.zoom - cam.zoom) * .06; cam.pitch += (anim.pitch - cam.pitch) * .08;
-      mk.setLngLat([cam.lon, cam.lat]); mk.setRotation(cam.brg);
+      mk.setLngLat([cam.lon, cam.lat]); mk.setRotation(cam.brg); try { auto3d(cam.lat, cam.lon, cam.brg); } catch (e) {}
       if (volg) { var c = [cam.lon, cam.lat]; if (anim.fp) { var rr = cam.brg * Math.PI / 180; c = [cam.lon + Math.sin(rr) * 22 / (111320 * cl), cam.lat + Math.cos(rr) * 22 / 110540]; }
         try { map.jumpTo({ center: c, bearing: anim.noord ? 0 : cam.brg, zoom: cam.zoom, pitch: cam.pitch }); } catch (e) {} }
       rafId = requestAnimationFrame(beeld);

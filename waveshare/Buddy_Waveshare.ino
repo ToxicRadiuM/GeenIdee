@@ -37,9 +37,9 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 97;   // v97: crash-spoor: na een crash staat in het logboek wat hij als laatste deed
+static const int FW_VERSIE = 98;   // v98: welkom thuis na een lange stilte, ochtendroutine, verveling die groeit   // v97: crash-spoor: na een crash staat in het logboek wat hij als laatste deed
 RTC_NOINIT_ATTR static uint32_t rtcSpoor[6];   // [0]=sleutel, [1]=gag, [2]=show, [3]=geluid, [4]=spel/menu, [5]=uptime s   // v96: coördinaten in het logboek afgerond op ~1 km (privacy)   // v95: luistert echt mee als je praat, 'ik ben al wakker', handen over zijn oren bij herrie, schrikreactie, fluistert 's nachts, mist de muziek, kletspraatje   // v94: hoort zijn eigen geluidjes niet meer als klappen (geen hartjes-chaos meer), niks meer door elkaar, rustiger stemmingen, 8 nieuwe bureau-animaties   // v93: menu SPEL (reactiespel, Simon zegt, ademhalen, stats), feesthoedje als een collega jarig is   // v92: aan de pc nooit diep slapen (dan blijft klappen werken), op tafel pas na een uur   // v91: popcorn, bowling, papieren vliegtuigje, goocheltruc, DJ en selfie   // v90: reageert meer op geluid (3x klappen = dansje, wakker schrikken, 'hoi' als je gaat praten), 12 nieuwe animaties die uit het scherm komen, nieuwe geluidjes   // v89: groter tikvlak voor zijn ogen, 7 nieuwe thuis-animaties   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
-static uint32_t schaapT = 0, streepTot = 0, collegaJarigTot = 0, slaapUitT = 0, hmhmTot = 0; static uint8_t spel = 0; static bool slaapt = false; static const char *hmhmTxt = "hmhm"; static int klokKwartier = -1;   // v87: duidelijkere kaart (lichtere wegen met rand, snelweg oranje, files rood, raster, noordpijl)
+static uint32_t schaapT = 0, streepTot = 0, collegaJarigTot = 0, slaapUitT = 0, hmhmTot = 0; static uint8_t spel = 0; static bool slaapt = false; static uint32_t laatsteActie = 0; static const char *hmhmTxt = "hmhm"; static int klokKwartier = -1;   // v87: duidelijkere kaart (lichtere wegen met rand, snelweg oranje, files rood, raster, noordpijl)
 // v86: kookwekker (menu TIMER), schudden = dobbelsteen of magische 8-bal, boos op zijn kop, nachtlampje met klok, hij mist je
 static uint32_t timerTot = 0, timerLen = 0, timerAlarmT = 0, nachtKlokTot = 0; static uint8_t timerMin = 10, timerFase = 0, timerAlarmN = 0; static bool gemist = false; static int8_t schudUitkomst = 0;
 static volatile uint32_t sprintT0 = 0;   // v52: loopt er een 0-100? (voor de retro meter)
@@ -1626,6 +1626,8 @@ static const GagDef GAGS[] = {
   {2.6f, 0, STARTLED, "Wat was DAT?!"},                                 // 91 schrik van een knal
   {3.5f, 0, BORED, "Hè, de muziek is uit. Jammer!"},                    // 92 muziek gestopt
   {3.5f, 0, HAPPY, "Gezellig, zo'n kletspraatje!"},                     // 93 lang gepraat
+  {4.0f, 0, HAPPY, "Hé! Je bent thuis!"},                               // 94 welkom thuis (v98)
+  {6.0f, 0, SLEEPY, "Goedemorgen! *rekt zich uit*"},                    // 95 ochtendroutine
 };
 static constexpr int GAG_N = sizeof(GAGS) / sizeof(GAGS[0]);
 static inline void gdir(float x, float y) { tgx = x; tgy = y; nextGaze = t + .3f; }
@@ -1733,17 +1735,20 @@ static void gagStep(float dt) {
       if ((stil && (f & G_IDLE)) || (rijdt && (f & G_DRIVE)) || (stil && tripActief && (f & G_STOP))) kies[n++] = k;
     }
     if (!n) { nextGagT = t + 3; return; }
+    float vervF = (stil && robotModus) ? 1.f - .5f * fminf(1, (millis() - laatsteActie) / 3600000.f) : 1.f;   // v98: verveeld = vaker iets doen
     int som = 0; for (int i = 0; i < n; i++) som += 4 + min(12, gagLike[kies[i]] * 2);   // v42: wat jij leuk vindt komt vaker
     int r = random(som), k = kies[0]; for (int i = 0; i < n; i++) { r -= 4 + min(12, gagLike[kies[i]] * 2); if (r < 0) { k = kies[i]; break; } }
     if (klokOk()) { int hh, mm; lokaleTijd(hh, mm); if (hh >= 22 && stil && random(3) == 0) k = 11; }   // laat: knikkebollen
     { int fav = -1, fl = 2; for (int i = 0; i < n; i++) if (gagLike[kies[i]] > fl) { fl = gagLike[kies[i]]; fav = kies[i]; }   // v45: af en toe zijn lievelingstrucje
       if (fav >= 0 && random(8) == 0) { k = fav; startGag(k); gagMsg = "Mijn lievelingstrucje! (dankzij jou)"; nextGagT = t + GAGS[k].dur + frand(10, 20) * animFactor * karFactor; return; } }
     if (halloween && random(3) == 0) k = random(2) ? 34 : 35;   // op Halloween vaker het spookje en de pompoen
+    if (stil && robotModus) { float verv = fminf(1, (millis() - laatsteActie) / 3600000.f);   // v98: hoe langer niemand iets doet, hoe gekker
+      if (verv > .4f && random(100) < verv * 60) { static const uint8_t GEK[] = {57, 70, 74, 75, 76, 80, 85, 88, 89, 66, 77}; uint8_t g2 = GEK[random(sizeof GEK)]; if (gagOntgrendeld(g2)) k = g2; } }
     if (sint && random(4) == 0) k = 36;
     if (kerst && random(4) == 0) k = 37;
     if (nieuwjaar && random(3) == 0) k = 40;
     startGag(k);
-    nextGagT = t + GAGS[k].dur + (robotModus ? frand(14, 32) : (stil ? frand(8, 16) : frand(15, 30))) * animFactor * karFactor;   // v51: als robotje ook gewoon even rondkijken en 'saai' zijn
+    nextGagT = t + GAGS[k].dur + (robotModus ? frand(14, 32) : (stil ? frand(8, 16) : frand(15, 30))) * animFactor * karFactor * vervF;   // v51: als robotje ook gewoon even rondkijken en 'saai' zijn
     return;
   }
   float tt = t - gagT0; const GagDef &d = GAGS[gagAct];
@@ -1819,6 +1824,9 @@ static void gagStep(float dt) {
     case 91: fdy = tt < .3f ? -8 : 0; gdir(frand(-1, 1), -.4f); break;
     case 92: gdir(-.6f, .3f); break;
     case 93: gdir(0, -.1f); fdy = -fabsf(sinf(tt * 5)) * 3; break;
+    case 94: gdir(0, -.2f); fdy = -fabsf(sinf(tt * 6)) * 5; if (tt > 1.5f && !g_b) { g_b = true; playGeluid(GL_HOI); } break;
+    case 95: { gdir(0, -.6f); if (tt < 2.2f) { fdy = -sinf(tt / 2.2f * 3.1416f) * 10; eyeL = eyeR = .3f; fxNoBlink = true; }
+      if (tt > 2.4f && g_nn == 0) { g_nn = 1; gagMood = HAPPY; if (wxVers()) { static char om[64]; snprintf(om, sizeof om, "Goedemorgen! Het is %d graden%s.", (int)lroundf(wxTemp), wxCode >= 51 ? " en het regent" : wxCode <= 1 ? " en zonnig" : ""); gagMsg = om; } else gagMsg = "Goedemorgen! Lekker geslapen?"; playGeluid(GL_HOI); } } break;
     case 63: gdir(0, .5f); if (tt > 3.8f && !g_b) { g_b = true; gagMood = STARTLED; gagMsg = "PLOF! Het zit op mijn neus..."; playGeluid(GL_OEPS); } break;
     case 32: g_fx = -30 + tt / 6.f * 300; gdir((g_fx - 120) / 110, -.9f); if (tt > 2.2f && tt < 3.8f) { gagMood = STARTLED; gagMsg = "Ze nemen me mee!"; fdy = -4; } else if (tt >= 3.8f) { gagMood = HAPPY; gagMsg = "Pfiew. Ze waren vriendelijk."; } break;
     case 33: g_fx = 260 - tt * 16; gdir((g_fx - 120) / 120, .8f); if (tt > 4.5f) gagMsg = "Sneller dan de file, haha."; break;
@@ -1952,6 +1960,9 @@ static void gagDraw() {
       for (int i = 0; i < 4; i++) { float a = i * 1.57f + tt * 3; showTekst(i % 2 ? "!" : "#", 120 + cosf(a) * 60, 40 + sinf(a) * 14, 2, 0xF800); } break;
     case 91: showTekst("!", 196, 52, 4, 0xFFE0); break;
     case 92: noot(60 + sinf(tt) * 4, 70 + tt * 10); break;
+    case 94: { float a = sinf(tt * 9) * .5f; for (int sd = -1; sd <= 1; sd += 2) if (sd > 0) { float hx = 204, hy = 150; dikLijn(hx - 10, hy + 40, hx, hy, 6, 0xFDB8); circle(hx + sinf(a) * 4, hy - 6, 14, 0xFDB8); for (int f = 0; f < 4; f++) { float fa = -2.2f + f * .4f + a; dikLijn(hx + sinf(a) * 4, hy - 6, hx + sinf(a) * 4 + cosf(fa) * 22, hy - 6 + sinf(fa) * 22, 5, 0xFDB8); } } } break;
+    case 95: if (tt < 2.2f) { float k = sinf(tt / 2.2f * 3.1416f); for (int sd = -1; sd <= 1; sd += 2) { dikLijn(120 + sd * 70, 150, 120 + sd * (80 + k * 20), 150 - k * 110, 7, 0xFDB8); circle(120 + sd * (80 + k * 20), 150 - k * 110, 10, 0xFDB8); } }
+      else { float k = fminf(1, (tt - 2.2f)); circle(120, 26, 14 * k, 0xFEA0); for (int i = 0; i < 8; i++) { float a = i * .785f + tt; dikLijn(120 + cosf(a) * 18 * k, 26 + sinf(a) * 18 * k, 120 + cosf(a) * 26 * k, 26 + sinf(a) * 26 * k, 2, 0xFEA0); } } break;
     case 63: { float r = tt < 3.8f ? 4 + tt * 9 : 0; if (r > 0) { circle(120 + faceOx * .5f, 184 + faceOy * .5f, r, 0xFB56); circle(114 + faceOx * .5f - r * .3f, 178 + faceOy * .5f - r * .3f, r * .25f, 0xFDFB); }
       else { for (int i = 0; i < 5; i++) circle(104 + i * 8 + faceOx * .5f, 150 + (i % 2) * 6 + faceOy * .5f, 5, 0xFB56); } } break;
     case 31: for (int i = 0; i < 7; i++) { float x = 120 + sinf(tt * (.7f + i * .13f) + i * 2) * 90, y = 100 + cosf(tt * (.5f + i * .11f) + i) * 70; float hl = .5f + .5f * sinf(tt * 5 + i * 1.7f); if (hl > .35f) circle(x, y, 1.5f + hl * 2.5f, hl > .7f ? 0xFFF0 : 0xAFE0); } break;
@@ -2108,7 +2119,7 @@ static void lokaleTijd(int &hh, int &mm) {
   min += zomer ? 120 : 60; min %= 1440;
   hh = min / 60; mm = min % 60;
 }
-static uint32_t laatsteActie = 0; static uint8_t huidigLicht = 0;
+static uint8_t huidigLicht = 0;
 // v26: echt uit (diepe slaap) en weer aan als de auto beweegt (instappen, deur, rijden).
 // De bewegingssensor blijft wakker en maakt het bordje wakker via zijn INT2-pin (GPIO21).
 static void qmiWakkerBijBeweging() {
@@ -2786,6 +2797,10 @@ static void robotStap(float dt) {
   // v86: hij mist je (meer dan een dag niet geaaid)
   { static bool gecheckt = false; if (!gecheckt && ntpOk()) { gecheckt = true; uint32_t e = buddyPrefs.getUInt("aaiE", 0), nuE = (uint32_t)time(nullptr); if (e && nuE > e + 86400UL) { gemist = true; logRegel("hij mist je: %lu uur niet geaaid", (unsigned long)((nuE - e) / 3600)); } else if (!e) buddyPrefs.putUInt("aaiE", nuE); }
     static uint32_t mistT = 0; if (gemist && !slaapt && gagAct < 0 && nu - mistT > 120000UL) { mistT = nu; startGag(44); gagMsg = nu % 2 ? "Ik heb je gemist... aai me even?" : "Waar was je nou? *snif*"; } }
+  // v98: ochtendroutine: de eerste keer dat je hem 's ochtends aanraakt of iets zegt
+  if (klokOk() && !slaapt && gagAct < 0 && nu - laatsteActie < 3000) { int hh, mm; lokaleTijd(hh, mm); time_t tn = time(nullptr); struct tm tv; localtime_r(&tn, &tv); uint16_t dag = tv.tm_yday + 1;
+    static uint16_t ochtendDag = 0xFFFF; if (ochtendDag == 0xFFFF) ochtendDag = buddyPrefs.getUShort("ochtD", 0);
+    if (hh >= 6 && hh < 11 && dag != ochtendDag && tn > 1700000000) { ochtendDag = dag; buddyPrefs.putUShort("ochtD", dag); startGag(95); } }
   // v88: elk kwartier even een klokgezicht (zijn ogen worden de wijzers)
   if (klokOk() && !slaapt && gagAct < 0 && (int32_t)(showTot - nu) <= 0 && !showNa && !menuOpen && !venster) { int hh, mm; lokaleTijd(hh, mm); if (mm % 15 == 0 && mm != 0 && klokKwartier != hh * 60 + mm) { klokKwartier = hh * 60 + mm; showSoort = 16; showNa = nu; } }
   // elk heel uur zwaaien
@@ -3409,7 +3424,7 @@ void updateMood(float dt){
      else { aaiTot = millis() + 2000; if (gagAct < 0) { if (robotModus && wxVers()) startGag(53); else { startGag(7); gagMsg = "Ja? Ik ben er! *gaap*"; } } } }
    if (knalT && knalT != kn0 && millis() - knalT < 300) { kn0 = knalT; if (slaapt && robotModus) { slaapt = false; laatsteActie = millis(); if (gagAct < 0) startGag(64); } else if (millis() > schrikTot + 4000) { schrikTot = millis() + 900; if (gagAct < 0 && random(3) == 0) startGag(91); } }   // v90: wakker geschrokken, v95: soms 'wat was DAT?!'
    { static uint32_t k3 = 0; if (klap3T && klap3T != k3) { k3 = klap3T; laatsteActie = millis(); slaapt = false; if (gagAct < 0 || gagAct == 7) { startGag(8); playGeluid(GL_TADA); } } }   // v90: 3x klappen = dansje
-   { static uint32_t stilVanaf = 0; static uint8_t oorVorig = 0; if (oorSoort == 0 && !stilVanaf) stilVanaf = millis(); if (oorSoort == 1 && oorVorig != 1 && stilVanaf && millis() - stilVanaf > 15UL * 60000 && robotModus && gagAct < 0) startGag(65); if (oorSoort != 0) stilVanaf = 0; oorVorig = oorSoort; }   // v90: hoi als je gaat praten
+   { static uint32_t stilVanaf = 0; static uint8_t oorVorig = 0; if (oorSoort == 0 && !stilVanaf) stilVanaf = millis(); if (oorSoort >= 1 && oorVorig == 0 && stilVanaf && millis() - stilVanaf > 30UL * 60000 && robotModus && gagAct < 0 && !slaapt) startGag(94); else if (oorSoort == 1 && oorVorig != 1 && stilVanaf && millis() - stilVanaf > 15UL * 60000 && robotModus && gagAct < 0) startGag(65); if (oorSoort != 0) stilVanaf = 0; oorVorig = oorSoort; }   // v90: hoi als je gaat praten
    (void)mu0; }   // v42: muziek en praten zitten nu in persStap
  if (slaapt) mood = SLEEPING;
  if ((int32_t)(grpTot - millis()) > 0) mood = HAPPY;
