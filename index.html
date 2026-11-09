@@ -4984,7 +4984,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v157';
+  var VERSION = 'v158';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7254,7 +7254,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (d < 2500) { if (knop) { el.textContent = 'Je bent al zo goed als thuis!'; setEv('happy', 2.5, 'Je bent al bijna thuis!'); } return; }
     if (!knop && ((nav && nav.dest) || T - thT < 7200)) return;
     if (thBezig) return; thBezig = true; thT = T; if (knop) el.textContent = 'Even rekenen…';
-    var pad = lastPos.lon.toFixed(5) + ',' + lastPos.lat.toFixed(5) + ';' + h.lon.toFixed(5) + ',' + h.lat.toFixed(5), qs = '?overview=simplified&geometries=geojson' + (navPont ? '&exclude=ferry' : '');
+    var pad = lastPos.lon.toFixed(5) + ',' + lastPos.lat.toFixed(5) + ';' + h.lon.toFixed(5) + ',' + h.lat.toFixed(5), qs = '?overview=simplified&geometries=geojson';   /* v158: de routeserver snapt exclude=ferry niet (http 400) */
     navGet('/route/' + pad + qs, 'https://router.project-osrm.org/route/v1/driving/' + pad + qs).then(function (j) {
       var rt = j && j.routes && j.routes[0]; if (!rt) throw new Error('geen route');
       var geom = ((rt.geometry && rt.geometry.coordinates) || []).map(function (c) { return { lat: c[1], lon: c[0] }; });

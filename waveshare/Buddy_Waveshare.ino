@@ -37,7 +37,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 96;   // v96: coördinaten in het logboek afgerond op ~1 km (privacy)   // v95: luistert echt mee als je praat, 'ik ben al wakker', handen over zijn oren bij herrie, schrikreactie, fluistert 's nachts, mist de muziek, kletspraatje   // v94: hoort zijn eigen geluidjes niet meer als klappen (geen hartjes-chaos meer), niks meer door elkaar, rustiger stemmingen, 8 nieuwe bureau-animaties   // v93: menu SPEL (reactiespel, Simon zegt, ademhalen, stats), feesthoedje als een collega jarig is   // v92: aan de pc nooit diep slapen (dan blijft klappen werken), op tafel pas na een uur   // v91: popcorn, bowling, papieren vliegtuigje, goocheltruc, DJ en selfie   // v90: reageert meer op geluid (3x klappen = dansje, wakker schrikken, 'hoi' als je gaat praten), 12 nieuwe animaties die uit het scherm komen, nieuwe geluidjes   // v89: groter tikvlak voor zijn ogen, 7 nieuwe thuis-animaties   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
+static const int FW_VERSIE = 97;   // v97: crash-spoor: na een crash staat in het logboek wat hij als laatste deed
+RTC_NOINIT_ATTR static uint32_t rtcSpoor[6];   // [0]=sleutel, [1]=gag, [2]=show, [3]=geluid, [4]=spel/menu, [5]=uptime s   // v96: coördinaten in het logboek afgerond op ~1 km (privacy)   // v95: luistert echt mee als je praat, 'ik ben al wakker', handen over zijn oren bij herrie, schrikreactie, fluistert 's nachts, mist de muziek, kletspraatje   // v94: hoort zijn eigen geluidjes niet meer als klappen (geen hartjes-chaos meer), niks meer door elkaar, rustiger stemmingen, 8 nieuwe bureau-animaties   // v93: menu SPEL (reactiespel, Simon zegt, ademhalen, stats), feesthoedje als een collega jarig is   // v92: aan de pc nooit diep slapen (dan blijft klappen werken), op tafel pas na een uur   // v91: popcorn, bowling, papieren vliegtuigje, goocheltruc, DJ en selfie   // v90: reageert meer op geluid (3x klappen = dansje, wakker schrikken, 'hoi' als je gaat praten), 12 nieuwe animaties die uit het scherm komen, nieuwe geluidjes   // v89: groter tikvlak voor zijn ogen, 7 nieuwe thuis-animaties   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
 static uint32_t schaapT = 0, streepTot = 0, collegaJarigTot = 0, slaapUitT = 0, hmhmTot = 0; static uint8_t spel = 0; static bool slaapt = false; static const char *hmhmTxt = "hmhm"; static int klokKwartier = -1;   // v87: duidelijkere kaart (lichtere wegen met rand, snelweg oranje, files rood, raster, noordpijl)
 // v86: kookwekker (menu TIMER), schudden = dobbelsteen of magische 8-bal, boos op zijn kop, nachtlampje met klok, hij mist je
 static uint32_t timerTot = 0, timerLen = 0, timerAlarmT = 0, nachtKlokTot = 0; static uint8_t timerMin = 10, timerFase = 0, timerAlarmN = 0; static bool gemist = false; static int8_t schudUitkomst = 0;
@@ -116,6 +117,7 @@ static void logRegel(const char *fmt, ...) {
   if (f) { f.println(buf); size_t sz = f.size(); f.close(); if (sz > 200000) { logFs->remove(LOGOUD); logFs->rename(LOGF, LOGOUD); } }
   xSemaphoreGive(logMutex);
 }
+static void spoor(int i, uint32_t v) { if (rtcSpoor[0] != 0xB0DD1E5) { memset(rtcSpoor, 0, sizeof rtcSpoor); rtcSpoor[0] = 0xB0DD1E5; } rtcSpoor[i] = v; rtcSpoor[5] = millis() / 1000; }
 static const char *resetReden() {
   switch (esp_reset_reason()) {
     case ESP_RST_POWERON: return "stroom aan"; case ESP_RST_SW: return "herstart door software"; case ESP_RST_PANIC: return "CRASH (panic)";
@@ -1699,6 +1701,7 @@ static void plusRitBewaar() { buddyPrefs.putBytes("ritten", plusRit, sizeof(Plus
 static void plusRitLaad() { size_t n = buddyPrefs.getBytesLength("ritten"); if (n && n <= sizeof(plusRit) && n % sizeof(PlusRit) == 0) { buddyPrefs.getBytes("ritten", plusRit, n); plusRitN = n / sizeof(PlusRit); } }
 static void startGag(int k) {
   if (spel || menuOpen || venster || (int32_t)(showTot - millis()) > 0 || showNa) return;   // v94: nooit over een show, spel of menu heen
+  spoor(1, k + 1);
   if (k == 1) { vliegGevangen = false; }
   if (robotModus && k >= 0 && GAGS[k].flags) {   // v47: als robotje bij elk trucje een geluidje (niet 's nachts)
     int hh = 12, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
@@ -2677,7 +2680,7 @@ static uint8_t spFase = 0, simN = 0, simI = 0, reactRonde = 0; static uint32_t s
 static const uint16_t SIMKL[4] = {0xF800, 0x07E0, 0x041F, 0xFFE0}, SIMDIM[4] = {0x4000, 0x0200, 0x0008, 0x4200}, SIMHZ[4] = {330, 440, 554, 659};
 static const float SIMX[4] = {120, 196, 120, 44}, SIMY[4] = {44, 120, 196, 120};
 static void piep(uint16_t hz, uint16_t ms);
-static void spelStart(uint8_t s) { if (!spLaden) { spLaden = true; reactRec = buddyPrefs.getUShort("reactRec", 0); simonRec = buddyPrefs.getUShort("simonRec", 0); } spel = s; spFase = 0; spT = millis(); reactRonde = 0; reactBest = 0; simN = 0; simI = 0; simLicht = -1; laatsteActie = millis(); slaapt = false;
+static void spelStart(uint8_t s) { spoor(4, s); if (!spLaden) { spLaden = true; reactRec = buddyPrefs.getUShort("reactRec", 0); simonRec = buddyPrefs.getUShort("simonRec", 0); } spel = s; spFase = 0; spT = millis(); reactRonde = 0; reactBest = 0; simN = 0; simI = 0; simLicht = -1; laatsteActie = millis(); slaapt = false;
   if (s == 2) { simRij[0] = random(4); simN = 1; spFase = 0; spT = millis() + 800; } }
 static void spelStap() {
   if (!spel) return; uint32_t nu = millis(); laatsteActie = nu;
@@ -3609,6 +3612,7 @@ static void speelSter() {
   audioBusy = true; audioBusyT = millis(); audioGespeeld++;
   if (xTaskCreatePinnedToCore(sterTask, "BuddySter", 4096, nullptr, 1, nullptr, 1) != pdPASS) audioBusy = false; }
 void playGeluid(int g) {   // v46: echte Buddy-geluidjes met glijtonen
+  spoor(3, g);
   if (audioBusy && millis() - audioBusyT > 12000) { audioBusy = false; logRegel("geluid: hing vast, losgemaakt"); }   // v82: 12 s (het sterren-geluidje duurt 9,5 s)   // v58: vangnet
   if (!audioReady) { static uint32_t gemeld = 0; if (!gemeld || millis() - gemeld > 60000) { gemeld = millis(); logRegel("geluid: niet klaar (%s)", audioStatus); } return; }
   if (audioBusy) return;
@@ -3797,6 +3801,8 @@ void setup(){
  buddyPrefs.getString("ssid", wifiNaam, sizeof wifiNaam); buddyPrefs.getString("pass", wifiPass, sizeof wifiPass);
  xTaskCreatePinnedToCore(netTaak, "BuddyNet", 12288, nullptr, 1, nullptr, 0);
  logRegel("===== OPSTART v%d | reden: %s | heap %u =====", FW_VERSIE, resetReden(), (unsigned)ESP.getFreeHeap());
+ if (esp_reset_reason() == ESP_RST_PANIC && rtcSpoor[0] == 0xB0DD1E5) logRegel("crash-spoor: laatste gag %ld, show %ld, geluid %ld, spel %ld, na %lu s aan", (long)rtcSpoor[1] - 1, (long)rtcSpoor[2], (long)rtcSpoor[3], (long)rtcSpoor[4], (unsigned long)rtcSpoor[5]);   // v97
+ memset(rtcSpoor, 0, sizeof rtcSpoor); rtcSpoor[0] = 0xB0DD1E5;
  setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1); tzset();   // v42: Nederlandse tijd, ook zonder wifi
  persLaad(); groetVanaf = millis() + 2500; nextGagT = 20; vliegTotaal = buddyPrefs.getUShort("vlieg", 0); energie = buddyPrefs.getUChar("energie", 100);
  if (wakkerDoorBeweging) logRegel("wakker geworden door beweging (instappen?)");
@@ -3884,7 +3890,7 @@ void loop(){
      }
      if (showNa && (int32_t)(nu - showNa) >= 0) {   // v56: na de vlag de sprint-show
        static const uint16_t DUUR[17] = {0, 9500, 7000, 7500, 8000, 6000, 5000, 7000, 7000, 2600, 3200, 4000, 4500, 4500, 4500, 5000, 5000};
-       showNa = 0; showStart = nu; showTot = nu + DUUR[showSoort]; if (showSoort == 1) speelSter(); else if (showSoort >= 14) playGeluid(showSoort == 16 ? GL_DINGDONG : GL_PLING); else playGeluid(showSoort == 5 ? GL_VROEM : showSoort == 6 ? GL_GIECHEL : showSoort >= 7 ? GL_TRIP : GL_RUIMTE + showSoort - 1); logRegel("sprint-show %d", (int)showSoort);
+       showNa = 0; showStart = nu; showTot = nu + DUUR[showSoort]; spoor(2, showSoort); if (showSoort == 1) speelSter(); else if (showSoort >= 14) playGeluid(showSoort == 16 ? GL_DINGDONG : GL_PLING); else playGeluid(showSoort == 5 ? GL_VROEM : showSoort == 6 ? GL_GIECHEL : showSoort >= 7 ? GL_TRIP : GL_RUIMTE + showSoort - 1); logRegel("sprint-show %d", (int)showSoort);
      }
      float doel = vn; naaldV += ((doel - naald) * 55.f - naaldV * 6.5f) * dt; naald += naaldV * dt;   // veer + demper: schiet door en trilt na
      if (naald < 0) { naald = 0; naaldV = 0; }
