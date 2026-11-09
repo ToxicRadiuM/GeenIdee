@@ -6638,7 +6638,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }
   /* v149: rapportcijfer, stroomkosten, dagboek-archief en verzamelkaart van gemeenten */
   function ritCijfer(r) {
-    var c = (r.stijl || 0) / 10; if (r.netjes) c += .5; if (r.zacht != null) c += (r.zacht - 70) / 60;
+    var c = (r.stijl || 0) / 10 - (r.sch || 0) * .5; if (r.netjes) c += .25; if (r.zacht != null) c += (r.zacht - 85) / 100;   /* v158: iets strenger, schokken tellen mee */
+    if (c > 9.5 && ((r.sch || 0) > 0 || (r.stijl || 0) < 95)) c = 9.5;   /* een 10 alleen voor een perfecte rit */
     return Math.max(1, Math.min(10, Math.round(c * 2) / 2));
   }
   function cijferTxt(c) { return String(c).replace('.', ','); }
