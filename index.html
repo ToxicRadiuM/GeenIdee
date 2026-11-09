@@ -9993,11 +9993,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       { n: 'Model Y rood', k: '#c8102e', r: '#2b3440', vorm: 'suv' }, { n: 'Model Y blauw', k: '#1d4fa8', r: '#2b3440', vorm: 'suv' },
       { n: 'Sportwagen geel', k: '#ffcc00', r: '#222', vorm: 'sport' }, { n: 'Busje', k: '#e8e8e8', r: '#2b3440', vorm: 'bus' }, { n: 'Raceauto', k: '#ff6a00', r: '#111', vorm: 'race' },
       /* v160: echte modellen (maten ongeveer in meters: lengte, breedte, hoogte, hoogte carrosserie, waar het dak begint/eindigt) */
-      { n: 'Tesla Model Y Standard (2026)', k: '#8e949b', r: '#1d232a', vorm: 'suv', d: { l: 4.80, b: 1.92, h: 1.62, bh: 1.0, c0: -.55, c1: .38 } },
-      { n: 'BMW iX1', k: '#eef0f2', r: '#20262c', vorm: 'suv', d: { l: 4.50, b: 1.85, h: 1.62, bh: 1.0, c0: -.78, c1: .34 } },
-      { n: 'Polestar 4', k: '#5b6168', r: '#14181c', vorm: 'suv', d: { l: 4.84, b: 2.01, h: 1.53, bh: .95, c0: -.5, c1: .4, geenAchterruit: true } },
-      { n: 'MG Marvel R', k: '#2f5d8a', r: '#1d232a', vorm: 'suv', d: { l: 4.67, b: 1.92, h: 1.61, bh: 1.0, c0: -.62, c1: .36 } },
-      { n: 'Opel Astra Sports Tourer (2025)', k: '#b3121d', r: '#1d232a', vorm: 'suv', d: { l: 4.64, b: 1.86, h: 1.48, bh: .82, c0: -.86, c1: .3 } }];
+      { n: 'Tesla Model Y Standard (2026)', k: '#f2f3f4', r: '#1d232a', vorm: 'suv', d: { l: 4.80, b: 1.92, h: 1.62, bh: 1.0, c0: -.55, c1: .38 } },
+      { n: 'BMW iX1', k: '#16181b', r: '#454d56', vorm: 'suv', d: { l: 4.50, b: 1.85, h: 1.62, bh: 1.0, c0: -.78, c1: .34 } },
+      { n: 'Polestar 4', k: '#4a4f55', r: '#14181c', vorm: 'suv', d: { l: 4.84, b: 2.01, h: 1.53, bh: .95, c0: -.5, c1: .4, geenAchterruit: true } },
+      { n: 'MG Marvel R', k: '#4a4f55', r: '#1d232a', vorm: 'suv', d: { l: 4.67, b: 1.92, h: 1.61, bh: 1.0, c0: -.62, c1: .36 } },
+      { n: 'Opel Astra Sports Tourer (2025)', k: '#c9ccd0', r: '#1d232a', vorm: 'suv', d: { l: 4.64, b: 1.86, h: 1.48, bh: .82, c0: -.86, c1: .3 } }];
     function autoSvg(a) {
       var b = a.vorm === 'bus' ? '<rect x="3" y="2" width="28" height="60" rx="6" fill="' + a.k + '"/><rect x="6" y="6" width="22" height="9" rx="3" fill="' + a.r + '"/><rect x="6" y="18" width="22" height="38" rx="3" fill="' + a.k + '" stroke="rgba(0,0,0,.15)"/>'
         : a.vorm === 'race' ? '<path d="M17 1 L24 10 L25 30 L32 34 L32 46 L25 48 L24 62 L10 62 L9 48 L2 46 L2 34 L9 30 L10 10 Z" fill="' + a.k + '"/><rect x="2" y="56" width="30" height="6" rx="2" fill="' + a.r + '"/><ellipse cx="17" cy="32" rx="4" ry="7" fill="' + a.r + '"/>'
