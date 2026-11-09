@@ -4990,7 +4990,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v159';
+  var VERSION = 'v160';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9991,7 +9991,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     var AUTOS = [   /* bovenaanzicht, neus naar boven */
       { n: 'Model Y wit', k: '#f2f2f2', r: '#2b3440', vorm: 'suv' }, { n: 'Model Y zwart', k: '#1c1f24', r: '#56606b', vorm: 'suv' },
       { n: 'Model Y rood', k: '#c8102e', r: '#2b3440', vorm: 'suv' }, { n: 'Model Y blauw', k: '#1d4fa8', r: '#2b3440', vorm: 'suv' },
-      { n: 'Sportwagen geel', k: '#ffcc00', r: '#222', vorm: 'sport' }, { n: 'Busje', k: '#e8e8e8', r: '#2b3440', vorm: 'bus' }, { n: 'Raceauto', k: '#ff6a00', r: '#111', vorm: 'race' }];
+      { n: 'Sportwagen geel', k: '#ffcc00', r: '#222', vorm: 'sport' }, { n: 'Busje', k: '#e8e8e8', r: '#2b3440', vorm: 'bus' }, { n: 'Raceauto', k: '#ff6a00', r: '#111', vorm: 'race' },
+      /* v160: echte modellen (maten ongeveer in meters: lengte, breedte, hoogte, hoogte carrosserie, waar het dak begint/eindigt) */
+      { n: 'Tesla Model Y Standard (2026)', k: '#8e949b', r: '#1d232a', vorm: 'suv', d: { l: 4.80, b: 1.92, h: 1.62, bh: 1.0, c0: -.55, c1: .38 } },
+      { n: 'BMW iX1', k: '#eef0f2', r: '#20262c', vorm: 'suv', d: { l: 4.50, b: 1.85, h: 1.62, bh: 1.0, c0: -.78, c1: .34 } },
+      { n: 'Polestar 4', k: '#5b6168', r: '#14181c', vorm: 'suv', d: { l: 4.84, b: 2.01, h: 1.53, bh: .95, c0: -.5, c1: .4, geenAchterruit: true } },
+      { n: 'MG Marvel R', k: '#2f5d8a', r: '#1d232a', vorm: 'suv', d: { l: 4.67, b: 1.92, h: 1.61, bh: 1.0, c0: -.62, c1: .36 } },
+      { n: 'Opel Astra Sports Tourer (2025)', k: '#b3121d', r: '#1d232a', vorm: 'suv', d: { l: 4.64, b: 1.86, h: 1.48, bh: .82, c0: -.86, c1: .3 } }];
     function autoSvg(a) {
       var b = a.vorm === 'bus' ? '<rect x="3" y="2" width="28" height="60" rx="6" fill="' + a.k + '"/><rect x="6" y="6" width="22" height="9" rx="3" fill="' + a.r + '"/><rect x="6" y="18" width="22" height="38" rx="3" fill="' + a.k + '" stroke="rgba(0,0,0,.15)"/>'
         : a.vorm === 'race' ? '<path d="M17 1 L24 10 L25 30 L32 34 L32 46 L25 48 L24 62 L10 62 L9 48 L2 46 L2 34 L9 30 L10 10 Z" fill="' + a.k + '"/><rect x="2" y="56" width="30" height="6" rx="2" fill="' + a.r + '"/><ellipse cx="17" cy="32" rx="4" ry="7" fill="' + a.r + '"/>'
@@ -10498,10 +10504,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         var rem = mkEl && mkEl.classList.contains('rem'), kL = mkEl && mkEl.classList.contains('knipL'), kR = mkEl && mkEl.classList.contains('knipR'), knipAan = (Date.now() % 800) < 400, nacht = document.body.classList.contains('nacht');
         var L = a.vorm === 'bus' ? 2.6 : 2.37, W = a.vorm === 'race' ? .9 : .96, H = a.vorm === 'bus' ? 1.9 : a.vorm === 'sport' || a.vorm === 'race' ? .85 : 1.0;
         function doos(x0, x1, y0, y1, h0, h1, kl) { var pt = [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(function (q) { var x = q[0] * S3, y = q[1] * S3; return [lon + (x * cb + y * sb) / kx, lat + (-x * sb + y * cb) / ky]; }); f.push({ type: 'Feature', properties: { b: h0 * S3, h: h1 * S3, kl: kl }, geometry: { type: 'Polygon', coordinates: [pt] } }); }
+        if (a.d) { L = a.d.l / 2; W = a.d.b / 2; H = a.d.bh; }
         doos(-W, W, -L, L, .28, H, a.k);   /* carrosserie */
-        if (a.vorm === 'bus') doos(-W + .08, W - .08, -L + .2, L - .5, H, H + .5, a.r); else if (a.vorm !== 'race') { doos(-W + .16, W - .16, -1.1, .95, H, H + .5, a.r); doos(-W + .24, W - .24, -.9, .7, H + .5, H + .56, a.k); }
+        if (a.d) { var c0 = a.d.c0 * L, c1 = a.d.c1 * L, dh = a.d.h; doos(-W + .1, W - .1, c0, c1, H, dh - .06, a.r); doos(-W + .16, W - .16, c0 + .25, c1 - .15, dh - .06, dh, a.k);   /* ramen en dak */
+          if (a.d.geenAchterruit) doos(-W + .09, W - .09, c0, c0 + .5, H, dh - .1, a.k);   /* Polestar 4: geen achterruit */
+          doos(-W + .02, W - .02, L - .9, L, H, H + .04, a.k); }   /* motorkap-rand */
+        else if (a.vorm === 'bus') doos(-W + .08, W - .08, -L + .2, L - .5, H, H + .5, a.r); else if (a.vorm !== 'race') { doos(-W + .16, W - .16, -1.1, .95, H, H + .5, a.r); doos(-W + .24, W - .24, -.9, .7, H + .5, H + .56, a.k); }
         else { doos(-.35, .35, -.6, .4, H, H + .35, a.r); doos(-W - .1, W + .1, -L - .1, -L + .3, H, H + .12, a.r); }
-        [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(function (w) { doos(w[0] > 0 ? W - .12 : -W - .04, w[0] > 0 ? W + .04 : -W + .12, w[1] * 1.45 - .36, w[1] * 1.45 + .36, 0, .62, '#111'); });   /* wielen */
+        [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(function (w) { doos(w[0] > 0 ? W - .12 : -W - .04, w[0] > 0 ? W + .04 : -W + .12, w[1] * L * .61 - .36, w[1] * L * .61 + .36, 0, .62, '#111'); });   /* wielen */
         doos(-W + .1, -W + .55, -L - .05, -L, .6, .78, rem ? '#ff2020' : '#7a1414'); doos(W - .55, W - .1, -L - .05, -L, .6, .78, rem ? '#ff2020' : '#7a1414');   /* achterlichten */
         doos(-W + .12, -W + .52, L, L + .05, .55, .7, nacht ? '#ffffff' : '#fff8c0'); doos(W - .52, W - .12, L, L + .05, .55, .7, nacht ? '#ffffff' : '#fff8c0');   /* koplampen */
         if (kL && knipAan) { doos(-W - .06, -W, L - .5, L - .1, .6, .74, '#ffb02e'); doos(-W - .06, -W, -L + .1, -L + .5, .6, .74, '#ffb02e'); }
