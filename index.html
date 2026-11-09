@@ -10043,7 +10043,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       }).catch(function () { melding('Kaart laden lukt niet (geen internet?).'); });
     }
     var flMk = [], flT = 0;   /* v112: flitsers op de rijkaart (van de groep, van jou en de vaste) */
-    function flPunt(t, rand, klein) { var d = document.createElement('div'); d.style.cssText = 'width:' + (klein ? 24 : 32) + 'px;height:' + (klein ? 24 : 32) + 'px;border-radius:50%;background:rgba(16,20,24,.9);border:2px solid ' + rand + ';display:flex;align-items:center;justify-content:center;font-size:' + (klein ? 13 : 17) + 'px;box-shadow:0 3px 8px rgba(0,0,0,.5)'; d.textContent = t; return d; }
+    function flPunt(t, rand, klein) { var d = document.createElement('div'); d.className = 'flP'; d.style.cssText = 'width:' + (klein ? 24 : 32) + 'px;height:' + (klein ? 24 : 32) + 'px;border-radius:50%;background:rgba(16,20,24,.9);border:2px solid ' + rand + ';display:flex;align-items:center;justify-content:center;font-size:' + (klein ? 13 : 17) + 'px;box-shadow:0 3px 8px rgba(0,0,0,.5)'; d.textContent = t; return d; }
     function filesRij() {   /* v126: files als rode lijnen op de rijkaart */
       if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return; var KL = { jam: '#ff2d2d', accident: '#ff2d2d', closure: '#8b0000', ramp: '#8b0000' };
       var fs = (window.__verkeerItems ? window.__verkeerItems() : []).filter(function (it) { return it && Array.isArray(it.pts) && it.pts.length >= 2; }).map(function (it) {
@@ -10055,7 +10055,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     function hv(a, b) { var d = Math.abs(((a - b) % 360 + 360) % 360); return d > 180 ? 360 - d : d; }
     function mkr(el, brug) {   /* v139: in eerste persoon staan flitsers op een paal en borden op een brug, als echte borden langs de weg */
       if (st.kijk !== 2) return new maplibregl.Marker({ element: el });
-      var w = document.createElement('div'); w.className = 'rijHoog' + (brug ? ' brug' : ''); w.appendChild(el); if (!brug) { var lp = document.createElement('i'); lp.className = 'flLamp'; w.appendChild(lp); } return new maplibregl.Marker({ element: w, anchor: 'bottom' });
+      var w = document.createElement('div'); w.className = 'rijHoog' + (brug ? ' brug' : ''); w.appendChild(el); if (!brug && el.classList.contains('flP')) { var lp = document.createElement('i'); lp.className = 'flLamp'; w.appendChild(lp); }   /* v161: lampje alleen bij flitsers, niet bij laadpalen of borden */ return new maplibregl.Marker({ element: w, anchor: 'bottom' });
     }
     function msiVak(l, groot) { var c = document.createElement('span'), v = l ? l.v : '';
       c.className = 'msiV ' + (!l ? 'leeg' : v === 'X' ? 'x' : /^\d/.test(v) ? (l.r ? 'r' : '') : 'p'); c.textContent = !l ? '' : v === 'X' ? '✕' : v === '<' ? '↙' : v === '>' ? '↘' : v; return c; }
