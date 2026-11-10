@@ -37,7 +37,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 100;   // v100: 8 herfst-animaties (sept t/m nov)   // v99: muts netter (blauw bolletje, geen blauw onder de witte rand)   // v98: welkom thuis na een lange stilte, ochtendroutine, verveling die groeit   // v97: crash-spoor: na een crash staat in het logboek wat hij als laatste deed
+static const int FW_VERSIE = 101;   // v101: telefoon ver weg (signaal zwak) telt als 'niet in de auto'
+// v100: 8 herfst-animaties (sept t/m nov)   // v99: muts netter (blauw bolletje, geen blauw onder de witte rand)   // v98: welkom thuis na een lange stilte, ochtendroutine, verveling die groeit   // v97: crash-spoor: na een crash staat in het logboek wat hij als laatste deed
 RTC_NOINIT_ATTR static uint32_t rtcSpoor[6];   // [0]=sleutel, [1]=gag, [2]=show, [3]=geluid, [4]=spel/menu, [5]=uptime s   // v96: coördinaten in het logboek afgerond op ~1 km (privacy)   // v95: luistert echt mee als je praat, 'ik ben al wakker', handen over zijn oren bij herrie, schrikreactie, fluistert 's nachts, mist de muziek, kletspraatje   // v94: hoort zijn eigen geluidjes niet meer als klappen (geen hartjes-chaos meer), niks meer door elkaar, rustiger stemmingen, 8 nieuwe bureau-animaties   // v93: menu SPEL (reactiespel, Simon zegt, ademhalen, stats), feesthoedje als een collega jarig is   // v92: aan de pc nooit diep slapen (dan blijft klappen werken), op tafel pas na een uur   // v91: popcorn, bowling, papieren vliegtuigje, goocheltruc, DJ en selfie   // v90: reageert meer op geluid (3x klappen = dansje, wakker schrikken, 'hoi' als je gaat praten), 12 nieuwe animaties die uit het scherm komen, nieuwe geluidjes   // v89: groter tikvlak voor zijn ogen, 7 nieuwe thuis-animaties   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
 static uint32_t schaapT = 0, streepTot = 0, collegaJarigTot = 0, slaapUitT = 0, hmhmTot = 0; static uint8_t spel = 0; static bool slaapt = false; static uint32_t laatsteActie = 0; static const char *hmhmTxt = "hmhm"; static int klokKwartier = -1;   // v87: duidelijkere kaart (lichtere wegen met rand, snelweg oranje, files rood, raster, noordpijl)
 // v86: kookwekker (menu TIMER), schudden = dobbelsteen of magische 8-bal, boos op zijn kop, nachtlampje met klok, hij mist je
@@ -1165,6 +1166,9 @@ struct PhoneData { int v, lim, camD, camLim, fileD, fileMin; bool werk; int mood
 static PhoneData phone = {0, 0, -1, 0, -1, 0, false, -1, "", 0, 0, 0, ""};
 static BLECharacteristic *bleTx = nullptr;
 static volatile bool bleConnected = false;
+// v101: signaalsterkte van de telefoon. Auto op slot met je telefoon in huis = nog verbonden, maar zwak signaal.
+static volatile int8_t telRssi = 0; static volatile uint32_t telRssiT = 0; static float telRssiGem = 0; static bool telVer = false; static uint32_t telZwakSinds = 0;
+static bool telDichtbij() { return bleConnected && !telVer; }
 static char bleBuf[256]; static size_t bleLen = 0;
 // v76: route van de app (voor de kaart op Buddy+). Twee vaste buffers in PSRAM, nooit vrijgeven (tekenen en ontvangen lopen tegelijk)
 static const int RT_MAX = 1200; static float *rtA = nullptr, *rtB = nullptr, *rtPt = nullptr; static volatile int rtN = 0; static int rtNieuwN = 0; static bool rtBezig = false;
@@ -1313,7 +1317,16 @@ class BuddySecCb : public BLESecurityCallbacks {
   }
 };
 #endif
+#ifdef BOND_BLUEDROID
+static esp_bd_addr_t telBda; static volatile bool telBdaOk = false;
+static void telGap(esp_gap_ble_cb_event_t e, esp_ble_gap_cb_param_t *p) {
+  if (e == ESP_GAP_BLE_READ_RSSI_COMPLETE_EVT && p->read_rssi_cmpl.status == ESP_BT_STATUS_SUCCESS) { telRssi = p->read_rssi_cmpl.rssi; telRssiT = millis(); }
+}
+#endif
 class BuddySrvCb : public BLEServerCallbacks {
+#ifdef BOND_BLUEDROID
+  void onConnect(BLEServer *s, esp_ble_gatts_cb_param_t *p) override { memcpy(telBda, p->connect.remote_bda, sizeof(esp_bd_addr_t)); telBdaOk = true; telRssiGem = 0; telVer = false; telZwakSinds = 0; }
+#endif
   void onConnect(BLEServer *) override { bleConnected = true; pinOk = false; verbindT = millis(); if (!gekoppeld) pinTot = millis() + 60000; logRegel("BLE: telefoon verbonden"); }
   void onDisconnect(BLEServer *) override { bleConnected = false; pinOk = false; if (!gekoppeld && verbindT && millis() - verbindT > 8000 && koppelMislukt < 250) koppelMislukt++; verbindT = 0; pinTot = 0; logRegel("BLE: telefoon weg"); BLEDevice::startAdvertising(); }
 };
@@ -1329,6 +1342,9 @@ class BuddyRxCb : public BLECharacteristicCallbacks {
 };
 static void bleStart() {
   BLEDevice::init("Buddy-scherm");
+#ifdef BOND_BLUEDROID
+  BLEDevice::setCustomGapHandler(telGap);
+#endif
   BLEDevice::setMTU(185);
   BLEServer *srv = BLEDevice::createServer(); srv->setCallbacks(new BuddySrvCb());
   BLEService *svc = srv->createService(NUS_SVC);
@@ -1361,6 +1377,18 @@ static void logNaarTelefoonTaak(void *) {
   }
   logBezig = false;
   vTaskDelete(NULL);
+}
+static void telRssiStap() {   // v101: elke 2 s het signaal meten; 30 s lang zwak (< -88 dBm) = telefoon is uit de auto
+  uint32_t nu = millis(); static uint32_t vraagT = 0;
+  if (!bleConnected) { telVer = false; telZwakSinds = 0; telRssiGem = 0; return; }
+#ifdef BOND_BLUEDROID
+  if (telBdaOk && nu - vraagT > 2000) { vraagT = nu; esp_ble_gap_read_rssi(telBda); }
+  if (telRssiT && nu - telRssiT < 5000) {
+    static uint32_t gebruiktT = 0; if (telRssiT != gebruiktT) { gebruiktT = telRssiT; telRssiGem = telRssiGem == 0 ? telRssi : telRssiGem * .8f + telRssi * .2f; }
+    if (telRssiGem < -88) { if (!telZwakSinds) telZwakSinds = nu; if (!telVer && nu - telZwakSinds > 30000) { telVer = true; logRegel("telefoon ver weg (signaal %.0f dBm): niet meer in de auto", telRssiGem); } }
+    else { telZwakSinds = 0; if (telVer && telRssiGem > -80) { telVer = false; logRegel("telefoon weer dichtbij (signaal %.0f dBm)", telRssiGem); } }
+  }
+#endif
 }
 static void bleSend(const char *t) { if (bleTx && bleConnected && !logBezig) { bleTx->setValue((uint8_t *)t, strlen(t)); bleTx->notify(); } }
 
@@ -2190,7 +2218,7 @@ static void slaapStap() {
   // v26: deur dicht en daarna stil (en je telefoon niet meer verbonden) = je bent uitgestapt -> uit
   bool geparkeerd = !ok || v < 1;
   if (geparkeerd && !Serial.isPlugged() && laatsteDeur && nu - laatsteDeur > 60000 && nu - laatsteDeur < 120000 && nu - laatsteBeweging > 45000
-      && nu - laatsteActie > 45000 && !bleConnected && !menuOpen && otaPct < 0) {
+      && nu - laatsteActie > 45000 && !telDichtbij() && !menuOpen && otaPct < 0) {
     static uint32_t afscheidT = 0;   // v42: eerst even zwaaien
     if (!afscheidT) { afscheidT = nu; static char tt[44]; char nm[20]; naamDeel(nm, sizeof nm); int hh = -1, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
       const char *w = hh < 0 ? "Tot later%s!" : (hh >= 22 || hh < 5) ? "Slaap lekker%s!" : (hh < 10) ? "Fijne dag%s!" : (hh >= 17) ? "Fijne avond%s!" : "Tot straks%s!";
@@ -3883,9 +3911,9 @@ void loop(){
    if (millis() - logStatusMs > 60000) {
      logStatusMs = millis(); int hh = -1, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
      bool ok; float v = spdNow(&ok);
-     logRegel("status | klok %02d:%02d | gps %s sat=%d zicht=%d nmea=%lu/%lu | %.0f km/u | tel %s | heap %u | licht %d | fps %.0f teken %.1fms stuur %.1fms%s",
+     logRegel("status | klok %02d:%02d | gps %s sat=%d zicht=%d nmea=%lu/%lu | %.0f km/u | tel %s %.0fdBm | heap %u | licht %d | fps %.0f teken %.1fms stuur %.1fms%s",
        hh, mm, fixNu ? (posVanTel ? "TEL" : "FIX") : "zoekt", (int)gpsSatellites, (int)gpsInZicht, (unsigned long)nmeaOk, (unsigned long)nmeaBad, v,
-       bleConnected ? (phoneFresh() ? "data" : "stil") : "nee", (unsigned)ESP.getFreeHeap(), (int)huidigLicht, laatsteFps, laatsteDrawMs, laatsteFlushMs, slaapt ? " | SLAAPT" : "");
+       bleConnected ? (telVer ? "ver" : phoneFresh() ? "data" : "stil") : "nee", telRssiGem, (unsigned)ESP.getFreeHeap(), (int)huidigLicht, laatsteFps, laatsteDrawMs, laatsteFlushMs, slaapt ? " | SLAAPT" : "");
    }
    if (Serial.available()) {
      static char cmd[16]; static uint8_t cl = 0; char c = Serial.read();
@@ -3918,7 +3946,8 @@ void loop(){
    if (vr < 1.5f) { if (!stilSinds) stilSinds = nu; } else stilSinds = 0;
    bool r = stilSinds && nu - stilSinds > 20000 && !trajActief && otaPct < 0;
    if (r != robotModus) { robotModus = r; drawnBox[0] = drawnBox[1] = prevBox = {0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1}; if (r && gagAct < 0 && nextGagT > t + 10) nextGagT = t + 8; }
-   if (robotModus && bleConnected) laatsteActie = nu;   // telefoon erbij (bv. op tafel): wakker blijven en spelen
+   telRssiStap();
+   if (robotModus && telDichtbij()) laatsteActie = nu;   // telefoon erbij (bv. op tafel): wakker blijven en spelen
  }
  imuStep(dt); gagStep(dt); driveStep(dt); slaapStap(); persStap(dt); robotStap(dt);
  { // v39: te hard, collega in de buurt, wisselbeker
