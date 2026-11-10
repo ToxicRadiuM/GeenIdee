@@ -5108,7 +5108,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v176';
+  var VERSION = 'v177';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7942,7 +7942,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       stuurTekst('NET:' + pbase() + '\t' + (grp || '') + '\t' + (mijnId || '') + '\t' + nm).catch(function () {});
     }
     function weg() {
-      rx = null; try { if (window.__ritAutoKlaar) window.__ritAutoKlaar('telefoon weg bij Buddy+', 20); } catch (e) {} stat('Verbinding met het schermpje weg, ik probeer het opnieuw…'); $('bleKnop').textContent = '📡 Verbind met Buddy+';
+      rx = null; pinBev = false; try { if (window.__ritAutoKlaar) window.__ritAutoKlaar('telefoon weg bij Buddy+', 20); } catch (e) {} stat('Verbinding met het schermpje weg, ik probeer het opnieuw…'); $('bleKnop').textContent = '📡 Verbind met Buddy+';
       opnieuw(0);
     }
     function opnieuw(n) {   /* v172: blijven proberen (na een telefoontje of even buiten bereik), niet na één keer opgeven */
@@ -7955,19 +7955,30 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }, 2500);
     var logBuf = null;
     var PINKEY = 'dashboardmaatje-scpin-v1', pinGevraagd = 0;
+    var pinBev = false;   /* v177: is de code door Buddy+ goedgekeurd? */
+    function codeVenster(klaar) {   /* v177: eigen invulvenster (de prompt van de telefoon kwam in de app soms niet in beeld) */
+      var oud = document.getElementById('pinVenster'); if (oud) oud.remove();
+      var w = document.createElement('div'); w.id = 'pinVenster'; w.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);display:grid;place-items:center';
+      w.innerHTML = '<div style="background:#16181c;border:1px solid #444;border-radius:16px;padding:20px;max-width:320px;text-align:center;color:#eee"><div style="font-size:40px">🔑</div><p style="margin:8px 0 12px">Vul de <b>6 cijfers</b> in die bovenaan het schermpje van Buddy+ staan.</p><input id="pinIn" inputmode="numeric" maxlength="6" style="font-size:28px;width:170px;text-align:center;letter-spacing:6px;padding:8px;border-radius:10px;border:1px solid #666;background:#000;color:#fff"><div style="display:flex;gap:10px;justify-content:center;margin-top:14px"><button type="button" id="pinNee" class="btn">Annuleer</button><button type="button" id="pinJa" class="btn primary">Verbinden</button></div></div>';
+      document.body.appendChild(w); var i = w.querySelector('#pinIn'); setTimeout(function () { i.focus(); }, 100);
+      function af(v) { w.remove(); klaar(v); }
+      w.querySelector('#pinNee').onclick = function () { af(''); };
+      w.querySelector('#pinJa').onclick = function () { var v = i.value.replace(/\D/g, '').slice(0, 6); if (v.length < 6) { i.style.borderColor = '#ff453a'; return; } af(v); };
+      i.addEventListener('keydown', function (e) { if (e.key === 'Enter') w.querySelector('#pinJa').click(); });
+    }
     function stuurPin(opnieuw) {
       if (!rx) return; var pin = ''; try { pin = opnieuw ? '' : (localStorage.getItem(PINKEY) || ''); } catch (e) {}
       if (!pin) {
         if (Date.now() - pinGevraagd < 4000) return; pinGevraagd = Date.now();
-        var v = prompt('Vul de 6 cijfers in die bovenaan het schermpje van Buddy+ staan:'); if (!v) { stat('🔑 Vul de code van het schermpje in om te verbinden (tik nog eens op Verbind).'); return; }
-        pin = String(v).replace(/\D/g, '').slice(0, 6); try { localStorage.setItem(PINKEY, pin); } catch (e) {}
+        codeVenster(function (v) { if (!v) { stat('🔑 Vul de code van het schermpje in om te verbinden (tik op Verbind).'); return; } try { localStorage.setItem(PINKEY, v); } catch (e) {} stuurPin(); });
+        stat('🔑 Vul de 6 cijfers in die bovenaan het schermpje van Buddy+ staan.'); return;
       }
       var d = new TextEncoder().encode('PIN:' + pin + '\n');
       (rx.writeValueWithResponse ? rx.writeValueWithResponse(d) : rx.writeValue(d)).catch(function (e) { lg('scherm: code sturen mislukt (' + ((e && e.message) || e) + ')'); });
     }
     function binnen(e) {
       var t = new TextDecoder().decode(e.target.value);
-      if (t === 'PIN:OK') { lg('scherm: code goed, verbonden'); stat('✅ Verbonden met Buddy+. Het schermpje krijgt nu elke seconde de info van je telefoon.'); toast('✅ Verbonden met Buddy+'); setTimeout(stuurInst, 300); setTimeout(netStuur, 900); setTimeout(function () { klein('NET:JA'); }, 1300); setTimeout(function () { klein('HART:' + (window.__hartjesAan && window.__hartjesAan() ? 1 : 0)); }, 1700); setTimeout(persStuur, 1500); setTimeout(function () { klein('STAT?'); }, 2500); setTimeout(vraagLog, 3500); if (window.__rtOpnieuw) window.__rtOpnieuw(); return; }   /* alles wat vóór de code kwam, nog een keer */
+      if (t === 'PIN:OK') { pinBev = true; lg('scherm: code goed, verbonden'); stat('✅ Verbonden met Buddy+. Het schermpje krijgt nu elke seconde de info van je telefoon.'); toast('✅ Verbonden met Buddy+'); setTimeout(stuurInst, 300); setTimeout(netStuur, 900); setTimeout(function () { klein('NET:JA'); }, 1300); setTimeout(function () { klein('HART:' + (window.__hartjesAan && window.__hartjesAan() ? 1 : 0)); }, 1700); setTimeout(persStuur, 1500); setTimeout(function () { klein('STAT?'); }, 2500); setTimeout(vraagLog, 3500); if (window.__rtOpnieuw) window.__rtOpnieuw(); return; }   /* alles wat vóór de code kwam, nog een keer */
       if (t === 'PIN:FOUT') { lg('scherm: verkeerde code'); try { localStorage.removeItem(PINKEY); } catch (e) {} toast('Die code klopt niet. Kijk bovenaan het schermpje.'); setTimeout(function () { stuurPin(true); }, 600); return; }
       if (t === 'PIN?') { stuurPin(); return; }
       if (t === 'HART:1' || t === 'HART:0') { try { localStorage.setItem('dashboardmaatje-hartjes', t.slice(5)); var hc = $('hartjesOn'); if (hc) hc.checked = t === 'HART:1'; } catch (e) {} lg('hartjes ' + (t === 'HART:1' ? 'aan' : 'uit') + ' gezet op Buddy+'); return; }   /* v171 */
@@ -8203,6 +8214,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       try { window.__nativeZet && window.__nativeZet(); } catch (e) {}
       if (!navigator.bluetooth) { toast(window.Capacitor ? 'De app kan Bluetooth niet starten. Stuur Claude even het logboek.' : 'Deze browser kan geen Bluetooth. Gebruik Chrome op Android of de Buddy-app.'); lg('geen Bluetooth: Capacitor=' + !!window.Capacitor + ' native=' + !!window.__native); return; }
       toast('📡 Buddy+ zoeken…');
+      if (rx && dev && !pinBev) { pinGevraagd = 0; stuurPin(true); return; }   /* v177: verbonden maar nog geen code: opnieuw om de code vragen in plaats van loskoppelen */
       if (rx && dev) { clearTimeout(opnieuw.t); try { dev.gatt.disconnect(); } catch (e) {} dev = null; rx = null; try { localStorage.removeItem('dashboardmaatje-bleid'); } catch (e) {} stat('Losgekoppeld.'); $('bleKnop').textContent = '📡 Verbind met Buddy+'; return; }
       navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'Buddy' }], optionalServices: [SVC] }).then(function (d) {
         dev = d; d.addEventListener('gattserverdisconnected', weg); stat('Verbinden…'); return koppel();
