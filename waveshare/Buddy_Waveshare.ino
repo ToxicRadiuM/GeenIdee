@@ -3356,11 +3356,11 @@ void drawFace(){
  } else bovenBord = false;
  if (robotModus) return;   // v47: robotmodus: geen bord, snelheid of GPS-regel
  if ((tel && phone.werk) || (!tel && lokWerk)) {   // werk-driehoekje boven het snelheidsbord
-   boxAdd(96, 144, 124, 176);   // v68: een oranje pionnetje in plaats van een rood bord
+   boxAdd(62, 144, 90, 176);   // v68: een oranje pionnetje in plaats van een rood bord
    float pw = sinf(millis() / 260.f) * .8f;
-   triF(110 + pw, 146, 101, 170, 119, 170, 0xFC40);
-   dikLijn(106.6f + pw * .7f, 155, 113.4f + pw * .7f, 155, 2.6f, 0xFFFF); dikLijn(104 + pw * .4f, 163, 116 + pw * .4f, 163, 2.6f, 0xFFFF);
-   roundRect(97, 169, 26, 5, 2, 0xC300);
+   triF(76 + pw, 146, 67, 170, 85, 170, 0xFC40);
+   dikLijn(72.6f + pw * .7f, 155, 79.4f + pw * .7f, 155, 2.6f, 0xFFFF); dikLijn(70 + pw * .4f, 163, 82 + pw * .4f, 163, 2.6f, 0xFFFF);
+   roundRect(63, 169, 26, 5, 2, 0xC300);   // v104: precies boven het rode bord
  }
  // v22: grote, haarscherpe cijfers die precies in het midden staan (eigen 7-segment-cijfers)
  bool rust = (ownSpeed <= 0) && klokOk() && (gagAct < 0);   // stilstaan: klok in plaats van 0

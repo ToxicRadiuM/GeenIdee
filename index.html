@@ -5007,7 +5007,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v166';
+  var VERSION = 'v167';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -10148,8 +10148,19 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     /* v113: navigeren op de rijkaart: zoeken, routelijn en de volgende afslag bovenin */
     var routeT = 0, doelMk = null;
+    /* v167: files en werk aan de andere kant van de snelweg niet meetellen: de richting van de melding moet bij jouw richting passen */
+    function jBrg(la1, lo1, la2, lo2) { var y = Math.sin((lo2 - lo1) * Math.PI / 180) * Math.cos(la2 * Math.PI / 180), x = Math.cos(la1 * Math.PI / 180) * Math.sin(la2 * Math.PI / 180) - Math.sin(la1 * Math.PI / 180) * Math.cos(la2 * Math.PI / 180) * Math.cos((lo2 - lo1) * Math.PI / 180); return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; }
+    function jHv(a, b) { return Math.abs(((a - b + 540) % 360) - 180); }
+    function rtBrg(geom, la, lo) { var best = 1e9, bi = -1; for (var k = 0; k < geom.length - 1; k++) { if (Math.abs(geom[k].lat - la) > .006 || Math.abs(geom[k].lon - lo) > .01) continue; var d = gdist(la, lo, geom[k].lat, geom[k].lon); if (d < best) { best = d; bi = k; } } return bi < 0 || best > 150 ? null : jBrg(geom[bi].lat, geom[bi].lon, geom[bi + 1].lat, geom[bi + 1].lon); }
+    function jamRichting(it, ref) {
+      var p = (it.pts || []).map(function (q) { return Array.isArray(q) ? q : [q.lat, q.lon]; }); if (!p.length) return true;
+      if (p.length < 2) { if (it.br == null) return true; var r0 = ref(p[0][0], p[0][1]); return r0 == null || jHv(it.br, r0) <= 70; }
+      var ok = 0, n = 0; for (var k = 0; k + 1 < p.length; k++) { var a = p[k], c = p[k + 1]; if (gdist(a[0], a[1], c[0], c[1]) < 5) continue; var r = ref((a[0] + c[0]) / 2, (a[1] + c[1]) / 2); if (r == null) continue; n++; if (jHv(jBrg(a[0], a[1], c[0], c[1]), r) <= 70) ok++; }
+      return n === 0 || ok * 2 >= n;
+    }
+    window.__jamRichting = jamRichting;
     function fileVlaggen(geom, vk) {
-      var f = vk.filter(function (it) { return it && (it.k === 'jam' || it.k === 'accident') && Array.isArray(it.pts) && it.pts.length; }).map(function (it) {
+      var f = vk.filter(function (it) { return it && (it.k === 'jam' || it.k === 'accident') && Array.isArray(it.pts) && it.pts.length && jamRichting(it, function (la, lo) { return rtBrg(geom, la, lo); }); }).map(function (it) {
         var pts = it.pts.map(function (q) { return Array.isArray(q) ? q : [q.lat, q.lon]; }), b = [90, 180, -90, -180]; pts.forEach(function (q) { b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[0]); b[3] = Math.max(b[3], q[1]); }); return { pts: pts, b: b }; });
       return geom.map(function (g) { return f.some(function (it) { if (g.lat < it.b[0] - .0005 || g.lat > it.b[2] + .0005 || g.lon < it.b[1] - .0008 || g.lon > it.b[3] + .0008) return false;
         for (var k = 0; k < it.pts.length; k++) if (gdist(g.lat, g.lon, it.pts[k][0], it.pts[k][1]) < 45) return true; if (it.pts.length > 1) for (k = 0; k < it.pts.length - 1; k++) { var a = it.pts[k], c = it.pts[k + 1]; if (gdist(g.lat, g.lon, (a[0] + c[0]) / 2, (a[1] + c[1]) / 2) < 45) return true; } return false; }); });
@@ -10237,7 +10248,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         $('rbKop').textContent = '10 km';
       }
       cams.forEach(function (c) { var d = opPad(c.lat, c.lon, 40); if (d >= 0) items.push({ d: d, i: c.i, kl: c.kl, s: c.i === '🚓' ? 'm' : 'c' }); });
-      vk.forEach(function (it) { if (!it || !Array.isArray(it.pts) || !it.pts.length) return; var ds = it.pts.map(function (q) { q = Array.isArray(q) ? q : [q.lat, q.lon]; return opPad(q[0], q[1], 70); }).filter(function (x) { return x >= 0; }); if (!ds.length) return;
+      var refR = N && N.geom && N.geom.length > 1 ? function (pla, plo) { return rtBrg(N.geom, pla, plo); } : function () { return lastPos.hd != null ? lastPos.hd : (S.speed > 15 ? (S.heading || 0) : null); };
+      vk.forEach(function (it) { if (!it || !Array.isArray(it.pts) || !it.pts.length) return; if (it.k !== 'spook' && !jamRichting(it, refR)) return; var ds = it.pts.map(function (q) { q = Array.isArray(q) ? q : [q.lat, q.lon]; return opPad(q[0], q[1], 70); }).filter(function (x) { return x >= 0; }); if (!ds.length) return;
         var a = Math.min.apply(null, ds), z = Math.max.apply(null, ds); items.push({ d: a, d2: Math.max(z, a + 150), kl: it.k === 'jam' || it.k === 'accident' ? '#ff2d2d' : it.k === 'closure' || it.k === 'ramp' ? '#5a0000' : '#ff9f0a', i: it.k === 'jam' ? '🚗' : it.k === 'accident' ? '💥' : it.k === 'closure' || it.k === 'ramp' ? '⛔' : '🚧', s: it.k === 'jam' || it.k === 'accident' ? 'f' : it.k === 'closure' || it.k === 'ramp' ? 'x' : 'w' }); });
       var voorBord = null, kh = lastPos.hd != null ? lastPos.hd : (S.heading || 0);   /* v139: matrixborden op je pad */
       try { (window.__msiItems ? window.__msiItems() : []).forEach(function (g) { if (Math.abs(g.lat - la) > .12 || Math.abs(g.lon - lo) > .2) return; if (g.b != null && (S.speed || 0) > 15 && hv(g.b, kh) > 70) return;
