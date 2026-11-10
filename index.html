@@ -446,14 +446,15 @@ body.rond .helmet::after { display: none; }
 body.rond .bezel { box-shadow: none; }
 body.rond #carBack, body.rond #carRit, body.rond #carSpel, body.rond #carAdd, body.rond #carAddM, body.rond #carGroep, body.rond #carStart { display: none !important; }
 /* v75: tabbalk onderin, zoals een gewone app */
-#tabBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--panel); border-top: 1px solid var(--line); padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); }
-#tabBar button { background: none; border: 0; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; min-height: 52px; border-radius: 12px; cursor: pointer; }
+#tabBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: repeat(6, 1fr); background: var(--panel); border-top: 1px solid var(--line); padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); }
+#tabBar button { background: none; border: 0; color: var(--muted); font: inherit; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; min-height: 52px; border-radius: 12px; cursor: pointer; }
 #tabBar button span { font-size: 21px; line-height: 1; }
 #tabBar button[aria-pressed="true"] { color: var(--ink); background: color-mix(in srgb, var(--ink) 8%, transparent); }
 body.car #tabBar, body.rond #tabBar { display: none; }
 body:not(.car):not(.rond) main { padding-bottom: 84px; }
 body[data-tab="buddy"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="buddy"]),
 body[data-tab="kaart"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="kaart"]),
+body[data-tab="plus"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="plus"]),
 body[data-tab="groep"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="groep"]),
 body[data-tab="ritten"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="ritten"]),
 body[data-tab="meer"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="meer"]) { display: none !important; }
@@ -891,6 +892,18 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     <button class="btn" id="bInstall" type="button" hidden>Installeer als app</button>
   </section>
   <div class="koppen">
+  <details class="kop" id="kopPlusNav" open><summary><span class="kopT">🧭 Navigeren met Buddy+</span><span class="kopS">waar gaan we heen?</span></summary>
+    <div class="kopIn">
+      <p class="chip" id="pnVerb">…</p>
+      <button class="btn primary" id="pnVerbKnop" type="button" hidden>📡 Verbind met Buddy+</button>
+      <div class="mobrow"><input type="text" id="pnIn" autocomplete="off" placeholder="Adres, plaats of postcode"><button class="btn" id="pnZoek" type="button">Zoek</button></div>
+      <div id="pnFav" class="btns"></div>
+      <div id="pnRes" class="navRes"></div>
+      <p class="chip" id="pnStat">Geen route.</p>
+      <button class="btn" id="pnStop" type="button" hidden>⏹️ Route stoppen</button>
+      <p class="foot">Kies een bestemming en Buddy+ krijgt de route meteen: kaartje, afslagen en aankomsttijd op zijn schermpje. De telefoon-GPS gaat vanzelf aan. Houd de app open (scherm mag uit als je hem op de achtergrond laat draaien zoals altijd).</p>
+    </div>
+  </details>
   <details class="kop" id="kopScherm"><summary><span class="kopT">🤖 Buddy+</span><span class="kopS">het echte robotje: verbinden, spelen, instellen</span></summary>
     <div class="kopIn">
       <div class="limitrow"><label for="hebScherm">Heb je een los Buddy-schermpje?</label><select id="hebScherm"><option value="1">Ja</option><option value="0">Nee, alleen de app</option></select></div>
@@ -1282,6 +1295,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 </main>
 <nav id="tabBar" aria-label="Hoofdmenu">
   <button type="button" data-tab="buddy" aria-pressed="true"><span>🙂</span>Buddy</button>
+  <button type="button" data-tab="plus" aria-pressed="false"><span>🤖</span>Buddy+</button>
   <button type="button" data-tab="kaart" aria-pressed="false"><span>🗺️</span>Kaart</button>
   <button type="button" data-tab="ritten" aria-pressed="false"><span>🏁</span>Ritten</button>
   <button type="button" data-tab="groep" aria-pressed="false"><span>👥</span>Groep</button>
@@ -4605,7 +4619,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   $('navIn').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); navZoek($('navIn').value); } });
   $('navStop').addEventListener('click', function () { navStop(false); });
   window.__nav = {   /* v113: voor de rijkaart */
-    nu: function () { return nav; }, tekst: navTekst, start: navStart, stop: navStop,
+    nu: function () { return nav; }, heeftPos: function () { return !!lastPos; }, tekst: navTekst, start: navStart, stop: navStop,
     zoek: function (q) { var qs = 'q=' + encodeURIComponent(q) + '&rows=6&fl=weergavenaam,centroide_ll,type';
       return navGet('/zoek?' + qs, 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?' + qs).then(function (j) { return ((j && j.response && j.response.docs) || []).map(function (d) { var m = String(d.centroide_ll || '').match(/POINT\(([\d.]+) ([\d.]+)\)/); return m ? { naam: d.weergavenaam, lat: +m[2], lon: +m[1] } : null; }).filter(Boolean); }); }
   };
@@ -4994,7 +5008,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v163';
+  var VERSION = 'v164';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8527,6 +8541,54 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     start(); setTimeout(function () { document.body.appendChild(o); }, 1000);
   })();
 
+  /* ---------- v164: navigeren vanuit het Buddy+-tabblad ---------- */
+  (function () {
+    var FAVKEY = 'dashboardmaatje-fav-v1', wacht = null, wachtT = null, zoekT = null;
+    function favLees() { try { return JSON.parse(localStorage.getItem(FAVKEY)) || {}; } catch (e) { return {}; } }
+    function verbonden() { return !!window.__scDoe; }
+    function kies(r) {
+      $('pnRes').textContent = ''; $('pnIn').value = '';
+      var N = window.__nav; if (!N) return;
+      if (N.heeftPos()) { N.start(r); setTimeout(toon, 1500); return; }
+      if ($('bLive').getAttribute('aria-pressed') !== 'true') $('bLive').click();
+      wacht = r; $('pnStat').textContent = '📍 GPS zoekt je plek… de route komt zo.'; clearInterval(wachtT);
+      var n = 0; wachtT = setInterval(function () { n++;
+        if (N.heeftPos()) { clearInterval(wachtT); var w = wacht; wacht = null; N.start(w); setTimeout(toon, 1500); }
+        else if (n > 40) { clearInterval(wachtT); wacht = null; $('pnStat').textContent = 'Geen GPS gevonden. Staat locatie aan voor de app?'; }
+      }, 1000);
+    }
+    function favToon() {
+      var el = $('pnFav'), f = favLees(); el.textContent = '';
+      function knop(t, r) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = t; b.addEventListener('click', function () { kies(r); }); el.appendChild(b); }
+      var th = null; try { var h = typeof thuisPlek === 'function' ? thuisPlek() : null; if (h) th = { naam: 'Thuis', lat: h.lat, lon: h.lon }; } catch (e) {} th = th || f.thuis;
+      if (th) knop('🏠 Thuis', th); if (f.werk) knop('💼 Werk', f.werk);
+      (f.recent || []).slice(0, 4).forEach(function (r) { knop('🕘 ' + r.naam.split(',')[0], r); });
+    }
+    function zoek() {
+      var q = $('pnIn').value.trim(); if (q.length < 3) return; var N = window.__nav; if (!N || !N.zoek) return;
+      $('pnStat').textContent = 'Zoeken…';
+      N.zoek(q).then(function (l) { var el = $('pnRes'); el.textContent = '';
+        if (!l.length) { $('pnStat').textContent = 'Niets gevonden. Probeer het anders te schrijven.'; return; }
+        $('pnStat').textContent = 'Kies je bestemming:';
+        l.forEach(function (r) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = r.naam; b.addEventListener('click', function () { kies(r); }); el.appendChild(b); });
+      }).catch(function () { $('pnStat').textContent = 'Zoeken lukt niet (internet?).'; });
+    }
+    function toon() {
+      var v = verbonden(); $('pnVerb').textContent = v ? '✅ Buddy+ is verbonden' : '⚪ Buddy+ is niet verbonden. De route komt op zijn scherm zodra hij verbindt.';
+      $('pnVerbKnop').hidden = v;
+      var N = window.__nav && window.__nav.nu(); $('pnStop').hidden = !N;
+      if (!wacht && !$('pnRes').firstChild) $('pnStat').textContent = N ? '🧭 Route naar ' + String(N.dest && N.dest.naam || 'je bestemming').split(',')[0] + ' loopt.' : 'Geen route.';
+      favToon();
+    }
+    window.__pnToon = toon;
+    $('pnZoek').addEventListener('click', zoek);
+    $('pnIn').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); zoek(); } });
+    $('pnIn').addEventListener('input', function () { clearTimeout(zoekT); zoekT = setTimeout(zoek, 450); });
+    $('pnStop').addEventListener('click', function () { if (window.__nav) window.__nav.stop(false); toon(); });
+    $('pnVerbKnop').addEventListener('click', function () { $('bleKnop').click(); setTimeout(toon, 4000); });
+    setInterval(function () { if (document.body.getAttribute('data-tab') === 'plus') toon(); }, 3000);
+  })();
+
   /* ---------- v75: tabbalk (Buddy · Kaart · Groep · Meer) ---------- */
   (function () {
     var TABKEY = 'dashboardmaatje-tab-v1', DEVKEY = 'dashboardmaatje-dev-v1';
@@ -8536,10 +8598,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     zet($('tabKaart'), 'kaart');
     zet($('kopOnderweg'), 'kaart');
     zet($('kopGroep'), 'groep');
-    zet($('kopScherm'), 'buddy'); zet($('kopOver'), 'buddy');   /* v83: schermpje en 'Over Buddy' onder het Buddy-tabblad */
+    zet($('kopScherm'), 'plus'); zet($('kopPlusNav'), 'plus'); zet($('kopOver'), 'buddy');   /* v164: Buddy+ heeft zijn eigen tab */   /* v83: schermpje en 'Over Buddy' onder het Buddy-tabblad */
     zet($('buddyStatus'), 'buddy');
     ['kopInst', 'kopHulp', 'kopBouw'].forEach(function (id) { zet($(id), 'meer'); });
-    zet($('kopRitten'), 'ritten'); zet($('kopRecords'), 'ritten'); zet($('kopBadges'), 'ritten'); zet($('kopLaden'), 'ritten'); zet($('kopPlezier'), 'buddy'); zet($('kopAnim'), 'buddy');   /* v85: eigen Ritten-tab */
+    zet($('kopRitten'), 'ritten'); zet($('kopRecords'), 'ritten'); zet($('kopBadges'), 'ritten'); zet($('kopLaden'), 'ritten'); zet($('kopPlezier'), 'buddy'); zet($('kopAnim'), 'plus');   /* v85: eigen Ritten-tab */
     zet($('verTxt'), 'meer');
     var koppen = document.querySelector('main > .koppen'); if (koppen) koppen.removeAttribute('data-in-tab');
     /* de flitserkaart en de meld-knoppen verhuizen naar de Kaart-tab */
@@ -8560,6 +8622,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       try { localStorage.setItem(TABKEY, t); } catch (e) {}
       if (t === 'kaart') { $('kaartKnop').click(); }
       if (t === 'groep' && $('kopGroep')) $('kopGroep').open = true;
+      if (t === 'plus') { $('kopPlusNav').open = true; try { window.__pnToon && window.__pnToon(); } catch (e) {} }
       if (t === 'ritten') { ['kopRitten', 'kopRecords', 'kopBadges'].forEach(function (id) { if ($(id)) $(id).open = true; }); try { recordsToon(); badgeToon(); } catch (e) {} }
       window.scrollTo(0, 0);
     }
