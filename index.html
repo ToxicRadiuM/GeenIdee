@@ -4921,7 +4921,6 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     try { var w = wxCur(); if (w) delen.push('Het is ' + Math.round(w.temp) + ' graden' + (wxDesc(wxFlags()) ? ', ' + wxDesc(wxFlags()) : '') + '.'); } catch (e) {}
     var jarig = vandaagJarig(); if (jarig.length) delen.push('Vandaag is ' + jarig.map(function (l) { return l.n; }).join(' en ') + ' jarig!');
     var nu = Date.now(), weg = (bordData || []).filter(function (l) { return l.van !== mijnId && l.t && nu - l.t < 30 * 60e3; });
-    if (weg.length) delen.push(weg.slice(0, 2).map(function (l) { return l.n || 'een collega'; }).join(' en ') + (weg.length > 1 ? ' zijn' : ' is') + ' ook al onderweg.');
     var klaar = function (route) {
       if (route) delen.push(route);
       var m = delen.join(' ');
@@ -5008,7 +5007,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v164';
+  var VERSION = 'v165';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
