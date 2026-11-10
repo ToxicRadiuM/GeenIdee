@@ -4482,16 +4482,22 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     return viaWorker.catch(function () { return fetch(direct).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }); });
   }
   function navStat(t) { var el = $('navStat'); if (el) el.textContent = t; }
+  /* v175: zoeken met twee bronnen: PDOK (adressen, straten, plaatsen) en Photon/OpenStreetMap (wijken, winkels, tankstations, en tikfoutjes) */
+  function zoekAlles(q) {
+    var qs = 'q=' + encodeURIComponent(q) + '&rows=6&fl=weergavenaam,centroide_ll,type';
+    var pdok = navGet('/zoek?' + qs, 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?' + qs).then(function (j) { return ((j && j.response && j.response.docs) || []).map(function (d) { var m = String(d.centroide_ll || '').match(/POINT\(([\d.]+) ([\d.]+)\)/); return m ? { naam: d.weergavenaam, lat: +m[2], lon: +m[1] } : null; }).filter(Boolean); }).catch(function () { return []; });
+    var bij = lastPos ? '&lat=' + lastPos.lat.toFixed(3) + '&lon=' + lastPos.lon.toFixed(3) : '';
+    var pho = fetch('https://photon.komoot.io/api/?q=' + encodeURIComponent(q) + '&limit=6&bbox=3.2,50.7,7.3,53.6' + bij).then(function (r) { return r.json(); }).then(function (j) {
+      return ((j && j.features) || []).map(function (f) { var p = f.properties || {}, c = f.geometry && f.geometry.coordinates; if (!c) return null;
+        var kop = p.name || ((p.street || '') + (p.housenumber ? ' ' + p.housenumber : '')), waar = p.city && p.city !== kop ? p.city : (p.county || p.state || '');
+        return { naam: [kop, waar].filter(Boolean).join(', ') || 'Plek', lat: +c[1], lon: +c[0] }; }).filter(Boolean); }).catch(function () { return []; });
+    return Promise.all([pdok, pho]).then(function (r) { var uit = []; r[0].concat(r[1]).forEach(function (x) { if (!uit.some(function (y) { return gdist(x.lat, x.lon, y.lat, y.lon) < 150; })) uit.push(x); }); lg('zoeken "' + q + '": ' + r[0].length + ' PDOK, ' + r[1].length + ' Photon'); return uit.slice(0, 8); });
+  }
   function navZoek(q) {
     q = String(q || '').trim(); if (q.length < 3) { toast('Typ een adres, plaats of postcode.'); return; }
     navStat('Zoeken…');
-    var qs = 'q=' + encodeURIComponent(q) + '&rows=5&fl=weergavenaam,centroide_ll,type';
-    navGet('/zoek?' + qs, 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?' + qs).then(function (j) {
-      var docs = (j && j.response && j.response.docs) || [];
-      navZoekRes = docs.map(function (d) {
-        var m = String(d.centroide_ll || '').match(/POINT\(([\d.]+) ([\d.]+)\)/);
-        return m ? { naam: d.weergavenaam, lat: +m[2], lon: +m[1] } : null;
-      }).filter(Boolean);
+    zoekAlles(q).then(function (l) {
+      navZoekRes = l;
       navLijst();
       navStat(navZoekRes.length ? 'Kies je bestemming:' : 'Niets gevonden. Probeer het anders te schrijven.');
     }).catch(function (e) { navStat('Zoeken mislukt (' + (e.message || e) + '). Heb je internet?'); });
@@ -4715,8 +4721,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   $('navStop').addEventListener('click', function () { navStop(false); });
   window.__nav = {   /* v113: voor de rijkaart */
     nu: function () { return nav; }, heeftPos: function () { return !!lastPos; }, tekst: navTekst, start: navStart, stop: navStop,
-    zoek: function (q) { var qs = 'q=' + encodeURIComponent(q) + '&rows=6&fl=weergavenaam,centroide_ll,type';
-      return navGet('/zoek?' + qs, 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?' + qs).then(function (j) { return ((j && j.response && j.response.docs) || []).map(function (d) { var m = String(d.centroide_ll || '').match(/POINT\(([\d.]+) ([\d.]+)\)/); return m ? { naam: d.weergavenaam, lat: +m[2], lon: +m[1] } : null; }).filter(Boolean); }); }
+    zoek: zoekAlles
   };
   $('navSpk').checked = navSpk;
   $('navPont').checked = navPont;
@@ -5102,7 +5107,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v174';
+  var VERSION = 'v175';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
