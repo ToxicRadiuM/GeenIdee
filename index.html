@@ -5010,7 +5010,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v169';
+  var VERSION = 'v170';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -10472,7 +10472,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     function rotZet(p, Nv, aan) {   /* groot afslagnummer boven de rotonde */
       var s0 = aan && Nv && Nv.steps && Nv.steps[Nv.idx], ok = !!(s0 && /roundabout|rotary/.test(s0.type || '') && s0.exit && gdist(p.lat, p.lon, s0.lat, s0.lon) < 600);
       var k = ok ? Nv.t + ':' + Nv.idx : ''; if (k === ex2.rotK) return; ex2.rotK = k; ex2.rotMk = wisMk(ex2.rotMk); if (!ok) return;
-      var el = document.createElement('div'); el.className = 'rijRotNr'; el.innerHTML = '<b></b><span>afslag</span>'; el.querySelector('b').textContent = s0.exit + 'e';
+      var el = document.createElement('div'), bin = document.createElement('div'); bin.className = 'rijRotNr'; bin.innerHTML = '<b></b><span>afslag</span>'; bin.querySelector('b').textContent = s0.exit + 'e'; el.appendChild(bin);   /* v170: zweven op het binnenste blokje, anders vecht het met de kaartpositie (stuiteren) */
       ex2.rotMk.push(new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -40] }).setLngLat([s0.lon, s0.lat]).addTo(map));
     }
     function laadZet(p, fp) {   /* snelladers en Superchargers (OpenStreetMap) */
