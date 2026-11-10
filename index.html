@@ -73,6 +73,7 @@
         cancel: function () { TTS.stop().catch(function () {}); }, getVoices: function () { return []; }, addEventListener: function () {} } }); } catch (e) {}
     }
     window.__nativeInfo = ['Bluetooth ' + (BLE ? '✓' : '✗'), 'GPS achtergrond ' + (BG ? '✓' : '✗'), 'spraak ' + (TTS ? '✓' : '✗'), 'plugins: ' + (kopjes.join(' ') || '?'), 'brug: ' + (typeof C.nativePromise)];
+    window.__LN = reg('LocalNotifications');
     if (WAK) { window.__houdWakker = function (aan) { (aan ? WAK.keepAwake() : WAK.allowSleep()).catch(function () {}); }; }
     return true;
   }
@@ -5107,7 +5108,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v175';
+  var VERSION = 'v176';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8684,6 +8685,21 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     function confirmTekst(x) { return true; }
     start(); setTimeout(function () { document.body.appendChild(o); }, 1000);
+  })();
+
+  /* ---------- v176: in de Android-app een melding "Rit bezig" met een knop Rit klaar ---------- */
+  (function () {
+    var aan = false, klaar = false;
+    function zetOp() { var LN = window.__LN; if (!LN || klaar) return !!LN; klaar = true;
+      try { LN.requestPermissions().catch(function () {}); } catch (e) {}
+      try { LN.registerActionTypes({ types: [{ id: 'RIT', actions: [{ id: 'klaar', title: '🏁 Rit klaar' }] }] }).catch(function (e) { lg('meldingknop: ' + (e.message || e)); }); } catch (e) {}
+      try { LN.addListener('localNotificationActionPerformed', function (ev) { if (!ev || ev.actionId !== 'klaar') return; lg('rit klaar via de melding'); var b = $('carRit'); if (S.trip && b) { b.click(); b.click(); } aan = false; LN.cancel({ notifications: [{ id: 4242 }] }).catch(function () {}); }); } catch (e) {}
+      return true; }
+    setInterval(function () {
+      if (!window.__native || !zetOp()) return; var LN = window.__LN, rit = !!(S.trip && S.live);
+      if (rit && !aan) { aan = true; LN.schedule({ notifications: [{ id: 4242, title: '🚗 Rit bezig', body: 'Vergeten af te sluiten? Tik hieronder op Rit klaar.', ongoing: true, autoCancel: false, actionTypeId: 'RIT', smallIcon: 'ic_stat_buddy' }] }).catch(function (e) { aan = false; lg('rit-melding: ' + (e.message || e)); }); }
+      else if (!rit && aan) { aan = false; LN.cancel({ notifications: [{ id: 4242 }] }).catch(function () {}); }
+    }, 5000);
   })();
 
   /* ---------- v171: hartjes aan/uit ---------- */
