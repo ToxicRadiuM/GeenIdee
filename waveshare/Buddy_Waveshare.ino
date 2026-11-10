@@ -37,7 +37,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 103;   // v103: route blijft staan als de app op de achtergrond is (Buddy+ rekent de afslagen dan zelf)
+static const int FW_VERSIE = 104;   // v104: kaart blijft open tot na de afslag, en tussendoor elke 4 min even
+// v103:   // v103: route blijft staan als de app op de achtergrond is (Buddy+ rekent de afslagen dan zelf)
 // v102:   // v102: geen muts/hoed als er bovenin een bord of navigatiepijl staat
 // v101:   // v101: telefoon ver weg (signaal zwak) telt als 'niet in de auto'
 // v100: 8 herfst-animaties (sept t/m nov)   // v99: muts netter (blauw bolletje, geen blauw onder de witte rand)   // v98: welkom thuis na een lange stilte, ochtendroutine, verveling die groeit   // v97: crash-spoor: na een crash staat in het logboek wat hij als laatste deed
@@ -3074,7 +3075,12 @@ static void drawMeter() {
 static bool kaartNu() {
   if (!rtN || !rtPt || !gpsFix) return false;
   if (kaartStand) return true;
-  return (int32_t)(kaartGezichtTot - millis()) <= 0 && eNavC && strchr("LRlrOUA", eNavC) && eNavD > 0 && eNavD < 150;   // v103: eNav = telefoon of zelf berekend   // v81: alleen bij echte afslagen, vlak ervoor
+  uint32_t nu = millis(); static uint32_t houdTot = 0, laatsteOpen = 0;
+  if ((int32_t)(kaartGezichtTot - nu) > 0) return false;   // net weggetikt
+  if (eNavC && strchr("LRlrOUA", eNavC) && eNavD > 0 && eNavD < 150) houdTot = nu + 12000;   // v104: open tot 12 s na de afslag (eerst ging hij dicht zodra de app naar de volgende afslag sprong)
+  if (!laatsteOpen) laatsteOpen = nu;
+  if (eNavC && spdNow() > 20 && nu - laatsteOpen > 240000 && (int32_t)(houdTot - nu) <= 0) houdTot = nu + 10000;   // v104: tussendoor elke 4 min even laten zien waar je bent
+  bool open = (int32_t)(houdTot - nu) > 0; if (open) laatsteOpen = nu; return open;   // v103: eNav = telefoon of zelf berekend   // v81: alleen bij echte afslagen, vlak ervoor
 }
 static void kaartGordijn(float open, float hg) {   // v81: gezicht als gordijn met twee handjes (open = hoe ver uit elkaar)
   const uint16_t HUID = 0xFE8F, RAND = 0xC3A8;
