@@ -1521,14 +1521,22 @@ static void drawSlider(int pct, const char *titel, uint16_t kleur, const char *w
   frame->setCursor(X(SL_X0) - 6, Y(SL_Y + 22)); frame->print("-");
   frame->setCursor(X(SL_X1) - 6, Y(SL_Y + 22)); frame->print("+");
 }
+static uint8_t infoBlad = 0;   // v111: 0 = info, 1 = instellingen
+static void instelRij(float y, const char *t, bool aan) { roundRect(36, y, 168, 30, 15, aan ? 0x0451 : 0x2104); frame->drawRoundRect(X(36), Y(y), S(168), S(30), S(15), aan ? 0x87F0 : 0x6B4D);
+  frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(48), Y(y + 8)); frame->print(t); frame->setTextColor(aan ? 0x87F0 : 0x8410); frame->setCursor(X(192) - (aan ? 24 : 36), Y(y + 8)); frame->print(aan ? "AAN" : "UIT"); }
+static void drawInstel() {
+  frame->setTextColor(EYE); frame->setTextSize(2); frame->setCursor(X(120) - 66, Y(38)); frame->print("INSTELLINGEN");
+  instelRij(62, "HARTJES", hartjesAan); { float hp = hartjesAan ? 1 + sinf(millis() / 180.f) * .1f : 1; heart(146, 79, 7 * hp, hartjesAan ? HEART : 0x6B4D); }
+  instelRij(98, "NACHT", nachtStil);   // stil van 22 tot 7 uur
+  instelRij(134, "TE HARD", waarschuwAan);   // waarschuwen bij ruim te hard
+}
 static void drawVenster() {
   boxAdd(0, 0, 240, 240);
   frame->fillCircle(X(120), Y(120), S(119), 0x0841);
   frame->drawCircle(X(120), Y(120), S(118), EYE);
-  if (venster == 1) drawInfo();
+  if (venster == 1) { if (infoBlad) drawInstel(); else drawInfo();   // v111: info heeft 2 bladzijden, veeg naar links of rechts
+    circle(112, 172, 3.5f, infoBlad ? 0x4208 : EYE); circle(128, 172, 3.5f, infoBlad ? EYE : 0x4208); }
   else if (venster == 2) { drawSlider(buddyVolume, "VOLUME", EYE, nullptr);   // v59: geluid testen en nachtstand, ook zonder telefoon
-    { float hp = hartjesAan ? 1 + sinf(millis() / 180.f) * .08f : 1; circle(196, 62, 18, hartjesAan ? 0x8010 : 0x18E3); frame->drawCircle(X(196), Y(62), S(18), EYE);   // v109: hartjes-knop
-      heart(196, 64, 11 * hp, hartjesAan ? HEART : 0x6B4D); }
     char fb[28]; snprintf(fb, sizeof fb, "FOUT: %s", audioStatus);
     const char *st = !audioReady ? fb : audioBusy ? "SPEELT" : (testPiepT && millis() - testPiepT < 2500) ? "PIEP!" : "GELUID OK";
     frame->setTextColor(audioReady ? 0x87F0 : 0xF9A6); frame->setTextSize(2); frame->setCursor(X(120) - (int)strlen(st) * 6, Y(101)); frame->print(st);
@@ -1548,7 +1556,7 @@ static void drawVenster() {
   roundRect(70, 182, 100, 32, 16, 0x18E3); frame->drawRoundRect(X(70), Y(182), S(100), S(32), S(16), EYE);
   frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(198) - 7); frame->print("TERUG");
 }
-static void openVenster(uint8_t v) { venster = v; vensterTot = millis() + 30000; menuOpen = false; }
+static void openVenster(uint8_t v) { if (v == 1) infoBlad = 0; venster = v; vensterTot = millis() + 30000; menuOpen = false; }
 static void sluitVenster() {
   venster = 0;
   if (lichtOpslaan) { buddyPrefs.putUChar("licht", helderheid); lichtOpslaan = false; }
@@ -3877,12 +3885,15 @@ void handleTouch(){
    // loslaten = een tik afhandelen
    if (down && !lang && now - downMs < 600) {
      if (rtN && lY < 90) logRegel("tik bovenin (%.0f,%.0f) venster=%d menu=%d spel=%d", lX, lY, (int)venster, (int)menuOpen, (int)(spel != 0));   // v109: zoeken waarom KAART niet reageert
-     if (venster) { if (lY > 177.0f && fabsf(lX - 120.0f) < 62.0f) sluitVenster();   // TERUG
-       else if (venster == 1 && otaKlaarV && lY < 62.0f) installeerOta();   // v68: update installeren
+     if (venster == 1 && fabsf(lX - dX) > 45.0f && fabsf(lY - dY) < 60.0f) { infoBlad = !infoBlad; vensterTot = now + 30000; playGeluid(GL_PLING); }   // v111: vegen
+     else if (venster == 1 && infoBlad && lY > 58.0f && lY < 94.0f) { vensterTot = now + 30000; hartjesAan = !hartjesAan; buddyPrefs.putBool("hart", hartjesAan); bleSend(hartjesAan ? "HART:1" : "HART:0");
+         if (hartjesAan) { aaiTot = now + 2500; playGeluid(GL_GIECHEL); } else playGeluid(GL_PLING); logRegel("hartjes %s (op Buddy+)", hartjesAan ? "aan" : "uit"); }
+     else if (venster == 1 && infoBlad && lY >= 96.0f && lY < 130.0f) { vensterTot = now + 30000; nachtStil = !nachtStil; buddyPrefs.putBool("nstil", nachtStil); playGeluid(GL_PLING); }
+     else if (venster == 1 && infoBlad && lY >= 130.0f && lY < 166.0f) { vensterTot = now + 30000; waarschuwAan = !waarschuwAan; buddyPrefs.putBool("warn", waarschuwAan); playGeluid(GL_PLING); }
+     else if (venster) { if (lY > 177.0f && fabsf(lX - 120.0f) < 62.0f) sluitVenster();   // TERUG
+       else if (venster == 1 && !infoBlad && otaKlaarV && lY < 62.0f) installeerOta();   // v68: update installeren
        else if (venster == 5 && lY > 40.0f && lY < 176.0f) { int k = (int)((lY - 40.0f) / 34.0f); if (k >= 0 && k < 4) { sluitVenster(); spelStart(k + 1); } }   // v93: spel kiezen
        else if (venster == 4 && lY > 146.0f && lY < 178.0f) { timerLen = (uint32_t)timerMin * 60000UL; timerTot = now + timerLen; timerFase = 0; timerAlarmN = 0; sluitVenster(); startGag(7); snprintf(robotTxt, sizeof robotTxt, "Timer: %d minuten!", (int)timerMin); gagMsg = robotTxt; playGeluid(GL_PLING); }   // v86: kookwekker
-       else if (venster == 2 && fabsf(lX - 196) < 24 && fabsf(lY - 62) < 24) { vensterTot = now + 30000; hartjesAan = !hartjesAan; buddyPrefs.putBool("hart", hartjesAan); bleSend(hartjesAan ? "HART:1" : "HART:0");   // v109: hartjes aan/uit op Buddy+ zelf
-         if (hartjesAan) { aaiTot = now + 2500; playGeluid(GL_GIECHEL); } else playGeluid(GL_PLING); logRegel("hartjes %s (op Buddy+)", hartjesAan ? "aan" : "uit"); }
        else if (venster == 2 && lY > 146.0f && lY < 176.0f) { vensterTot = now + 30000;   // v59: TEST of nachtstand
          if (lX < 120) { if (audioBusy) { audioBusy = false; logRegel("geluid: los gemaakt via TEST"); } testPiepT = now; playGeluid(GL_PLING); logRegel("geluid test (scherm): klaar=%d volume=%d status=%s", (int)audioReady, (int)buddyVolume, audioStatus); }
          else { nachtStil = !nachtStil; buddyPrefs.putBool("nstil", nachtStil); logRegel("nachtstand: %s", nachtStil ? "stil 22-7" : "geluid ook 's nachts"); } } }
