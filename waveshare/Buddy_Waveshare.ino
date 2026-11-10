@@ -1185,7 +1185,8 @@ static bool telDichtbij() { return bleConnected && !telVer; }
 static char bleBuf[256]; static size_t bleLen = 0;
 // v106: internet via de telefoon. Buddy+ vraagt een adres, de app haalt het op en stuurt het in stukjes terug.
 static volatile bool hartjesAan = false;   // v109: hartjes-ogen, hartjes-wolkjes en kusjes alleen als je dat wilt
-static volatile bool appNet = false; static volatile bool bnIsOta = false;   // v113: download-voortgang bij updates via de telefoon static volatile uint8_t bnStaat = 0; static uint8_t *bnBuf = nullptr; static volatile size_t bnLen = 0, bnCap = 0;
+static volatile bool bnIsOta = false;   // v113: download-voortgang bij updates via de telefoon
+static volatile bool appNet = false; static volatile uint8_t bnStaat = 0; static uint8_t *bnBuf = nullptr; static volatile size_t bnLen = 0, bnCap = 0;
 static volatile uint16_t bnId = 0, bnSeq = 0; static volatile uint32_t bnLaatst = 0; static char bnVraag[300]; static volatile bool bnVraagKlaar = false;
 // v76: route van de app (voor de kaart op Buddy+). Twee vaste buffers in PSRAM, nooit vrijgeven (tekenen en ontvangen lopen tegelijk)
 static const int RT_MAX = 1200; static float *rtA = nullptr, *rtB = nullptr, *rtPt = nullptr; static volatile int rtN = 0; static int rtNieuwN = 0; static bool rtBezig = false;
