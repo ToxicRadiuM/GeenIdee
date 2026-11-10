@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 109;   // v109: hartjes kunnen uit (standaard uit)
+static const int FW_VERSIE = 110;   // v110: kaart: groter bord, snelheid, duidelijke N; KAART-knop bovenop en ook tijdens navigatie
+// v109:   // v109: hartjes kunnen uit (standaard uit)
 // v108:   // v108: lukt wifi niet (-1), dan via de telefoon; updates gaan via de app als die open is
 // v107:   // v107: kaart schuift vloeiend door tussen GPS-punten (geen schokjes meer)
 // v106:   // v106: G-metertje naar links; internet via de telefoon (Bluetooth), hotspot niet meer nodig
@@ -3147,6 +3148,11 @@ static void kaartGordijn(float open, float hg) {   // v81: gezicht als gordijn m
 }
 // v105: verschillende manieren om de kaart open en dicht te doen (p = 0 dicht .. 1 open)
 static uint8_t ovSoort = 0;
+static void drawKaartKnop() {   // v110: bovenop alles, ook als er genavigeerd wordt (dan iets lager, onder de pijl)
+  if (!rtN || kaartNu() || menuOpen || venster || spel) return;
+  float y = eNavC ? 80 : 8; boxAdd(84, y - 2, 156, y + 24); roundRect(86, y, 68, 22, 11, 0x0A4E); frame->drawRoundRect(X(86), Y(y), S(68), S(22), S(11), 0x5DFF);
+  frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(y + 5)); frame->print("KAART");
+}
 static void kaartOvergang(float p, float hg) {
   p = fmaxf(0, fminf(1, p)); float t = millis() / 1000.f;
   auto ogen = [&](float dx, float dy, float s) { roundRect(73 + dx - 13 * s, 86 + dy, 26 * s, 40 * s, 13 * s, EYE); roundRect(167 + dx - 13 * s, 86 + dy, 26 * s, 40 * s, 13 * s, EYE); };
@@ -3229,16 +3235,18 @@ static void drawKaart() {
     circle(x, y, 6, 0xFFFF); circle(x, y, 4.5f, c.type == 3 ? 0xFD20 : c.type == 2 ? 0x041F : 0xF800); }
   triF(CX, CY - 12, CX - 9, CY + 9, CX + 9, CY + 9, 0xFFFF); triF(CX, CY - 7, CX - 5, CY + 6, CX + 5, CY + 6, 0x3D7F);   // jouw auto
   circle(120, 36, 27, 0x0000); circle(120, 36, 27, 0x2945); circle(120, 36, 25, 0x0000); miniBuddy(120, 38, .4f, false, 0);   // Buddy klein bovenin
-  { float nx = 120 - sh * 110, ny = 120 - ch * 110; circle(nx, ny, 9, 0xF800); frame->setTextColor(0xFFFF); frame->setTextSize(1); frame->setCursor(X(nx) - 3, Y(ny) - 4); frame->print("N"); }   // v87: noorden
+  { float nx = 120 - sh * 108, ny = 120 - ch * 108; circle(nx, ny, 11, 0xFFFF); circle(nx, ny, 9.5f, 0xF800); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(nx) - 5, Y(ny) - 7); frame->print("N"); }   // v87: noorden (v110: grotere N)
   char sp[8]; snprintf(sp, sizeof sp, "%d", (int)lroundf(v)); segTekst(sp, 200, 120, 18, EYE);   // snelheid rechts
   int lim = phoneFresh() && phone.lim > 0 ? phone.lim : wegLimiet;
-  if (lim > 0) { circle(40, 120, 16, 0xD800); circle(40, 120, 12.5f, 0xFFFF); char lt[6]; snprintf(lt, sizeof lt, "%d", lim); segTekst(lt, 40, 120, lim >= 100 ? 9 : 12, 0x0000); }
-  if (phoneFresh() && phone.nav) {   // volgende afslag onderin
+  if (lim > 0) { circle(42, 108, 24, 0xD800); circle(42, 108, 19, 0xFFFF); char lt[6]; snprintf(lt, sizeof lt, "%d", lim); segTekst(lt, 42, 108, lim >= 100 ? 13 : 17, 0x0000); }   // v110: groter bord
+  { int vk = (int)(spdNow() + .5f); char vt[6]; snprintf(vt, sizeof vt, "%d", vk); roundRect(18, 138, 48, 30, 10, 0x0000); segTekst(vt, 42, 151, 15, lim > 0 && vk > lim + 3 ? 0xF800 : 0xFFFF);   // v110: hoe hard je rijdt
+    frame->setTextColor(0x8410); frame->setTextSize(1); frame->setCursor(X(42) - 12, Y(166)); frame->print("km/u"); }
+  if (eNavC) {   // volgende afslag onderin
     roundRect(66, 196, 108, 28, 14, 0x0B0A); float cx = 86, cy = 210, a = 0; uint16_t c = 0xFFFF;
-    switch (phone.nav) { case 'L': a = -90; break; case 'R': a = 90; break; case 'l': a = -45; break; case 'r': a = 45; break; case 'U': a = 180; break; default: a = 0; }
-    if (phone.nav == 'A') { circle(cx, cy, 6, 0xF800); } else if (phone.nav == 'O') { for (int i = 0; i < 10; i++) { float a1 = i * .63f, a2 = a1 + .5f; line(cx + cosf(a1) * 7, cy + sinf(a1) * 7, cx + cosf(a2) * 7, cy + sinf(a2) * 7, c, 2); } }
+    switch (eNavC) { case 'L': a = -90; break; case 'R': a = 90; break; case 'l': a = -45; break; case 'r': a = 45; break; case 'U': a = 180; break; default: a = 0; }
+    if (eNavC == 'A') { circle(cx, cy, 6, 0xF800); } else if (eNavC == 'O') { for (int i = 0; i < 10; i++) { float a1 = i * .63f, a2 = a1 + .5f; line(cx + cosf(a1) * 7, cy + sinf(a1) * 7, cx + cosf(a2) * 7, cy + sinf(a2) * 7, c, 2); } }
     else { float rd = a * .0174533f, dx = sinf(rd), dy = -cosf(rd); dikLijn(cx - dx * 6, cy - dy * 6, cx + dx * 4, cy + dy * 4, 3, c); triF(cx + dx * 10, cy + dy * 10, cx + dx * 3 - dy * 6, cy + dy * 3 + dx * 6, cx + dx * 3 + dy * 6, cy + dy * 3 - dx * 6, c); }
-    char nd[16]; if (phone.navD >= 950) snprintf(nd, sizeof nd, "%d,%dkm", phone.navD / 1000, (phone.navD % 1000) / 100); else snprintf(nd, sizeof nd, "%dm", (phone.navD / 10) * 10);
+    char nd[16]; if (eNavD >= 950) snprintf(nd, sizeof nd, "%d,%dkm", eNavD / 1000, (eNavD % 1000) / 100); else snprintf(nd, sizeof nd, "%dm", (eNavD / 10) * 10);
     frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(100), Y(203)); frame->print(nd); }
   if (nvT && millis() - nvT < 15000) {   // v85: straatnaam van de volgende afslag, en bovenin hoe ver nog en hoe laat je er bent
     if (nvNaam[0] && phoneFresh() && phone.nav) { int L = strlen(nvNaam); if (L > 18) L = 18; char nm[20]; memcpy(nm, nvNaam, L); nm[L] = 0;
@@ -3319,7 +3327,7 @@ void drawFace(){
    if (kn && !kaartVorige) kaartOvergangT = millis(); if (!kn && kaartVorige && gpsFix) kaartSluitT = millis(); kaartVorige = kn; }
  if (kaartSluitT && millis() - kaartSluitT < 1200) { float t = (millis() - kaartSluitT) / 1200.f; kaartOvergangT = 0; drawKaart(); kaartOvergang(t < .7f ? (1 - powf(t / .7f, .7f)) : 0, t < .7f ? 1 : 1 - (t - .7f) / .3f); return; }   // v81: gordijn dicht, terug naar het gezicht
  if (kaartNu()) { drawKaart(); return; }   // v76: kaart met route   // v52: de 0-100-vlag gaat voor   // v40: retro meter bij flink optrekken
- if (rtN && !eNavC) { boxAdd(84, 6, 156, 32); roundRect(86, 8, 68, 22, 11, 0x0A4E); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(13)); frame->print("KAART"); }   // v76: tik hier voor de kaart
+ // v110: KAART-knop wordt nu als laatste getekend (stond achter de animaties)
  if (wxVers() && !slaapt) {   // v46: echt regen- of sneeuwweer -> druppels of vlokjes achter het gezicht
    int c = wxCode; bool regen = ((c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95) && !(c >= 51 && c <= 57 && wxPrecip < .2f), sneeuw = (c >= 71 && c <= 77) || c == 85 || c == 86;
    if (wxRadarT && millis() - wxRadarT < 20UL * 60000) regen = wxRadarNu >= .1f;   // v56: radar gaat voor
@@ -3881,7 +3889,7 @@ void handleTouch(){
      else if (menuOpen) menuKies(lX, lY);
      else if (timerAlarmN) { timerAlarmN = 0; timerTot = 0; startGag(38); gagMsg = "Eet smakelijk!"; }   // v86: alarm uit
      else if (kaartNu()) { kaartStand = 0; kaartGezichtTot = now + 60000; }   // v76: tik op de kaart = terug naar het gezicht
-     else if (rtN && lY < 72.0f && fabsf(lX - 120.0f) < 62.0f) { kaartStand = 1; kaartGezichtTot = 0; logRegel("KAART getikt (%.0f,%.0f) gps=%d", lX, lY, (int)gpsFix); }   // v76: tik op KAART bovenin = kaart (v109: groter vlak)
+     else if (rtN && lY < (eNavC ? 108.0f : 72.0f) && fabsf(lX - 120.0f) < 70.0f) { kaartStand = 1; kaartGezichtTot = 0; logRegel("KAART getikt (%.0f,%.0f) gps=%d", lX, lY, (int)gpsFix); }   // v76: tik op KAART bovenin = kaart (v109: groter vlak)
      else if (lY > 188.0f && !(koekjeZichtbaar && robotModus && fabsf(lX - 196) < 24)) openVenster(2);   // onderaan tikken = volume
      else if (koekjeZichtbaar && robotModus && fabsf(lX - 196) < 24 && fabsf(lY - 176) < 24) {   // v48: koekje!
        koekjeZichtbaar = false; energie = 100; startGag(51); playGeluid(GL_PLING); vriendPlus(1); laatsteActie = now; }
@@ -4099,7 +4107,7 @@ void loop(){
  if (menuOpen && (int32_t)(menuTot - millis()) < 0) menuOpen = false;
  updateMood(dt); updateParticles(dt);
  uint32_t drawStartUs=micros();
- drawFace(); drawRand(kaartNu());   // v84
+ drawFace(); drawRand(kaartNu()); { bool kn = kaartNu(); if (!kn && !((int32_t)(showTot - millis()) > 0) && !((int32_t)(meterTot - millis()) > 0)) drawKaartKnop(); }   // v84; v110: KAART-knop bovenop
  uint32_t drawDoneUs=micros();
  flushDirty();
  uint32_t flushDoneUs=drawDoneUs+flushLastUs;  // v16: verzendtijd van het vorige beeld (loopt parallel)
