@@ -5007,7 +5007,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v165';
+  var VERSION = 'v166';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7026,7 +7026,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       $('animVorige').addEventListener('click', function () { stapje(-1); }); $('animVolgende').addEventListener('click', function () { stapje(1); });
       $('animAlles').addEventListener('click', function () { if (reeks) { clearInterval(reeks); reeks = null; $('animAlles').textContent = '🔁 Alles achter elkaar'; return; } $('animAlles').textContent = '⏹️ Stop'; stapje(0);
         reeks = setInterval(function () { if (!S.gag) stapje(1); }, 1000); });
-      $('animPlusSpeel').addEventListener('click', function () { var v = $('animPlus').value; if (!window.__scDoe) { toast('Verbind eerst met Buddy+.'); return; }
+      $('animPlusSpeel').addEventListener('click', function () { var v = $('animPlus').value; if (!(window.__plusAan && window.__plusAan())) { toast('Verbind eerst met Buddy+.'); return; }
         if (v.indexOf('DOE:') === 0) window.__scDoe(v.slice(4)); else if (window.__scEvt) { var q = v.slice(4).split('|'); window.__scEvt(q[0], q[1]); } toast('▶️ Verstuurd naar Buddy+'); });
     }, 500);
   })();
@@ -7889,6 +7889,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     ['scLicht', 'scVol', 'scAnim', 'scWarn'].forEach(function (id) { $(id).addEventListener('change', function () { sc.l = +$('scLicht').value; sc.v = +$('scVol').value; sc.a = $('scAnim').value; sc.w = $('scWarn').value; try { localStorage.setItem(SCKEY, JSON.stringify(sc)); } catch (e) {} stuurInst(); }); });
     window.__scStuur = function () { stuurInst(); setTimeout(persStuur, 900); };
     window.__scDoe = function (t) { if (rx) klein('DOE:' + t); };
+    window.__plusAan = function () { try { return !!(rx && dev && dev.gatt && dev.gatt.connected); } catch (e) { return false; } };   /* v166: echt verbonden? */
     window.__scVerbonden = function () { return !!rx; };   /* v156 */
     window.__scEvt = function (c, t) {   /* v104: groepsgebeurtenis op Buddy+ (alleen gewone letters, het schermpje kent geen emoji) */
       if (!rx) return; var s = String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
@@ -8544,7 +8545,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   (function () {
     var FAVKEY = 'dashboardmaatje-fav-v1', wacht = null, wachtT = null, zoekT = null;
     function favLees() { try { return JSON.parse(localStorage.getItem(FAVKEY)) || {}; } catch (e) { return {}; } }
-    function verbonden() { return !!window.__scDoe; }
+    function verbonden() { return !!(window.__plusAan && window.__plusAan()); }
     function kies(r) {
       $('pnRes').textContent = ''; $('pnIn').value = '';
       var N = window.__nav; if (!N) return;
@@ -8621,6 +8622,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       try { localStorage.setItem(TABKEY, t); } catch (e) {}
       if (t === 'kaart') { $('kaartKnop').click(); }
       if (t === 'groep' && $('kopGroep')) $('kopGroep').open = true;
+      if (t === 'plus' && $('kopScherm')) $('kopScherm').open = true;   /* v166: verbinden en wifi meteen zichtbaar */
       if (t === 'plus' || t === 'buddy') { $('kopPlusNav').open = true; try { window.__pnToon && window.__pnToon(); } catch (e) {} }
       if (t === 'ritten') { ['kopRitten', 'kopRecords', 'kopBadges'].forEach(function (id) { if ($(id)) $(id).open = true; }); try { recordsToon(); badgeToon(); } catch (e) {} }
       window.scrollTo(0, 0);
