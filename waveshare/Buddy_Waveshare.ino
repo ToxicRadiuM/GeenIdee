@@ -3130,8 +3130,9 @@ static void drawMeter() {
 }
 // v76: de kaart op Buddy+: wegen uit de limiet-tegel, de route van de app, flitsers, je auto en Buddy klein bovenin
 static bool kaartNu() {
-  if (!rtN || !rtPt || !gpsFix) return false;
-  if (kaartStand) return true;
+  if (!rtN || !rtPt) return false;
+  if (kaartStand && gpsLat != 0) return true;   // v111: zelf op KAART getikt: ook openen als de GPS even stil is (laatste plek)
+  if (!gpsFix) return false;
   uint32_t nu = millis(); static uint32_t houdTot = 0, laatsteOpen = 0;
   if ((int32_t)(kaartGezichtTot - nu) > 0) return false;   // net weggetikt
   if (eNavC && strchr("LRlrOUA", eNavC) && eNavD > 0 && eNavD < 150) houdTot = nu + 12000;   // v104: open tot 12 s na de afslag (eerst ging hij dicht zodra de app naar de volgende afslag sprong)
