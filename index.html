@@ -28,12 +28,13 @@
       var ini = null; function init() { return ini || (ini = BLE.initialize({ androidNeverForLocation: false }).catch(function (e) { ini = null; throw e; })); }
       function hex(v) { var u = v instanceof Uint8Array ? v : v instanceof DataView ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength) : new Uint8Array(v), s = ''; for (var i = 0; i < u.length; i++) s += (u[i] < 16 ? '0' : '') + u[i].toString(16); return s; }
       function unhex(h) { h = String(h || '').replace(/[^0-9a-fA-F]/g, ''); var u = new Uint8Array(h.length >> 1); for (var i = 0; i < u.length; i++) u[i] = parseInt(h.substr(i * 2, 2), 16); return u; }
+      var luisteraars = {};   /* v181: per kenmerk maar één luisteraar, anders kwam alles dubbel binnen */
       function Kar(d, svc, id) { this._d = d; this._s = svc; this.uuid = id; this._l = []; this.value = null; }
       Kar.prototype.addEventListener = function (t, f) { if (t === 'characteristicvaluechanged' && this._l.indexOf(f) < 0) this._l.push(f); };
       Kar.prototype.removeEventListener = function (t, f) { this._l = this._l.filter(function (x) { return x !== f; }); };
       Kar.prototype.startNotifications = function () { var me = this, key = 'notification|' + me._d.id + '|' + me._s + '|' + me.uuid;
-        return init().then(function () { if (me._h) { try { me._h.remove(); } catch (e) {} } return BLE.addListener(key, function (ev) { var u = unhex(ev && ev.value); me.value = new DataView(u.buffer); me._l.slice().forEach(function (f) { try { f({ target: me }); } catch (e) {} }); }); })
-          .then(function (h) { me._h = h; return BLE.startNotifications({ deviceId: me._d.id, service: me._s, characteristic: me.uuid }); }).then(function () { return me; }); };
+        return init().then(function () { var oud = luisteraars[key]; if (oud) { try { oud.remove(); } catch (e) {} } return BLE.addListener(key, function (ev) { var u = unhex(ev && ev.value); me.value = new DataView(u.buffer); me._l.slice().forEach(function (f) { try { f({ target: me }); } catch (e) {} }); }); })
+          .then(function (h) { me._h = h; luisteraars[key] = h; return BLE.startNotifications({ deviceId: me._d.id, service: me._s, characteristic: me.uuid }); }).then(function () { return me; }); };
       Kar.prototype.writeValueWithResponse = function (v) { var me = this, h = hex(v); return rij(function () { return BLE.write({ deviceId: me._d.id, service: me._s, characteristic: me.uuid, value: h }); }); };
       Kar.prototype.writeValue = Kar.prototype.writeValueWithResponse;
       Kar.prototype.writeValueWithoutResponse = function (v) { var me = this, h = hex(v); return rij(function () { return BLE.writeWithoutResponse({ deviceId: me._d.id, service: me._s, characteristic: me.uuid, value: h }); }); };
@@ -5109,7 +5110,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v180';
+  var VERSION = 'v181';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7920,7 +7921,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
               c[m] = function (v) { var p = rij.then(function () { return org.call(c, v); }); rij = p.catch(function () {}); return p; }; });
           })(rx);
           function luister(keer) {   /* v101: eerst meldingen van het schermpje aanzetten, pas daarna de proef (twee tegelijk mag niet in Chrome) */
-            return ch[1].startNotifications().then(function () { ch[1].removeEventListener('characteristicvaluechanged', binnen); ch[1].addEventListener('characteristicvaluechanged', binnen); lg('scherm: meldingen aan'); })
+            return ch[1].startNotifications().then(function () { if (window.__txOud && window.__txOud !== ch[1]) { try { window.__txOud.removeEventListener('characteristicvaluechanged', binnen); } catch (e) {} } window.__txOud = ch[1]; ch[1].removeEventListener('characteristicvaluechanged', binnen); ch[1].addEventListener('characteristicvaluechanged', binnen);   /* v181: na herverbinden kwam alles dubbel binnen (oude luisteraar bleef hangen) */ lg('scherm: meldingen aan'); })
               .catch(function (e) { lg('scherm: meldingen aanzetten mislukt (' + ((e && e.message) || e) + ')'); if (keer < 5) return new Promise(function (ok) { setTimeout(ok, 1500); }).then(function () { if (rx === ch[0]) return luister(keer + 1); }); });
           }
           luister(0).then(function () { stuurPin(); setTimeout(function () { klein('STAT?'); }, 2500); });   /* v103: koppelen met de code via de app, geen Android-koppeling meer */
