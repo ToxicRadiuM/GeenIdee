@@ -8,13 +8,13 @@
 (function () {
   function zet() {
     var C = window.Capacitor; if (!C || !C.isNativePlatform || !C.isNativePlatform() || window.__native) return !!window.__native;
-    window.__native = true; var reg = function (n) { try { return C.registerPlugin(n); } catch (e) { return null; } };
+    window.__native = true; window.__nativeInfo = []; var reg = function (n) { try { return C.registerPlugin(n); } catch (e) { return null; } };
     var BLE = reg('BluetoothLe'), BG = reg('BackgroundGeolocation'), TTS = reg('TextToSpeech'), WAK = reg('KeepAwake'), APP = reg('App');
     if (APP) try { APP.addListener('backButton', function () { APP.minimizeApp().catch(function () {}); }); } catch (e) {}   /* terug-knop = app naar de achtergrond, niet afsluiten */
     /* --- Bluetooth: een stukje Web Bluetooth nadoen bovenop de Android-plugin --- */
     if (BLE) {
       var wacht = Promise.resolve(); function rij(f) { var p = wacht.then(f, f); wacht = p.catch(function () {}); return p; }   /* Android kan maar één Bluetooth-klus tegelijk */
-      var ini = null; function init() { return ini || (ini = BLE.initialize({ androidNeverForLocation: true }).catch(function (e) { ini = null; throw e; })); }
+      var ini = null; function init() { return ini || (ini = BLE.initialize({ androidNeverForLocation: false }).catch(function (e) { ini = null; throw e; })); }
       function hex(v) { var u = v instanceof Uint8Array ? v : v instanceof DataView ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength) : new Uint8Array(v), s = ''; for (var i = 0; i < u.length; i++) s += (u[i] < 16 ? '0' : '') + u[i].toString(16); return s; }
       function unhex(h) { h = String(h || '').replace(/[^0-9a-fA-F]/g, ''); var u = new Uint8Array(h.length >> 1); for (var i = 0; i < u.length; i++) u[i] = parseInt(h.substr(i * 2, 2), 16); return u; }
       function Kar(d, svc, id) { this._d = d; this._s = svc; this.uuid = id; this._l = []; this.value = null; }
@@ -61,6 +61,7 @@
         speak: function (u) { TTS.speak({ text: String(u.text || ''), lang: u.lang || 'nl-NL', rate: u.rate || 1, pitch: u.pitch || 1, volume: u.volume == null ? 1 : u.volume, category: 'playback', queueStrategy: 1 }).catch(function () {}); },
         cancel: function () { TTS.stop().catch(function () {}); }, getVoices: function () { return []; }, addEventListener: function () {} } }); } catch (e) {}
     }
+    window.__nativeInfo = ['Bluetooth ' + (BLE ? '✓' : '✗'), 'GPS achtergrond ' + (BG ? '✓' : '✗'), 'spraak ' + (TTS ? '✓' : '✗')];
     if (WAK) { window.__houdWakker = function (aan) { (aan ? WAK.keepAwake() : WAK.allowSleep()).catch(function () {}); }; }
     return true;
   }
@@ -5090,7 +5091,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v172';
+  var VERSION = 'v173';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8182,12 +8183,15 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         .catch(function () {}).then(function () { bezig = false; });
     }
     $('bleKnop').addEventListener('click', function () {
-      if (!navigator.bluetooth) { toast('Deze browser kan geen Bluetooth. Gebruik Chrome op Android.'); return; }
+      try { window.__nativeZet && window.__nativeZet(); } catch (e) {}
+      if (!navigator.bluetooth) { toast(window.Capacitor ? 'De app kan Bluetooth niet starten. Stuur Claude even het logboek.' : 'Deze browser kan geen Bluetooth. Gebruik Chrome op Android of de Buddy-app.'); lg('geen Bluetooth: Capacitor=' + !!window.Capacitor + ' native=' + !!window.__native); return; }
+      toast('📡 Buddy+ zoeken…');
       if (rx && dev) { clearTimeout(opnieuw.t); try { dev.gatt.disconnect(); } catch (e) {} dev = null; rx = null; try { localStorage.removeItem('dashboardmaatje-bleid'); } catch (e) {} stat('Losgekoppeld.'); $('bleKnop').textContent = '📡 Verbind met Buddy+'; return; }
       navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'Buddy' }], optionalServices: [SVC] }).then(function (d) {
         dev = d; d.addEventListener('gattserverdisconnected', weg); stat('Verbinden…'); return koppel();
-      }).catch(function (e) { stat('Niet verbonden' + (e && e.message ? ' (' + e.message + ')' : '') + '.'); });
+      }).catch(function (e) { var m = (e && (e.message || e.errorMessage)) || String(e); lg('verbinden mislukt: ' + m); stat('Niet verbonden (' + m + ').'); toast('Verbinden lukt niet: ' + m); });
     });
+    lg('app: ' + (window.__native ? 'Android-app (' + (window.__nativeInfo || []).join(', ') + ')' : 'browser') + ', Bluetooth ' + (navigator.bluetooth ? 'ja' : 'nee'));   /* v173 */
   })();
 
   /* ======================= v77: plekjes, laden, thuis delen, rit op kaart, maandoverzicht, wisselbeker ======================= */
