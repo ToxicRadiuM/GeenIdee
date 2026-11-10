@@ -1525,6 +1525,8 @@ static void drawVenster() {
   frame->drawCircle(X(120), Y(120), S(118), EYE);
   if (venster == 1) drawInfo();
   else if (venster == 2) { drawSlider(buddyVolume, "VOLUME", EYE, nullptr);   // v59: geluid testen en nachtstand, ook zonder telefoon
+    { float hp = hartjesAan ? 1 + sinf(millis() / 180.f) * .08f : 1; circle(196, 62, 18, hartjesAan ? 0x8010 : 0x18E3); frame->drawCircle(X(196), Y(62), S(18), EYE);   // v109: hartjes-knop
+      heart(196, 64, 11 * hp, hartjesAan ? HEART : 0x6B4D); }
     char fb[28]; snprintf(fb, sizeof fb, "FOUT: %s", audioStatus);
     const char *st = !audioReady ? fb : audioBusy ? "SPEELT" : (testPiepT && millis() - testPiepT < 2500) ? "PIEP!" : "GELUID OK";
     frame->setTextColor(audioReady ? 0x87F0 : 0xF9A6); frame->setTextSize(2); frame->setCursor(X(120) - (int)strlen(st) * 6, Y(101)); frame->print(st);
@@ -3870,6 +3872,8 @@ void handleTouch(){
        else if (venster == 1 && otaKlaarV && lY < 62.0f) installeerOta();   // v68: update installeren
        else if (venster == 5 && lY > 40.0f && lY < 176.0f) { int k = (int)((lY - 40.0f) / 34.0f); if (k >= 0 && k < 4) { sluitVenster(); spelStart(k + 1); } }   // v93: spel kiezen
        else if (venster == 4 && lY > 146.0f && lY < 178.0f) { timerLen = (uint32_t)timerMin * 60000UL; timerTot = now + timerLen; timerFase = 0; timerAlarmN = 0; sluitVenster(); startGag(7); snprintf(robotTxt, sizeof robotTxt, "Timer: %d minuten!", (int)timerMin); gagMsg = robotTxt; playGeluid(GL_PLING); }   // v86: kookwekker
+       else if (venster == 2 && fabsf(lX - 196) < 24 && fabsf(lY - 62) < 24) { vensterTot = now + 30000; hartjesAan = !hartjesAan; buddyPrefs.putBool("hart", hartjesAan); bleSend(hartjesAan ? "HART:1" : "HART:0");   // v109: hartjes aan/uit op Buddy+ zelf
+         if (hartjesAan) { aaiTot = now + 2500; playGeluid(GL_GIECHEL); } else playGeluid(GL_PLING); logRegel("hartjes %s (op Buddy+)", hartjesAan ? "aan" : "uit"); }
        else if (venster == 2 && lY > 146.0f && lY < 176.0f) { vensterTot = now + 30000;   // v59: TEST of nachtstand
          if (lX < 120) { if (audioBusy) { audioBusy = false; logRegel("geluid: los gemaakt via TEST"); } testPiepT = now; playGeluid(GL_PLING); logRegel("geluid test (scherm): klaar=%d volume=%d status=%s", (int)audioReady, (int)buddyVolume, audioStatus); }
          else { nachtStil = !nachtStil; buddyPrefs.putBool("nstil", nachtStil); logRegel("nachtstand: %s", nachtStil ? "stil 22-7" : "geluid ook 's nachts"); } } }
