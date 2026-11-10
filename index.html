@@ -919,7 +919,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       </ol>
       <button class="btn primary" id="bleKnop" type="button">📡 Verbind met Buddy+</button>
       <p class="chip" id="bleStat">Niet verbonden.</p>
-      <p class="sub">Stap 2 · Wifi geven (één keer, wel aanraden)</p>
+      <p class="sub">Stap 2 · Wifi (niet meer nodig)</p>
+      <p class="foot" style="text-align:left">Buddy+ gebruikt nu gewoon het internet van je telefoon via Bluetooth, zolang hij verbonden is. Een hotspot hoeft niet meer. Wifi kan nog wel: dan gaan updates sneller.</p>
       <p class="foot" style="text-align:left">Dit kan pas als stap 1 gelukt is: de app geeft de wifi via Bluetooth door. Gebruik de <b>hotspot van je telefoon</b>. Buddy+ onthoudt het en verbindt daarna elke rit vanzelf zodra je hotspot aan staat. Met wifi haalt hij zelf limieten, flitsers, files, het weer en nieuwe versies op, ook als de app dicht is.</p>
       <div class="mobrow"><input type="text" id="wfNaam" autocomplete="off" placeholder="Naam van je hotspot (precies zo geschreven)"></div>
       <div class="mobrow"><input type="password" id="wfPass" autocomplete="off" placeholder="Wachtwoord van je hotspot"></div>
@@ -5007,7 +5008,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v167';
+  var VERSION = 'v168';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7857,9 +7858,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     function binnen(e) {
       var t = new TextDecoder().decode(e.target.value);
-      if (t === 'PIN:OK') { lg('scherm: code goed, verbonden'); stat('✅ Verbonden met Buddy+. Het schermpje krijgt nu elke seconde de info van je telefoon.'); toast('✅ Verbonden met Buddy+'); setTimeout(stuurInst, 300); setTimeout(netStuur, 900); setTimeout(persStuur, 1500); setTimeout(function () { klein('STAT?'); }, 2500); setTimeout(vraagLog, 3500); if (window.__rtOpnieuw) window.__rtOpnieuw(); return; }   /* alles wat vóór de code kwam, nog een keer */
+      if (t === 'PIN:OK') { lg('scherm: code goed, verbonden'); stat('✅ Verbonden met Buddy+. Het schermpje krijgt nu elke seconde de info van je telefoon.'); toast('✅ Verbonden met Buddy+'); setTimeout(stuurInst, 300); setTimeout(netStuur, 900); setTimeout(function () { klein('NET:JA'); }, 1300); setTimeout(persStuur, 1500); setTimeout(function () { klein('STAT?'); }, 2500); setTimeout(vraagLog, 3500); if (window.__rtOpnieuw) window.__rtOpnieuw(); return; }   /* alles wat vóór de code kwam, nog een keer */
       if (t === 'PIN:FOUT') { lg('scherm: verkeerde code'); try { localStorage.removeItem(PINKEY); } catch (e) {} toast('Die code klopt niet. Kijk bovenaan het schermpje.'); setTimeout(function () { stuurPin(true); }, 600); return; }
       if (t === 'PIN?') { stuurPin(); return; }
+      if (t.indexOf('NQ|') === 0) { var q1 = t.indexOf('|', 3), nid = t.slice(3, q1); if (nqId !== nid) { nqId = nid; nqUrl = ''; } nqUrl += t.slice(q1 + 1); return; }   /* v168: internet voor Buddy+ */
+      if (t.indexOf('NQE|') === 0) { var nid2 = t.slice(4); if (nid2 === nqId) netHaal(nid2, nqUrl); nqId = null; nqUrl = ''; return; }
       if (t.indexOf('RIT:') === 0) { try { plusRitBinnen(t.slice(4)); } catch (e) { lg('FOUT rit van Buddy+: ' + e.message); } return; }   /* v104 */
       /* v76: logboek van het schermpje komt in stukjes binnen en gaat in de gewone Buddy-log (-> buddy-logs) */
       if (t === 'LOGBEGIN') { logBuf = ''; return; }
@@ -7879,6 +7882,35 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     var SCKEY = 'dashboardmaatje-scherm-v1', sc = { l: 65, v: 80, a: '1', w: '1' };
     try { var sc0 = JSON.parse(localStorage.getItem(SCKEY)); if (sc0) sc = sc0; } catch (e) {}
     $('scLicht').value = sc.l; $('scVol').value = sc.v; $('scAnim').value = sc.a; $('scWarn').value = sc.w == null ? '1' : sc.w;
+    /* v168: internet doorgeven aan Buddy+ (geen hotspot nodig). Buddy+ vraagt een adres, wij halen het op en sturen het in stukjes terug. */
+    var nqId = null, nqUrl = '', netJob = null, netQ = [], pompT = 0, pompStuurT = 0, grootStuk = 180;
+    function netHaal(id, url) {
+      if (!/^https:\/\//.test(url)) { netQ.push('NX|' + id + '|0'); netPomp(); return; }
+      lg('Buddy+ haalt via de telefoon: ' + url.replace(/\?.*$/, ''));
+      fetch(url, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.arrayBuffer(); }).then(function (ab) {
+        netJob = { id: id, d: new Uint8Array(ab), p: 0, seq: 0 }; netQ.push('NB|' + id + '|' + ab.byteLength); netPomp();
+      }).catch(function (e) { lg('Buddy+ via telefoon mislukt: ' + (e.message || e)); netQ.push('NX|' + id + '|1'); netPomp(); });
+    }
+    function stuurSnel(t) {
+      var d = new TextEncoder().encode(t + '\n'), st = []; for (var i = 0; i < d.length; i += grootStuk) st.push(d.slice(i, i + grootStuk));
+      return st.reduce(function (pr, x) { return pr.then(function () { return rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(x) : rx.writeValue(x); }); }, Promise.resolve());
+    }
+    function netPomp() {
+      clearTimeout(pompT); if (!rx) { netQ = []; netJob = null; return; }
+      if (bezig) { pompT = setTimeout(netPomp, 40); return; }
+      if (Date.now() - pompStuurT > 900) { pompStuurT = Date.now(); try { stuur(); } catch (e) {} pompT = setTimeout(netPomp, 60); return; }   /* de gewone info per seconde gaat voor */
+      var lijnen = netQ.splice(0, netQ.length);
+      while (netJob && lijnen.length < 12) {
+        if (netJob.p >= netJob.d.length) { lijnen.push('NE|' + netJob.id); netJob = null; break; }
+        var stuk = netJob.d.subarray(netJob.p, netJob.p + 162), bs = ''; for (var i = 0; i < stuk.length; i++) bs += String.fromCharCode(stuk[i]);
+        lijnen.push('ND|' + netJob.id + '|' + netJob.seq + '|' + btoa(bs)); netJob.p += stuk.length; netJob.seq++;
+      }
+      if (!lijnen.length) return;
+      bezig = true;
+      lijnen.reduce(function (pr, l) { return pr.then(function () { return stuurSnel(l); }); }, Promise.resolve()).then(function () { bezig = false; pompT = setTimeout(netPomp, 5); }, function (e) {
+        bezig = false; if (grootStuk > 20) { grootStuk = 20; lg('Buddy+ internet: kleinere stukjes'); } lg('Buddy+ internet onderbroken: ' + (e.message || e)); netJob = null; netQ = [];
+      });
+    }
     function stuurTekst(t) {
       if (!rx) return Promise.reject(new Error('niet verbonden'));
       var d = new TextEncoder().encode(t + '\n'), st = []; for (var i = 0; i < d.length; i += 20) st.push(d.slice(i, i + 20));

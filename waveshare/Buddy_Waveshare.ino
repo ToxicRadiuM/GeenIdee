@@ -23,6 +23,7 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <esp_heap_caps.h>
+#include <mbedtls/base64.h>   // v106
 #include <mbedtls/platform.h>   // v75: https-geheugen in PSRAM (intern raakte versnipperd: 'SSL - Memory allocation failed')
 #include "driver/spi_master.h"   // v37: eigen, snellere verzending van het beeld
 #include "driver/gpio.h"
@@ -37,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 105;   // v105: kaart openen met 6 verschillende overgangen (niet alleen het gordijn)
+static const int FW_VERSIE = 106;   // v106: internet via de telefoon (Bluetooth), hotspot niet meer nodig
+// v105:   // v105: kaart openen met 6 verschillende overgangen (niet alleen het gordijn)
 // v104:   // v104: kaart blijft open tot na de afslag, en tussendoor elke 4 min even
 // v103:   // v103: route blijft staan als de app op de achtergrond is (Buddy+ rekent de afslagen dan zelf)
 // v102:   // v102: geen muts/hoed als er bovenin een bord of navigatiepijl staat
@@ -1174,6 +1176,9 @@ static volatile bool bleConnected = false;
 static volatile int8_t telRssi = 0; static volatile uint32_t telRssiT = 0; static float telRssiGem = 0; static bool telVer = false; static uint32_t telZwakSinds = 0;
 static bool telDichtbij() { return bleConnected && !telVer; }
 static char bleBuf[256]; static size_t bleLen = 0;
+// v106: internet via de telefoon. Buddy+ vraagt een adres, de app haalt het op en stuurt het in stukjes terug.
+static volatile bool appNet = false; static volatile uint8_t bnStaat = 0; static uint8_t *bnBuf = nullptr; static volatile size_t bnLen = 0, bnCap = 0;
+static volatile uint16_t bnId = 0, bnSeq = 0; static volatile uint32_t bnLaatst = 0; static char bnVraag[300]; static volatile bool bnVraagKlaar = false;
 // v76: route van de app (voor de kaart op Buddy+). Twee vaste buffers in PSRAM, nooit vrijgeven (tekenen en ontvangen lopen tegelijk)
 static const int RT_MAX = 1200; static float *rtA = nullptr, *rtB = nullptr, *rtPt = nullptr; static volatile int rtN = 0; static int rtNieuwN = 0; static bool rtBezig = false;
 static uint8_t kaartStand = 0; static uint32_t kaartGezichtTot = 0, kaartOvergangT = 0, kaartSluitT = 0; static bool kaartVorige = false;
@@ -1199,6 +1204,16 @@ static const char *moodKeys[MOOD_COUNT] = {"neutral","content","relaxed","happy"
 static bool phoneFresh() { return phone.ms && millis() - phone.ms < 3500; }
 static char evtTxt[44] = ""; static volatile char evtSoort = 0;   // v69: groepsgebeurtenissen van de app
 static void parsePhone(char *line) {
+  if (!strcmp(line, "NET:JA")) { appNet = true; return; }   // v106: deze app kan internet doorgeven
+  if (pinOk && line[0] == 'N' && line[2] == '|' && (line[1] == 'B' || line[1] == 'D' || line[1] == 'E' || line[1] == 'X')) {
+    char *e; unsigned id = strtoul(line + 3, &e, 10); if (id != bnId || bnStaat != 1) return; bnLaatst = millis();
+    if (line[1] == 'B') { size_t sz = strtoul(e + 1, nullptr, 10); if (bnBuf) free(bnBuf); bnCap = sz + 1; bnBuf = (uint8_t *)heap_caps_malloc(bnCap, MALLOC_CAP_SPIRAM); bnLen = 0; bnSeq = 0; if (!bnBuf) bnStaat = 3; }
+    else if (line[1] == 'D') { unsigned sq = strtoul(e + 1, &e, 10); if (!bnBuf || sq != bnSeq || *e != '|') { bnStaat = 3; return; }
+      size_t ol = 0; if (mbedtls_base64_decode(bnBuf + bnLen, bnCap - 1 - bnLen, &ol, (const unsigned char *)e + 1, strlen(e + 1)) != 0) { bnStaat = 3; return; } bnLen += ol; bnSeq++; }
+    else if (line[1] == 'E') { if (bnBuf) { bnBuf[bnLen] = 0; bnStaat = 2; } else bnStaat = 3; }
+    else bnStaat = 3;
+    return;
+  }
   if (pinOk && !strncmp(line, "RT:", 3)) {   // v76: route binnenhalen (B = begin, P = punten, E = klaar, X = gestopt)
     const char *a = line + 3;
     if (!rtA) { rtA = (float *)ps_malloc(RT_MAX * 2 * sizeof(float)); rtB = (float *)ps_malloc(RT_MAX * 2 * sizeof(float)); }
@@ -1333,7 +1348,7 @@ class BuddySrvCb : public BLEServerCallbacks {
   void onConnect(BLEServer *s, esp_ble_gatts_cb_param_t *p) override { memcpy(telBda, p->connect.remote_bda, sizeof(esp_bd_addr_t)); telBdaOk = true; telRssiGem = 0; telVer = false; telZwakSinds = 0; }
 #endif
   void onConnect(BLEServer *) override { bleConnected = true; pinOk = false; verbindT = millis(); if (!gekoppeld) pinTot = millis() + 60000; logRegel("BLE: telefoon verbonden"); }
-  void onDisconnect(BLEServer *) override { bleConnected = false; pinOk = false; if (!gekoppeld && verbindT && millis() - verbindT > 8000 && koppelMislukt < 250) koppelMislukt++; verbindT = 0; pinTot = 0; logRegel("BLE: telefoon weg"); BLEDevice::startAdvertising(); }
+  void onDisconnect(BLEServer *) override { bleConnected = false; pinOk = false; appNet = false; if (!gekoppeld && verbindT && millis() - verbindT > 8000 && koppelMislukt < 250) koppelMislukt++; verbindT = 0; pinTot = 0; logRegel("BLE: telefoon weg"); BLEDevice::startAdvertising(); }
 };
 class BuddyRxCb : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *c) override {
@@ -2260,7 +2275,24 @@ static double jNum(JP &j) { jWs(j); char *q; double v = strtod(j.p, &q); if (q =
 static void jSkipStr(JP &j) { jWs(j); if (j.p < j.e && *j.p == '"') { j.p++; while (j.p < j.e && *j.p != '"') { if (*j.p == '\\') j.p++; j.p++; } j.p++; } }
 static bool jZoek(JP &j, const char *sleutel) { const char *q = strstr(j.p, sleutel); if (!q) return false; j.p = q + strlen(sleutel); return true; }
 
+static bool viaTelOk() { return bleConnected && pinOk && appNet; }
+static uint8_t *bleHaal(const char *url, size_t &len) {   // v106: wacht tot de app het bestand heeft doorgestuurd (max 15 s stilte)
+  len = 0; if (!viaTelOk()) return nullptr;
+  while (bnVraagKlaar) vTaskDelay(pdMS_TO_TICKS(20));
+  bnId = bnId + 1; if (!bnId) bnId = 1; if (bnBuf) { free(bnBuf); bnBuf = nullptr; } bnLen = bnCap = 0; bnSeq = 0;
+  strncpy(bnVraag, url, sizeof bnVraag - 1); bnVraag[sizeof bnVraag - 1] = 0; bnLaatst = millis(); bnStaat = 1; bnVraagKlaar = true;
+  while (bnStaat == 1 && millis() - bnLaatst < 15000 && viaTelOk()) vTaskDelay(pdMS_TO_TICKS(20));
+  if (bnStaat != 2) { logRegel("net via telefoon: %s mislukt", url + (strlen(url) > 40 ? strlen(url) - 40 : 0)); bnStaat = 0; netFoutT = millis(); if (bnBuf) { free(bnBuf); bnBuf = nullptr; } return nullptr; }
+  uint8_t *b = bnBuf; bnBuf = nullptr; len = bnLen; bnStaat = 0; netOkT = millis(); return b;
+}
+static void bnVraagStap() {   // in de loop: de vraag versturen (Bluetooth alleen vanuit de loop)
+  if (!bnVraagKlaar || !bleConnected || logBezig) return;
+  char m[200]; size_t L = strlen(bnVraag);
+  for (size_t o = 0; o < L; o += 150) { snprintf(m, sizeof m, "NQ|%u|%.*s", (unsigned)bnId, (int)(L - o < 150 ? L - o : 150), bnVraag + o); bleSend(m); delay(15); }
+  snprintf(m, sizeof m, "NQE|%u", (unsigned)bnId); bleSend(m); bnVraagKlaar = false; bnLaatst = millis();
+}
 static uint8_t *haalUrl(const char *url, size_t &len) {
+  if (!(WiFi.status() == WL_CONNECTED && (uint32_t)WiFi.localIP() != 0)) return bleHaal(url, len);   // v106: geen wifi? via de telefoon
   len = 0; WiFiClientSecure cl; cl.setInsecure(); HTTPClient h; h.setTimeout(15000);
   if (!h.begin(cl, url)) return nullptr;
   int code = h.GET(); if (code != 200) { char tf[80] = ""; if (code < 0) cl.lastError(tf, sizeof tf); h.end(); netFoutCode = code; netFoutT = millis(); logRegel("net: %s -> %d %s (vrij %u, blok %u)", url + 34, code, tf, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL), (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)); return nullptr; }
@@ -2448,6 +2480,16 @@ static void checkOta() {   // v68: alleen binnenhalen (op de achtergrond, ook ti
   if (v == otaKlaarV) { logRegel("update: v%d staat al klaar om te installeren", v); return; }
   const esp_partition_t *doel = esp_ota_get_next_update_partition(NULL); if (!doel) { logRegel("update: geen plek om te bewaren"); return; }
   logRegel("update: v%d -> v%d wordt op de achtergrond binnengehaald", FW_VERSIE, v);
+  if (!(WiFi.status() == WL_CONNECTED && (uint32_t)WiFi.localIP() != 0)) {   // v106: via de telefoon (alleen als de app open staat)
+    if (!phoneFresh()) { logRegel("update: open de app, dan haal ik hem via de telefoon"); return; }
+    otaPct = 0; size_t fn = 0; uint8_t *fb = bleHaal(FW_BASIS "firmware.bin", fn); otaPct = -1;
+    if (!fb || fn < 100000) { free(fb); logRegel("update via telefoon mislukt, later opnieuw"); return; }
+    esp_ota_handle_t oh2; if (esp_ota_begin(doel, fn, &oh2) != ESP_OK) { free(fb); return; }
+    bool f2 = false; for (size_t o = 0; o < fn && !f2; o += 4096) if (esp_ota_write(oh2, fb + o, fn - o < 4096 ? fn - o : 4096) != ESP_OK) f2 = true;
+    free(fb); if (f2 || esp_ota_end(oh2) != ESP_OK) { if (f2) esp_ota_abort(oh2); logRegel("update via telefoon: bestand klopt niet"); return; }
+    buddyPrefs.putInt("otaV", v); buddyPrefs.putString("otaP", doel->label); otaKlaarV = v; otaKlaarT = millis(); statVraag = true;
+    logRegel("update: v%d staat klaar (via de telefoon binnengehaald)", v); return;
+  }
   WiFiClientSecure cl; cl.setInsecure(); HTTPClient h; h.setTimeout(20000);
   if (!h.begin(cl, FW_BASIS "firmware.bin")) return;
   int code = h.GET(); if (code != 200) { logRegel("update: download -> %d", code); h.end(); return; }
@@ -2576,29 +2618,26 @@ static void netTaak(void *) {
     { static uint32_t lbT = 0; if (millis() - lbT > 20000 || leerBufN >= 20) { lbT = millis(); leerBewaar(); } }   // v68
     // 2. wifi
     if (wifiHerstart) { wifiHerstart = false; WiFi.disconnect(true); vTaskDelay(pdMS_TO_TICKS(300)); beginT = 0; }
-    if (!wifiNaam[0]) { netStatus = "wifi uit"; vTaskDelay(pdMS_TO_TICKS(1000)); continue; }
-    if (!online) {
-      netStatus = "wifi zoekt";
-      if (!beginT || millis() - beginT > 30000) { WiFi.mode(WIFI_STA); WiFi.setSleep(true); WiFi.begin(wifiNaam, wifiPass); beginT = millis(); }
-      vTaskDelay(pdMS_TO_TICKS(1000)); continue;
-    }
-    netStatus = "wifi OK";
-    if (!ntpAan) { ntpAan = true; configTzTime("CET-1CEST,M3.5.0,M10.5.0/3", "pool.ntp.org", "time.google.com"); logRegel("wifi verbonden (%s), IP %s", wifiNaam, WiFi.localIP().toString().c_str()); }
+    bool viaTel = !online && viaTelOk();   // v106
+    if (!online && wifiNaam[0] && (!beginT || millis() - beginT > 30000)) { WiFi.mode(WIFI_STA); WiFi.setSleep(true); WiFi.begin(wifiNaam, wifiPass); beginT = millis(); }
+    if (!online && !viaTel) { netStatus = wifiNaam[0] ? "wifi zoekt" : "wifi uit"; vTaskDelay(pdMS_TO_TICKS(1000)); continue; }
+    netStatus = online ? "wifi OK" : "via telefoon";
+    if (online && !ntpAan) { ntpAan = true; configTzTime("CET-1CEST,M3.5.0,M10.5.0/3", "pool.ntp.org", "time.google.com"); logRegel("wifi verbonden (%s), IP %s", wifiNaam, WiFi.localIP().toString().c_str()); }
     if (!flitsT || millis() - flitsT > 24UL * 3600000 || flitsOud) { flitsOud = false; flitsT = millis(); laadFlitsers(true); }
     { static uint32_t wxHaalT = 0; if (gpsFix && (!wxHaalT || millis() - wxHaalT > 15UL * 60000)) { wxHaalT = millis(); haalWeer(); } }
     { static uint32_t pakT = 0; uint32_t elk = (gpsFix && gpsSpeedKmh > 5) ? 45000 : 120000; if (wCfg.url[0] && (!pakT || millis() - pakT > elk)) { pakT = millis(); haalPakket(); } }
     if (zwaaiVraag && !bleConnected) { zwaaiVraag = false; stuurZwaai(); } else if (zwaaiVraag) zwaaiVraag = false;
     if (gpsFix && tegelNu[0] == 0) { char key[16]; tegelKey(gpsLat, gpsLon, key, sizeof key); laadTegel(key, true); }
-    { static uint32_t vlT = 0; static int vi = 0; if (gpsFix && logFs && millis() - vlT > 4000) { vlT = millis();   // v68: kaartstukjes rondom vooruit laden (buffer voor als het internet wegvalt)
+    { static uint32_t vlT = 0; static int vi = 0; if (gpsFix && logFs && millis() - vlT > (online ? 4000 : 30000)) { vlT = millis();   // v68: kaartstukjes rondom vooruit laden (buffer voor als het internet wegvalt)
         static const int8_t DX[8] = {-1, 0, 1, -1, 1, -1, 0, 1}, DY[8] = {-1, -1, -1, 0, 0, 1, 1, 1}; vi = (vi + 1) % 8;
         char key[16]; tegelKey(gpsLat + DY[vi] * 0.03, gpsLon + DX[vi] * 0.05, key, sizeof key); char pad[32]; snprintf(pad, sizeof pad, "/t_%s.json", key);
         if (!logFs->exists(pad)) { char url[128]; snprintf(url, sizeof url, DATA_BASIS "t/%s.json", key); size_t n; uint8_t *b = haalUrl(url, n); if (b && n > 10) bewaar(pad, b, n); free(b); } } }
     if (otaNu) { otaNu = false; otaT = millis(); logRegel("update gevraagd vanuit de app"); checkOta(); }
-    { static uint32_t chkT = 0; if (!chkT || millis() - chkT > 120000UL) { chkT = millis();   // v67: internet-check
+    { static uint32_t chkT = 0; if (online && (!chkT || millis() - chkT > 120000UL)) { chkT = millis();   // v67: internet-check
         IPAddress ip; netDnsOk = WiFi.hostByName("raw.githubusercontent.com", ip) == 1 ? 1 : 0; netTcpOk = -1;
         if (netDnsOk) { WiFiClient c; netTcpOk = c.connect(ip, 443, 5000) ? 1 : 0; c.stop(); }
         logRegel("internet-check: dns %s, verbinding %s, laatste download %s", netDnsOk ? "ok" : "MISLUKT", netTcpOk == 1 ? "ok" : netTcpOk == 0 ? "MISLUKT" : "-", netOkT && (!netFoutT || netOkT > netFoutT) ? "gelukt" : netFoutT ? "mislukt" : "nog geen"); } }
-    { static uint32_t logT = 0; if ((!logT && millis() > 60000) || (logT && millis() - logT > 300000)) { logT = millis(); logNaarWorker(); } }   // v64
+    { static uint32_t logT = 0; if (online && ((!logT && millis() > 60000) || (logT && millis() - logT > 300000))) { logT = millis(); logNaarWorker(); } }   // v64
     bool stil = !gpsFix || gpsSpeedKmh < 1;
     (void)stil; if ((!otaT || millis() - otaT > 1UL * 3600000) && millis() > 60000) { otaT = millis(); checkOta(); }   // v68: elk uur kijken, binnenhalen mag altijd
     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -2697,6 +2736,7 @@ static void persStap(float dt) {
     else { if (s == 'j') collegaJarigTot = millis() + 14UL * 3600000; int g = s == 'f' || s == 'j' ? 38 : s == 'm' ? 44 : s == 'z' ? 25 : 7; startGag(g);   // v88: zwaai van een collega = hartjesogen
       gagMsg = evtTxt;
     playGeluid(s == 'f' ? GL_TADA : s == 'm' ? GL_OEPS : s == 'z' ? GL_HOI : s == 'h' ? GL_GIECHEL : GL_PLING); logRegel("gebeurtenis: %s", evtTxt); } }
+  bnVraagStap();   // v106
   if (sndAntw && bleConnected && !logBezig) { uint8_t a = sndAntw; sndAntw = 0;   // v72: eigen geluidje bewaren of wissen
     if (a == 1) { File f = LittleFS.open("/sterren.raw", "w"); bool ok = f && f.write(sndNieuw, sndNieuwLen) == sndNieuwLen; if (f) f.close();
       if (ok) { sterData = STER_STANDAARD; sterDataLen = STER_STANDAARD_LEN; uint8_t *oud = sterBuf; sterBuf = sndNieuw; sterLen = sndNieuwLen; sndNieuw = nullptr; sterData = sterBuf; sterDataLen = sterLen; if (oud) free(oud); logRegel("geluid: eigen sterren-geluidje bewaard (%u bytes)", (unsigned)sterLen); bleSend("SND:OK"); }
