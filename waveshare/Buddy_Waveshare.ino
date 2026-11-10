@@ -38,7 +38,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 106;   // v106: internet via de telefoon (Bluetooth), hotspot niet meer nodig
+static const int FW_VERSIE = 106;   // v106: G-metertje naar links; internet via de telefoon (Bluetooth), hotspot niet meer nodig
 // v105:   // v105: kaart openen met 6 verschillende overgangen (niet alleen het gordijn)
 // v104:   // v104: kaart blijft open tot na de afslag, en tussendoor elke 4 min even
 // v103:   // v103: route blijft staan als de app op de achtergrond is (Buddy+ rekent de afslagen dan zelf)
@@ -2122,8 +2122,8 @@ static void driveStep(float dt) {
 }
 static void drawGmeter() {
   bool ok; float v = spdNow(&ok);
-  if (!imuReady || !ok || v < 5) return;
-  float cx = 120, cy = 20, r = 9;
+  if (!imuReady || !ok || v < 5 || (oorSoort >= 2 && !slaapt)) return;   // v106: niet tegelijk met de muzieknootjes
+  float cx = 26, cy = 120, r = 9;   // v106: naar links (bovenin zat hij in de muts, de KAART-knop en de navigatiepijl)
   boxAdd(cx - r - 2, cy - r - 2, cx + r + 2, cy + r + 2);
   frame->drawCircle(X(cx), Y(cy), S(r), 0x4208); frame->drawCircle(X(cx), Y(cy), S(r * .5f), 0x2945);
   float dx = fmaxf(-1, fminf(1, -leanX * LEAN_RICHTING / .6f)) * r, dy = fmaxf(-1, fminf(1, -pushZ / .6f)) * r, g = sqrtf(leanX * leanX + pushZ * pushZ);
