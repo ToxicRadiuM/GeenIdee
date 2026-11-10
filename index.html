@@ -892,7 +892,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     <button class="btn" id="bInstall" type="button" hidden>Installeer als app</button>
   </section>
   <div class="koppen">
-  <details class="kop" id="kopPlusNav" open><summary><span class="kopT">🧭 Navigeren met Buddy+</span><span class="kopS">waar gaan we heen?</span></summary>
+  <details class="kop" id="kopPlusNav" open><summary><span class="kopT">🧭 Navigeer naar…</span><span class="kopS">waar gaan we heen?</span></summary>
     <div class="kopIn">
       <p class="chip" id="pnVerb">…</p>
       <button class="btn primary" id="pnVerbKnop" type="button" hidden>📡 Verbind met Buddy+</button>
@@ -901,7 +901,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <div id="pnRes" class="navRes"></div>
       <p class="chip" id="pnStat">Geen route.</p>
       <button class="btn" id="pnStop" type="button" hidden>⏹️ Route stoppen</button>
-      <p class="foot">Kies een bestemming en Buddy+ krijgt de route meteen: kaartje, afslagen en aankomsttijd op zijn schermpje. De telefoon-GPS gaat vanzelf aan. Houd de app open (scherm mag uit als je hem op de achtergrond laat draaien zoals altijd).</p>
+      <p class="foot">Kies een bestemming: Buddy zegt de afslagen en Buddy+ krijgt de route meteen op zijn schermpje (kaartje, afslagen, aankomsttijd). De telefoon-GPS gaat vanzelf aan. Houd de app open (scherm mag uit als je hem op de achtergrond laat draaien zoals altijd).</p>
     </div>
   </details>
   <details class="kop" id="kopScherm"><summary><span class="kopT">🤖 Buddy+</span><span class="kopS">het echte robotje: verbinden, spelen, instellen</span></summary>
@@ -4926,7 +4926,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (route) delen.push(route);
       var m = delen.join(' ');
       setEv('happy', 6, m); toast(m); lg('briefing: ' + m);
-      if (spkOn || navSpk) sayNow(m);
+      if (spkOn) sayNow(m);   /* v164: alleen hardop als geluid aan staat */
     };
     if (pbase() && routeCellen() >= 15) {
       getText(pbase() + '/verkeer').then(function (txt) {
@@ -4993,7 +4993,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       else laadCheck();
       /* Rijden en niet als passagier? Dan spelletjes dicht, behalve de laadpauze-timer */
       if (!$('spel').hidden && S.live && S.liveSpeed >= 8 && !passagier) spelDicht();
-      if (S.live && lastPos && mem.briefDag !== new Date().toDateString()) briefing();
+      if (S.live && lastPos && S.trip && S.speed >= 15 && mem.briefDag !== new Date().toDateString()) briefing();   /* v164: pas als je echt rijdt, niet bij app openen */
     } catch (e) { lg('FOUT extra57 ' + e.message); }
   }, 2000);
   lvToon();
@@ -8575,7 +8575,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     function toon() {
       var v = verbonden(); $('pnVerb').textContent = v ? '✅ Buddy+ is verbonden' : '⚪ Buddy+ is niet verbonden. De route komt op zijn scherm zodra hij verbindt.';
-      $('pnVerbKnop').hidden = v;
+      $('pnVerbKnop').hidden = v; var opB = document.body.getAttribute('data-tab') === 'buddy'; $('pnVerb').hidden = opB; if (opB) $('pnVerbKnop').hidden = true;
       var N = window.__nav && window.__nav.nu(); $('pnStop').hidden = !N;
       if (!wacht && !$('pnRes').firstChild) $('pnStat').textContent = N ? '🧭 Route naar ' + String(N.dest && N.dest.naam || 'je bestemming').split(',')[0] + ' loopt.' : 'Geen route.';
       favToon();
@@ -8586,7 +8586,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     $('pnIn').addEventListener('input', function () { clearTimeout(zoekT); zoekT = setTimeout(zoek, 450); });
     $('pnStop').addEventListener('click', function () { if (window.__nav) window.__nav.stop(false); toon(); });
     $('pnVerbKnop').addEventListener('click', function () { $('bleKnop').click(); setTimeout(toon, 4000); });
-    setInterval(function () { if (document.body.getAttribute('data-tab') === 'plus') toon(); }, 3000);
+    setInterval(function () { var t = document.body.getAttribute('data-tab'); if (t === 'plus' || t === 'buddy') toon(); }, 3000);
   })();
 
   /* ---------- v75: tabbalk (Buddy · Kaart · Groep · Meer) ---------- */
@@ -8598,7 +8598,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     zet($('tabKaart'), 'kaart');
     zet($('kopOnderweg'), 'kaart');
     zet($('kopGroep'), 'groep');
-    zet($('kopScherm'), 'plus'); zet($('kopPlusNav'), 'plus'); zet($('kopOver'), 'buddy');   /* v164: Buddy+ heeft zijn eigen tab */   /* v83: schermpje en 'Over Buddy' onder het Buddy-tabblad */
+    zet($('kopScherm'), 'plus'); zet($('kopPlusNav'), 'buddy plus'); zet($('kopOver'), 'buddy');   /* v164: Buddy+ heeft zijn eigen tab */   /* v83: schermpje en 'Over Buddy' onder het Buddy-tabblad */
     zet($('buddyStatus'), 'buddy');
     ['kopInst', 'kopHulp', 'kopBouw'].forEach(function (id) { zet($(id), 'meer'); });
     zet($('kopRitten'), 'ritten'); zet($('kopRecords'), 'ritten'); zet($('kopBadges'), 'ritten'); zet($('kopLaden'), 'ritten'); zet($('kopPlezier'), 'buddy'); zet($('kopAnim'), 'plus');   /* v85: eigen Ritten-tab */
@@ -8622,7 +8622,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       try { localStorage.setItem(TABKEY, t); } catch (e) {}
       if (t === 'kaart') { $('kaartKnop').click(); }
       if (t === 'groep' && $('kopGroep')) $('kopGroep').open = true;
-      if (t === 'plus') { $('kopPlusNav').open = true; try { window.__pnToon && window.__pnToon(); } catch (e) {} }
+      if (t === 'plus' || t === 'buddy') { $('kopPlusNav').open = true; try { window.__pnToon && window.__pnToon(); } catch (e) {} }
       if (t === 'ritten') { ['kopRitten', 'kopRecords', 'kopBadges'].forEach(function (id) { if ($(id)) $(id).open = true; }); try { recordsToon(); badgeToon(); } catch (e) {} }
       window.scrollTo(0, 0);
     }
