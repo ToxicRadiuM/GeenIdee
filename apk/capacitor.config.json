@@ -1,0 +1,13 @@
+{
+  "appId": "nl.toxicradium.buddy",
+  "appName": "Buddy",
+  "webDir": "www",
+  "server": {
+    "url": "https://toxicradium.github.io/GeenIdee/",
+    "androidScheme": "https"
+  },
+  "android": {
+    "useLegacyBridge": true,
+    "backgroundColor": "#000000"
+  }
+}

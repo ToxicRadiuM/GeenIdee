@@ -1,0 +1,60 @@
+# Bouwt Buddy als Android-app (APK). De app laadt gewoon de Buddy-site, maar heeft echte Bluetooth,
+# GPS op de achtergrond (met een meldinkje) en spraak. Alleen op main wordt hij gepubliceerd op branch "apk".
+name: Buddy APK bouwen
+on:
+  push:
+    branches: [main, 'apk-*']
+    paths: ['apk/**', '.github/workflows/apk.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  bouw:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - name: Capacitor-project maken
+        working-directory: apk
+        run: |
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+      - name: Icoon, meldingsicoon, versie en vaste sleutel
+        working-directory: apk
+        env:
+          APK_KEYSTORE: ${{ secrets.APK_KEYSTORE }}
+        run: |
+          command -v convert >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick)
+          R=android/app/src/main/res
+          for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do n=${d%%:*}; s=${d##*:}; convert ../icon-512.png -resize ${s}x${s} $R/mipmap-$n/ic_launcher.png; cp $R/mipmap-$n/ic_launcher.png $R/mipmap-$n/ic_launcher_round.png; rm -f $R/mipmap-$n/ic_launcher_foreground.png; done
+          rm -rf $R/mipmap-anydpi-v26
+          mkdir -p $R/drawable && cp res/ic_stat_buddy.xml $R/drawable/
+          sed -i 's#</resources>#    <string name="capacitor_background_geolocation_notification_icon">drawable/ic_stat_buddy</string>\n    <string name="capacitor_background_geolocation_notification_channel_name">Buddy rijdt mee</string>\n</resources>#' $R/values/strings.xml
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/; s/versionName \"[^\"]*\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
+          # Vaste sleutel uit de geheime instelling APK_KEYSTORE (base64), zodat een nieuwe APK over de oude heen kan.
+          if [ -n "$APK_KEYSTORE" ]; then mkdir -p ~/.android && echo "$APK_KEYSTORE" | base64 -d > ~/.android/debug.keystore; echo "vaste sleutel gebruikt"; else echo "LET OP: geen APK_KEYSTORE, losse sleutel"; fi
+          grep -n "versionCode\|versionName" android/app/build.gradle
+      - name: APK bouwen
+        working-directory: apk/android
+        run: ./gradlew assembleDebug --no-daemon --console=plain 2>&1 | tail -40
+      - name: Controleren
+        run: ls -la apk/android/app/build/outputs/apk/debug/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Buddy-apk
+          path: apk/android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Publiceren (alleen main)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir pub && cp apk/android/app/build/outputs/apk/debug/app-debug.apk pub/Buddy.apk && echo "${{ github.run_number }}" > pub/versie.txt
+          cd pub && git init -q && git checkout -q -b apk && git add -A
+          git -c user.name=bouw -c user.email=bouw@localhost commit -qm "Buddy APK ${{ github.run_number }}"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" apk

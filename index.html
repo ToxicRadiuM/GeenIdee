@@ -3,6 +3,72 @@
 <head>
 <meta charset="utf-8">
 <script>
+/* v172: Buddy als echte Android-app (APK). Daar zit geen Web Bluetooth en geen spraak in de WebView,
+   en GPS stopt op de achtergrond. Dus in de app: Bluetooth, GPS en spraak via de echte Android-onderdelen. */
+(function () {
+  function zet() {
+    var C = window.Capacitor; if (!C || !C.isNativePlatform || !C.isNativePlatform() || window.__native) return !!window.__native;
+    window.__native = true; var reg = function (n) { try { return C.registerPlugin(n); } catch (e) { return null; } };
+    var BLE = reg('BluetoothLe'), BG = reg('BackgroundGeolocation'), TTS = reg('TextToSpeech'), WAK = reg('KeepAwake'), APP = reg('App');
+    if (APP) try { APP.addListener('backButton', function () { APP.minimizeApp().catch(function () {}); }); } catch (e) {}   /* terug-knop = app naar de achtergrond, niet afsluiten */
+    /* --- Bluetooth: een stukje Web Bluetooth nadoen bovenop de Android-plugin --- */
+    if (BLE) {
+      var wacht = Promise.resolve(); function rij(f) { var p = wacht.then(f, f); wacht = p.catch(function () {}); return p; }   /* Android kan maar één Bluetooth-klus tegelijk */
+      var ini = null; function init() { return ini || (ini = BLE.initialize({ androidNeverForLocation: true }).catch(function (e) { ini = null; throw e; })); }
+      function hex(v) { var u = v instanceof Uint8Array ? v : v instanceof DataView ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength) : new Uint8Array(v), s = ''; for (var i = 0; i < u.length; i++) s += (u[i] < 16 ? '0' : '') + u[i].toString(16); return s; }
+      function unhex(h) { h = String(h || '').replace(/[^0-9a-fA-F]/g, ''); var u = new Uint8Array(h.length >> 1); for (var i = 0; i < u.length; i++) u[i] = parseInt(h.substr(i * 2, 2), 16); return u; }
+      function Kar(d, svc, id) { this._d = d; this._s = svc; this.uuid = id; this._l = []; this.value = null; }
+      Kar.prototype.addEventListener = function (t, f) { if (t === 'characteristicvaluechanged' && this._l.indexOf(f) < 0) this._l.push(f); };
+      Kar.prototype.removeEventListener = function (t, f) { this._l = this._l.filter(function (x) { return x !== f; }); };
+      Kar.prototype.startNotifications = function () { var me = this, key = 'notification|' + me._d.id + '|' + me._s + '|' + me.uuid;
+        return init().then(function () { if (me._h) { try { me._h.remove(); } catch (e) {} } return BLE.addListener(key, function (ev) { var u = unhex(ev && ev.value); me.value = new DataView(u.buffer); me._l.slice().forEach(function (f) { try { f({ target: me }); } catch (e) {} }); }); })
+          .then(function (h) { me._h = h; return BLE.startNotifications({ deviceId: me._d.id, service: me._s, characteristic: me.uuid }); }).then(function () { return me; }); };
+      Kar.prototype.writeValueWithResponse = function (v) { var me = this, h = hex(v); return rij(function () { return BLE.write({ deviceId: me._d.id, service: me._s, characteristic: me.uuid, value: h }); }); };
+      Kar.prototype.writeValue = Kar.prototype.writeValueWithResponse;
+      Kar.prototype.writeValueWithoutResponse = function (v) { var me = this, h = hex(v); return rij(function () { return BLE.writeWithoutResponse({ deviceId: me._d.id, service: me._s, characteristic: me.uuid, value: h }); }); };
+      function Apparaat(id, naam) { var me = this; this.id = id; this.name = naam || 'Buddy-scherm'; this._w = [];
+        this.gatt = { connected: false, device: me,
+          connect: function () { var g = this; return init().then(function () { if (me._dh) return; return BLE.addListener('disconnected|' + id, function () { g.connected = false; me._w.slice().forEach(function (f) { try { f({ target: me }); } catch (e) {} }); }).then(function (h) { me._dh = h; }); })
+            .then(function () { return BLE.connect({ deviceId: id, timeout: 12000 }); }).then(function () { g.connected = true; try { BLE.requestConnectionPriority && BLE.requestConnectionPriority({ deviceId: id, connectionPriority: 1 }); } catch (e) {} return g; }); },
+          disconnect: function () { this.connected = false; BLE.disconnect({ deviceId: id }).catch(function () {}); },
+          getPrimaryService: function (svc) { return Promise.resolve({ getCharacteristic: function (k) { return Promise.resolve(new Kar(me, svc, k)); } }); } }; }
+      Apparaat.prototype.addEventListener = function (t, f) { if (t === 'gattserverdisconnected') this._w.push(f); };
+      Apparaat.prototype.removeEventListener = function (t, f) { this._w = this._w.filter(function (x) { return x !== f; }); };
+      var bekend = {};
+      function maak(id, naam) { return bekend[id] || (bekend[id] = new Apparaat(id, naam)); }
+      try { Object.defineProperty(navigator, 'bluetooth', { configurable: true, value: {
+        requestDevice: function (o) { var svc = (o && o.optionalServices || [])[0];
+          return init().then(function () { return BLE.requestDevice({ namePrefix: 'Buddy', optionalServices: svc ? [svc] : [] }); })
+            .then(function (r) { try { localStorage.setItem('dashboardmaatje-bleid', JSON.stringify({ id: r.deviceId, n: r.name })); } catch (e) {} return maak(r.deviceId, r.name); }); },
+        vorige: function () { try { var b = JSON.parse(localStorage.getItem('dashboardmaatje-bleid')); return b && b.id ? maak(b.id, b.n) : null; } catch (e) { return null; } },
+        getAvailability: function () { return Promise.resolve(true); } } }); } catch (e) {}
+    }
+    /* --- GPS: blijft lopen op de achtergrond, met een meldinkje --- */
+    if (BG && navigator.geolocation) {
+      var ids = {}, weg = {}, n = 0, geo = navigator.geolocation;
+      geo.watchPosition = function (ok, fout) { var mijn = ++n;
+        BG.addWatcher({ backgroundTitle: 'Buddy rijdt mee', backgroundMessage: 'GPS en Buddy+ blijven aan, ook met je scherm uit.', requestPermissions: true, stale: false, distanceFilter: 0 }, function (l, e) {
+          if (e) { if (fout) fout({ code: e.code === 'NOT_AUTHORIZED' ? 1 : 2, message: e.message || String(e) }); return; } if (!l) return;
+          ok({ timestamp: l.time || Date.now(), coords: { latitude: l.latitude, longitude: l.longitude, accuracy: l.accuracy, altitude: l.altitude, altitudeAccuracy: l.altitudeAccuracy, heading: l.bearing, speed: l.speed } });
+        }).then(function (id) { if (weg[mijn]) { BG.removeWatcher({ id: id }); return; } ids[mijn] = id; });
+        return mijn; };
+      geo.clearWatch = function (m) { if (ids[m]) { BG.removeWatcher({ id: ids[m] }); delete ids[m]; } else weg[m] = 1; };
+    }
+    /* --- Spraak --- */
+    if (TTS) {
+      window.SpeechSynthesisUtterance = function (t) { this.text = t; this.lang = 'nl-NL'; this.rate = 1; this.volume = 1; this.pitch = 1; };
+      try { Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: { speaking: false, pending: false,
+        speak: function (u) { TTS.speak({ text: String(u.text || ''), lang: u.lang || 'nl-NL', rate: u.rate || 1, pitch: u.pitch || 1, volume: u.volume == null ? 1 : u.volume, category: 'playback', queueStrategy: 1 }).catch(function () {}); },
+        cancel: function () { TTS.stop().catch(function () {}); }, getVoices: function () { return []; }, addEventListener: function () {} } }); } catch (e) {}
+    }
+    if (WAK) { window.__houdWakker = function (aan) { (aan ? WAK.keepAwake() : WAK.allowSleep()).catch(function () {}); }; }
+    return true;
+  }
+  if (!zet()) { document.addEventListener('DOMContentLoaded', zet); window.addEventListener('load', zet); }
+  window.__nativeZet = zet;
+})();
+</script>
+<script>
 /* Buddy-bewaker: start Buddy niet goed op (zwart scherm) of loopt hij vast, dan verschijnt er een herstelknop.
    Herstellen wist alleen de opgeslagen app-bestanden, niet je ritten, records of naam. */
 (function () {
@@ -5024,7 +5090,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v171';
+  var VERSION = 'v172';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7859,8 +7925,16 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     function weg() {
       rx = null; try { if (window.__ritAutoKlaar) window.__ritAutoKlaar('telefoon weg bij Buddy+', 20); } catch (e) {} stat('Verbinding met het schermpje weg, ik probeer het opnieuw…'); $('bleKnop').textContent = '📡 Verbind met Buddy+';
-      setTimeout(function () { if (dev && !rx) koppel().catch(function () { stat('Niet verbonden. Tik op de knop om opnieuw te verbinden.'); }); }, 2500);
+      opnieuw(0);
     }
+    function opnieuw(n) {   /* v172: blijven proberen (na een telefoontje of even buiten bereik), niet na één keer opgeven */
+      clearTimeout(opnieuw.t); if (!dev || rx) return;
+      opnieuw.t = setTimeout(function () { if (!dev || rx) return; koppel().catch(function () { stat('Verbinding met Buddy+ weg, ik blijf het proberen… (poging ' + (n + 2) + ')'); if (n < 400) opnieuw(n + 1); else stat('Niet verbonden. Tik op de knop om opnieuw te verbinden.'); }); }, n < 5 ? 2500 : n < 20 ? 6000 : 15000);
+    }
+    if (window.__native) setTimeout(function () {   /* v172: in de app meteen weer verbinden met de vorige Buddy+ */
+      if (dev || !navigator.bluetooth || !navigator.bluetooth.vorige) return; var d = navigator.bluetooth.vorige(); if (!d) return;
+      dev = d; d.addEventListener('gattserverdisconnected', weg); stat('Verbinden met Buddy+…'); koppel().catch(function () { opnieuw(0); });
+    }, 2500);
     var logBuf = null;
     var PINKEY = 'dashboardmaatje-scpin-v1', pinGevraagd = 0;
     function stuurPin(opnieuw) {
@@ -8109,7 +8183,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     $('bleKnop').addEventListener('click', function () {
       if (!navigator.bluetooth) { toast('Deze browser kan geen Bluetooth. Gebruik Chrome op Android.'); return; }
-      if (rx && dev) { try { dev.gatt.disconnect(); } catch (e) {} dev = null; rx = null; stat('Losgekoppeld.'); $('bleKnop').textContent = '📡 Verbind met Buddy+'; return; }
+      if (rx && dev) { clearTimeout(opnieuw.t); try { dev.gatt.disconnect(); } catch (e) {} dev = null; rx = null; try { localStorage.removeItem('dashboardmaatje-bleid'); } catch (e) {} stat('Losgekoppeld.'); $('bleKnop').textContent = '📡 Verbind met Buddy+'; return; }
       navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'Buddy' }], optionalServices: [SVC] }).then(function (d) {
         dev = d; d.addEventListener('gattserverdisconnected', weg); stat('Verbinden…'); return koppel();
       }).catch(function (e) { stat('Niet verbonden' + (e && e.message ? ' (' + e.message + ')' : '') + '.'); });
