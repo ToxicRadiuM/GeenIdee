@@ -37,7 +37,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 101;   // v101: telefoon ver weg (signaal zwak) telt als 'niet in de auto'
+static const int FW_VERSIE = 102;   // v102: geen muts/hoed als er bovenin een bord of navigatiepijl staat
+// v101:   // v101: telefoon ver weg (signaal zwak) telt als 'niet in de auto'
 // v100: 8 herfst-animaties (sept t/m nov)   // v99: muts netter (blauw bolletje, geen blauw onder de witte rand)   // v98: welkom thuis na een lange stilte, ochtendroutine, verveling die groeit   // v97: crash-spoor: na een crash staat in het logboek wat hij als laatste deed
 RTC_NOINIT_ATTR static uint32_t rtcSpoor[6];   // [0]=sleutel, [1]=gag, [2]=show, [3]=geluid, [4]=spel/menu, [5]=uptime s   // v96: coördinaten in het logboek afgerond op ~1 km (privacy)   // v95: luistert echt mee als je praat, 'ik ben al wakker', handen over zijn oren bij herrie, schrikreactie, fluistert 's nachts, mist de muziek, kletspraatje   // v94: hoort zijn eigen geluidjes niet meer als klappen (geen hartjes-chaos meer), niks meer door elkaar, rustiger stemmingen, 8 nieuwe bureau-animaties   // v93: menu SPEL (reactiespel, Simon zegt, ademhalen, stats), feesthoedje als een collega jarig is   // v92: aan de pc nooit diep slapen (dan blijft klappen werken), op tafel pas na een uur   // v91: popcorn, bowling, papieren vliegtuigje, goocheltruc, DJ en selfie   // v90: reageert meer op geluid (3x klappen = dansje, wakker schrikken, 'hoi' als je gaat praten), 12 nieuwe animaties die uit het scherm komen, nieuwe geluidjes   // v89: groter tikvlak voor zijn ogen, 7 nieuwe thuis-animaties   // v88: levendiger knipperen, kijkt de bocht in, verbaasd/verliefd/tong in de file, snelheidsstrepen, klokgezicht, lucht-rand, schaapje, ballon
 static uint32_t schaapT = 0, streepTot = 0, collegaJarigTot = 0, slaapUitT = 0, hmhmTot = 0; static uint8_t spel = 0; static bool slaapt = false; static uint32_t laatsteActie = 0; static const char *hmhmTxt = "hmhm"; static int klokKwartier = -1;   // v87: duidelijkere kaart (lichtere wegen met rand, snelweg oranje, files rood, raster, noordpijl)
@@ -1695,7 +1696,9 @@ static const char *feestOutfit() {
   if (m == 12 && d >= 6 && d <= 26) return "kerstmuts";
   return nullptr;
 }
+static bool bovenBord = false;   // v102: staat er bovenin iets (navigatie, flitser, file...)? dan geen hoed eroverheen
 static void drawOutfit() {
+  if (bovenBord && !robotModus) return;
   const char *k = (outfitK[0] && millis() - outfitT < 24UL * 3600000) ? outfitK : feestOutfit();
   if ((!k || !strcmp(k, "geen")) && (int32_t)(collegaJarigTot - millis()) > 0) k = "feesthoed";   // v93: een collega is jarig
   if (!k || !strcmp(k, "geen")) k = weerOutfit();   // v86
@@ -3268,6 +3271,7 @@ void drawFace(){
    else if (lLim > 0 && millis() - lT < 180000 && (totKm + tripKm) - lKm < 2.f) { limit = lLim; bordBron = 5; } }
  // v19: file en tekst van de telefoon bovenin, werk-driehoekje naast het bord
  int camM = (tel && phone.camD >= 0) ? phone.camD : gpsNearestCameraM;
+ bovenBord = true;
  if (trajActief) {   // v25: trajectcontrole met je gemiddelde
    char ct[28]; snprintf(ct, sizeof ct, "TRAJECT %d / %d", (int)lroundf(trajGem), trajLim);
    bool tg = trajGem > trajLim + 2;
@@ -3319,12 +3323,14 @@ void drawFace(){
    boxAdd(18, 26, 222, 50); roundRect(120 - tw / 2.f / 1.94f - 8, 28, tw / 1.94f + 16, 20, 10, 0x0451);
    frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - tw / 2, Y(32)); frame->print(tx);
  } else if (gagAct >= 0 && gagMsg && gagMsg[0] && (int32_t)(flagTot - millis()) <= 0 && (int32_t)(ritKlaarTot - millis()) <= 0) {
+   bovenBord = false;
    char tx[27]; strncpy(tx, gagMsg, 26); tx[26] = 0; int tw = strlen(tx) * 12;
    boxAdd(20, 30, 220, 46); frame->setTextColor(0xBDF7); frame->setTextSize(2); frame->setCursor(X(120) - tw / 2, Y(34)); frame->print(tx);
  } else if (tel && phone.txt[0] && mood != SLEEPING && (int32_t)(flagTot - millis()) <= 0) {
+   bovenBord = false;
    char tx[27]; strncpy(tx, phone.txt, 26); tx[26] = 0; int tw = strlen(tx) * 12;
    boxAdd(20, 30, 220, 46); frame->setTextColor(0xBDF7); frame->setTextSize(2); frame->setCursor(X(120) - tw / 2, Y(34)); frame->print(tx);
- }
+ } else bovenBord = false;
  if (robotModus) return;   // v47: robotmodus: geen bord, snelheid of GPS-regel
  if ((tel && phone.werk) || (!tel && lokWerk)) {   // werk-driehoekje boven het snelheidsbord
    boxAdd(96, 144, 124, 176);   // v68: een oranje pionnetje in plaats van een rood bord
