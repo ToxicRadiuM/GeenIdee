@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 108;   // v108: lukt wifi niet (-1), dan via de telefoon; updates gaan via de app als die open is
+static const int FW_VERSIE = 109;   // v109: hartjes kunnen uit (standaard uit)
+// v108:   // v108: lukt wifi niet (-1), dan via de telefoon; updates gaan via de app als die open is
 // v107:   // v107: kaart schuift vloeiend door tussen GPS-punten (geen schokjes meer)
 // v106:   // v106: G-metertje naar links; internet via de telefoon (Bluetooth), hotspot niet meer nodig
 // v105:   // v105: kaart openen met 6 verschillende overgangen (niet alleen het gordijn)
@@ -1179,6 +1180,7 @@ static volatile int8_t telRssi = 0; static volatile uint32_t telRssiT = 0; stati
 static bool telDichtbij() { return bleConnected && !telVer; }
 static char bleBuf[256]; static size_t bleLen = 0;
 // v106: internet via de telefoon. Buddy+ vraagt een adres, de app haalt het op en stuurt het in stukjes terug.
+static volatile bool hartjesAan = false;   // v109: hartjes-ogen, hartjes-wolkjes en kusjes alleen als je dat wilt
 static volatile bool appNet = false; static volatile uint8_t bnStaat = 0; static uint8_t *bnBuf = nullptr; static volatile size_t bnLen = 0, bnCap = 0;
 static volatile uint16_t bnId = 0, bnSeq = 0; static volatile uint32_t bnLaatst = 0; static char bnVraag[300]; static volatile bool bnVraagKlaar = false;
 // v76: route van de app (voor de kaart op Buddy+). Twee vaste buffers in PSRAM, nooit vrijgeven (tekenen en ontvangen lopen tegelijk)
@@ -1216,6 +1218,7 @@ static void parsePhone(char *line) {
     else bnStaat = 3;
     return;
   }
+  if (pinOk && !strncmp(line, "HART:", 5)) { bool a = line[5] == '1'; if (a != hartjesAan) { hartjesAan = a; buddyPrefs.putBool("hart", a); } return; }   // v109
   if (pinOk && !strncmp(line, "RT:", 3)) {   // v76: route binnenhalen (B = begin, P = punten, E = klaar, X = gestopt)
     const char *a = line + 3;
     if (!rtA) { rtA = (float *)ps_malloc(RT_MAX * 2 * sizeof(float)); rtB = (float *)ps_malloc(RT_MAX * 2 * sizeof(float)); }
@@ -1747,7 +1750,7 @@ static void drawOutfit() {
     line(102 + gx, 100 + gy, 138 + gx, 100 + gy, 0x10A2, 4); line(60 + gx, 98 + gy, 42 + gx, 92 + gy, 0x10A2, 3); line(180 + gx, 98 + gy, 198 + gx, 92 + gy, 0x10A2, 3); }
   else if (!strcmp(k, "muts")) { for (int dy = -30; dy <= 0; dy++) { float w = 60 * sqrtf(1 - (dy / 30.f) * (dy / 30.f)); line(120 + x - w, 56 + y + dy, 120 + x + w, 56 + y + dy, 0x1C9F, 2); }   // v99: alleen de bovenkant blauw, niks meer onder de rand
     roundRect(58 + x, 50 + y, 124, 14, 7, 0xF79E); circle(120 + x, 22 + y, 10, 0x1C9F); circle(117 + x, 19 + y, 3, 0x5DFF); }   // witte rand, blauw bolletje
-  else if (!strcmp(k, "hartjes")) { float w = sinf(t * 4) * 2; heart(96 + w + x, 36 + y, 12, HEART); heart(144 - w + x, 36 + y, 12, HEART); }
+  else if (!strcmp(k, "hartjes") && hartjesAan) { float w = sinf(t * 4) * 2; heart(96 + w + x, 36 + y, 12, HEART); heart(144 - w + x, 36 + y, 12, HEART); }
 }
 static void spiraal(float cx, float cy) { float px = cx, py = cy; for (int i = 1; i <= 40; i++) { float a = i * .5f + t * 6, r = i * .55f; float x = cx + cosf(a) * r, y = cy + sinf(a) * r; line(px, py, x, y, EYE, 3); px = x; py = y; } }
 
@@ -1791,6 +1794,7 @@ static void gagStep(float dt) {
       if (k == 37 && !kerst) continue;
       if (k == 40 && !nieuwjaar) continue;
       if (k == 52 && !(robotModus && klokOk())) continue;
+      if ((k == 69 || k == 72) && !hartjesAan) continue;   // v109: hartje in de condens en kusje alleen met hartjes aan
       if (k >= 96 && k <= 103) { time_t tn = time(nullptr); if (tn > 1700000000) { struct tm tv; localtime_r(&tn, &tv); if (tv.tm_mon < 8 || tv.tm_mon > 10) continue; } }   // v100: herfst = sept t/m nov
       if (!gagOntgrendeld(k)) continue;   // v42: sommige trucjes leert hij pas na genoeg km samen
       if (k == 31 && klokOk()) { int hh, mm; lokaleTijd(hh, mm); if (hh >= 7 && hh < 18) continue; }   // vuurvliegjes alleen 's avonds
@@ -2666,6 +2670,7 @@ static void persLaad() {
     if (ov > FW_VERSIE) { const esp_partition_t *p = esp_ota_get_next_update_partition(NULL); if (p && buddyPrefs.getString("otaP", "") == String(p->label)) otaKlaarV = ov; }
     else if (ov) buddyPrefs.remove("otaV"); }
   nachtStil = buddyPrefs.getBool("nstil", true);   // v59
+  hartjesAan = buddyPrefs.getBool("hart", false);   // v109
   if (buddyPrefs.isKey("likes")) buddyPrefs.getBytes("likes", gagLike, sizeof gagLike);
   if (buddyPrefs.isKey("vertrek")) buddyPrefs.getBytes("vertrek", vertrekH, sizeof vertrekH);
   vorigeRitT = lastRitT = buddyPrefs.getUInt("lastT", 0); eerstT = buddyPrefs.getUInt("eerst", 0);
@@ -3604,6 +3609,7 @@ void updateMood(float dt){
  if (phoneFresh() && phone.camD >= 0 && phone.camD < 350) mood = ALERT;
  if (millis() < schrikTot) mood = STARTLED;
  if (millis() < aaiTot) mood = LOVE;
+ if (mood == LOVE && !hartjesAan) mood = HAPPY;   // v109: geen hartjes
  if(gpsFix && gpsNearestCameraM>=0 && gpsNearestCameraM<350) mood=ALERT;
  if(gpsFix && gpsSpeedKmh>0 && gpsCameraLimit>0 && gpsSpeedKmh>gpsCameraLimit+4 && gpsNearestCameraM>=0 && gpsNearestCameraM<600) mood=WORRIED;
  if(mood!=lastMood){lastMood=mood;if(mood==LOVE)addParticle(0);if(mood==EXCITED)addParticle(1);if(mood==SLEEPING)addParticle(2);playMoodSound(mood);}

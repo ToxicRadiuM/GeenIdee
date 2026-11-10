@@ -1109,6 +1109,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       <p class="sub">Spelletjes</p>
       <div class="btns"><button class="btn" id="spQuiz" type="button">🧠 Quiz</button><button class="btn" id="spKenteken" type="button">🔍 Kentekenjacht</button><button class="btn" id="spIkzie" type="button" style="grid-column:1/-1">👀 Ik zie, ik zie</button></div>
       <div class="switchrow"><input type="checkbox" id="passagierOn"><label for="passagierOn">Ik ben passagier (spelletjes ook tijdens het rijden)</label></div>
+      <div class="switchrow"><input type="checkbox" id="hartjesOn"><label for="hartjesOn">💕 Hartjes (hartjes-ogen, hartjeswolkjes, kusjes) op Buddy en Buddy+</label></div>
       <p class="foot">Voor als je stilstaat, aan het laden bent, of als iemand naast je zit. De bestuurder speelt niet tijdens het rijden.</p>
       <p class="sub">Praten met Buddy</p>
       <p class="foot"><b>Tijdens het rijden praat je met je stem.</b> Zet bij ⚙️ Instellingen “Luisteren naar hé Buddy” aan, dan hoef je niets aan te raken. Hij antwoordt hardop. Ideeën om te zeggen: “hé Buddy, vertel een grap”, “doe een dansje”, “hoe laat is het”, “wat is mijn snelste nul naar honderd”, “hoeveel ritten hebben we gereden”, “wat weet je over mij”, “onthoud dat ik om vijf uur moet bellen”, “als ik hoi zeg, zeg jij goedemorgen kapitein”, “welterusten”.</p>
@@ -2443,6 +2444,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   var gx = 0, gy = 0, tgx = 0, tgy = 0, nextGaze = 0, nextBlink = 2, blinkStart = -1, blink = 1;
   var parts = [], pTimer = 0;
   var curKey = 'neutral', lastKey = '', lastBeeld = 'gezicht', beeldT = -9;
+  function hartjesAan() { try { return localStorage.getItem('dashboardmaatje-hartjes') === '1'; } catch (e) { return false; } }
+  window.__hartjesAan = hartjesAan;
 
   function newGaze(key) {
     if (key === 'startled' || key === 'focused' || key === 'excited' || key === 'love' || key === 'happy' || key === 'alert') { tgx = 0; tgy = -0.05; nextGaze = T + 0.6; }
@@ -3529,6 +3532,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   var ndw = { t: 0, items: [], n: 0 }, ndwBusy = false, ndwFail = -9999, ndwPrev = {}, ndwSeen = {}, ndwLast = -9999, ndwPos = null, ndwHdg = null, ndwErr = '';
   function ndwUrl() { return pbase() ? pbase() + '/ndw' : 'https://opendata.ndw.nu/actueel_beeld.xml.gz'; }
   function adiff(a, b) { return Math.abs(((a - b + 540) % 360) - 180); }
+  /* v171: met navigatie ook alles langs de hele route meenemen, niet alleen in de buurt */
+  var rCel = { k: null, set: null };
+  function opRoute(pts) {
+    var N = window.__nav && window.__nav.nu(); if (!N || !N.geom || N.geom.length < 2) return false;
+    var k = N.t + ':' + N.geom.length; if (rCel.k !== k) { var st = {}; N.geom.forEach(function (g) { for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) st[(Math.round(g.lat * 200) + a) + ',' + (Math.round(g.lon * 120) + b)] = 1; }); rCel = { k: k, set: st }; }
+    for (var i = 0; i < pts.length; i++) { var q = Array.isArray(pts[i]) ? pts[i] : [pts[i].lat, pts[i].lon]; if (rCel.set[Math.round(q[0] * 200) + ',' + Math.round(q[1] * 120)]) return true; }
+    return false;
+  }
   function ndwParse(xml, lat0, lon0, nowIso) {
     var out = [], i = 0, a, b, cosl = Math.cos(lat0 * Math.PI / 180);
     while ((a = xml.indexOf('<sit:situationRecord ', i)) >= 0) {
@@ -3552,7 +3563,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       else { var la = r.match(/<loc:latitude>([^<]*)/), lo = r.match(/<loc:longitude>([^<]*)/); if (la && lo) pts.push([+la[1], +lo[1]]); }
       if (!pts.length) continue;
       var md = 1e9, j; for (j = 0; j < pts.length; j++) { var dd = Math.hypot((pts[j][0] - lat0) * 111195, (pts[j][1] - lon0) * cosl * 111195); if (dd < md) md = dd; }
-      if (md > 40000) continue;
+      if (md > 40000 && !opRoute(pts)) continue;
       if (pts.length > 80) { var st = Math.ceil(pts.length / 80), keep = []; for (j = 0; j < pts.length; j += st) keep.push(pts[j]); if (keep[keep.length - 1] !== pts[pts.length - 1]) keep.push(pts[pts.length - 1]); pts = keep; }
       var cs = (r.match(/<sit:causeType>(\w+)/) || [])[1], bg = (r.match(/<loc:bearing>([\d.]+)/) || [])[1];
       out.push({ id: (r.match(/ id="([^"]+)"/) || [])[1] || String(out.length), k: k, lim: lim, ql: ql, cs: cs || '', br: bg != null ? +bg : null, pts: pts });
@@ -3568,13 +3579,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     return Promise.resolve(new TextDecoder().decode(u));
   }
   function ndwLoad(lat, lon) {
-    if (ndwBusy || T - ndwFail < 120 || (ndw.t && Date.now() - ndw.t < 5 * 60e3 && gdist(lat, lon, ndw.lat, ndw.lon) < 15000)) return;
+    var nvR = window.__nav && window.__nav.nu(), nvK = nvR ? nvR.t : 0;
+    if (ndwBusy || T - ndwFail < 120 || (ndw.t && Date.now() - ndw.t < 5 * 60e3 && gdist(lat, lon, ndw.lat, ndw.lon) < 15000 && ndw.nvK === nvK)) return;
     ndwBusy = true; if (!ndw.t) wkStat('Live verkeersinfo laden…');
     var ctl = ('AbortController' in window) ? new AbortController() : null, to = setTimeout(function () { if (ctl) ctl.abort(); }, 40000);
     fetch(ndwUrl(), ctl ? { signal: ctl.signal } : {}).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
       .then(ndwGunzip).then(function (xml) {
         var items = ndwParse(xml, lat, lon, new Date().toISOString().slice(0, 19));
-        ndw = { t: Date.now(), lat: lat, lon: lon, items: items, n: items.length }; ndwErr = '';
+        ndw = { t: Date.now(), lat: lat, lon: lon, items: items, n: items.length, nvK: nvK }; ndwErr = '';
         var c = {}; items.forEach(function (x) { c[x.k] = (c[x.k] || 0) + 1; });
         lg('NDW geladen: ' + items.length + ' meldingen in de buurt ' + JSON.stringify(c));
         verkeerStat();
@@ -3609,7 +3621,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       j.meldingen.forEach(function (m) {
         var it = anwbItem(m); if (!it) return;
         var md = 1e9; it.pts.forEach(function (p) { var d = Math.hypot((p[0] - lat) * 111195, (p[1] - lon) * cosl * 111195); if (d < md) md = d; });
-        if (md <= 40000) items.push(it);
+        if (md <= 40000 || opRoute(it.pts)) items.push(it);
       });
       anwbV = { t: Date.now(), lat: lat, lon: lon, items: items }; anwbErr = '';
       lg('ANWB verkeer geladen: ' + items.length + ' meldingen in de buurt (van ' + j.meldingen.length + ')');
@@ -3905,6 +3917,8 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   }
   function camFix(lat, lon, acc, t) {
     loadCams(lat, lon);
+    try { var NvC = window.__nav && window.__nav.nu(); if (NvC && NvC.geom && !camLoading && camCache && camCovered(lat, lon)) {   /* v171: flitsers verderop langs de route alvast laden (tot 80 km) */
+      var gC = NvC.geom, acC = 0, vC = Math.max(0, NvC.van || 0); for (var iC = vC + 1; iC < gC.length && acC < 80000; iC++) { acC += gdist(gC[iC - 1].lat, gC[iC - 1].lon, gC[iC].lat, gC[iC].lon); if (!camCovered(gC[iC].lat, gC[iC].lon)) { loadCams(gC[iC].lat, gC[iC].lon); break; } } } } catch (e) {}
     loadWeather(lat, lon);
     loadMobile();
     try { worksFix(lat, lon, acc); } catch (e) { lg('FOUT werken ' + e.message); }
@@ -5010,7 +5024,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v170';
+  var VERSION = 'v171';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5563,7 +5577,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     gagTick();
     try { extraTick(); } catch (e) { lg('FOUT extra ' + e.message); }
     try { lifeTick(dt); if (window.__nameTick) window.__nameTick(); } catch (e) { lg('FOUT leven ' + e.message); }
-    curKey = mood();
+    curKey = mood(); if (curKey === 'love' && !hartjesAan()) curKey = 'happy';   /* v171: hartjes alleen als je dat wilt */
     updateMood();
     render(dt > 0 ? dt : 0.016);
     if (T - lastUI > 0.12) { updateUI(); lastUI = T; }
@@ -7861,7 +7875,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     function binnen(e) {
       var t = new TextDecoder().decode(e.target.value);
-      if (t === 'PIN:OK') { lg('scherm: code goed, verbonden'); stat('✅ Verbonden met Buddy+. Het schermpje krijgt nu elke seconde de info van je telefoon.'); toast('✅ Verbonden met Buddy+'); setTimeout(stuurInst, 300); setTimeout(netStuur, 900); setTimeout(function () { klein('NET:JA'); }, 1300); setTimeout(persStuur, 1500); setTimeout(function () { klein('STAT?'); }, 2500); setTimeout(vraagLog, 3500); if (window.__rtOpnieuw) window.__rtOpnieuw(); return; }   /* alles wat vóór de code kwam, nog een keer */
+      if (t === 'PIN:OK') { lg('scherm: code goed, verbonden'); stat('✅ Verbonden met Buddy+. Het schermpje krijgt nu elke seconde de info van je telefoon.'); toast('✅ Verbonden met Buddy+'); setTimeout(stuurInst, 300); setTimeout(netStuur, 900); setTimeout(function () { klein('NET:JA'); }, 1300); setTimeout(function () { klein('HART:' + (window.__hartjesAan && window.__hartjesAan() ? 1 : 0)); }, 1700); setTimeout(persStuur, 1500); setTimeout(function () { klein('STAT?'); }, 2500); setTimeout(vraagLog, 3500); if (window.__rtOpnieuw) window.__rtOpnieuw(); return; }   /* alles wat vóór de code kwam, nog een keer */
       if (t === 'PIN:FOUT') { lg('scherm: verkeerde code'); try { localStorage.removeItem(PINKEY); } catch (e) {} toast('Die code klopt niet. Kijk bovenaan het schermpje.'); setTimeout(function () { stuurPin(true); }, 600); return; }
       if (t === 'PIN?') { stuurPin(); return; }
       if (t.indexOf('NQ|') === 0) { var q1 = t.indexOf('|', 3), nid = t.slice(3, q1); if (nqId !== nid) { nqId = nid; nqUrl = ''; } nqUrl += t.slice(q1 + 1); return; }   /* v168: internet voor Buddy+ */
@@ -7924,6 +7938,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     ['scLicht', 'scVol', 'scAnim', 'scWarn'].forEach(function (id) { $(id).addEventListener('change', function () { sc.l = +$('scLicht').value; sc.v = +$('scVol').value; sc.a = $('scAnim').value; sc.w = $('scWarn').value; try { localStorage.setItem(SCKEY, JSON.stringify(sc)); } catch (e) {} stuurInst(); }); });
     window.__scStuur = function () { stuurInst(); setTimeout(persStuur, 900); };
     window.__scDoe = function (t) { if (rx) klein('DOE:' + t); };
+    window.__scStuur = function (t) { if (rx) klein(t); };
     window.__plusAan = function () { try { return !!(rx && dev && dev.gatt && dev.gatt.connected); } catch (e) { return false; } };   /* v166: echt verbonden? */
     window.__scVerbonden = function () { return !!rx; };   /* v156 */
     window.__scEvt = function (c, t) {   /* v104: groepsgebeurtenis op Buddy+ (alleen gewone letters, het schermpje kent geen emoji) */
@@ -8575,6 +8590,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     function confirmTekst(x) { return true; }
     start(); setTimeout(function () { document.body.appendChild(o); }, 1000);
   })();
+
+  /* ---------- v171: hartjes aan/uit ---------- */
+  (function () { var c = $('hartjesOn'); if (!c) return; c.checked = window.__hartjesAan(); c.addEventListener('change', function () {
+    try { localStorage.setItem('dashboardmaatje-hartjes', c.checked ? '1' : '0'); } catch (e) {} try { window.__scStuur && window.__scStuur('HART:' + (c.checked ? 1 : 0)); } catch (e) {}
+    toast(c.checked ? '💕 Hartjes aan' : 'Hartjes uit: Buddy lacht dan gewoon blij.'); }); })();
 
   /* ---------- v164: navigeren vanuit het Buddy+-tabblad ---------- */
   (function () {
