@@ -3865,6 +3865,7 @@ void handleTouch(){
  if(!n) {
    // loslaten = een tik afhandelen
    if (down && !lang && now - downMs < 600) {
+     if (rtN && lY < 90) logRegel("tik bovenin (%.0f,%.0f) venster=%d menu=%d spel=%d", lX, lY, (int)venster, (int)menuOpen, (int)(spel != 0));   // v109: zoeken waarom KAART niet reageert
      if (venster) { if (lY > 177.0f && fabsf(lX - 120.0f) < 62.0f) sluitVenster();   // TERUG
        else if (venster == 1 && otaKlaarV && lY < 62.0f) installeerOta();   // v68: update installeren
        else if (venster == 5 && lY > 40.0f && lY < 176.0f) { int k = (int)((lY - 40.0f) / 34.0f); if (k >= 0 && k < 4) { sluitVenster(); spelStart(k + 1); } }   // v93: spel kiezen
@@ -3876,7 +3877,7 @@ void handleTouch(){
      else if (menuOpen) menuKies(lX, lY);
      else if (timerAlarmN) { timerAlarmN = 0; timerTot = 0; startGag(38); gagMsg = "Eet smakelijk!"; }   // v86: alarm uit
      else if (kaartNu()) { kaartStand = 0; kaartGezichtTot = now + 60000; }   // v76: tik op de kaart = terug naar het gezicht
-     else if (rtN && lY < 56.0f && fabsf(lX - 120.0f) < 46.0f) { kaartStand = 1; }   // v76: tik op KAART bovenin = kaart
+     else if (rtN && lY < 72.0f && fabsf(lX - 120.0f) < 62.0f) { kaartStand = 1; kaartGezichtTot = 0; logRegel("KAART getikt (%.0f,%.0f) gps=%d", lX, lY, (int)gpsFix); }   // v76: tik op KAART bovenin = kaart (v109: groter vlak)
      else if (lY > 188.0f && !(koekjeZichtbaar && robotModus && fabsf(lX - 196) < 24)) openVenster(2);   // onderaan tikken = volume
      else if (koekjeZichtbaar && robotModus && fabsf(lX - 196) < 24 && fabsf(lY - 176) < 24) {   // v48: koekje!
        koekjeZichtbaar = false; energie = 100; startGag(51); playGeluid(GL_PLING); vriendPlus(1); laatsteActie = now; }
