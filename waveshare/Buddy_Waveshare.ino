@@ -37,7 +37,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 104;   // v104: kaart blijft open tot na de afslag, en tussendoor elke 4 min even
+static const int FW_VERSIE = 105;   // v105: kaart openen met 6 verschillende overgangen (niet alleen het gordijn)
+// v104:   // v104: kaart blijft open tot na de afslag, en tussendoor elke 4 min even
 // v103:   // v103: route blijft staan als de app op de achtergrond is (Buddy+ rekent de afslagen dan zelf)
 // v102:   // v102: geen muts/hoed als er bovenin een bord of navigatiepijl staat
 // v101:   // v101: telefoon ver weg (signaal zwak) telt als 'niet in de auto'
@@ -3090,6 +3091,32 @@ static void kaartGordijn(float open, float hg) {   // v81: gezicht als gordijn m
     roundRect(x - w / 2 + k * 6, y - h / 2, w, h, 12 * hg, RAND); roundRect(x - w / 2 + k * 6 + 2, y - h / 2 + 2, w - 4, h - 4, 10 * hg, HUID);
     for (int f = 0; f < 3; f++) roundRect(x - k * 12 * hg - 6, y - h / 2 + 6 + f * 12 * hg, 14 * hg, 9 * hg, 4 * hg, HUID); }
 }
+// v105: verschillende manieren om de kaart open en dicht te doen (p = 0 dicht .. 1 open)
+static uint8_t ovSoort = 0;
+static void kaartOvergang(float p, float hg) {
+  p = fmaxf(0, fminf(1, p)); float t = millis() / 1000.f;
+  auto ogen = [&](float dx, float dy, float s) { roundRect(73 + dx - 13 * s, 86 + dy, 26 * s, 40 * s, 13 * s, EYE); roundRect(167 + dx - 13 * s, 86 + dy, 26 * s, 40 * s, 13 * s, EYE); };
+  switch (ovSoort) {
+    default: kaartGordijn(p * 135, hg); break;   // 0: gordijn met handjes
+    case 1: {   // iris: een rond gat dat groter wordt, met een gekleurde rand
+      float r = p * 130; for (float q = r; q < 124; q += .6f) frame->drawCircle(X(120), Y(120), S(q), BG);
+      if (r > 2) for (int k = 0; k < 3; k++) frame->drawCircle(X(120), Y(120), S(r + k), hsv565(t * 120 + k * 20, .8f, 1));
+      if (p < .35f) ogen(0, 0, 1 - p * 2); } break;
+    case 2: {   // schuifdeuren boven en onder, ogen op de bovenste deur
+      float o = p * 125; showRect(0, 0, 240, 120 - o, BG); showRect(0, 120 + o, 240, 120 - o + 1, BG);
+      if (o < 118) { line(0, 120 - o, 240, 120 - o, 0x8410, 2); line(0, 120 + o, 240, 120 + o, 0x8410, 2); }
+      if (120 - o > 60) ogen(0, -o - 4, 1); } break;
+    case 3: {   // rolluik dat omhoog rolt, Buddy gluurt eronder
+      float h = (1 - p) * 240; if (h > 1) { showRect(0, 0, 240, h, 0x3186); for (float y = h - 2; y > 0; y -= 12) line(0, y, 240, y, 0x18C3, 2); roundRect(100, h - 10, 40, 6, 3, 0x8410);
+        if (h > 70) ogen(0, h - 150, .8f); } } break;
+    case 4: {   // blokjes die een voor een verdwijnen
+      for (int by = 0; by < 8; by++) for (int bx = 0; bx < 8; bx++) { uint32_t hsh = (bx * 73856093u) ^ (by * 19349663u); float drem = (hsh % 1000) / 1000.f * .85f + .1f;
+        if (p < drem) showRect(bx * 30, by * 30, 30, 30, (bx + by) % 2 ? 0x2104 : 0x18E3); }
+      if (p < .25f) ogen(0, 0, 1); } break;
+    case 5: {   // Buddy knipoogt: ooglid gaat open van boven naar beneden
+      float o = p * 240; showRect(0, o, 240, 240 - o + 1, BG); if (o < 236) { for (int k = 0; k < 4; k++) line(0, o + k, 240, o + k, EYE, 1); for (int w = 0; w < 6; w++) line(30 + w * 36, o, 24 + w * 36, o + 14, EYE, 2); } } break;
+  }
+}
 static void drawKaart() {
   boxAdd(0, 0, 240, 240); circle(120, 120, 119, 0x0861);
   const float CX = 120, CY = 152; float lat = gpsLat, lon = gpsLon, hd = gpsKoers * 0.0174533f;
@@ -3158,7 +3185,7 @@ static void drawKaart() {
     if (nvRest >= 0) { char rt[20]; if (nvRest >= 100) snprintf(rt, sizeof rt, "%d km %s", nvRest / 10, nvEta); else snprintf(rt, sizeof rt, "%d,%d km %s", nvRest / 10, nvRest % 10, nvEta);
       int L = strlen(rt); frame->setTextColor(0xBDF7); frame->setTextSize(2); frame->setCursor(X(120) - L * 6, Y(68)); frame->print(rt); } }
   uint32_t ov = millis() - kaartOvergangT;   // v77: overgang: twee handjes trekken het gezicht open
-  if (kaartOvergangT && ov < 1500) { float t = ov / 1500.f; kaartGordijn(t < .3f ? 0 : powf((t - .3f) / .7f, 1.6f) * 135, t < .3f ? t / .3f : 1); }
+  if (kaartOvergangT && ov < 1500) { float t = ov / 1500.f; kaartOvergang(t < .3f ? 0 : powf((t - .3f) / .7f, 1.6f), t < .3f ? t / .3f : 1); }
 }
 // v84: dingen rond de rand: de boog met wat er komt, een kompasstipje, muzieknootjes en sterren als hij slaapt
 static void boogStuk(float f0, float f1, float r, float w, uint16_t kl) {   // f = 0 onderaan (jij) .. 1 bovenaan
@@ -3227,8 +3254,9 @@ void drawFace(){
    frame->setTextColor(0xFFFF); frame->setTextSize(4); frame->setCursor(X(120) - 60, Y(120) - 16); frame->print("HIER!"); return; }
  if ((int32_t)(showTot - millis()) > 0 && (int32_t)(flagTot - millis()) <= 0) { drawShow(); return; }   // v56: sprint-show
  if ((int32_t)(meterTot - millis()) > 0 && (int32_t)(flagTot - millis()) <= 0) { drawMeter(); return; }
- { bool kn = kaartNu(); if (kn && !kaartVorige) kaartOvergangT = millis(); if (!kn && kaartVorige && gpsFix) kaartSluitT = millis(); kaartVorige = kn; }
- if (kaartSluitT && millis() - kaartSluitT < 1200) { float t = (millis() - kaartSluitT) / 1200.f; kaartOvergangT = 0; drawKaart(); kaartGordijn(t < .7f ? (1 - powf(t / .7f, .7f)) * 135 : 0, t < .7f ? 1 : 1 - (t - .7f) / .3f); return; }   // v81: gordijn dicht, terug naar het gezicht
+ { bool kn = kaartNu(); if (kn != kaartVorige) { static uint8_t vorigSoort = 0; uint8_t n; do n = esp_random() % 6; while (n == vorigSoort); ovSoort = vorigSoort = n; }   // v105: elke keer een andere overgang
+   if (kn && !kaartVorige) kaartOvergangT = millis(); if (!kn && kaartVorige && gpsFix) kaartSluitT = millis(); kaartVorige = kn; }
+ if (kaartSluitT && millis() - kaartSluitT < 1200) { float t = (millis() - kaartSluitT) / 1200.f; kaartOvergangT = 0; drawKaart(); kaartOvergang(t < .7f ? (1 - powf(t / .7f, .7f)) : 0, t < .7f ? 1 : 1 - (t - .7f) / .3f); return; }   // v81: gordijn dicht, terug naar het gezicht
  if (kaartNu()) { drawKaart(); return; }   // v76: kaart met route   // v52: de 0-100-vlag gaat voor   // v40: retro meter bij flink optrekken
  if (rtN && !eNavC) { boxAdd(84, 6, 156, 32); roundRect(86, 8, 68, 22, 11, 0x0A4E); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(13)); frame->print("KAART"); }   // v76: tik hier voor de kaart
  if (wxVers() && !slaapt) {   // v46: echt regen- of sneeuwweer -> druppels of vlokjes achter het gezicht
