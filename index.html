@@ -3057,8 +3057,10 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (typeof c.speed === 'number' && isFinite(c.speed) && c.speed >= 0) v = c.speed * 3.6;
     else if (lastPos) {
       var dt = (pos.timestamp - lastPos.t) / 1000;
-      if (dt > 0.5 && dt < 10) v = hav(lastPos.lat, lastPos.lon, c.latitude, c.longitude) / dt * 3.6;
+      if (dt > 0.5 && dt < 10 && c.accuracy < 40 && (lastPos.acc == null || lastPos.acc < 40)) v = hav(lastPos.lat, lastPos.lon, c.latitude, c.longitude) / dt * 3.6;
     }
+    /* v169: onmogelijke snelheden (GPS-sprong, 600 km/u) negeren */
+    if (v !== null && (v > 260 || (v > 160 && v - (S.liveSpeed || 0) > 60))) { lg('onmogelijke snelheid genegeerd: ' + Math.round(v) + ' km/u (nauwkeurigheid ' + Math.round(c.accuracy || 0) + ' m)'); v = null; }
     var hdg = null;
     if (typeof c.heading === 'number' && isFinite(c.heading) && v !== null && v >= 5) hdg = c.heading;
     else if (hdgRef && gdist(hdgRef.lat, hdgRef.lon, c.latitude, c.longitude) >= 8) hdg = gbearing(hdgRef.lat, hdgRef.lon, c.latitude, c.longitude);
@@ -5008,7 +5010,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v168';
+  var VERSION = 'v169';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6538,6 +6540,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   /* ---------- 2. Ritten en weekoverzicht ---------- */
   var ritten = [];
   try { ritten = JSON.parse(localStorage.getItem(RITKEY)) || []; } catch (e) { ritten = []; }
+  ritten.forEach(function (r) { if (r && r.vmax > 260) r.vmax = 0; });   /* v169: oude onzin-topsnelheden wissen */
   setTimeout(function () { try { if (!mem.stijlWk) { mem.stijlWk = {}; ritten.forEach(function (r) { if (r.stijl != null) stijlWkAdd(r.t0, r.stijl); }); save(); } } catch (e) {} }, 0);   /* v93: rijstijl per week, eerst uit de oude ritten */
   function ritStart() { V.harsh = 0; V.gmax = 0; V.ritVoel = false; S.ritStart = { van: lastPos ? [+lastPos.lat.toFixed(5), +lastPos.lon.toFixed(5)] : null, t: Date.now(), km: mem.kmLive || 0, netjes: mem.netjes || 0, h: new Date().getHours() + new Date().getMinutes() / 60, vmax: 0, nul: 0, nulTelt: false }; ritVakken = {}; }
   /* Wordt aangeroepen als een echte rit klaar is (8 min stilstaan of GPS uit) */
