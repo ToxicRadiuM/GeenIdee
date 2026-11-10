@@ -5109,7 +5109,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v178';
+  var VERSION = 'v179';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6557,10 +6557,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (mem.samengevoegd.indexOf(l.van) < 0) {
       /* Zijn tellers bij de jouwe optellen; snelste tijden: de beste van de twee */
       var oudR = mem.ritLive || 0, hunR = l.ritten || 0;
-      mem.kmLive = (mem.kmLive || 0) + (l.km || 0);
-      mem.netjes = (mem.netjes || 0) + (l.netjes || 0);
-      mem.gemeld = (mem.gemeld || 0) + (l.gemeld || 0);
-      mem.ritLive = oudR + hunR;
+      /* v179: niet meer optellen maar de hoogste nemen: na "Wie ben jij?" had je zijn km al, en optellen gaf het dubbele */
+      mem.kmLive = Math.max(mem.kmLive || 0, l.km || 0);
+      mem.netjes = Math.max(mem.netjes || 0, l.netjes || 0);
+      mem.gemeld = Math.max(mem.gemeld || 0, l.gemeld || 0);
+      mem.ritLive = Math.max(oudR, hunR);
       if (hunR && l.stijl) mem.stijlLive = oudR ? Math.round(((mem.stijlLive || 0) * oudR + l.stijl * hunR) / (oudR + hunR)) : l.stijl;
       if (l.nul && (!mem.best100Live || l.nul / 10 < mem.best100Live)) mem.best100Live = l.nul / 10;
       if (l.tachtig && (!mem.best80Live || l.tachtig / 10 < mem.best80Live)) mem.best80Live = l.tachtig / 10;
