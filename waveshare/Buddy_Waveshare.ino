@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 111;   // v111: kaart netter: geen N, grotere navigatiebalk, bord/snelheid uit de rand; muts af bij tekst
+static const int FW_VERSIE = 112;   // v112: navigatiebalk weer de oude maat, grote tekst in het midden, loopt vol naar de afslag
+// v111:   // v111: kaart netter: geen N, grotere navigatiebalk, bord/snelheid uit de rand; muts af bij tekst
 // v110:   // v110: kaart: groter bord, snelheid, duidelijke N; KAART-knop bovenop en ook tijdens navigatie
 // v109:   // v109: hartjes kunnen uit (standaard uit)
 // v108:   // v108: lukt wifi niet (-1), dan via de telefoon; updates gaan via de app als die open is
@@ -3250,16 +3251,18 @@ static void drawKaart() {
   { int vk = (int)lroundf(v); char sp[8]; snprintf(sp, sizeof sp, "%d", vk); roundRect(162, 100, 56, 44, 12, 0x0000); segTekst(sp, 190, 116, 20, lim > 0 && vk > lim + 3 ? 0xF800 : EYE);   // snelheid rechts (v111: met km/u, iets naar binnen)
     frame->setTextColor(0x8410); frame->setTextSize(1); frame->setCursor(X(190) - 12, Y(134)); frame->print("km/u"); }
   if (lim > 0) { circle(50, 120, 24, 0xD800); circle(50, 120, 19, 0xFFFF); char lt[6]; snprintf(lt, sizeof lt, "%d", lim); segTekst(lt, 50, 120, lim >= 100 ? 13 : 17, 0x0000); }   // v110: groter bord
-  if (eNavC) {   // volgende afslag onderin
-    roundRect(40, 170, 160, 38, 19, 0x0B0A); float cx = 70, cy = 189, a = 0; uint16_t c = 0xFFFF;   // v111: grotere balk
+  if (eNavC) {   // volgende afslag onderin (v112: weer de oude maat, grotere tekst in het midden, en hij loopt vol als je dichterbij komt)
+    float bx = 54, by = 184, bw = 132, bh = 32; roundRect(bx, by, bw, bh, 16, 0x0B0A);
+    if (eNavD > 0 && eNavD < 300 && eNavC != 'A') { float f = 1 - eNavD / 300.f; if (f > .06f) roundRect(bx, by, bw * f, bh, 16, eNavD < 60 && (millis() / 250) % 2 ? 0x2FEA : 0x1E8D); }
+    float cx = bx + 20, cy = by + bh / 2, a = 0; uint16_t c = 0xFFFF;
     switch (eNavC) { case 'L': a = -90; break; case 'R': a = 90; break; case 'l': a = -45; break; case 'r': a = 45; break; case 'U': a = 180; break; default: a = 0; }
-    if (eNavC == 'A') { circle(cx, cy, 10, 0xF800); circle(cx, cy, 5, 0xFFFF); } else if (eNavC == 'O') { for (int i = 0; i < 12; i++) { float a1 = i * .52f, a2 = a1 + .42f; dikLijn(cx + cosf(a1) * 11, cy + sinf(a1) * 11, cx + cosf(a2) * 11, cy + sinf(a2) * 11, 2, c); } }
-    else { float rd = a * .0174533f, dx = sinf(rd), dy = -cosf(rd); dikLijn(cx - dx * 10, cy - dy * 10, cx + dx * 6, cy + dy * 6, 5, c); triF(cx + dx * 16, cy + dy * 16, cx + dx * 4 - dy * 10, cy + dy * 4 + dx * 10, cx + dx * 4 + dy * 10, cy + dy * 4 - dx * 10, c); }
-    char nd[16]; if (eNavD >= 950) snprintf(nd, sizeof nd, "%d,%dkm", eNavD / 1000, (eNavD % 1000) / 100); else snprintf(nd, sizeof nd, "%dm", (eNavD / 10) * 10);
-    segTekst(nd, 140, 189, 20, 0xFFFF); }
+    if (eNavC == 'A') { circle(cx, cy, 8, 0xF800); circle(cx, cy, 4, 0xFFFF); } else if (eNavC == 'O') { for (int i = 0; i < 10; i++) { float a1 = i * .63f, a2 = a1 + .5f; dikLijn(cx + cosf(a1) * 8, cy + sinf(a1) * 8, cx + cosf(a2) * 8, cy + sinf(a2) * 8, 1.6f, c); } }
+    else { float rd = a * .0174533f, dx = sinf(rd), dy = -cosf(rd); dikLijn(cx - dx * 8, cy - dy * 8, cx + dx * 5, cy + dy * 5, 4, c); triF(cx + dx * 13, cy + dy * 13, cx + dx * 3 - dy * 8, cy + dy * 3 + dx * 8, cx + dx * 3 + dy * 8, cy + dy * 3 - dx * 8, c); }
+    char nd[16]; if (eNavD >= 950) snprintf(nd, sizeof nd, "%d,%d km", eNavD / 1000, (eNavD % 1000) / 100); else snprintf(nd, sizeof nd, "%d m", (eNavD / 10) * 10);
+    int L = strlen(nd), sz = L <= 5 ? 3 : 2; float tm = bx + 38 + (bw - 38) / 2; frame->setTextColor(0xFFFF); frame->setTextSize(sz); frame->setCursor(X(tm) - L * 3 * sz, Y(cy) - 4 * sz); frame->print(nd); }
   if (nvT && millis() - nvT < 15000) {   // v85: straatnaam van de volgende afslag, en bovenin hoe ver nog en hoe laat je er bent
     if (nvNaam[0] && phoneFresh() && phone.nav) { int L = strlen(nvNaam); if (L > 18) L = 18; char nm[20]; memcpy(nm, nvNaam, L); nm[L] = 0;
-      float w = L * 6.4f; roundRect(120 - w / 2 - 6, 146, w + 12, 20, 10, 0x0000); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - L * 6, Y(149)); frame->print(nm); }
+      float w = L * 6.4f; roundRect(120 - w / 2 - 6, 160, w + 12, 20, 10, 0x0000); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - L * 6, Y(163)); frame->print(nm); }
     if (nvRest >= 0) { char rt[20]; if (nvRest >= 100) snprintf(rt, sizeof rt, "%d km %s", nvRest / 10, nvEta); else snprintf(rt, sizeof rt, "%d,%d km %s", nvRest / 10, nvRest % 10, nvEta);
       int L = strlen(rt); frame->setTextColor(0xBDF7); frame->setTextSize(2); frame->setCursor(X(120) - L * 6, Y(68)); frame->print(rt); } }
   uint32_t ov = millis() - kaartOvergangT;   // v77: overgang: twee handjes trekken het gezicht open
