@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 106;   // v106: G-metertje naar links; internet via de telefoon (Bluetooth), hotspot niet meer nodig
+static const int FW_VERSIE = 107;   // v107: kaart schuift vloeiend door tussen GPS-punten (geen schokjes meer)
+// v106:   // v106: G-metertje naar links; internet via de telefoon (Bluetooth), hotspot niet meer nodig
 // v105:   // v105: kaart openen met 6 verschillende overgangen (niet alleen het gordijn)
 // v104:   // v104: kaart blijft open tot na de afslag, en tussendoor elke 4 min even
 // v103:   // v103: route blijft staan als de app op de achtergrond is (Buddy+ rekent de afslagen dan zelf)
@@ -3161,13 +3162,20 @@ static void drawKaart() {
   boxAdd(0, 0, 240, 240); circle(120, 120, 119, 0x0861);
   const float CX = 120, CY = 152; float lat = gpsLat, lon = gpsLon, hd = gpsKoers * 0.0174533f;
   float kx = 111320.f * cosf(lat * 0.0174533f), ky = 110540.f, v = spdNow();
+  { // v107: vloeiend rijden: tussen twee GPS-punten (1x per seconde) zelf doorschuiven met snelheid en richting, en zacht bijsturen
+    static float sLat = 0, sLon = 0, sHd = 0; static uint32_t sT = 0; uint32_t nu = millis(); float dt = sT ? fminf(.2f, (nu - sT) / 1000.f) : 0; sT = nu;
+    float ouder = fminf(1.5f, (nu - gpsLastFixMs) / 1000.f), m = v / 3.6f * ouder;
+    float pLat = lat + cosf(hd) * m / ky, pLon = lon + sinf(hd) * m / kx;
+    if (!sLat || fabsf(pLat - sLat) * ky > 150 || fabsf(pLon - sLon) * kx > 150) { sLat = pLat; sLon = pLon; sHd = hd; }
+    else { float k = fminf(1, dt * 6); sLat += (pLat - sLat) * k; sLon += (pLon - sLon) * k; float dh = atan2f(sinf(hd - sHd), cosf(hd - sHd)); sHd += dh * fminf(1, dt * 4); }
+    lat = sLat; lon = sLon; hd = sHd; }
   if (rtN >= 2 && rtPt) {   // v81: auto op de route plakken (binnen 30 m), richting van de weg
     float best = 1e9, bl = lat, bo = lon, bh = hd; for (int k = 0; k + 1 < rtN; k++) {
       float ax = (rtPt[k * 2 + 1] - lon) * kx, ay = (rtPt[k * 2] - lat) * ky, bx = (rtPt[k * 2 + 3] - lon) * kx, by = (rtPt[k * 2 + 2] - lat) * ky;
       if (fabsf(ax) > 800 && fabsf(bx) > 800) continue; if (fabsf(ay) > 800 && fabsf(by) > 800) continue;
       float dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy, t = l2 > 0 ? fmaxf(0, fminf(1, -(ax * dx + ay * dy) / l2)) : 0, px = ax + dx * t, py = ay + dy * t, d = sqrtf(px * px + py * py);
       if (d < best) { best = d; bl = lat + py / ky; bo = lon + px / kx; bh = atan2f(dx, dy); } }
-    if (best < 30) { lat = bl; lon = bo; if (v > 3) hd = bh; } }
+    if (best < 30) { lat = bl; lon = bo; if (v > 3) { static float wHd = 0; float dh = atan2f(sinf(bh - wHd), cosf(bh - wHd)); wHd += dh * (fabsf(dh) > 1.2f ? 1 : .15f); hd = wHd; } } }   // v107: wegrichting zacht volgen
   float ch = cosf(hd), sh = sinf(hd);
   bool dichtbij = phoneFresh() && phone.nav && phone.navD > 0 && phone.navD < 250;
   float mpp = dichtbij ? 1.8f : v > 85 ? 6.f : v > 45 ? 4.f : 2.8f;   // meters per beeldpuntje: harder rijden = verder vooruit kijken
