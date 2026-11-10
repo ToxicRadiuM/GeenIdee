@@ -8140,7 +8140,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     function schStatZet(kv) {
       var i = kv.indexOf('='); if (i < 1) return; schS[kv.slice(0, i)] = kv.slice(i + 1);
       var v = +schS.v || 0, d = [];
-      if (v) d.push('Versie v' + v + (fwNieuw > v ? ' (v' + fwNieuw + ' staat klaar: tik op Update nu)' : ' (nieuwste)'));
+      if (v) d.push('Versie v' + v + (fwNieuw > v ? ' (v' + fwNieuw + ' staat online: tik op ⬇️ Zoek naar update)' : ' (nieuwste)'));
       if (schS.f) d.push(schS.f + ' fps');
       if (schS.s) d.push('GPS ' + schS.s.replace('/', ' sat, ') + ' in zicht');
       if (schS.w) d.push(schS.w === '1' ? 'wifi verbonden' : 'geen wifi');
