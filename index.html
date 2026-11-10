@@ -5109,7 +5109,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v179';
+  var VERSION = 'v180';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7914,6 +7914,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         .then(function (svc) { return Promise.all([svc.getCharacteristic(RX), svc.getCharacteristic(TX)]); })
         .then(function (ch) {
           rx = ch[0];
+          (function (c) {   /* v180: alle schrijfacties naar Buddy+ achter elkaar, nooit twee tegelijk ("GATT operation already in progress") */
+            var rij = Promise.resolve();
+            ['writeValue', 'writeValueWithResponse', 'writeValueWithoutResponse'].forEach(function (m) { var org = c[m]; if (typeof org !== 'function') return;
+              c[m] = function (v) { var p = rij.then(function () { return org.call(c, v); }); rij = p.catch(function () {}); return p; }; });
+          })(rx);
           function luister(keer) {   /* v101: eerst meldingen van het schermpje aanzetten, pas daarna de proef (twee tegelijk mag niet in Chrome) */
             return ch[1].startNotifications().then(function () { ch[1].removeEventListener('characteristicvaluechanged', binnen); ch[1].addEventListener('characteristicvaluechanged', binnen); lg('scherm: meldingen aan'); })
               .catch(function (e) { lg('scherm: meldingen aanzetten mislukt (' + ((e && e.message) || e) + ')'); if (keer < 5) return new Promise(function (ok) { setTimeout(ok, 1500); }).then(function () { if (rx === ch[0]) return luister(keer + 1); }); });
@@ -8006,7 +8011,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     try { var sc0 = JSON.parse(localStorage.getItem(SCKEY)); if (sc0) sc = sc0; } catch (e) {}
     $('scLicht').value = sc.l; $('scVol').value = sc.v; $('scAnim').value = sc.a; $('scWarn').value = sc.w == null ? '1' : sc.w;
     /* v168: internet doorgeven aan Buddy+ (geen hotspot nodig). Buddy+ vraagt een adres, wij halen het op en sturen het in stukjes terug. */
-    var nqId = null, nqUrl = '', netJob = null, netQ = [], pompT = 0, pompStuurT = 0, grootStuk = 180;
+    var nqId = null, nqUrl = '', netJob = null, netQ = [], pompT = 0, pompStuurT = 0, grootStuk = 180, netFout = 0;
     function netHaal(id, url) {
       if (!/^https:\/\//.test(url)) { netQ.push('NX|' + id + '|0'); netPomp(); return; }
       lg('Buddy+ haalt via de telefoon: ' + url.replace(/\?.*$/, ''));
@@ -8029,9 +8034,12 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
         lijnen.push('ND|' + netJob.id + '|' + netJob.seq + '|' + btoa(bs)); netJob.p += stuk.length; netJob.seq++;
       }
       if (!lijnen.length) return;
-      bezig = true;
-      lijnen.reduce(function (pr, l) { return pr.then(function () { return stuurSnel(l); }); }, Promise.resolve()).then(function () { bezig = false; pompT = setTimeout(netPomp, 5); }, function (e) {
-        bezig = false; if (grootStuk > 20) { grootStuk = 20; lg('Buddy+ internet: kleinere stukjes'); } lg('Buddy+ internet onderbroken: ' + (e.message || e)); netJob = null; netQ = [];
+      bezig = true; var gedaan = 0;
+      lijnen.reduce(function (pr, l) { return pr.then(function () { return stuurSnel(l).then(function () { gedaan++; }); }); }, Promise.resolve()).then(function () { bezig = false; netFout = 0; pompT = setTimeout(netPomp, 5); }, function (e) {
+        bezig = false; var m = (e && e.message) || String(e);
+        if (/length|size|too long|MTU/i.test(m) && grootStuk > 20) { grootStuk = 20; lg('Buddy+ internet: kleinere stukjes'); }
+        netFout++; if (netFout > 30) { lg('Buddy+ internet onderbroken: ' + m); netJob = null; netQ = []; netFout = 0; return; }
+        netQ = [''].concat(lijnen.slice(gedaan), netQ); pompT = setTimeout(netPomp, 150);   /* v180: het mislukte stukje gewoon opnieuw sturen */
       });
     }
     function stuurTekst(t) {

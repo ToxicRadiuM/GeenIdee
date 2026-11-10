@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 112;   // v112: navigatiebalk weer de oude maat, grote tekst in het midden, loopt vol naar de afslag
+static const int FW_VERSIE = 113;   // v113: voortgang zichtbaar bij update via de telefoon
+// v112:   // v112: navigatiebalk weer de oude maat, grote tekst in het midden, loopt vol naar de afslag
 // v111:   // v111: kaart netter: geen N, grotere navigatiebalk, bord/snelheid uit de rand; muts af bij tekst
 // v110:   // v110: kaart: groter bord, snelheid, duidelijke N; KAART-knop bovenop en ook tijdens navigatie
 // v109:   // v109: hartjes kunnen uit (standaard uit)
@@ -1184,7 +1185,7 @@ static bool telDichtbij() { return bleConnected && !telVer; }
 static char bleBuf[256]; static size_t bleLen = 0;
 // v106: internet via de telefoon. Buddy+ vraagt een adres, de app haalt het op en stuurt het in stukjes terug.
 static volatile bool hartjesAan = false;   // v109: hartjes-ogen, hartjes-wolkjes en kusjes alleen als je dat wilt
-static volatile bool appNet = false; static volatile uint8_t bnStaat = 0; static uint8_t *bnBuf = nullptr; static volatile size_t bnLen = 0, bnCap = 0;
+static volatile bool appNet = false; static volatile bool bnIsOta = false;   // v113: download-voortgang bij updates via de telefoon static volatile uint8_t bnStaat = 0; static uint8_t *bnBuf = nullptr; static volatile size_t bnLen = 0, bnCap = 0;
 static volatile uint16_t bnId = 0, bnSeq = 0; static volatile uint32_t bnLaatst = 0; static char bnVraag[300]; static volatile bool bnVraagKlaar = false;
 // v76: route van de app (voor de kaart op Buddy+). Twee vaste buffers in PSRAM, nooit vrijgeven (tekenen en ontvangen lopen tegelijk)
 static const int RT_MAX = 1200; static float *rtA = nullptr, *rtB = nullptr, *rtPt = nullptr; static volatile int rtN = 0; static int rtNieuwN = 0; static bool rtBezig = false;
@@ -1216,7 +1217,7 @@ static void parsePhone(char *line) {
     char *e; unsigned id = strtoul(line + 3, &e, 10); if (id != bnId || bnStaat != 1) return; bnLaatst = millis();
     if (line[1] == 'B') { size_t sz = strtoul(e + 1, nullptr, 10); if (bnBuf) free(bnBuf); bnCap = sz + 1; bnBuf = (uint8_t *)heap_caps_malloc(bnCap, MALLOC_CAP_SPIRAM); bnLen = 0; bnSeq = 0; if (!bnBuf) bnStaat = 3; }
     else if (line[1] == 'D') { unsigned sq = strtoul(e + 1, &e, 10); if (!bnBuf || sq != bnSeq || *e != '|') { bnStaat = 3; return; }
-      size_t ol = 0; if (mbedtls_base64_decode(bnBuf + bnLen, bnCap - 1 - bnLen, &ol, (const unsigned char *)e + 1, strlen(e + 1)) != 0) { bnStaat = 3; return; } bnLen += ol; bnSeq++; }
+      size_t ol = 0; if (mbedtls_base64_decode(bnBuf + bnLen, bnCap - 1 - bnLen, &ol, (const unsigned char *)e + 1, strlen(e + 1)) != 0) { bnStaat = 3; return; } bnLen += ol; bnSeq++; if (bnIsOta && bnCap > 1) otaPct = (int)(bnLen * 100 / bnCap); }
     else if (line[1] == 'E') { if (bnBuf) { bnBuf[bnLen] = 0; bnStaat = 2; } else bnStaat = 3; }
     else bnStaat = 3;
     return;
@@ -2506,7 +2507,7 @@ static void checkOta() {   // v68: alleen binnenhalen (op de achtergrond, ook ti
   logRegel("update: v%d -> v%d wordt op de achtergrond binnengehaald", FW_VERSIE, v);
   if (!(WiFi.status() == WL_CONNECTED && (uint32_t)WiFi.localIP() != 0) || (viaTelOk() && phoneFresh())) {   // v106: via de telefoon (alleen als de app open staat); v108: ook met wifi, want dat is onderweg vaak -1
     if (!phoneFresh()) { logRegel("update: open de app, dan haal ik hem via de telefoon"); return; }
-    otaPct = 0; size_t fn = 0; uint8_t *fb = bleHaal(FW_BASIS "firmware.bin", fn); otaPct = -1;
+    otaPct = 0; size_t fn = 0; bnIsOta = true; uint8_t *fb = bleHaal(FW_BASIS "firmware.bin", fn); bnIsOta = false; otaPct = -1;
     if (!fb || fn < 100000) { free(fb); logRegel("update via telefoon mislukt, later opnieuw"); return; }
     esp_ota_handle_t oh2; if (esp_ota_begin(doel, fn, &oh2) != ESP_OK) { free(fb); return; }
     bool f2 = false; for (size_t o = 0; o < fn && !f2; o += 4096) if (esp_ota_write(oh2, fb + o, fn - o < 4096 ? fn - o : 4096) != ESP_OK) f2 = true;

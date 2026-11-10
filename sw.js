@@ -4,7 +4,7 @@
    - Lettertypen van Google: uit de bewaarde versie, op de achtergrond verversen.
    - Al het andere (je Worker, PDOK, OpenStreetMap, weer…) gaat gewoon via internet en wordt hier niet bewaard.
    Verander bij elke nieuwe versie KAST, dan ruimt de telefoon de oude kopie vanzelf op. */
-const KAST = 'buddy-v144';
+const KAST = 'buddy-v145';
 const KERN = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './msi-locaties.json', './data/flitsers-nl.json', './geluid/sterren.mp3'];
 
 self.addEventListener('install', (e) => {
