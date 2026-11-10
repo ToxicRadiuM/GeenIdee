@@ -3204,7 +3204,7 @@ static void drawKaart() {
   { float stap = mpp * 34, ox0 = fmodf((lon * kx), stap), oy0 = fmodf((lat * ky), stap);   // v87: raster van stipjes, zo zie je ook zonder wegen dat je beweegt
     for (int gx2 = -4; gx2 <= 4; gx2++) for (int gy2 = -4; gy2 <= 4; gy2++) { float dx = gx2 * stap - ox0, dy = gy2 * stap - oy0, x = CX + (dx * ch - dy * sh) / mpp, y = CY - (dx * sh + dy * ch) / mpp;
       if (x > 8 && x < 232 && y > 8 && y < 232 && (x - 120) * (x - 120) + (y - 120) * (y - 120) < 112 * 112) circle(x, y, 1.1f, 0x2945); } }
-  triF(CX, CY - 12, CX - 26, CY - 62, CX + 26, CY - 62, 0x10A2);   // v87: lichtbundel vooruit (onder de wegen)
+  // v110: grijze lichtbundel vooruit weggehaald (overbodig)
   auto wegKl = [](int soort, bool rand) -> uint16_t { return rand ? (soort == 2 ? 0x8200 : 0x18E3) : (soort == 2 ? 0xFD60 : soort == 1 ? 0xC618 : 0x7BEF); };
   auto wegBr = [](int soort) -> float { return soort == 2 ? 4.6f : soort == 1 ? 3.6f : 2.4f; };
   for (int pass = 0; pass < 2; pass++) {   // v87: eerst de donkere rand, dan de lichte weg erover
