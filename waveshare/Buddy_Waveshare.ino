@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 107;   // v107: kaart schuift vloeiend door tussen GPS-punten (geen schokjes meer)
+static const int FW_VERSIE = 108;   // v108: lukt wifi niet (-1), dan via de telefoon; updates gaan via de app als die open is
+// v107:   // v107: kaart schuift vloeiend door tussen GPS-punten (geen schokjes meer)
 // v106:   // v106: G-metertje naar links; internet via de telefoon (Bluetooth), hotspot niet meer nodig
 // v105:   // v105: kaart openen met 6 verschillende overgangen (niet alleen het gordijn)
 // v104:   // v104: kaart blijft open tot na de afslag, en tussendoor elke 4 min even
@@ -2292,8 +2293,13 @@ static void bnVraagStap() {   // in de loop: de vraag versturen (Bluetooth allee
   for (size_t o = 0; o < L; o += 150) { snprintf(m, sizeof m, "NQ|%u|%.*s", (unsigned)bnId, (int)(L - o < 150 ? L - o : 150), bnVraag + o); bleSend(m); delay(15); }
   snprintf(m, sizeof m, "NQE|%u", (unsigned)bnId); bleSend(m); bnVraagKlaar = false; bnLaatst = millis();
 }
+static uint8_t *haalUrlWifi(const char *url, size_t &len);
 static uint8_t *haalUrl(const char *url, size_t &len) {
   if (!(WiFi.status() == WL_CONNECTED && (uint32_t)WiFi.localIP() != 0)) return bleHaal(url, len);   // v106: geen wifi? via de telefoon
+  uint8_t *b = haalUrlWifi(url, len); if (!b && viaTelOk()) b = bleHaal(url, len);   // v108: wifi lukt niet (-1)? dan alsnog via de telefoon
+  return b;
+}
+static uint8_t *haalUrlWifi(const char *url, size_t &len) {
   len = 0; WiFiClientSecure cl; cl.setInsecure(); HTTPClient h; h.setTimeout(15000);
   if (!h.begin(cl, url)) return nullptr;
   int code = h.GET(); if (code != 200) { char tf[80] = ""; if (code < 0) cl.lastError(tf, sizeof tf); h.end(); netFoutCode = code; netFoutT = millis(); logRegel("net: %s -> %d %s (vrij %u, blok %u)", url + 34, code, tf, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL), (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)); return nullptr; }
@@ -2481,7 +2487,7 @@ static void checkOta() {   // v68: alleen binnenhalen (op de achtergrond, ook ti
   if (v == otaKlaarV) { logRegel("update: v%d staat al klaar om te installeren", v); return; }
   const esp_partition_t *doel = esp_ota_get_next_update_partition(NULL); if (!doel) { logRegel("update: geen plek om te bewaren"); return; }
   logRegel("update: v%d -> v%d wordt op de achtergrond binnengehaald", FW_VERSIE, v);
-  if (!(WiFi.status() == WL_CONNECTED && (uint32_t)WiFi.localIP() != 0)) {   // v106: via de telefoon (alleen als de app open staat)
+  if (!(WiFi.status() == WL_CONNECTED && (uint32_t)WiFi.localIP() != 0) || (viaTelOk() && phoneFresh())) {   // v106: via de telefoon (alleen als de app open staat); v108: ook met wifi, want dat is onderweg vaak -1
     if (!phoneFresh()) { logRegel("update: open de app, dan haal ik hem via de telefoon"); return; }
     otaPct = 0; size_t fn = 0; uint8_t *fb = bleHaal(FW_BASIS "firmware.bin", fn); otaPct = -1;
     if (!fb || fn < 100000) { free(fb); logRegel("update via telefoon mislukt, later opnieuw"); return; }
