@@ -8,7 +8,18 @@
 (function () {
   function zet() {
     var C = window.Capacitor; if (!C || !C.isNativePlatform || !C.isNativePlatform() || window.__native) return !!window.__native;
-    window.__native = true; window.__nativeInfo = []; var reg = function (n) { try { return C.registerPlugin(n); } catch (e) { return null; } };
+    window.__native = true; window.__nativeInfo = [];
+    /* v174: de site heeft geen @capacitor/core, dus zelf de brug naar de Android-plugins maken */
+    var kopjes = (C.PluginHeaders || []).map(function (h) { return h.name; }); window.__nativePlugins = kopjes;
+    var reg = function (n) {
+      if (kopjes.length && kopjes.indexOf(n) < 0 && !(C.isPluginAvailable && C.isPluginAvailable(n))) return null;
+      if (typeof C.nativePromise !== 'function') { try { return C.registerPlugin ? C.registerPlugin(n) : (C.Plugins && C.Plugins[n]) || null; } catch (e) { return null; } }
+      return new Proxy({}, { get: function (t, m) {
+        if (m === 'then' || typeof m !== 'string') return undefined;
+        if (m === 'addListener') return function (ev, cb) { if (typeof C.addListener === 'function') return Promise.resolve(C.addListener(n, ev, cb)); var id = C.nativeCallback(n, 'addListener', { eventName: ev }, cb); return Promise.resolve({ remove: function () { C.nativeCallback(n, 'removeListener', { eventName: ev, callbackId: id }, function () {}); } }); };
+        return function (o, cb) { if (typeof cb === 'function') return Promise.resolve(C.nativeCallback(n, m, o || {}, cb)); return C.nativePromise(n, m, o || {}); };
+      } });
+    };
     var BLE = reg('BluetoothLe'), BG = reg('BackgroundGeolocation'), TTS = reg('TextToSpeech'), WAK = reg('KeepAwake'), APP = reg('App');
     if (APP) try { APP.addListener('backButton', function () { APP.minimizeApp().catch(function () {}); }); } catch (e) {}   /* terug-knop = app naar de achtergrond, niet afsluiten */
     /* --- Bluetooth: een stukje Web Bluetooth nadoen bovenop de Android-plugin --- */
@@ -61,7 +72,7 @@
         speak: function (u) { TTS.speak({ text: String(u.text || ''), lang: u.lang || 'nl-NL', rate: u.rate || 1, pitch: u.pitch || 1, volume: u.volume == null ? 1 : u.volume, category: 'playback', queueStrategy: 1 }).catch(function () {}); },
         cancel: function () { TTS.stop().catch(function () {}); }, getVoices: function () { return []; }, addEventListener: function () {} } }); } catch (e) {}
     }
-    window.__nativeInfo = ['Bluetooth ' + (BLE ? '✓' : '✗'), 'GPS achtergrond ' + (BG ? '✓' : '✗'), 'spraak ' + (TTS ? '✓' : '✗')];
+    window.__nativeInfo = ['Bluetooth ' + (BLE ? '✓' : '✗'), 'GPS achtergrond ' + (BG ? '✓' : '✗'), 'spraak ' + (TTS ? '✓' : '✗'), 'plugins: ' + (kopjes.join(' ') || '?'), 'brug: ' + (typeof C.nativePromise)];
     if (WAK) { window.__houdWakker = function (aan) { (aan ? WAK.keepAwake() : WAK.allowSleep()).catch(function () {}); }; }
     return true;
   }
@@ -5091,7 +5102,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v173';
+  var VERSION = 'v174';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
