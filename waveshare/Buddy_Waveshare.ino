@@ -3347,7 +3347,10 @@ static void drawRand(bool kaart) {
 // v103: telefoon stil (app op de achtergrond)? Dan zelf de volgende afslag uit de opgeslagen route halen, met de eigen GPS
 static void eigenNav() {
   static int volg = -1; static uint32_t telLaatst = 0; uint32_t nu = millis();
-  if (phoneFresh()) { telLaatst = nu; volg = -1; eNavC = phone.nav; eNavD = phone.navD; return; }
+  if (phoneFresh()) { telLaatst = nu; volg = -1; eNavC = phone.nav; eNavD = phone.navD;
+    static char hC = 0; static int hD = -1; static uint32_t hT = 0;   // v116: blijft de afstand hangen terwijl je rijdt? Dan het balkje weg in plaats van 'm vast laten staan
+    if (eNavC != hC || eNavD != hD) { hC = eNavC; hD = eNavD; hT = nu; } else if (eNavC && phone.v > 15 && nu - hT > 12000) eNavC = 0;
+    return; }
   eNavC = 0; if (!stappen || stapN < 1 || rtN < 2) { volg = -1; return; }
   bool eigen = gpsFix && !posVanTel && nu - gpsEigenMs < 5000; if (!eigen) return;
   float la = gpsLat, lo = gpsLon;

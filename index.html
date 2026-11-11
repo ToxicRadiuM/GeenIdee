@@ -5175,7 +5175,7 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v188';
+  var VERSION = 'v189';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8269,7 +8269,10 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
         var m = st.mod || '', c = 'S';
         if (st.type === 'arrive') c = 'A'; else if (st.type === 'roundabout' || st.type === 'rotary') c = 'O'; else if (m === 'uturn') c = 'U';
         else if (/slight left/.test(m)) c = 'l'; else if (/slight right/.test(m)) c = 'r'; else if (/left/.test(m)) c = 'L'; else if (/right/.test(m)) c = 'R';
-        return c + Math.round(nav.d);
+        var dl = lastPos ? gdist(lastPos.lat, lastPos.lon, st.lat, st.lon) : nav.d;   /* v189: altijd de echte afstand nu, niet een oude waarde (bleef op 210 m hangen) */
+        if (Math.abs(dl - nav.d) > 150 && !navCode.gemeld) { navCode.gemeld = 1; lg('nav: afstand liep achter (' + Math.round(nav.d) + ' m, echt ' + Math.round(dl) + ' m)'); }
+        if (dl > 1500) return '';
+        return c + Math.round(dl);
       } catch (e) { return ''; }
     }
     /* v81: thuis-tijd, collega in de buurt en wisselbeker ook naar het schermpje */
