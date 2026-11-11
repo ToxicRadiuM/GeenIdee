@@ -5133,7 +5133,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v184';
+  var VERSION = 'v185';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8035,7 +8035,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     try { var sc0 = JSON.parse(localStorage.getItem(SCKEY)); if (sc0) sc = sc0; } catch (e) {}
     $('scLicht').value = sc.l; $('scVol').value = sc.v; $('scAnim').value = sc.a; $('scWarn').value = sc.w == null ? '1' : sc.w;
     /* v168: internet doorgeven aan Buddy+ (geen hotspot nodig). Buddy+ vraagt een adres, wij halen het op en sturen het in stukjes terug. */
-    var nqId = null, nqUrl = '', netJob = null, netQ = [], pompT = 0, pompStuurT = 0, grootStuk = 180, netFout = 0;
+    var nqId = null, nqUrl = '', netJob = null, netQ = [], pompT = 0, pompStuurT = 0, grootStuk = 500, netFout = 0;
     function netHaal(id, url) {
       if (!/^https:\/\//.test(url)) { netQ.push('NX|' + id + '|0'); netPomp(); return; }
       lg('Buddy+ haalt via de telefoon: ' + url.replace(/\?.*$/, ''));
@@ -8044,7 +8044,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       }).catch(function (e) { lg('Buddy+ via telefoon mislukt: ' + (e.message || e)); netQ.push('NX|' + id + '|1'); netPomp(); });
     }
     function stuurSnel(t) {
-      var d = new TextEncoder().encode(t + '\n'), st = []; for (var i = 0; i < d.length; i += grootStuk) st.push(d.slice(i, i + grootStuk));
+      var gs = Math.min(grootStuk, (+((typeof schS !== 'undefined' && schS && schS.v) || 0)) >= 115 ? 500 : 180), d = new TextEncoder().encode(t + '\n'), st = []; for (var i = 0; i < d.length; i += gs) st.push(d.slice(i, i + gs));
       return st.reduce(function (pr, x) { return pr.then(function () { return rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(x) : rx.writeValue(x); }); }, Promise.resolve());
     }
     function netPomp() {
@@ -8054,14 +8054,14 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var lijnen = netQ.splice(0, netQ.length);
       while (netJob && lijnen.length < 12) {
         if (netJob.p >= netJob.d.length) { lijnen.push('NE|' + netJob.id); netJob = null; break; }
-        var stuk = netJob.d.subarray(netJob.p, netJob.p + 162), bs = ''; for (var i = 0; i < stuk.length; i++) bs += String.fromCharCode(stuk[i]);
+        var groot = (+((typeof schS !== 'undefined' && schS && schS.v) || 0)) >= 115, stuk = netJob.d.subarray(netJob.p, netJob.p + (groot ? 360 : 162)), bs = '';   /* v185: Buddy+ v115+ kan grote stukken aan: ~4x sneller */ for (var i = 0; i < stuk.length; i++) bs += String.fromCharCode(stuk[i]);
         lijnen.push('ND|' + netJob.id + '|' + netJob.seq + '|' + btoa(bs)); netJob.p += stuk.length; netJob.seq++;
       }
       if (!lijnen.length) return;
       bezig = true; var gedaan = 0;
       lijnen.reduce(function (pr, l) { return pr.then(function () { return stuurSnel(l).then(function () { gedaan++; }); }); }, Promise.resolve()).then(function () { bezig = false; netFout = 0; pompT = setTimeout(netPomp, 5); }, function (e) {
         bezig = false; var m = (e && e.message) || String(e);
-        if (/length|size|too long|MTU/i.test(m) && grootStuk > 20) { grootStuk = 20; lg('Buddy+ internet: kleinere stukjes'); }
+        if (/length|size|too long|MTU|invalid/i.test(m) && grootStuk > 20) { grootStuk = grootStuk > 180 ? 180 : 20; lg('Buddy+ internet: kleinere stukjes (' + grootStuk + ')'); }
         netFout++; if (netFout > 30) { lg('Buddy+ internet onderbroken: ' + m); netJob = null; netQ = []; netFout = 0; return; }
         netQ = [''].concat(lijnen.slice(gedaan), netQ); pompT = setTimeout(netPomp, 150);   /* v180: het mislukte stukje gewoon opnieuw sturen */
       });
@@ -8201,7 +8201,11 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       if (!N || !N.steps) r = 'NV:X';
       else { var s0 = N.steps[N.idx] || {}, rest = 0; try { var g = N.geom, i0 = Math.max(0, N.van || 0); for (var i = i0 + 1; i < g.length; i++) rest += gdist(g[i - 1].lat, g[i - 1].lon, g[i].lat, g[i].lon); } catch (e) { rest = N.dist || 0; }
         var min = Math.round(rest / Math.max(1, N.dist || rest) * (N.dur || 0) / 60), aa = new Date(Date.now() + min * 60e3);
-        r = 'NV:' + asc(s0.type === 'arrive' ? 'Bestemming' : (s0.naam || s0.ref || ''), 24) + '|' + Math.round(rest / 100) + '|' + ('0' + aa.getHours()).slice(-2) + ':' + ('0' + aa.getMinutes()).slice(-2); }
+        r = 'NV:' + asc(s0.type === 'arrive' ? 'Bestemming' : (s0.naam || s0.ref || ''), 24) + '|' + Math.round(rest / 100) + '|' + ('0' + aa.getHours()).slice(-2) + ':' + ('0' + aa.getMinutes()).slice(-2);
+        /* v185: rijstroken en welke afslag op de rotonde, voor Buddy+ */
+        var BC = { left: 'L', 'sharp left': 'L', 'slight left': 'l', right: 'R', 'sharp right': 'R', 'slight right': 'r', straight: 'S', none: 'S', uturn: 'U' }, bn = '';
+        if (Array.isArray(s0.lanes) && s0.lanes.length > 1 && s0.lanes.length <= 6) s0.lanes.forEach(function (l) { var ii = String(l.i || 'none').split(','), k = ii[0]; if (l.v && ii.length > 1) { var hit = ii.filter(function (x) { return /right|left/.test(x) === /right|left/.test(s0.mod || ''); })[0]; if (hit) k = hit; } bn += (l.v ? '+' : '-') + (BC[k] || 'S'); });
+        r += '|' + bn + '|' + (s0.exit || 0); }
       if (r !== nvVerz && !(r === 'NV:X' && nvVerz === '')) { nvVerz = r; klein(r); }
     }, 5000);
     function wegenNaarScherm() {   /* v139: de wegen om je heen naar Buddy+ (net als de flitsers), zodat zijn kaartje niet alleen een blauwe lijn is */

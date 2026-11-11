@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 114;   // v114: kaart: wegen en files op de goede plek (verkeerde rekensom gaf kriskras-lijnen)
+static const int FW_VERSIE = 115;   // v115: rijstroken, rotonde-afslagnummer, aankomst duidelijker, 'goed zo' na een afslag, nachtkaart, sneller internet via de telefoon
+// v114:   // v114: kaart: wegen en files op de goede plek (verkeerde rekensom gaf kriskras-lijnen)
 // v113:   // v113: voortgang zichtbaar bij update via de telefoon
 // v112:   // v112: navigatiebalk weer de oude maat, grote tekst in het midden, loopt vol naar de afslag
 // v111:   // v111: kaart netter: geen N, grotere navigatiebalk, bord/snelheid uit de rand; muts af bij tekst
@@ -1183,7 +1184,7 @@ static volatile bool bleConnected = false;
 // v101: signaalsterkte van de telefoon. Auto op slot met je telefoon in huis = nog verbonden, maar zwak signaal.
 static volatile int8_t telRssi = 0; static volatile uint32_t telRssiT = 0; static float telRssiGem = 0; static bool telVer = false; static uint32_t telZwakSinds = 0;
 static bool telDichtbij() { return bleConnected && !telVer; }
-static char bleBuf[256]; static size_t bleLen = 0;
+static char bleBuf[640]; static size_t bleLen = 0;   // v115: groter (stukken van 360 bytes via de telefoon)
 // v106: internet via de telefoon. Buddy+ vraagt een adres, de app haalt het op en stuurt het in stukjes terug.
 static volatile bool hartjesAan = false;   // v109: hartjes-ogen, hartjes-wolkjes en kusjes alleen als je dat wilt
 static volatile bool bnIsOta = false;   // v113: download-voortgang bij updates via de telefoon
@@ -1195,6 +1196,7 @@ static uint8_t kaartStand = 0; static uint32_t kaartGezichtTot = 0, kaartOvergan
 static uint8_t *rtFile = nullptr;   // v81: 1 = dit stukje route ligt in een file (rood)
 struct BlItem { char s; int16_t a, b; }; static BlItem blItems[20]; static volatile int blN = 0; static int blLang = 0; static uint32_t blT = 0;   // v84: de boog (wat komt eraan)
 static int tjAvg = 0, tjLim = 0, tjRest = 0; static float tjFrac = 0; static uint32_t tjT = 0;   // v84: trajectcontrole van de app
+static char nvBaan[14] = ""; static int nvAfrit = 0; static uint32_t goedZoT = 0;   // v115: rijstroken (+ = goede baan; L l S r R U), afrit op de rotonde, duim na een afslag
 static char nvNaam[26] = "", nvEta[6] = ""; static int nvRest = -1; static uint32_t nvT = 0;   // v85: straat van de volgende afslag, resterende afstand (100 m) en aankomsttijd
 static char eNavC = 0; static int eNavD = 0;   // v103
 struct StapPt { float lat, lon; char c; }; static StapPt *stA = nullptr, *stB = nullptr, *stappen = nullptr; static volatile int stapN = 0; static int stNieuwN = 0; static bool stBezig = false;   // v85: afslagen en rotondes op de route
@@ -1247,7 +1249,9 @@ static void parsePhone(char *line) {
   if (pinOk && !strncmp(line, "NV:", 3)) {   // v85: NV:<straat>|<rest in 100 m>|<HH:MM> of NV:X
     if (line[3] == 'X' && !line[4]) { nvT = 0; nvNaam[0] = 0; return; }
     char *q = strchr(line + 3, '|'); if (q) *q = 0; strncpy(nvNaam, line + 3, sizeof nvNaam - 1); nvNaam[sizeof nvNaam - 1] = 0;
-    if (q) { char *e; nvRest = strtol(q + 1, &e, 10); if (*e == '|') { strncpy(nvEta, e + 1, 5); nvEta[5] = 0; } } nvT = millis(); return; }
+    nvBaan[0] = 0; nvAfrit = 0;
+    if (q) { char *e; nvRest = strtol(q + 1, &e, 10); if (*e == '|') { strncpy(nvEta, e + 1, 5); nvEta[5] = 0;
+        char *b = strchr(e + 1, '|'); if (b) { char *c = strchr(b + 1, '|'); if (c) { *c = 0; nvAfrit = atoi(c + 1); } strncpy(nvBaan, b + 1, sizeof nvBaan - 1); nvBaan[sizeof nvBaan - 1] = 0; } } } nvT = millis(); return; }
   if (pinOk && !strncmp(line, "ST:", 3)) {   // v85: ST:B, ST:P|lat,lon,c;..., ST:E
     if (!stA) { stA = (StapPt *)ps_malloc(80 * sizeof(StapPt)); stB = (StapPt *)ps_malloc(80 * sizeof(StapPt)); } if (!stA || !stB) return;
     StapPt *doel = (stappen == stA) ? stB : stA; const char *a = line + 3;
@@ -1376,7 +1380,7 @@ static void bleStart() {
 #ifdef BOND_BLUEDROID
   BLEDevice::setCustomGapHandler(telGap);
 #endif
-  BLEDevice::setMTU(185);
+  BLEDevice::setMTU(517);   // v115: grote pakketjes = updates via de telefoon ~4x sneller
   BLEServer *srv = BLEDevice::createServer(); srv->setCallbacks(new BuddySrvCb());
   BLEService *svc = srv->createService(NUS_SVC);
   #if defined(CONFIG_NIMBLE_ENABLED)
@@ -3162,6 +3166,17 @@ static void kaartGordijn(float open, float hg) {   // v81: gezicht als gordijn m
 }
 // v105: verschillende manieren om de kaart open en dicht te doen (p = 0 dicht .. 1 open)
 static uint8_t ovSoort = 0;
+static void baanPijl(float cx, float cy, char c, uint16_t kl) {   // v115: klein pijltje voor een rijstrook
+  float a = c == 'L' ? -90 : c == 'l' ? -45 : c == 'R' ? 90 : c == 'r' ? 45 : c == 'U' ? 180 : 0, rd = a * .0174533f, dx = sinf(rd), dy = -cosf(rd);
+  dikLijn(cx - dx * 5, cy + 6 - dy * 1, cx + dx * 2, cy + dy * 2, 1.8f, kl); if (c != 'S') dikLijn(cx, cy + 6, cx, cy + 1, 1.8f, kl);
+  triF(cx + dx * 7, cy + dy * 7, cx + dx * 2 - dy * 4, cy + dy * 2 + dx * 4, cx + dx * 2 + dy * 4, cy + dy * 2 - dx * 4, kl);
+}
+static void drawBanen(float cy) {   // v115: rijstroken als vakjes, de goede wit
+  int n = 0; char c[7]; bool ok[7]; for (const char *p = nvBaan; *p && n < 7; p++) { if (*p == '+' || *p == '-') { ok[n] = *p == '+'; c[n] = p[1] ? p[1] : 'S'; n++; p++; } }
+  if (n < 2) return; float w = 18, x0 = 120 - n * (w + 3) / 2 + 1.5f; boxAdd(x0 - 4, cy - 14, x0 + n * (w + 3) + 4, cy + 14);
+  roundRect(x0 - 4, cy - 13, n * (w + 3) + 5, 26, 8, 0x0000);
+  for (int i = 0; i < n; i++) { float x = x0 + i * (w + 3); roundRect(x, cy - 10, w, 20, 5, ok[i] ? 0xFFFF : 0x2104); baanPijl(x + w / 2, cy - 1, c[i], ok[i] ? 0x0000 : 0x6B4D); }
+}
 static void drawKaartKnop() {   // v110: bovenop alles, ook als er genavigeerd wordt (dan iets lager, onder de pijl)
   if (!rtN || kaartNu() || menuOpen || venster || spel || eNavC) return;   // v111: tijdens navigatie geen knop over de ogen; tik bovenin opent de kaart
   float y = 8; boxAdd(84, y - 2, 156, y + 24); roundRect(86, y, 68, 22, 11, 0x0A4E); frame->drawRoundRect(X(86), Y(y), S(68), S(22), S(11), 0x5DFF);
@@ -3219,7 +3234,8 @@ static void drawKaart() {
     for (int gx2 = -4; gx2 <= 4; gx2++) for (int gy2 = -4; gy2 <= 4; gy2++) { float dx = gx2 * stap - ox0, dy = gy2 * stap - oy0, x = CX + (dx * ch - dy * sh) / mpp, y = CY - (dx * sh + dy * ch) / mpp;
       if (x > 8 && x < 232 && y > 8 && y < 232 && (x - 120) * (x - 120) + (y - 120) * (y - 120) < 112 * 112) circle(x, y, 1.1f, 0x2945); } }
   // v110: grijze lichtbundel vooruit weggehaald (overbodig)
-  auto wegKl = [](int soort, bool rand) -> uint16_t { return rand ? (soort == 2 ? 0x8200 : 0x18E3) : (soort == 2 ? 0xFD60 : soort == 1 ? 0xC618 : 0x7BEF); };
+  static bool nacht = false; { static uint32_t nT = 0; if (millis() - nT > 30000) { nT = millis(); int hh = 12, mm = 0; if (klokOk()) lokaleTijd(hh, mm); nacht = hh >= 18 || hh < 7; } }   // v115: nachtkaart
+  auto wegKl = [](int soort, bool rand) -> uint16_t { if (nacht) return rand ? (soort == 2 ? 0x4100 : 0x0861) : (soort == 2 ? 0xA3A0 : soort == 1 ? 0x6B4D : 0x4208); return rand ? (soort == 2 ? 0x8200 : 0x18E3) : (soort == 2 ? 0xFD60 : soort == 1 ? 0xC618 : 0x7BEF); };
   auto wegBr = [](int soort) -> float { return soort == 2 ? 4.6f : soort == 1 ? 3.6f : 2.4f; };
   for (int pass = 0; pass < 2; pass++) {   // v87: eerst de donkere rand, dan de lichte weg erover
     if (wegen && wegPt) for (int i = 0; i < wegN; i++) {   // wegen om je heen
@@ -3261,13 +3277,18 @@ static void drawKaart() {
     switch (eNavC) { case 'L': a = -90; break; case 'R': a = 90; break; case 'l': a = -45; break; case 'r': a = 45; break; case 'U': a = 180; break; default: a = 0; }
     if (eNavC == 'A') { circle(cx, cy, 8, 0xF800); circle(cx, cy, 4, 0xFFFF); } else if (eNavC == 'O') { for (int i = 0; i < 10; i++) { float a1 = i * .63f, a2 = a1 + .5f; dikLijn(cx + cosf(a1) * 8, cy + sinf(a1) * 8, cx + cosf(a2) * 8, cy + sinf(a2) * 8, 1.6f, c); } }
     else { float rd = a * .0174533f, dx = sinf(rd), dy = -cosf(rd); dikLijn(cx - dx * 8, cy - dy * 8, cx + dx * 5, cy + dy * 5, 4, c); triF(cx + dx * 13, cy + dy * 13, cx + dx * 3 - dy * 8, cy + dy * 3 + dx * 8, cx + dx * 3 + dy * 8, cy + dy * 3 - dx * 8, c); }
+    if (eNavC == 'O' && nvAfrit > 0) { char an[3]; snprintf(an, sizeof an, "%d", nvAfrit); frame->setTextColor(0xFFFF); frame->setTextSize(1); frame->setCursor(X(cx) - 2, Y(cy) - 3); frame->print(an); }   // v115: welke afslag op de rotonde
     char nd[16]; if (eNavD >= 950) snprintf(nd, sizeof nd, "%d,%d km", eNavD / 1000, (eNavD % 1000) / 100); else snprintf(nd, sizeof nd, "%d m", (eNavD / 10) * 10);
     int L = strlen(nd), sz = L <= 5 ? 3 : 2; float tm = bx + 38 + (bw - 38) / 2; frame->setTextColor(0xFFFF); frame->setTextSize(sz); frame->setCursor(X(tm) - L * 3 * sz, Y(cy) - 4 * sz); frame->print(nd); }
   if (nvT && millis() - nvT < 15000) {   // v85: straatnaam van de volgende afslag, en bovenin hoe ver nog en hoe laat je er bent
-    if (nvNaam[0] && phoneFresh() && phone.nav) { int L = strlen(nvNaam); if (L > 18) L = 18; char nm[20]; memcpy(nm, nvNaam, L); nm[L] = 0;
+    if (eNavC && nvBaan[0] && eNavD > 0 && eNavD < 1500) drawBanen(nvNaam[0] ? 138 : 162);   // v115: rijstroken boven de straatnaam
+    if (nvNaam[0] && eNavC) { int L = strlen(nvNaam); if (L > 18) L = 18; char nm[20]; memcpy(nm, nvNaam, L); nm[L] = 0;
       float w = L * 6.4f; roundRect(120 - w / 2 - 6, 160, w + 12, 20, 10, 0x0000); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - L * 6, Y(163)); frame->print(nm); }
     if (nvRest >= 0) { char rt[20]; if (nvRest >= 100) snprintf(rt, sizeof rt, "%d km %s", nvRest / 10, nvEta); else snprintf(rt, sizeof rt, "%d,%d km %s", nvRest / 10, nvRest % 10, nvEta);
-      int L = strlen(rt); frame->setTextColor(0xBDF7); frame->setTextSize(2); frame->setCursor(X(120) - L * 6, Y(68)); frame->print(rt); } }
+      int L = strlen(rt); float w = L * 12 + 26; roundRect(120 - w / 2, 64, w, 22, 11, 0x0000); frame->drawRoundRect(X(120 - w / 2), Y(64), S(w), S(22), S(11), 0x4208);   // v115: aankomst duidelijker, met vlaggetje
+      for (int r2 = 0; r2 < 2; r2++) for (int c2 = 0; c2 < 3; c2++) showRect(120 - w / 2 + 7 + c2 * 3, 69 + r2 * 3, 3, 3, ((r2 + c2) & 1) ? 0x0000 : 0xFFFF);
+      frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120 - w / 2 + 20), Y(68)); frame->print(rt); } }
+  if ((int32_t)(goedZoT - millis()) > 0) { roundRect(78, 92, 84, 24, 12, 0x0B0A); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 42, Y(97)); frame->print("GOED ZO"); }   // v115: na een afslag
   uint32_t ov = millis() - kaartOvergangT;   // v77: overgang: twee handjes trekken het gezicht open
   if (kaartOvergangT && ov < 1500) { float t = ov / 1500.f; kaartOvergang(t < .3f ? 0 : powf((t - .3f) / .7f, 1.6f), t < .3f ? t / .3f : 1); }
 }
@@ -3321,6 +3342,11 @@ static void eigenNav() {
   while (volg >= 0 && volg < stapN && (stappen[volg].c == 'S' || cameraDistanceM(la, lo, stappen[volg].lat, stappen[volg].lon) < 25)) volg++;
   if (volg < 0 || volg >= stapN) return;
   eNavC = stappen[volg].c; eNavD = (int)cameraDistanceM(la, lo, stappen[volg].lat, stappen[volg].lon);
+}
+static void afslagGehaald() {   // v115: was je vlak bij een afslag en is de volgende nu verder weg? Dan heb je hem gehaald
+  static char vC = 0; static int vD = 99999;
+  if (eNavC && vC && strchr("LRlrOU", vC) && vD < 45 && (eNavC != vC || eNavD > vD + 120)) { goedZoT = millis() + 2500; }
+  vC = eNavC; vD = eNavC ? eNavD : 99999;
 }
 void drawFace(){
  // v15: alleen wissen wat er vorige keer getekend is, in plaats van het hele scherm
@@ -3395,7 +3421,7 @@ void drawFace(){
  // Originele Buddy-rij-HUD: rond maximumsnelheidsbord links, eigen snelheid rechts.
  // Zelfde principe/positie als speedDraw() in de webapp; bij geen bekende limiet tonen we '?'.
  bool fixNow = gpsFix && (millis()-gpsLastFixMs)<5000;
- bool tel = phoneFresh(); eigenNav();
+ bool tel = phoneFresh(); eigenNav(); afslagGehaald();
  int ownSpeed = fixNow ? (int)lroundf(gpsSpeedKmh) : (tel ? phone.v : -1);
  int limit = (tel && phone.lim > 0) ? phone.lim : ((wegLimiet > 0 && millis() - wegLimT < 6000) ? wegLimiet : ((gpsNearestCameraM >= 0 && gpsNearestCameraM <= 600) ? gpsCameraLimit : 0));
  bordBron = (tel && phone.lim > 0) ? 1 : (wegLimiet > 0 && millis() - wegLimT < 6000) ? 2 : (limit > 0 ? 3 : 0);   // v67: 1 telefoon, 2 eigen kaart, 3 flitser
