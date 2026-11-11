@@ -379,6 +379,10 @@ body:not(.ondeugend) .alleenOnd { display: none !important; }
 #rijKaart.toeter { animation: toeterSchud .5s; }
 @keyframes toeterSchud { 0%,100% { transform: none; } 20% { transform: translate(-6px, 2px); } 40% { transform: translate(6px, -2px); } 60% { transform: translate(-4px, 1px); } 80% { transform: translate(4px, 0); } }
 #rijStuur { position: fixed; left: 0; right: 0; bottom: 0; height: 34vh; z-index: 32; pointer-events: none; }
+@media (orientation: landscape) {   /* v184: liggend strakker: spiegel klein linksboven, stuur lager, zodat je de weg voor je ziet */
+  body.car #rijSpiegel { left: calc(16px + var(--sa-l)) !important; right: auto !important; top: calc(12px + var(--sa-t)) !important; transform: none !important; width: 150px !important; height: 46px !important; }
+  body.car #rijStuur { height: 22vh; }
+}
 /* v139: eerste persoon: spiegel, matrixbord boven de weg, knipperlicht, regendruppels, turbo en mist */
 #rijSpiegel { position: fixed; top: calc(8px + var(--sa-t)); left: 50%; width: 200px; height: 60px; z-index: 44; border-radius: 16px / 22px; border: 3px solid #0b0d10; box-shadow: 0 4px 12px rgba(0,0,0,.55); background: #1b2330; pointer-events: none; }
 #rijSpiegel[hidden], #rijMsiBord[hidden] { display: none; }
@@ -461,7 +465,8 @@ body.nacht #rijMap canvas { filter: brightness(.7) saturate(.85); }
 #rijBalk[hidden] { display: none; }
 #rbBaan { position: absolute; left: 19px; width: 6px; top: 34px; bottom: 34px; border-radius: 3px; background: #c7ccd3; }
 .rbKop { position: absolute; top: 4px; left: -10px; right: -10px; text-align: center; font: 700 11px/1.1 var(--f-body); color: #fff; background: rgba(0,0,0,.7); border-radius: 8px; padding: 3px 2px; }
-.rbIk { position: absolute; bottom: 6px; left: 0; right: 0; text-align: center; color: #3db7ff; font-size: 18px; text-shadow: 0 0 6px #fff; }
+.rbGedaan { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 3px; background: #3db7ff; }
+.rbIk { position: absolute; bottom: 6px; transition: bottom 1s linear; z-index: 2; left: 0; right: 0; text-align: center; color: #3db7ff; font-size: 18px; text-shadow: 0 0 6px #fff; }
 .rbStuk { position: absolute; left: -3px; width: 12px; border-radius: 6px; }
 .rbPunt { position: absolute; left: -11px; width: 28px; height: 28px; margin-bottom: -14px; border-radius: 14px; background: #1b1f24; border: 2px solid #fff; font-size: 14px; line-height: 24px; text-align: center; }
 @media (orientation: portrait) { #rijBalk { left: 12px; top: calc(var(--bw, 0px) + 116px); bottom: calc(26vh + 70px); } }
@@ -5128,7 +5133,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v183';
+  var VERSION = 'v184';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -10456,7 +10461,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       var trj = []; try { (typeof TRAJ_ZONES !== 'undefined' ? TRAJ_ZONES : []).forEach(function (z) { trj.push([z.a, z.b]); }); (typeof TRAJ_EXTRA !== 'undefined' ? TRAJ_EXTRA : []).forEach(function (z) { trj.push([[z[0], z[1]], [z[2], z[3]]]); }); } catch (e) {}
       if (N && N.geom && N.geom.length > 1) {   /* afstand langs de route */
         var g = N.geom, cum = [0]; for (var i = 1; i < g.length; i++) cum.push(cum[i - 1] + gdist(g[i - 1].lat, g[i - 1].lon, g[i].lat, g[i].lon));
-        var i0 = Math.max(0, N.van || 0), d0 = cum[i0]; lang = Math.max(100, cum[g.length - 1] - d0);
+        var i0 = Math.max(0, N.van || 0), d0 = cum[i0]; lang = Math.max(100, cum[g.length - 1] - d0); var heel = Math.max(100, cum[g.length - 1]);   /* v184: balk = de hele route, jij schuift omhoog */
         opPad = function (pla, plo, max) { var best = 1e9, bi = -1; for (var k = i0; k < g.length; k += (g.length - i0 > 3000 ? 3 : 1)) { if (Math.abs(g[k].lat - pla) > .01) continue; var dd = gdist(pla, plo, g[k].lat, g[k].lon); if (dd < best) { best = dd; bi = k; } } return best < (max || 60) ? cum[bi] - d0 : -1; };
         $('rbKop').textContent = (lang / 1000).toFixed(lang < 10000 ? 1 : 0).replace('.', ',') + ' km';
       } else {   /* geen route: 10 km in je rijrichting */
@@ -10476,9 +10481,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
       trj.forEach(function (t) { var a = opPad(t[0][0], t[0][1], 300), z = opPad(t[1][0], t[1][1], 300); if (a < 0 && z < 0) return; a = a < 0 ? 0 : a; z = z < 0 ? lang : z; if (z < a) { var w = a; a = z; z = w; } items.push({ d: a, d2: z, kl: '#bf5af2', i: '⏱️', s: 't' }); });
       window.__balk = { lang: lang, items: items.slice(), t: Date.now() }; if (!zien) { b.hidden = true; return; }
       var baan = $('rbBaan'); baan.textContent = '';
+      var hele = typeof heel !== 'undefined' && N && N.geom ? heel : 0, voorbij = hele ? hele - lang : 0, schaal = hele || lang, ikF = hele ? voorbij / hele : 0;
+      if (hele) { var gd = document.createElement('div'); gd.className = 'rbGedaan'; gd.style.height = (ikF * 100) + '%'; baan.appendChild(gd); }
+      var ikEl = b.querySelector('.rbIk'); if (ikEl) ikEl.style.bottom = hele ? 'calc(24px + ' + ikF.toFixed(4) + ' * (100% - 68px))' : '6px';
       items.sort(function (x, y) { return x.d - y.d; }).forEach(function (it) {
-        if (it.d2) { var st = document.createElement('div'); st.className = 'rbStuk'; st.style.background = it.kl; st.style.bottom = Math.min(100, it.d / lang * 100) + '%'; st.style.height = Math.max(2, Math.min(100, (it.d2 - it.d) / lang * 100)) + '%'; baan.appendChild(st); }
-        var pt = document.createElement('div'); pt.className = 'rbPunt'; pt.style.borderColor = it.kl; pt.style.bottom = Math.min(100, it.d / lang * 100) + '%'; pt.textContent = it.i; baan.appendChild(pt); });
+        var p0 = (voorbij + it.d) / schaal * 100;
+        if (it.d2) { var st = document.createElement('div'); st.className = 'rbStuk'; st.style.background = it.kl; st.style.bottom = Math.min(100, p0) + '%'; st.style.height = Math.max(2, Math.min(100 - p0, (it.d2 - it.d) / schaal * 100)) + '%'; baan.appendChild(st); }
+        var pt = document.createElement('div'); pt.className = 'rbPunt'; pt.style.borderColor = it.kl; pt.style.bottom = Math.min(100, p0) + '%'; pt.textContent = it.i; baan.appendChild(pt); });
       b.hidden = false;
     }
     setInterval(function () { try { balkToon(); } catch (e) {} }, 3000);
