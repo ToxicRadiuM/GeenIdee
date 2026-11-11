@@ -3223,7 +3223,7 @@ static void drawKaart() {
   auto wegBr = [](int soort) -> float { return soort == 2 ? 4.6f : soort == 1 ? 3.6f : 2.4f; };
   for (int pass = 0; pass < 2; pass++) {   // v87: eerst de donkere rand, dan de lichte weg erover
     if (wegen && wegPt) for (int i = 0; i < wegN; i++) {   // wegen om je heen
-      const Weg &g = wegen[i]; const float *pt = wegPt + g.p0;   // v114: p0 telt al per getal (stond dubbel: daardoor kriskras-lijnen) float px = 0, py = 0; bool pv = false; int soort = g.lim >= 100 ? 2 : g.lim >= 70 ? 1 : 0;
+      const Weg &g = wegen[i]; const float *pt = wegPt + g.p0; float px = 0, py = 0; bool pv = false; int soort = g.lim >= 100 ? 2 : g.lim >= 70 ? 1 : 0;   // v114: p0 telt al per getal (stond dubbel: kriskras-lijnen)
       for (int k = 0; k < g.n; k++) { float la = pt[k * 2], lo = pt[k * 2 + 1];
         if (fabsf(la - lat) > dla || fabsf(lo - lon) > dlo) { pv = false; continue; }
         float x, y; proj(la, lo, x, y); if (pv && (binnen(x, y) || binnen(px, py))) dikLijn(px, py, x, y, wegBr(soort) + (pass ? 0 : 2.2f), wegKl(soort, !pass)); px = x; py = y; pv = true; } }
