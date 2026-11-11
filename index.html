@@ -4592,12 +4592,13 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (tot > 0 && rt.duration) { rt._osrm = rt.duration; rt.duration = Math.max(tot, rt.duration * .6); } rt._echt = true; return rt;
   }
   function routeKandidaten(van, naar, qs) {   /* gewone alternatieven + routes via de bruggen, ontdubbeld */
-    var pad = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5), qa = qs + '&alternatives=3', uit = [];
+    var rh = navRoute.rh, br = function (n) { return rh == null ? '' : '&bearings=' + rh + ',35' + new Array(n).join(';') + '&radiuses=40' + new Array(n).join(';unlimited'); };
+    var pad = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5), qa = qs + '&alternatives=3' + br(2), uit = [];
     var BRUG = [[51.9077, 4.5384], [51.9186, 4.5861], [51.9935, 5.0936], [51.9620, 5.2300], [51.8197, 4.9690], [51.8100, 4.6510], [51.8836, 4.6230], [51.9550, 5.3920]], rec = gdist(van.lat, van.lon, naar.lat, naar.lon);
     var kand = BRUG.map(function (b) { return { b: b, d: gdist(van.lat, van.lon, b[0], b[1]) + gdist(b[0], b[1], naar.lat, naar.lon) }; }).filter(function (x) { return x.d < rec * 1.8 + 15000; }).sort(function (a, b) { return a.d - b.d; }).slice(0, 3);
     var vragen = [navGet('/route/' + pad + qa, 'https://router.project-osrm.org/route/v1/driving/' + pad + qa).then(function (j) { return (j && j.routes || []).map(function (rt) { return { rt: rt, via: null }; }); }).catch(function () { return []; })];
     kand.forEach(function (x) { var p = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + x.b[1].toFixed(4) + ',' + x.b[0].toFixed(4) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5);
-      vragen.push(fetch('https://router.project-osrm.org/route/v1/driving/' + p + qs).then(function (r) { return r.json(); }).then(function (k) { return k && k.routes && k.routes[0] ? [{ rt: k.routes[0], via: x.b }] : []; }).catch(function () { return []; })); });
+      vragen.push(fetch('https://router.project-osrm.org/route/v1/driving/' + p + qs + br(3)).then(function (r) { return r.json(); }).then(function (k) { return k && k.routes && k.routes[0] ? [{ rt: k.routes[0], via: x.b }] : []; }).catch(function () { return []; })); });
     return Promise.all(vragen).then(function (rs) { rs.forEach(function (l) { l.forEach(function (c) { echteDuur(c.rt); if (!uit.some(function (u) { return Math.abs(u.rt.distance - c.rt.distance) < c.rt.distance * .02 && Math.abs(u.rt.duration - c.rt.duration) < 60; })) uit.push(c); }); });
       uit.sort(function (a, b) { return a.rt.duration - b.rt.duration; }); return uit.slice(0, 4); });
   }
@@ -4643,12 +4644,15 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   function navRoute(van, naar, opnieuw) {
     if (navBusy) return; navBusy = true; navLastRoute = T;
     var qs = '?overview=full&geometries=geojson&steps=true';
+    /* v186: rijdend een route berekenen: de start moet op JOUW weg in JOUW richting liggen. Anders pakte hij de andere rijbaan of een afrit
+       ("neem de afrit, rotonde, oprit" terwijl je gewoon doorreed op de snelweg) */
+    var rh = lastPos && lastPos.hd != null && (S.speed || 0) > 15 ? Math.round((lastPos.hd + 360) % 360) : null; navRoute.rh = rh;
     if (!opnieuw) navStat('Routes zoeken…');
     var oud = opnieuw && nav ? nav : null;
     if (oud && oud.via && gdist(van.lat, van.lon, oud.via[0], oud.via[1]) < 400) oud.via = null;   /* brug al gepasseerd */
     var p0;
     if (oud && oud.via) { var p = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + oud.via[1].toFixed(4) + ',' + oud.via[0].toFixed(4) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5);
-      p0 = fetch('https://router.project-osrm.org/route/v1/driving/' + p + qs).then(function (r) { return r.json(); }).then(function (k) { return k && k.routes && k.routes[0] ? [{ rt: k.routes[0], via: oud.via }] : []; }); }
+      p0 = fetch('https://router.project-osrm.org/route/v1/driving/' + p + qs + (navRoute.rh == null ? '' : '&bearings=' + navRoute.rh + ',35;;&radiuses=40;unlimited;unlimited')).then(function (r) { return r.json(); }).then(function (k) { return k && k.routes && k.routes[0] ? [{ rt: k.routes[0], via: oud.via }] : []; }); }
     else p0 = routeKandidaten(van, naar, qs);
     p0.then(function (lijst) {
       if (!lijst.length) throw new Error('geen route gevonden');
@@ -5133,7 +5137,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v185';
+  var VERSION = 'v186';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
