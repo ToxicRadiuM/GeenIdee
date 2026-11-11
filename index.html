@@ -77,6 +77,7 @@
     }
     window.__nativeInfo = ['Bluetooth ' + (BLE ? '✓' : '✗'), 'GPS achtergrond ' + (BG ? '✓' : '✗'), 'spraak ' + (TTS ? '✓' : '✗'), 'plugins: ' + (kopjes.join(' ') || '?'), 'brug: ' + (typeof C.nativePromise)];
     window.__LN = reg('LocalNotifications');
+    var SB = reg('SystemBars'); window.__balken = function (zien) { if (!SB) return; try { (zien ? SB.show({}) : SB.hide({})).catch(function () {}); } catch (e) {} };   /* v183: in de autostand de Android-balken weg (volledig scherm) */
     if (WAK) { window.__houdWakker = function (aan) { (aan ? WAK.keepAwake() : WAK.allowSleep()).catch(function () {}); }; }
     return true;
   }
@@ -467,6 +468,8 @@ body.nacht #rijMap canvas { filter: brightness(.7) saturate(.85); }
 #rijAfslagD { font-size: 22px; white-space: nowrap; } #rijAfslagT { flex: 1; } #rijAfslagR { opacity: .85; white-space: nowrap; font-weight: 500; }
 #rijZoek { position: fixed; top: calc(10px + var(--sa-t)); left: calc(var(--bw, 0px) + 12px); right: 124px; max-width: 520px; z-index: 70; padding: 10px; border-radius: 16px; background: rgba(16,20,24,.96); box-shadow: 0 8px 24px rgba(0,0,0,.6); }
 #rijZoek[hidden] { display: none; }
+#rijZoek { z-index: 400 !important; max-height: calc(var(--vvh, 100vh) - 20px - var(--sa-t)); overflow-y: auto; }   /* v183: boven alle knoppen en kaart-icoontjes, en scrollbaar boven het toetsenbord */
+#rijZoek.typt #rijFav, #rijZoek.typt #rijPont { display: none; }   /* v183: tijdens het typen meteen de uitkomsten in beeld */
 #rijZoek .rzKop { display: flex; gap: 8px; } #rijZoekIn { flex: 1; font: 500 17px var(--f-body); padding: 10px 12px; border-radius: 10px; border: 1px solid #444; background: #0d1014; color: #fff; }
 #rijZoekSluit, #rijRouteStop { border: 1px solid #555; background: #1b1f24; color: #eee; border-radius: 10px; padding: 0 14px; font: 600 15px var(--f-body); min-height: 42px; }
 #rijRouteStop { margin-top: 8px; width: 100%; }
@@ -5125,7 +5128,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v182';
+  var VERSION = 'v183';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8741,6 +8744,15 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }, 5000);
   })();
 
+  /* ---------- v183: autostand netjes in de app (balken weg, zoekvenster boven het toetsenbord) ---------- */
+  (function () {
+    var was = null; function chk() { var c = document.body.classList.contains('car'); if (c !== was) { was = c; if (window.__balken) window.__balken(!c); } }
+    try { new MutationObserver(chk).observe(document.body, { attributes: true, attributeFilter: ['class'] }); } catch (e) {} chk();
+    function vv() { try { var h = window.visualViewport ? window.visualViewport.height : window.innerHeight; document.documentElement.style.setProperty('--vvh', h + 'px'); } catch (e) {} }
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', vv); window.addEventListener('resize', vv); vv();
+    var zi = $('rijZoekIn'); if (zi) zi.addEventListener('input', function () { $('rijZoek').classList.toggle('typt', zi.value.trim().length >= 2); });
+  })();
+
   /* ---------- v171: hartjes aan/uit ---------- */
   (function () { var c = $('hartjesOn'); if (!c) return; c.checked = window.__hartjesAan(); c.addEventListener('change', function () {
     try { localStorage.setItem('dashboardmaatje-hartjes', c.checked ? '1' : '0'); } catch (e) {} try { window.__scStuur && window.__scStuur('HART:' + (c.checked ? 1 : 0)); } catch (e) {}
@@ -10424,7 +10436,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
     }
     window.__favLees = favLees; window.__thuisFav = thuisFav;
     $('rijZoekKnop').addEventListener('click', function () { $('rijZoek').hidden = false; $('rijZoekRes').textContent = ''; zetFav = null; favToon(); var N = window.__nav && window.__nav.nu(); $('rijRouteStop').hidden = !N; setTimeout(function () { $('rijZoekIn').focus(); }, 50); });
-    $('rijZoekSluit').addEventListener('click', function () { $('rijZoek').hidden = true; });
+    $('rijZoekSluit').addEventListener('click', function () { $('rijZoek').hidden = true; $('rijZoek').classList.remove('typt'); });
     $('rijRouteStop').addEventListener('click', function () { if (window.__nav) window.__nav.stop(false); $('rijZoek').hidden = true; routeTeken(); afslagToon(); });
     $('rijZoekIn').addEventListener('input', function () {
       clearTimeout(zoekT); var q = $('rijZoekIn').value.trim(); if (q.length < 3) return;
