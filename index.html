@@ -5719,10 +5719,15 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
     }
     requestAnimationFrame(frame);
   }
-  function frame2(ts) {
+  /* v189: op de achtergrond (andere app open) tekent Android niets, dus liep Buddy's klok niet meer en dacht hij dat de GPS weg was.
+     Nu tikt hij dan gewoon elke seconde door, zonder te tekenen. */
+  var laatsteBeeld = 0;
+  setInterval(function () { var n = performance.now(); if (n - laatsteBeeld < 1500) return; try { frame2(n, true); } catch (e) {} }, 1000);
+  function frame2(ts, achter) {
     var t = ts / 1000;
+    if (!achter) laatsteBeeld = ts;
     if (last === null) last = t;
-    var dt = Math.min(0.1, t - last); last = t; T = t;
+    var dt = Math.min(achter ? 1.2 : 0.1, t - last); last = t; T = t;
     if (dt > 0) step(dt);
     liveTick();
     gagTick();
@@ -5730,6 +5735,7 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
     try { lifeTick(dt); if (window.__nameTick) window.__nameTick(); } catch (e) { lg('FOUT leven ' + e.message); }
     curKey = mood(); if (curKey === 'love' && !hartjesAan()) curKey = 'happy';   /* v171: hartjes alleen als je dat wilt */
     updateMood();
+    if (achter) return;
     render(dt > 0 ? dt : 0.016);
     if (T - lastUI > 0.12) { updateUI(); lastUI = T; }
   }
