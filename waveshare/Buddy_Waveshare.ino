@@ -3266,7 +3266,7 @@ static void drawKaart() {
   if (appCams) for (int i = 0; i < appCamN; i++) { const AppCam &c = appCams[i]; if (fabsf(c.lat - lat) > dla || fabsf(c.lon - lon) > dlo) continue; float x, y; proj(c.lat, c.lon, x, y); if (!binnen(x, y)) continue;   // v81: flitsers van de app
     circle(x, y, 6, 0xFFFF); circle(x, y, 4.5f, c.type == 3 ? 0xFD20 : c.type == 2 ? 0x041F : 0xF800); }
   triF(CX, CY - 12, CX - 9, CY + 9, CX + 9, CY + 9, 0xFFFF); triF(CX, CY - 7, CX - 5, CY + 6, CX + 5, CY + 6, 0x3D7F);   // jouw auto
-  circle(120, 36, 27, 0x0000); circle(120, 36, 27, 0x2945); circle(120, 36, 25, 0x0000); miniBuddy(120, 38, .4f, false, 0);   // Buddy klein bovenin
+  circle(36, 166, 19, 0x2945); circle(36, 166, 17.5f, 0x0000); miniBuddy(36, 167, .4f, false, 0);   // v116: Buddy klein linksonder, niet meer bovenin waar je weg vooruit loopt
   // v111: kompas-N weggehaald
   int lim = phoneFresh() && phone.lim > 0 ? phone.lim : wegLimiet;
   { int vk = (int)lroundf(v); char sp[8]; snprintf(sp, sizeof sp, "%d", vk); roundRect(162, 100, 56, 44, 12, 0x0000); segTekst(sp, 190, 116, 20, lim > 0 && vk > lim + 3 ? 0xF800 : EYE);   // snelheid rechts (v111: met km/u, iets naar binnen)
