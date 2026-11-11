@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 113;   // v113: voortgang zichtbaar bij update via de telefoon
+static const int FW_VERSIE = 114;   // v114: kaart: wegen en files op de goede plek (verkeerde rekensom gaf kriskras-lijnen)
+// v113:   // v113: voortgang zichtbaar bij update via de telefoon
 // v112:   // v112: navigatiebalk weer de oude maat, grote tekst in het midden, loopt vol naar de afslag
 // v111:   // v111: kaart netter: geen N, grotere navigatiebalk, bord/snelheid uit de rand; muts af bij tekst
 // v110:   // v110: kaart: groter bord, snelheid, duidelijke N; KAART-knop bovenop en ook tijdens navigatie
@@ -2615,9 +2616,9 @@ static void fileVoorStap() {   // ligt er een file of werk voor je (binnen 3 km,
   float lat = gpsLat, lon = gpsLon, hd = gpsKoers; int bestF = -1, bestMin = 0; bool werk = false;
   for (int i = 0; i < jamN; i++) {
     const Jam &x = jams[i]; float dmin = 1e9; int pi = -1;
-    for (int k = 0; k < x.n; k++) { float d = afstandM(lat, lon, jamPt[(x.p0 + k) * 2], jamPt[(x.p0 + k) * 2 + 1]); if (d < dmin) { dmin = d; pi = k; } }
+    for (int k = 0; k < x.n; k++) { float d = afstandM(lat, lon, jamPt[x.p0 + k * 2], jamPt[x.p0 + k * 2 + 1]); if (d < dmin) { dmin = d; pi = k; } }
     if (pi < 0 || dmin > 3000) continue;
-    float la = jamPt[(x.p0 + pi) * 2], lo = jamPt[(x.p0 + pi) * 2 + 1];
+    float la = jamPt[x.p0 + pi * 2], lo = jamPt[x.p0 + pi * 2 + 1];
     float br = atan2f((lo - lon) * cosf(lat * 0.0174533f), la - lat) * 57.2958f, df = fabsf(fmodf(fabsf(br - hd), 360.f)); if (df > 180) df = 360 - df;
     if (dmin > 80 && df > 60) continue;   // achter je of opzij
     if (x.k == 'j') { if (bestF < 0 || dmin < bestF) { bestF = (int)dmin; bestMin = x.d / 60; } }
@@ -3222,7 +3223,7 @@ static void drawKaart() {
   auto wegBr = [](int soort) -> float { return soort == 2 ? 4.6f : soort == 1 ? 3.6f : 2.4f; };
   for (int pass = 0; pass < 2; pass++) {   // v87: eerst de donkere rand, dan de lichte weg erover
     if (wegen && wegPt) for (int i = 0; i < wegN; i++) {   // wegen om je heen
-      const Weg &g = wegen[i]; const float *pt = wegPt + g.p0 * 2; float px = 0, py = 0; bool pv = false; int soort = g.lim >= 100 ? 2 : g.lim >= 70 ? 1 : 0;
+      const Weg &g = wegen[i]; const float *pt = wegPt + g.p0;   // v114: p0 telt al per getal (stond dubbel: daardoor kriskras-lijnen) float px = 0, py = 0; bool pv = false; int soort = g.lim >= 100 ? 2 : g.lim >= 70 ? 1 : 0;
       for (int k = 0; k < g.n; k++) { float la = pt[k * 2], lo = pt[k * 2 + 1];
         if (fabsf(la - lat) > dla || fabsf(lo - lon) > dlo) { pv = false; continue; }
         float x, y; proj(la, lo, x, y); if (pv && (binnen(x, y) || binnen(px, py))) dikLijn(px, py, x, y, wegBr(soort) + (pass ? 0 : 2.2f), wegKl(soort, !pass)); px = x; py = y; pv = true; } }
@@ -3230,7 +3231,7 @@ static void drawKaart() {
       for (int k = 0; k < n; k++) { float la = awPt[k * 2], lo = awPt[k * 2 + 1]; if (awF[k] & 1) pv = false; if (fabsf(la - lat) > dla || fabsf(lo - lon) > dlo) { pv = false; continue; }
         float x, y; proj(la, lo, x, y); int soort = (awF[k] & 4) ? 2 : (awF[k] & 2) ? 1 : 0; if (pv && (binnen(x, y) || binnen(px, py))) dikLijn(px, py, x, y, wegBr(soort) + (pass ? 0 : 2.2f), wegKl(soort, !pass)); px = x; py = y; pv = true; } } }
   if (jams && jamPt) for (int i = 0; i < jamN; i++) { const Jam &jm = jams[i]; float px = 0, py = 0; bool pv = false;   // v87: files als rode stukken weg
-    for (int k = 0; k < jm.n; k++) { float la = jamPt[(jm.p0 + k) * 2], lo = jamPt[(jm.p0 + k) * 2 + 1]; if (fabsf(la - lat) > dla || fabsf(lo - lon) > dlo) { pv = false; continue; }
+    for (int k = 0; k < jm.n; k++) { float la = jamPt[jm.p0 + k * 2], lo = jamPt[jm.p0 + k * 2 + 1]; if (fabsf(la - lat) > dla || fabsf(lo - lon) > dlo) { pv = false; continue; }
       float x, y; proj(la, lo, x, y); if (pv && (binnen(x, y) || binnen(px, py))) dikLijn(px, py, x, y, 5, jm.k == 'w' ? 0xFD20 : 0xF800); px = x; py = y; pv = true; } }
   { float px = 0, py = 0; bool pv = false; const float *r = rtPt; int n = rtN;   // de route
     for (int pass = 0; pass < 2; pass++) { pv = false;
