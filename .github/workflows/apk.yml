@@ -36,6 +36,7 @@ jobs:
           for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do n=${d%%:*}; s=${d##*:}; convert ../icon-512.png -resize ${s}x${s} $R/mipmap-$n/ic_launcher.png; cp $R/mipmap-$n/ic_launcher.png $R/mipmap-$n/ic_launcher_round.png; rm -f $R/mipmap-$n/ic_launcher_foreground.png; done
           rm -rf $R/mipmap-anydpi-v26
           mkdir -p $R/drawable && cp res/ic_stat_buddy.xml $R/drawable/
+          cp native/MainActivity.java android/app/src/main/java/nl/toxicradium/buddy/MainActivity.java   # blijft doorwerken op de achtergrond
           sed -i 's#</resources>#    <string name="capacitor_background_geolocation_notification_icon">drawable/ic_stat_buddy</string>\n    <string name="capacitor_background_geolocation_notification_channel_name">Buddy rijdt mee</string>\n</resources>#' $R/values/strings.xml
           sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/; s/versionName \"[^\"]*\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
           # Vaste sleutel uit de geheime instelling APK_KEYSTORE (base64), zodat een nieuwe APK over de oude heen kan.
