@@ -906,6 +906,14 @@ body.car.kaartrij #rijWissers i { width: 4px; animation: wisserRust 9s ease-in-o
 @keyframes wisserRust { 0%, 78%, 100% { transform: rotate(-92deg); opacity: 0; } 80% { transform: rotate(-80deg); opacity: .9; } 87% { transform: rotate(14deg); opacity: .9; } 95% { transform: rotate(-80deg); opacity: .9; } 97% { opacity: 0; } }
 /* minder herfstblaadjes tijdens het rijden */
 body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; } body.car.kaartrij #rijSeizoen .blad { font-size: 16px; }
+/* v188: met route: de balk ligt als dunne lijn onderin het afslagbord (zoals de Tesla), jij bent het rode pijltje, files en flitsers staan op de lijn */
+#rijBalk.hor { position: relative !important; inset: auto !important; top: auto !important; left: auto !important; right: auto !important; bottom: auto !important; order: 9; flex-basis: 100%; width: auto !important; height: 30px; margin-top: 2px; border-radius: 0; background: none; box-shadow: none; transform: none !important; }
+#rijBalk.hor .rbKop { display: none; }
+#rijBalk.hor #rbBaan { left: 14px; right: 14px; width: auto; top: 13px; bottom: auto; height: 4px; border-radius: 2px; background: #5ab0ff; }
+#rijBalk.hor .rbGedaan { top: 0; bottom: 0; left: 0; right: auto; height: auto; background: rgba(255,255,255,.3); }
+#rijBalk.hor .rbIk { bottom: auto !important; top: -10px; left: 0; right: auto; width: 24px; margin-left: -12px; color: #ff3b30; font-size: 20px; line-height: 24px; text-shadow: 0 0 3px #fff, 0 0 1px #fff; transition: left 1s linear; z-index: 3; }
+#rijBalk.hor .rbStuk { top: -2px; height: 8px; width: auto; left: 0; border-radius: 4px; }
+#rijBalk.hor .rbPunt { top: -10px; bottom: auto !important; left: 0; width: 22px; height: 22px; margin: 0 0 0 -11px; border-radius: 11px; font-size: 11px; line-height: 18px; }
 </style>
 
 </head>
@@ -5167,7 +5175,7 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v187';
+  var VERSION = 'v188';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8167,7 +8175,7 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
     var blVerz = '', tjVerz = '';
     setInterval(function () {   /* v137: de boog voor Buddy+ en de trajectcontrole-meter */
       if (!rx || bezig || rtBezig) return;
-      var B = window.__balk; if (B && Date.now() - B.t < 10000) { var r = 'BL:' + Math.round(B.lang / 100) + '|' + B.items.slice(0, 18).map(function (it) { return (it.s || 'c') + Math.round(Math.min(1, it.d / B.lang) * 999) + (it.d2 ? '-' + Math.round(Math.min(1, it.d2 / B.lang) * 999) : ''); }).join(';');
+      var B = window.__balk; if (B && Date.now() - B.t < 10000) { var r = 'BL:' + Math.round(B.lang / 100) + '|' + (B.vf >= 0 ? 'j' + Math.round(Math.min(1, B.vf) * 999) + ';' : '') + B.items.slice(0, 18).map(function (it) { return (it.s || 'c') + Math.round(Math.min(1, it.d / B.lang) * 999) + (it.d2 ? '-' + Math.round(Math.min(1, it.d2 / B.lang) * 999) : ''); }).join(';');
         if (r !== blVerz) { blVerz = r; klein(r.slice(0, 200)); } }
       var tj = S.traj ? 'TJ:' + Math.round(trajAvg()) + '|' + (S.traj.limit || 0) + '|' + Math.max(0, Math.round((S.traj.len - S.traj.done) / 100)) + '|' + Math.round(Math.min(1, S.traj.done / Math.max(1, S.traj.len)) * 1000) : 'TJ:X';
       if (tj !== tjVerz && !(tj === 'TJ:X' && tjVerz === '')) { tjVerz = tj; klein(tj); }
@@ -10520,15 +10528,20 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
       window.__msiVoor = voorBord ? { g: voorBord.g, d: voorBord.d, t: Date.now() } : null;
       try { var mb = $('rijMsiBord'); if (voorBord && zien) { mb.textContent = ''; voorBord.g.l.slice(0, 6).forEach(function (l) { mb.appendChild(msiVak(l)); }); var sm = document.createElement('small'); sm.textContent = Math.round(voorBord.d / 50) * 50 + ' m'; mb.appendChild(sm); mb.hidden = false; } else mb.hidden = true; } catch (e) {}
       trj.forEach(function (t) { var a = opPad(t[0][0], t[0][1], 300), z = opPad(t[1][0], t[1][1], 300); if (a < 0 && z < 0) return; a = a < 0 ? 0 : a; z = z < 0 ? lang : z; if (z < a) { var w = a; a = z; z = w; } items.push({ d: a, d2: z, kl: '#bf5af2', i: '⏱️', s: 't' }); });
-      window.__balk = { lang: lang, items: items.slice(), t: Date.now() }; if (!zien) { b.hidden = true; return; }
-      var baan = $('rbBaan'); baan.textContent = '';
+      window.__balk = { lang: lang, items: items.slice(), t: Date.now(), vf: typeof heel !== 'undefined' && N && N.geom ? (heel - lang) / heel : -1 }; if (!zien) { b.hidden = true; return; }
+      var baan = $('rbBaan'), ikEl = b.querySelector('.rbIk'); baan.textContent = '';
       var hele = typeof heel !== 'undefined' && N && N.geom ? heel : 0, voorbij = hele ? hele - lang : 0, schaal = hele || lang, ikF = hele ? voorbij / hele : 0;
-      if (hele) { var gd = document.createElement('div'); gd.className = 'rbGedaan'; gd.style.height = (ikF * 100) + '%'; baan.appendChild(gd); }
-      var ikEl = b.querySelector('.rbIk'); if (ikEl) ikEl.style.bottom = hele ? 'calc(24px + ' + ikF.toFixed(4) + ' * (100% - 68px))' : '6px';
+      var afE = $('rijAfslag'), hor = !!(hele && afE && !afE.hidden);   /* v188: met route een liggende lijn in het afslagbord, zoals in de Tesla */
+      if (hor && b.parentNode !== afE) { if (!b.__thuis) b.__thuis = b.parentNode; afE.appendChild(b); }
+      if (!hor && b.__thuis && b.parentNode !== b.__thuis) b.__thuis.insertBefore(b, afE);
+      b.classList.toggle('hor', hor); if (hor) b.style.top = '';
+      var POS = hor ? 'left' : 'bottom', MAAT = hor ? 'width' : 'height';
+      if (hele) { var gd = document.createElement('div'); gd.className = 'rbGedaan'; gd.style[MAAT] = (ikF * 100) + '%'; baan.appendChild(gd); }
+      if (ikEl) { ikEl.textContent = hor ? '➤' : '▲'; ikEl.style.bottom = hor ? '' : hele ? 'calc(24px + ' + ikF.toFixed(4) + ' * (100% - 68px))' : '6px'; ikEl.style.left = hor ? 'calc(' + (ikF * 100).toFixed(3) + '%)' : ''; if (hor) baan.appendChild(ikEl); else if (ikEl.parentNode !== b) b.appendChild(ikEl); }
       items.sort(function (x, y) { return x.d - y.d; }).forEach(function (it) {
         var p0 = (voorbij + it.d) / schaal * 100;
-        if (it.d2) { var st = document.createElement('div'); st.className = 'rbStuk'; st.style.background = it.kl; st.style.bottom = Math.min(100, p0) + '%'; st.style.height = Math.max(2, Math.min(100 - p0, (it.d2 - it.d) / schaal * 100)) + '%'; baan.appendChild(st); }
-        var pt = document.createElement('div'); pt.className = 'rbPunt'; pt.style.borderColor = it.kl; pt.style.bottom = Math.min(100, p0) + '%'; pt.textContent = it.i; baan.appendChild(pt); });
+        if (it.d2) { var st = document.createElement('div'); st.className = 'rbStuk'; st.style.background = it.kl; st.style[POS] = Math.min(100, p0) + '%'; st.style[MAAT] = Math.max(hor ? 1 : 2, Math.min(100 - p0, (it.d2 - it.d) / schaal * 100)) + '%'; baan.appendChild(st); }
+        var pt = document.createElement('div'); pt.className = 'rbPunt'; pt.style.borderColor = it.kl; pt.style[POS] = Math.min(100, p0) + '%'; pt.textContent = it.i; baan.appendChild(pt); });
       b.hidden = false;
     }
     setInterval(function () { try { balkToon(); } catch (e) {} }, 3000);

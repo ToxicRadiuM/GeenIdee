@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 115;   // v115: rijstroken, rotonde-afslagnummer, aankomst duidelijker, 'goed zo' na een afslag, nachtkaart, sneller internet via de telefoon
+static const int FW_VERSIE = 116;   // v116: route als rechte lijn in het bordje bovenin (zoals de Tesla)
+// oud:   // v115: rijstroken, rotonde-afslagnummer, aankomst duidelijker, 'goed zo' na een afslag, nachtkaart, sneller internet via de telefoon
 // v114:   // v114: kaart: wegen en files op de goede plek (verkeerde rekensom gaf kriskras-lijnen)
 // v113:   // v113: voortgang zichtbaar bij update via de telefoon
 // v112:   // v112: navigatiebalk weer de oude maat, grote tekst in het midden, loopt vol naar de afslag
@@ -1194,10 +1195,11 @@ static volatile uint16_t bnId = 0, bnSeq = 0; static volatile uint32_t bnLaatst 
 static const int RT_MAX = 1200; static float *rtA = nullptr, *rtB = nullptr, *rtPt = nullptr; static volatile int rtN = 0; static int rtNieuwN = 0; static bool rtBezig = false;
 static uint8_t kaartStand = 0; static uint32_t kaartGezichtTot = 0, kaartOvergangT = 0, kaartSluitT = 0; static bool kaartVorige = false;
 static uint8_t *rtFile = nullptr;   // v81: 1 = dit stukje route ligt in een file (rood)
-struct BlItem { char s; int16_t a, b; }; static BlItem blItems[20]; static volatile int blN = 0; static int blLang = 0; static uint32_t blT = 0;   // v84: de boog (wat komt eraan)
+struct BlItem { char s; int16_t a, b; }; static BlItem blItems[20]; static volatile int blN = 0; static int blLang = 0; static uint32_t blT = 0; static int blKlaar = -1;   // v116: blKlaar = hoeveel van de hele route al gereden (promille), -1 = onbekend   // v84: de boog (wat komt eraan)
 static int tjAvg = 0, tjLim = 0, tjRest = 0; static float tjFrac = 0; static uint32_t tjT = 0;   // v84: trajectcontrole van de app
 static char nvBaan[14] = ""; static int nvAfrit = 0; static uint32_t goedZoT = 0;   // v115: rijstroken (+ = goede baan; L l S r R U), afrit op de rotonde, duim na een afslag
 static char nvNaam[26] = "", nvEta[6] = ""; static int nvRest = -1; static uint32_t nvT = 0;   // v85: straat van de volgende afslag, resterende afstand (100 m) en aankomsttijd
+static bool blLijn(); static void tekenLijn(float x0, float x1, float y);   // v116
 static char eNavC = 0; static int eNavD = 0;   // v103
 struct StapPt { float lat, lon; char c; }; static StapPt *stA = nullptr, *stB = nullptr, *stappen = nullptr; static volatile int stapN = 0; static int stNieuwN = 0; static bool stBezig = false;   // v85: afslagen en rotondes op de route
 static const int AW_MAX = 900; static float *awA = nullptr, *awB = nullptr, *awPt = nullptr; static uint8_t *awFA = nullptr, *awFB = nullptr, *awF = nullptr; static volatile int awN = 0; static int awNieuwN = 0; static bool awBezig = false;   // v85: wegen om je heen van de app (bit 1 = begin van een weg, bit 2 = grote weg)
@@ -1242,7 +1244,7 @@ static void parsePhone(char *line) {
     return; }
   if (pinOk && !strncmp(line, "BL:", 3)) {   // v84: BL:<lengte in 100 m>|<soort><van>[-<tot>];...  (van/tot in promille)
     char *q; blLang = (int)strtol(line + 3, &q, 10); int n = 0; if (*q == '|') { q++;
-      while (*q && n < 20) { BlItem it; it.s = *q++; it.a = (int16_t)strtol(q, &q, 10); it.b = -1; if (*q == '-') it.b = (int16_t)strtol(q + 1, &q, 10); blItems[n++] = it; if (*q == ';') q++; else break; } }
+      blKlaar = -1; while (*q && n < 20) { BlItem it; it.s = *q++; it.a = (int16_t)strtol(q, &q, 10); it.b = -1; if (*q == '-') it.b = (int16_t)strtol(q + 1, &q, 10); if (it.s == 'j') blKlaar = it.a; else blItems[n++] = it; if (*q == ';') q++; else break; } }
     blN = n; blT = millis(); return; }
   if (pinOk && !strncmp(line, "TJ:", 3)) {   // v84: TJ:<gem>|<limiet>|<rest in 100 m>|<voortgang promille> of TJ:X
     if (line[3] == 'X') { tjT = 0; return; } char *q; tjAvg = strtol(line + 3, &q, 10); if (*q == '|') tjLim = strtol(q + 1, &q, 10); if (*q == '|') tjRest = strtol(q + 1, &q, 10); if (*q == '|') tjFrac = strtol(q + 1, &q, 10) / 1000.f; tjT = millis(); return; }
@@ -3285,12 +3287,26 @@ static void drawKaart() {
     if (nvNaam[0] && eNavC) { int L = strlen(nvNaam); if (L > 18) L = 18; char nm[20]; memcpy(nm, nvNaam, L); nm[L] = 0;
       float w = L * 6.4f; roundRect(120 - w / 2 - 6, 160, w + 12, 20, 10, 0x0000); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - L * 6, Y(163)); frame->print(nm); }
     if (nvRest >= 0) { char rt[20]; if (nvRest >= 100) snprintf(rt, sizeof rt, "%d km %s", nvRest / 10, nvEta); else snprintf(rt, sizeof rt, "%d,%d km %s", nvRest / 10, nvRest % 10, nvEta);
-      int L = strlen(rt); float w = L * 12 + 26; roundRect(120 - w / 2, 64, w, 22, 11, 0x0000); frame->drawRoundRect(X(120 - w / 2), Y(64), S(w), S(22), S(11), 0x4208);   // v115: aankomst duidelijker, met vlaggetje
+      int L = strlen(rt); bool lijn = blLijn(); float w = L * 12 + 26, h = lijn ? 36 : 22; if (lijn && w < 170) w = 170; roundRect(120 - w / 2, 64, w, h, 11, 0x0000); frame->drawRoundRect(X(120 - w / 2), Y(64), S(w), S(h), S(11), 0x4208);   // v115: aankomst duidelijker, met vlaggetje
+      if (lijn) tekenLijn(120 - w / 2 + 12, 120 + w / 2 - 12, 91);   // v116: de lijn van de hele route
       for (int r2 = 0; r2 < 2; r2++) for (int c2 = 0; c2 < 3; c2++) showRect(120 - w / 2 + 7 + c2 * 3, 69 + r2 * 3, 3, 3, ((r2 + c2) & 1) ? 0x0000 : 0xFFFF);
       frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120 - w / 2 + 20), Y(68)); frame->print(rt); } }
   if ((int32_t)(goedZoT - millis()) > 0) { roundRect(78, 92, 84, 24, 12, 0x0B0A); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 42, Y(97)); frame->print("GOED ZO"); }   // v115: na een afslag
   uint32_t ov = millis() - kaartOvergangT;   // v77: overgang: twee handjes trekken het gezicht open
   if (kaartOvergangT && ov < 1500) { float t = ov / 1500.f; kaartOvergang(t < .3f ? 0 : powf((t - .3f) / .7f, 1.6f), t < .3f ? t / .3f : 1); }
+}
+// v116: met route: een rechte lijn in het bordje bovenin, zoals in de Tesla. Rood pijltje = jij, blauw = wat je nog moet, files en flitsers erop.
+static bool blLijn() { return blT && millis() - blT < 20000 && blLang > 0 && nvT && millis() - nvT < 15000 && nvRest >= 0; }
+static void tekenLijn(float x0, float x1, float y) {
+  float pk = blKlaar >= 0 ? blKlaar / 1000.f : 0, xi = x0 + (x1 - x0) * pk, L = x1 - xi;
+  if (xi > x0 + 1) dikLijn(x0, y, xi, y, 2, 0x4A69);   // al gereden: grijs
+  dikLijn(xi, y, x1, y, 3, 0x3D7F);                    // nog te gaan: blauw
+  for (int i = 0; i < blN; i++) { const BlItem &it = blItems[i]; if (it.b < 0) continue; uint16_t kl = it.s == 'f' ? 0xF800 : it.s == 'x' ? 0x8000 : it.s == 't' ? 0xB81F : 0xFD20;
+    float a = xi + L * it.a / 1000.f, b = xi + L * it.b / 1000.f; if (b - a < 3) b = a + 3; dikLijn(a, y, b, y, 5, kl); }
+  for (int i = 0; i < blN; i++) { const BlItem &it = blItems[i]; if (it.b >= 0) continue; float x = xi + L * it.a / 1000.f;
+    if (it.s == 'b') { circle(x, y, 4, 0xF800); circle(x, y, 2.4f, 0xFFFF); } else { circle(x, y, 4, 0xFFFF); circle(x, y, 2.8f, it.s == 'm' ? 0xFD20 : 0xF800); } }
+  circle(x1, y, 3, 0xFFFF);                                                   // bestemming
+  triF(xi - 5, y - 5, xi - 5, y + 5, xi + 6, y, 0xF800); dikLijn(xi - 5, y - 5, xi + 6, y, 1, 0xFFFF); dikLijn(xi - 5, y + 5, xi + 6, y, 1, 0xFFFF);   // jij
 }
 // v84: dingen rond de rand: de boog met wat er komt, een kompasstipje, muzieknootjes en sterren als hij slaapt
 static void boogStuk(float f0, float f1, float r, float w, uint16_t kl) {   // f = 0 onderaan (jij) .. 1 bovenaan
@@ -3300,7 +3316,7 @@ static void boogStuk(float f0, float f1, float r, float w, uint16_t kl) {   // f
 static void drawRand(bool kaart) {
   if (menuOpen || venster || (int32_t)(showTot - millis()) > 0) return;
   uint32_t nu = millis();
-  if (blT && nu - blT < 20000 && blLang > 0) {
+  if (blT && nu - blT < 20000 && blLang > 0 && !(kaart && blLijn())) {   // v116: met route op de kaart staat het in de lijn bovenin
     const float A0 = .61f, A1 = -.96f, R = kaart ? 100 : 104, W = kaart ? 6 : 4;
     boxAdd(150, 4, 240, 196);
     boogStuk(0, 1, R, W + 3, 0x0841); boogStuk(0, 1, R, 2, 0x8C71);
