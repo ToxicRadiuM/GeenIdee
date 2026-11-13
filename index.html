@@ -4630,6 +4630,9 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
       lt += t; }); if (l.steps && l.steps.length) l.duration = lt; tot += l.duration || 0; });
     if (tot > 0 && rt.duration) { rt._osrm = rt.duration; rt.duration = Math.max(tot, rt.duration * .6); } rt._echt = true; return rt;
   }
+  function heeftOmkeer(rt) {   /* v191: zit er in de eerste 1,5 km een 'omkeren' in? */
+    var d = 0; try { for (var i = 0; i < rt.legs.length; i++) for (var j = 0; j < rt.legs[i].steps.length; j++) { var st = rt.legs[i].steps[j]; if (d > 1500) return false; if (st.maneuver && st.maneuver.modifier === 'uturn') return true; d += st.distance || 0; } } catch (e) {} return false;
+  }
   function routeKandidaten(van, naar, qs) {   /* gewone alternatieven + routes via de bruggen, ontdubbeld */
     var rh = navRoute.rh, br = function (n) { return rh == null ? '' : '&bearings=' + rh + ',35' + new Array(n).join(';') + '&radiuses=40' + new Array(n).join(';unlimited'); };
     var pad = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5), qa = qs + '&alternatives=3' + br(2), uit = [];
@@ -4698,7 +4701,10 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
     else p0 = routeKandidaten(van, naar, qs);
     p0.then(function (lijst) {
       if (!lijst.length) throw new Error('geen route gevonden');
-      if (opnieuw) { var wilPont = oud ? oud.pont : !navPont, ok = lijst.filter(function (c) { return wilPont || !heeftPont(c.rt); }); var c = (ok.length ? ok : lijst)[0]; navBouw(c.rt, naar, true, c.via); return; }
+      if (opnieuw) { var wilPont = oud ? oud.pont : !navPont, ok = lijst.filter(function (c) { return wilPont || !heeftPont(c.rt); }); if (!ok.length) ok = lijst;
+        /* v191: rijdend nooit een nieuwe route die begint met 'omkeren': je rijdt bewust deze kant op (bv. om een file heen). Liever een route die vooruit verder gaat */
+        if ((S.speed || 0) > 15) { var vooruit = ok.filter(function (c) { return !heeftOmkeer(c.rt); }); if (vooruit.length && vooruit[0] !== ok[0]) lg('route: route zonder omkeren gekozen (' + Math.round(vooruit[0].rt.distance / 100) / 10 + ' km)'); if (vooruit.length) ok = vooruit; }
+        var c = ok[0]; navBouw(c.rt, naar, true, c.via); return; }
       if (navPont) { var vrij = lijst.filter(function (c) { return !heeftPont(c.rt); }); if (vrij.length) lijst = vrij.concat(lijst.filter(function (c) { return heeftPont(c.rt); })); }
       if (lijst.length === 1) { navBouw(lijst[0].rt, naar, false, lijst[0].via); return; }
       navStat('Kies een route.'); routeKies(lijst, naar);
@@ -4749,7 +4755,8 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
     /* Van de route af? Na een paar metingen opnieuw rekenen (hooguit eens per 20 s) */
     if (acc < 35) {
       if (af > 70) nav.off = (nav.off || 0) + 1; else nav.off = 0;
-      if (nav.off >= 4 && T - navLastRoute > 20) { nav.off = 0; lg('route: van de route af (' + Math.round(af) + ' m)'); navRoute({ lat: lat, lon: lon }, nav.dest, true); return; }
+      var vaak = (navRoute.tel || []).filter(function (t) { return T - t < 150; }).length >= 3;   /* v191: al 3x in 2,5 min herberekend? dan rustiger: langer wachten */
+      if (nav.off >= (vaak ? 8 : 4) && T - navLastRoute > (vaak ? 45 : 20)) { nav.off = 0; navRoute.tel = (navRoute.tel || []).concat([T]).slice(-5); lg('route: van de route af (' + Math.round(af) + ' m)'); navRoute({ lat: lat, lon: lon }, nav.dest, true); return; }
     }
     nav.d = d;
     S.navLook = d < 250 && !navStil(st) ? navKijk(st) : 0;
@@ -5179,7 +5186,7 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v190';
+  var VERSION = 'v191';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
