@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 116;   // v116: route als rechte lijn in het bordje bovenin (zoals de Tesla)
+static const int FW_VERSIE = 117;   // v117: route als boog bovenin, rijstroken klein onderaan, midden vrij
+// oud:   // v116: route als rechte lijn in het bordje bovenin (zoals de Tesla)
 // oud:   // v115: rijstroken, rotonde-afslagnummer, aankomst duidelijker, 'goed zo' na een afslag, nachtkaart, sneller internet via de telefoon
 // v114:   // v114: kaart: wegen en files op de goede plek (verkeerde rekensom gaf kriskras-lijnen)
 // v113:   // v113: voortgang zichtbaar bij update via de telefoon
@@ -3168,16 +3169,16 @@ static void kaartGordijn(float open, float hg) {   // v81: gezicht als gordijn m
 }
 // v105: verschillende manieren om de kaart open en dicht te doen (p = 0 dicht .. 1 open)
 static uint8_t ovSoort = 0;
-static void baanPijl(float cx, float cy, char c, uint16_t kl) {   // v115: klein pijltje voor een rijstrook
-  float a = c == 'L' ? -90 : c == 'l' ? -45 : c == 'R' ? 90 : c == 'r' ? 45 : c == 'U' ? 180 : 0, rd = a * .0174533f, dx = sinf(rd), dy = -cosf(rd);
-  dikLijn(cx - dx * 5, cy + 6 - dy * 1, cx + dx * 2, cy + dy * 2, 1.8f, kl); if (c != 'S') dikLijn(cx, cy + 6, cx, cy + 1, 1.8f, kl);
+static void baanPijl(float cx, float cy, char c, uint16_t kl, float k = 1) {   // v115: klein pijltje voor een rijstrook (v117: k = schaal)
+  float a = c == 'L' ? -90 : c == 'l' ? -45 : c == 'R' ? 90 : c == 'r' ? 45 : c == 'U' ? 180 : 0, rd = a * .0174533f, dx = sinf(rd) * k, dy = -cosf(rd) * k;
+  dikLijn(cx - dx * 5, cy + 6 * k - dy * 1, cx + dx * 2, cy + dy * 2, 1.8f * k, kl); if (c != 'S') dikLijn(cx, cy + 6 * k, cx, cy + k, 1.8f * k, kl);
   triF(cx + dx * 7, cy + dy * 7, cx + dx * 2 - dy * 4, cy + dy * 2 + dx * 4, cx + dx * 2 + dy * 4, cy + dy * 2 - dx * 4, kl);
 }
 static void drawBanen(float cy) {   // v115: rijstroken als vakjes, de goede wit
   int n = 0; char c[7]; bool ok[7]; for (const char *p = nvBaan; *p && n < 7; p++) { if (*p == '+' || *p == '-') { ok[n] = *p == '+'; c[n] = p[1] ? p[1] : 'S'; n++; p++; } }
-  if (n < 2) return; float w = 18, x0 = 120 - n * (w + 3) / 2 + 1.5f; boxAdd(x0 - 4, cy - 14, x0 + n * (w + 3) + 4, cy + 14);
-  roundRect(x0 - 4, cy - 13, n * (w + 3) + 5, 26, 8, 0x0000);
-  for (int i = 0; i < n; i++) { float x = x0 + i * (w + 3); roundRect(x, cy - 10, w, 20, 5, ok[i] ? 0xFFFF : 0x2104); baanPijl(x + w / 2, cy - 1, c[i], ok[i] ? 0x0000 : 0x6B4D); }
+  if (n < 2) return; float w = 12, x0 = 120 - n * (w + 2) / 2 + 1;   // v117: klein, onderin onder het groene balkje, niet meer midden in beeld
+  roundRect(x0 - 3, cy - 9, n * (w + 2) + 4, 18, 6, 0x0000);
+  for (int i = 0; i < n; i++) { float x = x0 + i * (w + 2); roundRect(x, cy - 7, w, 14, 4, ok[i] ? 0xFFFF : 0x2104); baanPijl(x + w / 2, cy - 1, c[i], ok[i] ? 0x0000 : 0x6B4D, .62f); }
 }
 static void drawKaartKnop() {   // v110: bovenop alles, ook als er genavigeerd wordt (dan iets lager, onder de pijl)
   if (!rtN || kaartNu() || menuOpen || venster || spel || eNavC) return;   // v111: tijdens navigatie geen knop over de ogen; tik bovenin opent de kaart
@@ -3283,30 +3284,35 @@ static void drawKaart() {
     char nd[16]; if (eNavD >= 950) snprintf(nd, sizeof nd, "%d,%d km", eNavD / 1000, (eNavD % 1000) / 100); else snprintf(nd, sizeof nd, "%d m", (eNavD / 10) * 10);
     int L = strlen(nd), sz = L <= 5 ? 3 : 2; float tm = bx + 38 + (bw - 38) / 2; frame->setTextColor(0xFFFF); frame->setTextSize(sz); frame->setCursor(X(tm) - L * 3 * sz, Y(cy) - 4 * sz); frame->print(nd); }
   if (nvT && millis() - nvT < 15000) {   // v85: straatnaam van de volgende afslag, en bovenin hoe ver nog en hoe laat je er bent
-    if (eNavC && nvBaan[0] && eNavD > 0 && eNavD < 1500) drawBanen(nvNaam[0] ? 138 : 162);   // v115: rijstroken boven de straatnaam
+    if (eNavC && nvBaan[0] && eNavD > 0 && eNavD < 1500) drawBanen(225);   // v117: rijstroken klein onderaan, onder het groene balkje
     if (nvNaam[0] && eNavC) { int L = strlen(nvNaam); if (L > 18) L = 18; char nm[20]; memcpy(nm, nvNaam, L); nm[L] = 0;
       float w = L * 6.4f; roundRect(120 - w / 2 - 6, 160, w + 12, 20, 10, 0x0000); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - L * 6, Y(163)); frame->print(nm); }
     if (nvRest >= 0) { char rt[20]; if (nvRest >= 100) snprintf(rt, sizeof rt, "%d km %s", nvRest / 10, nvEta); else snprintf(rt, sizeof rt, "%d,%d km %s", nvRest / 10, nvRest % 10, nvEta);
-      int L = strlen(rt); bool lijn = blLijn(); float w = L * 12 + 26, h = lijn ? 36 : 22; if (lijn && w < 170) w = 170; roundRect(120 - w / 2, 64, w, h, 11, 0x0000); frame->drawRoundRect(X(120 - w / 2), Y(64), S(w), S(h), S(11), 0x4208);   // v115: aankomst duidelijker, met vlaggetje
-      if (lijn) tekenLijn(120 - w / 2 + 12, 120 + w / 2 - 12, 91);   // v116: de lijn van de hele route
-      for (int r2 = 0; r2 < 2; r2++) for (int c2 = 0; c2 < 3; c2++) showRect(120 - w / 2 + 7 + c2 * 3, 69 + r2 * 3, 3, 3, ((r2 + c2) & 1) ? 0x0000 : 0xFFFF);
-      frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120 - w / 2 + 20), Y(68)); frame->print(rt); } }
+      if (blLijn()) tekenLijn(0, 0, 0);   // v117: de route als boog langs de bovenrand, het puntje loopt mee (zoals de Tesla)
+      int L = strlen(rt); float w = L * 6 + 20, ty = 34; roundRect(120 - w / 2, ty - 3, w, 14, 7, 0x0000);   // klein tekstje net onder de boog
+      for (int r2 = 0; r2 < 2; r2++) for (int c2 = 0; c2 < 3; c2++) showRect(120 - w / 2 + 5 + c2 * 2, ty + r2 * 2, 2, 2, ((r2 + c2) & 1) ? 0x0000 : 0xFFFF);
+      frame->setTextColor(0xFFFF); frame->setTextSize(1); frame->setCursor(X(120 - w / 2 + 14), Y(ty)); frame->print(rt); } }
   if ((int32_t)(goedZoT - millis()) > 0) { roundRect(78, 92, 84, 24, 12, 0x0B0A); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 42, Y(97)); frame->print("GOED ZO"); }   // v115: na een afslag
   uint32_t ov = millis() - kaartOvergangT;   // v77: overgang: twee handjes trekken het gezicht open
   if (kaartOvergangT && ov < 1500) { float t = ov / 1500.f; kaartOvergang(t < .3f ? 0 : powf((t - .3f) / .7f, 1.6f), t < .3f ? t / .3f : 1); }
 }
 // v116: met route: een rechte lijn in het bordje bovenin, zoals in de Tesla. Rood pijltje = jij, blauw = wat je nog moet, files en flitsers erop.
 static bool blLijn() { return blT && millis() - blT < 20000 && blLang > 0 && nvT && millis() - nvT < 15000 && nvRest >= 0; }
-static void tekenLijn(float x0, float x1, float y) {
-  float pk = blKlaar >= 0 ? blKlaar / 1000.f : 0, xi = x0 + (x1 - x0) * pk, L = x1 - xi;
-  if (xi > x0 + 1) dikLijn(x0, y, xi, y, 2, 0x4A69);   // al gereden: grijs
-  dikLijn(xi, y, x1, y, 3, 0x3D7F);                    // nog te gaan: blauw
+static void tekenLijn(float, float, float) {   // v117: boog langs de bovenrand van -150 tot -30 graden
+  const float R = 113, A0 = -150 * .0174533f, A1 = -30 * .0174533f;
+  auto pt = [&](float f, float &x, float &y) { float a = A0 + (A1 - A0) * f; x = 120 + cosf(a) * R; y = 120 + sinf(a) * R; };
+  auto boog = [&](float f0, float f1, float dk, uint16_t kl) { if (f1 - f0 < .004f) f1 = f0 + .004f; int n = 2 + (int)((f1 - f0) * 40); float xa, ya, xb, yb; pt(f0, xa, ya);
+    for (int k = 1; k <= n; k++) { pt(f0 + (f1 - f0) * k / n, xb, yb); dikLijn(xa, ya, xb, yb, dk, kl); xa = xb; ya = yb; } };
+  float pk = blKlaar >= 0 ? blKlaar / 1000.f : 0, L = 1 - pk;
+  if (pk > .005f) boog(0, pk, 1.5f, 0x4A69);      // al gereden: dun grijs
+  boog(pk, 1, 2.5f, 0x3D7F);                       // nog te gaan: blauw
   for (int i = 0; i < blN; i++) { const BlItem &it = blItems[i]; if (it.b < 0) continue; uint16_t kl = it.s == 'f' ? 0xF800 : it.s == 'x' ? 0x8000 : it.s == 't' ? 0xB81F : 0xFD20;
-    float a = xi + L * it.a / 1000.f, b = xi + L * it.b / 1000.f; if (b - a < 3) b = a + 3; dikLijn(a, y, b, y, 5, kl); }
-  for (int i = 0; i < blN; i++) { const BlItem &it = blItems[i]; if (it.b >= 0) continue; float x = xi + L * it.a / 1000.f;
-    if (it.s == 'b') { circle(x, y, 4, 0xF800); circle(x, y, 2.4f, 0xFFFF); } else { circle(x, y, 4, 0xFFFF); circle(x, y, 2.8f, it.s == 'm' ? 0xFD20 : 0xF800); } }
-  circle(x1, y, 3, 0xFFFF);                                                   // bestemming
-  triF(xi - 5, y - 5, xi - 5, y + 5, xi + 6, y, 0xF800); dikLijn(xi - 5, y - 5, xi + 6, y, 1, 0xFFFF); dikLijn(xi - 5, y + 5, xi + 6, y, 1, 0xFFFF);   // jij
+    boog(pk + L * it.a / 1000.f, pk + L * it.b / 1000.f, 4.5f, kl); }
+  float x, y;
+  for (int i = 0; i < blN; i++) { const BlItem &it = blItems[i]; if (it.b >= 0) continue; pt(pk + L * it.a / 1000.f, x, y);
+    if (it.s == 'b') { circle(x, y, 3.5f, 0xF800); circle(x, y, 2, 0xFFFF); } else { circle(x, y, 3.5f, 0xFFFF); circle(x, y, 2.4f, it.s == 'm' ? 0xFD20 : 0xF800); } }
+  pt(1, x, y); circle(x, y, 3, 0xFFFF);           // bestemming
+  pt(pk, x, y); circle(x, y, 5.5f, 0xFFFF); circle(x, y, 4, 0xF800);   // jij: rood puntje
 }
 // v84: dingen rond de rand: de boog met wat er komt, een kompasstipje, muzieknootjes en sterren als hij slaapt
 static void boogStuk(float f0, float f1, float r, float w, uint16_t kl) {   // f = 0 onderaan (jij) .. 1 bovenaan

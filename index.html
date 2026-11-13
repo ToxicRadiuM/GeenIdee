@@ -3187,6 +3187,7 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
   }
   window.__launch = function (t, v, acc) { launchFix(t, v, acc == null ? 5 : acc); };
   function onPos(pos) {
+    if (window.__bgTik) window.__bgTik();   /* v190: met het scherm uit lopen de klokjes niet, maar de GPS wel: dan laat elk GPS-punt Buddy doortikken */
     var c = pos.coords, v = null;
     if (typeof c.speed === 'number' && isFinite(c.speed) && c.speed >= 0) v = c.speed * 3.6;
     else if (lastPos) {
@@ -5175,7 +5176,7 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v189';
+  var VERSION = 'v190';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5722,7 +5723,8 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
   /* v189: op de achtergrond (andere app open) tekent Android niets, dus liep Buddy's klok niet meer en dacht hij dat de GPS weg was.
      Nu tikt hij dan gewoon elke seconde door, zonder te tekenen. */
   var laatsteBeeld = 0;
-  setInterval(function () { var n = performance.now(); if (n - laatsteBeeld < 1500) return; try { frame2(n, true); } catch (e) {} }, 1000);
+  window.__bgTik = function () { var n = performance.now(); if (n - laatsteBeeld < 1500 || n - (window.__bgTikT || 0) < 400) return; window.__bgTikT = n; try { frame2(n, true); } catch (e) {} };
+  setInterval(window.__bgTik, 1000);
   function frame2(ts, achter) {
     var t = ts / 1000;
     if (!achter) laatsteBeeld = ts;
@@ -8271,12 +8273,25 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
     function navCode() {
       try {
         if (!nav || !S.live || nav.d == null) return '';
-        var st = nav.steps[nav.idx]; if (!st || navStil(st) || nav.d > 1500) return '';
+        var st = nav.steps[nav.idx]; if (!st || navStil(st)) return '';
         var m = st.mod || '', c = 'S';
         if (st.type === 'arrive') c = 'A'; else if (st.type === 'roundabout' || st.type === 'rotary') c = 'O'; else if (m === 'uturn') c = 'U';
         else if (/slight left/.test(m)) c = 'l'; else if (/slight right/.test(m)) c = 'r'; else if (/left/.test(m)) c = 'L'; else if (/right/.test(m)) c = 'R';
         var dl = lastPos ? gdist(lastPos.lat, lastPos.lon, st.lat, st.lon) : nav.d;   /* v189: altijd de echte afstand nu, niet een oude waarde (bleef op 210 m hangen) */
         if (Math.abs(dl - nav.d) > 150 && !navCode.gemeld) { navCode.gemeld = 1; lg('nav: afstand liep achter (' + Math.round(nav.d) + ' m, echt ' + Math.round(dl) + ' m)'); }
+        /* v190: ligt de afslag al achter je (rotonde net door)? Dan niet meer '40 m' blijven tonen maar meteen door naar de volgende */
+        if (lastPos && lastPos.hd != null && S.speed > 8 && dl < 250) {
+          var la = lastPos.lat * Math.PI / 180, lb = st.lat * Math.PI / 180, dlo = (st.lon - lastPos.lon) * Math.PI / 180;
+          var br = Math.atan2(Math.sin(dlo) * Math.cos(lb), Math.cos(la) * Math.sin(lb) - Math.sin(la) * Math.cos(lb) * Math.cos(dlo)) * 180 / Math.PI;
+          var vk = Math.abs(((br - lastPos.hd) % 360 + 540) % 360 - 180);
+          if (vk > 100 && dl > 12) {
+            var vs = nav.steps[nav.idx + 1]; if (!vs || navStil(vs)) return '';
+            var m2 = vs.mod || ''; c = 'S';
+            if (vs.type === 'arrive') c = 'A'; else if (vs.type === 'roundabout' || vs.type === 'rotary') c = 'O'; else if (m2 === 'uturn') c = 'U';
+            else if (/slight left/.test(m2)) c = 'l'; else if (/slight right/.test(m2)) c = 'r'; else if (/left/.test(m2)) c = 'L'; else if (/right/.test(m2)) c = 'R';
+            st = vs; dl = gdist(lastPos.lat, lastPos.lon, vs.lat, vs.lon);
+          }
+        }
         if (dl > 1500) return '';
         return c + Math.round(dl);
       } catch (e) { return ''; }
