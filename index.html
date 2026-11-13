@@ -4689,6 +4689,9 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
     if (!opnieuw) navStat('Routes zoeken…');
     var oud = opnieuw && nav ? nav : null;
     if (oud && oud.via && gdist(van.lat, van.lon, oud.via[0], oud.via[1]) < 400) oud.via = null;   /* brug al gepasseerd */
+    /* v190: van de route af = je rijdt bewust een andere kant op. Dan NIET meer verplicht via het tussenpunt van de gekozen route:
+       dat liet je steeds 'afrit, rotonde, oprit' doen om terug te gaan (route werd 67 → 77 → 85 → 98 km) */
+    if (oud && oud.via) { lg('route: tussenpunt losgelaten, je rijdt een andere kant op'); oud.via = null; }
     var p0;
     if (oud && oud.via) { var p = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + oud.via[1].toFixed(4) + ',' + oud.via[0].toFixed(4) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5);
       p0 = fetch('https://router.project-osrm.org/route/v1/driving/' + p + qs + (navRoute.rh == null ? '' : '&bearings=' + navRoute.rh + ',35;;&radiuses=40;unlimited;unlimited')).then(function (r) { return r.json(); }).then(function (k) { return k && k.routes && k.routes[0] ? [{ rt: k.routes[0], via: oud.via }] : []; }); }
