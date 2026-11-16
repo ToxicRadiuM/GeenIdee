@@ -7416,6 +7416,8 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
   }
   function nepStop() { nep = null; try { delete window.__live.nep; } catch (e) {} toast('🧪 Testmaatje gestopt.'); lg('test: nepmaatje gestopt'); }
   window.__nepAan = function () { return !!nep; };
+  function nepLabels() { var t = nep ? '🧪 Testmaatje stoppen' : '🧪 Testmaatje'; var k = $('nepKnop'); if (k) k.textContent = nep ? t : '🧪 Test met een nepmaatje'; var n = document.querySelector('#kopNieuw [data-a="nep"]'); if (n) n.textContent = t; }
+  setInterval(nepLabels, 1000);
   function nepStap() {
     if (!nep || !lastPos) return; var nu = Date.now();
     if (nu - nep.start > 10 * 60e3) { delete window.__live.nep; nep = null; toast('🧪 Test klaar.'); return; }
