@@ -1488,6 +1488,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     <button class="btn" id="laadZoekKnop" type="button">⚡ Zoek laadpalen in de buurt</button>
     <ul id="laadLijst" class="v77lijst"></ul>
   </section>
+  <details class="kop" id="kopLog" data-in-tab="meer"><summary><span class="kopT">📋 Wat is er nieuw</span><span class="kopS">alle versies op een rij</span></summary><div id="logLijst" style="padding:4px 16px 14px"></div></details>
   <p class="foot" id="verTxt" style="text-align:center">Buddy</p>
 </main>
 <nav id="tabBar" aria-label="Hoofdmenu">
@@ -5268,7 +5269,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v192';
+  var VERSION = 'v193';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9337,6 +9338,23 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   (function () { var c = $('hartjesOn'); if (!c) return; c.checked = window.__hartjesAan(); c.addEventListener('change', function () {
     try { localStorage.setItem('dashboardmaatje-hartjes', c.checked ? '1' : '0'); } catch (e) {} try { window.__scStuur && window.__scStuur('HART:' + (c.checked ? 1 : 0)); } catch (e) {}
     toast(c.checked ? '💕 Hartjes aan' : 'Hartjes uit: Buddy lacht dan gewoon blij.'); }); })();
+
+  /* ---------- v193: changelog onder Meer ---------- */
+  (function () {
+    var LOG = [
+      ['v193', '16 nov', ['Snelbalk bovenaan: Rijden, Naar huis, Naar werk, Ergens heen', 'Geluidknop 🔊 op het rijscherm', 'Route hervatten zonder keuzescherm', 'Crash bij raket afvuren opgelost', 'Dit lijstje met alle versies']],
+      ['v192', '16 nov', ['👥 Maatjes live: groepsleden binnen 5 km in 3D op de kaart, in je spiegel en op Buddy+', '🚀 Items: raket (ontwijken door te tikken), ⚡ nitro, 💣 mijn', 'Toeteren, volgen, konvooi en start-duel tot 50', '🎁 Cadeautjes verstoppen en Buddy Wrapped', '🏰 Veroverkaart, 👻 ghosts van groepsleden en kletsende Buddy\'s', '🧪 Testmaatje om alles alleen te proberen', 'Nieuw-kaart op het Buddy-tabblad']],
+      ['v191', '16 nov', ['Slanke afslagstrook met routelijn in plaats van groen blok', '🌙 Echte nachtkaart', 'Auto meteen in 3D', 'Files alleen nog van de ANWB, en alleen in jouw rijrichting', 'Geen routes meer met afrit-rotonde-oprit of die beginnen met omkeren', 'Matrixborden elke 3 minuten vers', 'Je naam komt terug in de log, Buddy+-log niet meer dubbel']],
+      ['v190', '13 nov', ['Buddy tikt door met het scherm uit (rit en GPS kloppen weer)', 'Groene afslagbalk springt na een rotonde meteen door', 'Bij omrijden laat Buddy het tussenpunt van de route los']],
+      ['v189', '11 nov', ['Buddy blijft lopen als je in een andere app zit', 'Afstand tot de afslag blijft niet meer hangen']],
+      ['v188', '11 nov', ['Route als lijn met het rode pijltje, zoals in de Tesla']],
+      ['v187', '11 nov', ['Rijscherm opgeruimd: Buddy klein in de hoek, knopjes onder het afslagbord', 'Android-balken weg in de autostand (nieuwe APK)', 'Rustiger ruitenwissers en minder herfstblaadjes']],
+      ['Buddy+ v119', '16 nov', ['Maatjes en raketten op het schermpje, ontwijken met een tik', 'Internet via de telefoon betrouwbaarder na verbinden']],
+      ['Buddy+ v117', '13 nov', ['Midden van het scherm leeg: route als boog bovenin, rijstroken klein onderaan']]
+    ];
+    var el = $('logLijst'); if (!el) return;
+    el.innerHTML = LOG.map(function (v, i) { return '<p style="margin:12px 0 4px"><b>' + v[0] + '</b> <small style="opacity:.6">· ' + v[1] + (i === 0 ? ' · deze versie' : '') + '</small></p><ul style="margin:0;padding-left:18px">' + v[2].map(function (x) { return '<li style="margin:3px 0">' + x + '</li>'; }).join('') + '</ul>'; }).join('');
+  })();
 
   /* ---------- v192: snelbalk bovenaan: meteen rijden of navigeren ---------- */
   (function () {
