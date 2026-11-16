@@ -7233,8 +7233,8 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
   }
   function buurUit() { if (grp && pbase()) fetch(gUrl('/hier', grQ('&uit=1'))).catch(function () {}); }
 
-  /* ---------- v192: items onderweg (eigen ontwerp: rode stuiterbal en regenboogster) ---------- */
-  var ITEMS = { bal: { i: '🔴', n: 'rode stuiterbal' }, ster: { i: '🌟', n: 'regenboogster' } }, sterTot = 0;
+  /* ---------- v192: items onderweg: raket (op een maatje) en nitro (groot, vurig, onkwetsbaar) ---------- */
+  var ITEMS = { bal: { i: '🚀', n: 'raket' }, ster: { i: '⚡', n: 'nitro' } }, sterTot = 0;
   function itemToon() { var k = $('itemKnop'); if (!k) return; var it = ITEMS[mem.item]; k.hidden = !it; if (it) k.textContent = it.i; }
   function itemDoos() {   /* elke 12 km rijden: een itemdoos */
     if (!S.live || (S.speed || 0) < 20) return; var km = mem.kmLive || 0; if (mem.itemKm == null) { mem.itemKm = km; save(); return; }
@@ -7244,27 +7244,27 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
   }
   function itemGebruik() {
     var it = mem.item; if (!it) return;
-    if (it === 'ster') { mem.item = null; save(); itemToon(); sterTot = Date.now() + 10000; try { window.__autoFx && window.__autoFx('ster', 10000); } catch (e) {} startGag('regenboog'); setEv('excited', 5, '🌟 Sterrenkracht! Tien seconden onkwetsbaar!'); beep('excited'); say('Sterrenkracht!'); lg('item: ster gebruikt'); return; }
-    if ((S.speed || 0) < 20) { toast('Gooien kan alleen als je rijdt.'); return; }
+    if (it === 'ster') { mem.item = null; save(); itemToon(); sterTot = Date.now() + 10000; try { window.__autoFx && window.__autoFx('ster', 10000); } catch (e) {} startGag('raket'); setEv('excited', 5, '⚡ NITRO! Tien seconden onverwoestbaar!'); beep('excited'); say('Nitro!'); lg('item: nitro gebruikt'); return; }
+    if ((S.speed || 0) < 20) { toast('Afvuren kan alleen als je rijdt.'); return; }
     if (!buurAan) { toast('Zet eerst "Collega in de buurt" aan (Groep), dan zie je wie er rijdt.'); return; }
     var bl = window.__buren && Date.now() - window.__buren.t < 90e3 ? window.__buren.l.filter(function (b) { return !b.d || b.d <= 2; }) : [];
-    if (!bl.length) { toast('Er rijdt nu niemand uit je groep binnen 2 km. Bewaar hem nog even!'); return; }
+    if (!bl.length) { toast('Er rijdt nu niemand uit je groep binnen 2 km. Bewaar je raket nog even!'); return; }
     bl.sort(function (a, b) { return (a.d || 0) - (b.d || 0); }); var doel = bl[0];
     mem.item = null; save(); itemToon();
-    var v = document.createElement('div'); v.id = 'itemVlieg'; v.textContent = '🔴'; document.body.appendChild(v); setTimeout(function () { v.remove(); }, 1100);
+    var v = document.createElement('div'); v.id = 'itemVlieg'; v.textContent = '🚀'; document.body.appendChild(v); setTimeout(function () { v.remove(); }, 1100);
     grStuur('gezien', '&aan=' + encodeURIComponent(doel.van) + '&r=itbal' + Date.now().toString(36)).catch(function () {});
-    setEv('mischief', 3, '🔴 Stuiterbal gegooid naar ' + (doel.n || 'je maatje') + '!'); beep('pet'); lg('item: stuiterbal naar ' + (doel.n || '?'));
+    setEv('mischief', 3, '🚀 Raket afgevuurd op ' + (doel.n || 'je maatje') + '!'); beep('pet'); lg('item: raket naar ' + (doel.n || '?'));
   }
   window.__itemPing = function (b) {
     var wie = b.n || 'Iemand';
     if (/^itbal/.test(b.r)) {
       if ((S.speed || 0) < 20) return;   /* alleen raak als je zelf ook rijdt */
-      if (Date.now() < sterTot) { setEv('excited', 3, '🌟 Ha! ' + wie + ' gooide een stuiterbal, maar jouw ster blokte hem!'); grStuur('gezien', '&aan=' + encodeURIComponent(b.van) + '&r=itblok' + Date.now().toString(36)).catch(function () {}); return; }
-      try { window.__autoFx && window.__autoFx('salto'); } catch (e) {} setEv('startled', 4, '💥 Boing! ' + wie + ' raakte ons met een rode stuiterbal!'); startGag && startGag('spin'); beep('wake'); say(wie + ' raakte ons!');
+      if (Date.now() < sterTot) { setEv('excited', 3, '⚡ Ha! ' + wie + ' vuurde een raket af, maar met nitro voel je er niks van!'); grStuur('gezien', '&aan=' + encodeURIComponent(b.van) + '&r=itblok' + Date.now().toString(36)).catch(function () {}); return; }
+      try { window.__autoFx && window.__autoFx('salto'); } catch (e) {} setEv('startled', 4, '💥 BOEM! ' + wie + ' schoot ons met een raket!'); startGag && startGag('spin'); beep('wake'); say(wie + ' raakte ons!');
       lg('item: geraakt door ' + wie); grStuur('gezien', '&aan=' + encodeURIComponent(b.van) + '&r=itraak' + Date.now().toString(36)).catch(function () {}); return;
     }
-    if (/^itraak/.test(b.r)) { setEv('excited', 4, '💥 Raak! ' + wie + ' maakte een salto!'); beep('excited'); say('Raak!'); return; }
-    if (/^itblok/.test(b.r)) { setEv('sad', 3, '🌟 ' + wie + ' had een ster. Geblokt!'); return; }
+    if (/^itraak/.test(b.r)) { setEv('excited', 4, '💥 Raak! ' + wie + ' ging ondersteboven!'); beep('excited'); say('Raak!'); return; }
+    if (/^itblok/.test(b.r)) { setEv('sad', 3, '⚡ ' + wie + ' had nitro. Raket deed niks!'); return; }
     if (/^itcad/.test(b.r)) { var m = '🎁 ' + wie + ' heeft je cadeautje gevonden!'; setEv('happy', 4, m); toast(m); beep('pet'); grLijstAdd && grLijstAdd('in', m); }
   };
   setInterval(function () { try { itemDoos(); itemToon(); cadeauKijk(); } catch (e) {} }, 3000);
@@ -11041,13 +11041,13 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
     }
     /* v159: 3D-auto als je achter de auto kijkt, en ritreplay in 3D */
     var a3dKnip = 0;
-    /* v192: effecten op je eigen 3D-autootje: 'salto' (geraakt door een stuiterbal) en 'ster' (groot en regenboog) */
+    /* v192: effecten op je eigen 3D-autootje: 'salto' (geraakt door een raket) en 'ster' = nitro (groot en vurig) */
     window.__autoFx = function (soort, ms) { auto3d.fx = { s: soort, t0: performance.now(), dur: ms || (soort === 'ster' ? 10000 : 1400) };
       (function stap() { var fx = auto3d.fx; if (!fx) return; if (performance.now() - fx.t0 > fx.dur) { auto3d.fx = null; } if (auto3d.laatst) auto3d.apply(null, auto3d.laatst); if (auto3d.fx) requestAnimationFrame(stap); })(); };
     function auto3d(lat, lon, brg) {
       auto3d.laatst = [lat, lon, brg]; var fx = auto3d.fx, fp = fx ? Math.min(1, (performance.now() - fx.t0) / fx.dur) : 0, hop = 0, groei = 1, kleur = null;
       if (fx && fx.s === 'salto') { hop = Math.sin(Math.PI * fp) * 3.2; brg = brg + 360 * (fp < .5 ? 2 * fp * fp : 1 - Math.pow(-2 * fp + 2, 2) / 2) * 2; }
-      if (fx && fx.s === 'ster') { groei = 1.7 - (fp > .9 ? (fp - .9) * 7 : 0); kleur = 'hsl(' + Math.round(performance.now() / 4 % 360) + ',100%,55%)'; }
+      if (fx && fx.s === 'ster') { groei = 1.7 - (fp > .9 ? (fp - .9) * 7 : 0); var vl = performance.now() / 70; kleur = (Math.floor(vl) % 3 === 0) ? '#ff3b00' : (Math.floor(vl) % 3 === 1 ? '#ff9500' : '#ffd000');   /* nitro: flakkerend vuur */ }
       var aan = st.kijk === 0 && st.aan; document.body.classList.toggle('auto3d', aan);   /* v191: het platte autootje meteen weg, niet eerst plat en dan pas 3D */
       if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) { clearTimeout(auto3d.tm); auto3d.tm = setTimeout(function () { auto3d(lat, lon, brg); }, 150); return; }
       var f = [];
