@@ -1,0 +1,14 @@
+# Buddy live: groepsmaatjes realtime op de kaart (elke seconde), via een Durable Object per groep.
+# Wordt automatisch gedeployd door .github/workflows/live.yml (secrets CF_API_TOKEN en CF_ACCOUNT_ID).
+name = "buddy-live"
+main = "live.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[[durable_objects.bindings]]
+name = "GROEP"
+class_name = "BuddyGroep"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BuddyGroep"]

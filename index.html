@@ -3223,6 +3223,7 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
   }
   window.__launch = function (t, v, acc) { launchFix(t, v, acc == null ? 5 : acc); };
   function onPos(pos) {
+    if (window.__liveTik) try { window.__liveTik(); } catch (e) {}
     if (window.__bgTik) window.__bgTik();   /* v190: met het scherm uit lopen de klokjes niet, maar de GPS wel: dan laat elk GPS-punt Buddy doortikken */
     var c = pos.coords, v = null;
     if (typeof c.speed === 'number' && isFinite(c.speed) && c.speed >= 0) v = c.speed * 3.6;
@@ -7252,20 +7253,48 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
     if ((S.speed || 0) < 20) { toast('Afvuren kan alleen als je rijdt.'); return; }
     if (!buurAan) { toast('Zet eerst "Collega in de buurt" aan (Groep), dan zie je wie er rijdt.'); return; }
     var bl = window.__buren && Date.now() - window.__buren.t < 90e3 ? window.__buren.l.filter(function (b) { return !b.d || b.d <= 2; }) : [];
+    var LV = window.__live || {}; Object.keys(LV).forEach(function (k) { var x = LV[k], d = gdist(lastPos.lat, lastPos.lon, x.lat, x.lon); bl = bl.filter(function (b) { return b.van !== k; }); if (d <= 2000) bl.push({ van: k, n: x.n, d: d / 1000 }); });
     if (!bl.length) { toast('Er rijdt nu niemand uit je groep binnen 2 km. Bewaar je raket nog even!'); return; }
     bl.sort(function (a, b) { return (a.d || 0) - (b.d || 0); }); var doel = bl[0];
     mem.item = null; save(); itemToon();
     var v = document.createElement('div'); v.id = 'itemVlieg'; v.textContent = '🚀'; document.body.appendChild(v); setTimeout(function () { v.remove(); }, 1100);
-    grStuur('gezien', '&aan=' + encodeURIComponent(doel.van) + '&r=itbal' + Date.now().toString(36)).catch(function () {});
+    itemZend(doel.van, 'itbal' + Date.now().toString(36));
     setEv('mischief', 3, '🚀 Raket afgevuurd op ' + (doel.n || 'je maatje') + '!'); beep('pet'); lg('item: raket naar ' + (doel.n || '?'));
   }
+  function itemZend(aan, r) { if (window.__liveStuur && window.__liveStuur(aan, r)) return; grStuur('gezien', '&aan=' + encodeURIComponent(aan) + '&r=' + r).catch(function () {}); }   /* live = meteen, anders via de groepsberichten */
+
+  /* ---------- v192: LIVE: elke seconde je plek naar groepsmaatjes binnen 5 km (alleen als je rijdt; niets wordt bewaard) ---------- */
+  var live = { ws: null, open: false, laatst: 0, stilT: 0, fout: 0, gezien: {} }; window.__live = {};
+  function liveUrl() { try { var u = new URL(pbase()); return 'wss://' + u.host.replace(/^[^.]+/, 'buddy-live') + '/live'; } catch (e) { return null; } }
+  function liveVerbind() {
+    if (live.ws || !grp || !pbase() || Date.now() - live.fout < 30000) return; var u = liveUrl(); if (!u) return; var ws;
+    try { ws = new WebSocket(u + '?g=' + encodeURIComponent(grp.toLowerCase()) + '&van=' + encodeURIComponent(mijnId) + '&n=' + encodeURIComponent(myWho() || '') + '&a=' + encodeURIComponent(mijnAuto() || '')); } catch (e) { live.fout = Date.now(); return; }
+    live.ws = ws;
+    ws.onopen = function () { live.open = true; lg('live: verbonden'); };
+    ws.onclose = function () { if (live.open) lg('live: verbinding weg'); else { live.fout = Date.now(); if (!live.foutGemeld) { live.foutGemeld = 1; lg('live: verbinden lukt niet (staat buddy-live al op Cloudflare?)'); } } live.ws = null; live.open = false; window.__live = {}; };
+    ws.onerror = function () {};
+    ws.onmessage = function (e) { var m; try { m = JSON.parse(e.data); } catch (x) { return; }
+      if (m.t === 'p' && m.van) { var nieuw = !window.__live[m.van]; window.__live[m.van] = { van: m.van, n: m.n, a: m.a, lat: m.lat, lon: m.lon, hd: m.hd, v: m.v, rx: Date.now() };
+        if (nieuw && (!live.gezien[m.van] || Date.now() - live.gezien[m.van] > 30 * 60e3)) { live.gezien[m.van] = Date.now(); var t = '📡 ' + (m.n || 'Een maatje') + ' rijdt live bij je in de buurt!'; setEv('excited', 3.5, t); beep('pet'); toast(t); lg('live: ' + (m.n || '?') + ' in de buurt'); } }
+      else if (m.t === 'weg' && m.van) delete window.__live[m.van];
+      else if (m.t === 'x' && m.d && m.d.r) { try { window.__itemPing({ van: m.van, n: m.n, r: String(m.d.r) }); } catch (x) {} } };
+  }
+  function liveSluit() { if (live.ws) { try { live.ws.send(JSON.stringify({ t: 'stil' })); live.ws.close(); } catch (e) {} } live.ws = null; live.open = false; window.__live = {}; }
+  window.__liveTik = function () {
+    var rijdt = buurAan && S.live && lastPos && (S.speed || 0) >= 20;
+    if (rijdt) { live.stilT = 0; liveVerbind(); if (live.open && Date.now() - live.laatst > 950) { live.laatst = Date.now(); try { live.ws.send(JSON.stringify({ t: 'p', lat: +lastPos.lat.toFixed(5), lon: +lastPos.lon.toFixed(5), hd: lastPos.hd != null ? Math.round((lastPos.hd + 360) % 360) : 0, v: Math.round(S.speed || 0) })); } catch (e) {} } }
+    else { if (!live.stilT) live.stilT = Date.now(); if (Date.now() - live.stilT > 60000 && live.ws) { liveSluit(); lg('live: uit (je staat stil)'); } }
+    for (var k in window.__live) if (Date.now() - window.__live[k].rx > 15000) delete window.__live[k];
+  };
+  setInterval(function () { try { window.__liveTik(); } catch (e) {} }, 250);
+  window.__liveStuur = function (aan, r) { if (live.open) { try { live.ws.send(JSON.stringify({ t: 'x', aan: aan, d: { r: r } })); return true; } catch (e) {} } return false; };
   window.__itemPing = function (b) {
     var wie = b.n || 'Iemand';
     if (/^itbal/.test(b.r)) {
       if ((S.speed || 0) < 20) return;   /* alleen raak als je zelf ook rijdt */
-      if (Date.now() < sterTot) { setEv('excited', 3, '⚡ Ha! ' + wie + ' vuurde een raket af, maar met nitro voel je er niks van!'); grStuur('gezien', '&aan=' + encodeURIComponent(b.van) + '&r=itblok' + Date.now().toString(36)).catch(function () {}); return; }
+      if (Date.now() < sterTot) { setEv('excited', 3, '⚡ Ha! ' + wie + ' vuurde een raket af, maar met nitro voel je er niks van!'); itemZend(b.van, 'itblok' + Date.now().toString(36)); return; }
       try { window.__autoFx && window.__autoFx('salto'); } catch (e) {} setEv('startled', 4, '💥 BOEM! ' + wie + ' schoot ons met een raket!'); startGag && startGag('spin'); beep('wake'); say(wie + ' raakte ons!');
-      lg('item: geraakt door ' + wie); grStuur('gezien', '&aan=' + encodeURIComponent(b.van) + '&r=itraak' + Date.now().toString(36)).catch(function () {}); return;
+      lg('item: geraakt door ' + wie); itemZend(b.van, 'itraak' + Date.now().toString(36)); return;
     }
     if (/^itraak/.test(b.r)) { setEv('excited', 4, '💥 Raak! ' + wie + ' ging ondersteboven!'); beep('excited'); say('Raak!'); return; }
     if (/^itblok/.test(b.r)) { setEv('sad', 3, '⚡ ' + wie + ' had nitro. Raket deed niks!'); return; }
@@ -11052,11 +11081,12 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
     /* v192: groepsmaatjes die binnen 5 km rijden op de kaart, en een pijltje met naam aan de rand als ze buiten beeld zijn */
     var maatMk = {}, maatPijl = {};
     function maatjes() {
-      var B = window.__buren, lijst = B && Date.now() - B.t < 90e3 ? B.l.filter(function (b) { return isFinite(b.lat) && isFinite(b.lon); }) : [];
+      var B = window.__buren, LV = window.__live || {}, lijst = (B && Date.now() - B.t < 90e3 ? B.l.filter(function (b) { return isFinite(b.lat) && isFinite(b.lon) && !LV[b.van]; }).map(function (b) { var c = {}; for (var k in b) c[k] = b[k]; c.rx = B.t; return c; }) : []);
+      Object.keys(LV).forEach(function (k) { lijst.push(LV[k]); });   /* v192: live (elke seconde) gaat voor */
       var zicht = map && mk && st.aan && document.body.classList.contains('car'), weg = {};
       if (zicht) { var ik = mk.getLngLat(), W = map.getContainer().clientWidth, H = map.getContainer().clientHeight, mb = map.getBearing();
         lijst.forEach(function (b) {
-          var dt = Math.min(60, ((Date.now() - B.t) + (b.oud || 0)) / 1000), sp = (b.v || 0) / 3.6 * dt, hd = (b.hd || 0) * Math.PI / 180;   /* doorrijden waar hij nu ongeveer is */
+          var dt = Math.min(60, ((Date.now() - (b.rx || 0)) + (b.oud || 0)) / 1000), sp = (b.v || 0) / 3.6 * dt, hd = (b.hd || 0) * Math.PI / 180;   /* doorrijden waar hij nu ongeveer is */
           var la = b.lat + Math.cos(hd) * sp / 110540, lo = b.lon + Math.sin(hd) * sp / (111320 * Math.cos(b.lat * Math.PI / 180)); weg[b.van] = 1;
           var m = maatMk[b.van]; if (!m) { var el = document.createElement('div'); el.className = 'maatMk'; el.innerHTML = '<span class="mmAuto">🚙</span><b></b>'; m = maatMk[b.van] = new maplibregl.Marker({ element: el, anchor: 'bottom', rotationAlignment: 'viewport' }).setLngLat([lo, la]).addTo(map); }
           m.setLngLat([lo, la]); var afst = gdist(ik.lat, ik.lng, la, lo); m.getElement().querySelector('b').textContent = (b.n || 'Maatje') + ' · ' + (afst < 1000 ? Math.round(afst / 10) * 10 + ' m' : (afst / 1000).toFixed(1).replace('.', ',') + ' km');
@@ -11072,7 +11102,7 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
       Object.keys(maatMk).forEach(function (k) { if (!weg[k]) { maatMk[k].remove(); delete maatMk[k]; } });
       Object.keys(maatPijl).forEach(function (k) { if (!weg[k]) { maatPijl[k].remove(); delete maatPijl[k]; } });
     }
-    setInterval(function () { try { maatjes(); } catch (e) {} }, 300);
+    setInterval(function () { try { maatjes(); } catch (e) {} }, 100);
     /* v192: effecten op je eigen 3D-autootje: 'salto' (geraakt door een raket) en 'ster' = nitro (groot en vurig) */
     window.__autoFx = function (soort, ms) { auto3d.fx = { s: soort, t0: performance.now(), dur: ms || (soort === 'ster' ? 10000 : 1400) };
       (function stap() { var fx = auto3d.fx; if (!fx) return; if (performance.now() - fx.t0 > fx.dur) { auto3d.fx = null; } if (auto3d.laatst) auto3d.apply(null, auto3d.laatst); if (auto3d.fx) requestAnimationFrame(stap); })(); };

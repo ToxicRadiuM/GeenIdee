@@ -1,0 +1,20 @@
+# Buddy live (realtime groepsmaatjes) naar Cloudflare zetten. Nodig: GitHub-secrets CF_API_TOKEN en CF_ACCOUNT_ID.
+name: Buddy live deployen
+on:
+  push:
+    branches: [main]
+    paths: ['live/**', '.github/workflows/live.yml']
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Secrets aanwezig?
+        run: |
+          if [ -z "${{ secrets.CF_API_TOKEN }}" ] || [ -z "${{ secrets.CF_ACCOUNT_ID }}" ]; then echo "::error::Zet eerst de secrets CF_API_TOKEN en CF_ACCOUNT_ID (zie uitleg)"; exit 1; fi
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          workingDirectory: live
