@@ -4647,6 +4647,9 @@ body.car.kaartrij #rijBalk.hor .rbIk { font-size: 17px; top: -10px; }
   function heeftOmkeer(rt) {   /* v191: zit er in de eerste 1,5 km een 'omkeren' in? */
     var d = 0; try { for (var i = 0; i < rt.legs.length; i++) for (var j = 0; j < rt.legs[i].steps.length; j++) { var st = rt.legs[i].steps[j]; if (d > 1500) return false; if (st.maneuver && st.maneuver.modifier === 'uturn') return true; d += st.distance || 0; } } catch (e) {} return false;
   }
+  function heeftLus(rt) {   /* v191: route gaat van de snelweg af en binnen 3 km weer op (afrit, rotonde, oprit) = omweg door een tussenpunt dat op een brug/viaduct terechtkwam */
+    var af = -1, d = 0; try { rt.legs.forEach(function (l) { l.steps.forEach(function (st) { var t = st.maneuver && st.maneuver.type; if (t === 'off ramp') af = d; else if (t === 'on ramp' && af >= 0 && d - af < 3000) throw 1; d += st.distance || 0; }); }); } catch (e) { if (e === 1) return true; } return false;
+  }
   function routeKandidaten(van, naar, qs) {   /* gewone alternatieven + routes via de bruggen, ontdubbeld */
     var rh = navRoute.rh, br = function (n) { return rh == null ? '' : '&bearings=' + rh + ',35' + new Array(n).join(';') + '&radiuses=40' + new Array(n).join(';unlimited'); };
     var pad = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5), qa = qs + '&alternatives=3' + br(2), uit = [];
@@ -4656,7 +4659,9 @@ body.car.kaartrij #rijBalk.hor .rbIk { font-size: 17px; top: -10px; }
     kand.forEach(function (x) { var p = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + x.b[1].toFixed(4) + ',' + x.b[0].toFixed(4) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5);
       vragen.push(fetch('https://router.project-osrm.org/route/v1/driving/' + p + qs + br(3)).then(function (r) { return r.json(); }).then(function (k) { return k && k.routes && k.routes[0] ? [{ rt: k.routes[0], via: x.b }] : []; }).catch(function () { return []; })); });
     return Promise.all(vragen).then(function (rs) { rs.forEach(function (l) { l.forEach(function (c) { echteDuur(c.rt); if (!uit.some(function (u) { return Math.abs(u.rt.distance - c.rt.distance) < c.rt.distance * .02 && Math.abs(u.rt.duration - c.rt.duration) < 60; })) uit.push(c); }); });
-      uit.sort(function (a, b) { return a.rt.duration - b.rt.duration; }); return uit.slice(0, 4); });
+      uit.sort(function (a, b) { return a.rt.duration - b.rt.duration; });
+      var zonder = uit.filter(function (c) { return !heeftLus(c.rt); }); if (zonder.length && zonder.length < uit.length) { lg('route: ' + (uit.length - zonder.length) + ' route(s) met afrit-rotonde-oprit weggelaten'); uit = zonder; }
+      return uit.slice(0, 4); });
   }
   function navBouw(rt, naar, opnieuw, via) {
       echteDuur(rt); var steps = [];
