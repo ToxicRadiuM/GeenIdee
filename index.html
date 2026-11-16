@@ -4733,12 +4733,15 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
   function routeKies(lijst, naar) {   /* keuzescherm zoals Google Maps */
     var ov = $('routeKeuze'); if (!ov) { ov = document.createElement('div'); ov.id = 'routeKeuze'; document.body.appendChild(ov); }
     ov.textContent = ''; var h = document.createElement('div'); h.className = 'rkKop'; h.textContent = 'Welke route naar ' + naar.naam.split(',')[0] + '?'; ov.appendChild(h);
-    var snelste = Math.min.apply(null, lijst.map(function (c) { return c.rt.duration; }));
+    /* v192: 'snelste' = snelste route die je mag nemen (pontjes vermijden staat aan? dan zonder pontje). Routes met pontje zeggen hoeveel sneller ze zijn */
+    var mag = lijst.filter(function (c) { return !navPont || !heeftPont(c.rt); }); if (!mag.length) mag = lijst;
+    var snelste = Math.min.apply(null, mag.map(function (c) { return c.rt.duration; })), snelGezien = false;
     lijst.forEach(function (c, i) { var inf = routeInfo(c.rt), b = document.createElement('button'); b.type = 'button'; b.className = 'rkOptie';
       var m = Math.round(c.rt.duration / 60), ex = Math.round((c.rt.duration - snelste) / 60);
       b.innerHTML = '<span class="rkKl"></span><span class="rkTxt"><b></b><small></small></span><span class="rkTag"></span>';
       b.querySelector('.rkKl').style.background = ['#0a84ff', '#34c759', '#ff9f0a', '#bf5af2'][i];
-      b.querySelector('b').textContent = (m >= 60 ? Math.floor(m / 60) + ' u ' + (m % 60) + ' min' : m + ' min') + (ex > 0 ? '  · ' + ex + ' min langer' : '  · snelste');
+      var lbl = ex > 0 ? ex + ' min langer' : ex < 0 ? (-ex) + ' min sneller' + (heeftPont(c.rt) ? ', met pontje' : '') : (!snelGezien && mag.indexOf(c) >= 0 ? 'snelste' : 'even snel'); if (lbl === 'snelste') snelGezien = true;
+      b.querySelector('b').textContent = (m >= 60 ? Math.floor(m / 60) + ' u ' + (m % 60) + ' min' : m + ' min') + '  · ' + lbl;
       b.querySelector('small').textContent = (Math.round(c.rt.distance / 100) / 10).toString().replace('.', ',') + ' km · ' + inf.via + (inf.snel ? ' · ' + inf.snel + '% snelweg' : '');
       b.querySelector('.rkTag').textContent = inf.pont ? '⛴️ pontje' : '';
       b.addEventListener('click', function () { ov.hidden = true; try { if (window.__keuzeLijnen) window.__keuzeLijnen(null); } catch (e) {} navBouw(c.rt, naar, false, c.via); });
