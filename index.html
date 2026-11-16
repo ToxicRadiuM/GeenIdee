@@ -7273,7 +7273,7 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
   function itemGebruik() {
     var it = mem.item; if (!it) return;
     if (it === 'ster') { mem.item = null; save(); itemToon(); sterTot = Date.now() + 10000; try { window.__autoFx && window.__autoFx('ster', 10000); } catch (e) {} startGag('raket'); setEv('excited', 5, '⚡ NITRO! Tien seconden onverwoestbaar!'); beep('excited'); say('Nitro!'); lg('item: nitro gebruikt'); return; }
-    if ((S.speed || 0) < 20) { toast('Dat kan alleen als je rijdt.'); return; }
+    if ((S.speed || 0) < 20 && !nep) { toast('Dat kan alleen als je rijdt.'); return; }
     if (it === 'mijn') { mijnLeg(); return; }
     if (!buurAan && !nep) { toast('Zet eerst "Collega in de buurt" aan (Groep), dan zie je wie er rijdt.'); return; }
     var bl = window.__buren && Date.now() - window.__buren.t < 90e3 ? window.__buren.l.filter(function (b) { return !b.d || b.d <= 2; }) : [];
@@ -7408,11 +7408,14 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
   /* ---------- v192: testmaatje: een nepauto om alles in je eentje te testen ---------- */
   var nep = null;
   function nepStart() {
+    if (nep) { nepStop(); return; }
     if (!lastPos) { toast('Zet eerst de GPS aan.'); return; }
     nep = { t0: Date.now(), start: Date.now(), fase: (S.speed || 0) < 20 ? 'stil' : 'rij', ev: {} }; window.__live = window.__live || {};
-    toast(nep.fase === 'stil' ? '🧪 Testmaatje staat naast je: daag hem uit voor een duel. Ga je rijden (boven 20), dan haalt hij je in en vuurt hij een raket af.' : '🧪 Testmaatje komt van achteren. Hij haalt je in en vuurt een raket af: tik dan op Buddy!');
+    toast(nep.fase === 'stil' ? '🧪 Testmaatje staat naast je. Zo meteen toetert hij en vuurt hij een raket af (tik op Buddy!), daarna krijg jij een raket. Stoppen: 👥-knop → Testmaatje stoppen.' : '🧪 Testmaatje komt van achteren. Hij haalt je in en vuurt een raket af: tik dan op Buddy!');
     lg('test: nepmaatje gestart (' + nep.fase + ')');
   }
+  function nepStop() { nep = null; try { delete window.__live.nep; } catch (e) {} toast('🧪 Testmaatje gestopt.'); lg('test: nepmaatje gestopt'); }
+  window.__nepAan = function () { return !!nep; };
   function nepStap() {
     if (!nep || !lastPos) return; var nu = Date.now();
     if (nu - nep.start > 10 * 60e3) { delete window.__live.nep; nep = null; toast('🧪 Test klaar.'); return; }
@@ -7421,6 +7424,12 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
     var voor = nep.fase === 'stil' ? 0 : Math.min(400, -250 + 14 * t), opzij = 3.6, oost = Math.sin(h) * voor + Math.cos(h) * opzij, noord = Math.cos(h) * voor - Math.sin(h) * opzij;
     window.__live.nep = { van: 'nep', n: 'Testmaatje', lat: lastPos.lat + noord / 110540, lon: lastPos.lon + oost / (111320 * Math.cos(lastPos.lat * Math.PI / 180)), hd: hd, v: nep.fase === 'stil' ? 0 : (S.speed || 0) + (t < 46 ? 50 : 0), rx: nu };
     function een(k, s0, f) { if (t >= s0 && !nep.ev[k]) { nep.ev[k] = 1; f(); } }
+    if (nep.fase === 'stil') {   /* v192: ook stilstaand alles kunnen proberen */
+      een('toet', 4, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'toet' }); });
+      een('raket', 10, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'itbal' + nu.toString(36) }); });
+      een('item', 16, function () { mem.item = 'bal'; save(); itemToon(); toast('🧪 Je hebt een raket 🚀 (gele knop rechts): vuur hem af op Testmaatje!'); });
+      een('item2', 40, function () { if (!mem.item) { mem.item = 'ster'; save(); itemToon(); toast('🧪 Nu heb je ⚡ nitro: tik erop en je auto wordt groot en vurig.'); } });
+    }
     if (nep.fase === 'rij') {
       een('toet', 8, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'toet' }); });
       een('raket', 22, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'itbal' + nu.toString(36) }); });
@@ -7442,7 +7451,7 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
   function maatSpel() {
     var o = document.getElementById('maatSpel'); if (o) { o.remove(); return; }
     var w = document.createElement('div'); w.id = 'maatSpel';
-    w.innerHTML = '<button type="button" data-a="live" class="' + (buurAan ? 'aan' : '') + '">' + (buurAan ? '👥 Maatjes live: AAN' : '👥 Maatjes live: uit') + '</button><button type="button" data-a="nep">🧪 Testmaatje</button><button type="button" data-a="cad">🎁 Cadeautje verstoppen</button><button type="button" data-a="x">✕ Sluiten</button>';
+    w.innerHTML = '<button type="button" data-a="live" class="' + (buurAan ? 'aan' : '') + '">' + (buurAan ? '👥 Maatjes live: AAN' : '👥 Maatjes live: uit') + '</button>' + (nep ? '<button type="button" data-a="nep" class="aan">🧪 Testmaatje stoppen</button>' : '<button type="button" data-a="nep">🧪 Testmaatje</button>') + '<button type="button" data-a="cad">🎁 Cadeautje verstoppen</button><button type="button" data-a="x">✕ Sluiten</button>';
     document.body.appendChild(w); setTimeout(function () { if (w.parentNode) w.remove(); }, 10000);
     w.addEventListener('click', function (e) { var a = e.target && e.target.getAttribute('data-a'); if (!a) return; w.remove();
       if (a === 'live') { liveAan(); toast(buurAan ? '👥 Maatjes live aan: groepsleden binnen 5 km zien je (alleen als je rijdt).' : 'Maatjes live uit.'); }
@@ -7481,7 +7490,7 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
     if (/^itmis/.test(b.r)) { setEv('sad', 3, '💨 ' + wie + ' ontweek je raket!'); return; }
     if (/^race/.test(b.r)) { raceBericht(b); return; }
     if (/^itbal/.test(b.r)) {
-      if ((S.speed || 0) < 20) return;   /* alleen raak als je zelf ook rijdt */
+      if ((S.speed || 0) < 20 && b.van !== 'nep') return;   /* alleen raak als je zelf ook rijdt (testmaatje mag altijd) */
       var sch = window.__live && window.__live[b.van], ds = sch && lastPos ? gdist(lastPos.lat, lastPos.lon, sch.lat, sch.lon) : 0;   /* v192: verder dan 300 m? dan kan de raket het niet halen */
       if (ds > 300 && Math.random() > Math.max(.3, 1 - (ds - 300) / 2000)) { setEv('happy', 3, '💨 ' + wie + ' vuurde een raket af, maar je zat te ver weg. Mis!'); itemZend(b.van, 'itmis' + Date.now().toString(36)); return; }
       if (Date.now() >= sterTot) { raketKomt(b, wie); return; }
