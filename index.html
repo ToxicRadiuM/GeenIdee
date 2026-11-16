@@ -11022,6 +11022,10 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
         var achter = []; try { ((typeof camCache !== 'undefined' && camCache && camCache.cams) || []).forEach(function (q) { if (Math.abs(q.lat - p.lat) < .01) achter.push(q); }); (typeof flMeldingen === 'function' ? flMeldingen() : []).forEach(function (q) { achter.push(q); }); } catch (e) {}
         c.font = '22px sans-serif'; c.textAlign = 'center'; achter.forEach(function (q) { var r = rel(q); if (r.b < 5 || r.b > 600 || Math.abs(r.l) > 80) return; var o = scr(r); c.fillStyle = '#ff3b30'; c.beginPath(); c.arc(o.x, o.y - 6, 5 + 9 * o.k, 0, 7); c.fill(); c.fillText('📸', o.x, o.y - 14 - 14 * o.k); });
         if (spook && spookMk) try { var sl = spookMk.getLngLat(), r2 = rel({ lat: sl.lat, lon: sl.lng }); if (r2.b > 3 && r2.b < 600) { var o2 = scr(r2); c.fillStyle = 'rgba(220,240,255,.6)'; c.fillRect(o2.x - 14 * o2.k - 3, o2.y - 14 * o2.k - 4, 28 * o2.k + 6, 14 * o2.k + 4); } } catch (e) {}
+        try { Object.keys(maatMk).forEach(function (kk) { var ll = maatMk[kk].getLngLat(), r3 = rel({ lat: ll.lat, lon: ll.lng }); if (r3.b < 3 || r3.b > 500 || Math.abs(r3.l) > 60) return;   /* v192: groepsmaatje achter je in de spiegel */
+          var o3 = scr(r3), bw = 34 * o3.k + 6, bh = 22 * o3.k + 4; c.fillStyle = '#d0d4da'; c.fillRect(o3.x - bw / 2, o3.y - bh, bw, bh); c.fillStyle = '#26303a'; c.fillRect(o3.x - bw * .38, o3.y - bh * .95, bw * .76, bh * .4);
+          c.fillStyle = '#fff6b0'; c.fillRect(o3.x - bw / 2 + 1, o3.y - bh * .35, bw * .2, bh * .18); c.fillRect(o3.x + bw / 2 - 1 - bw * .2, o3.y - bh * .35, bw * .2, bh * .18);
+          var nm = ((maatMk[kk].getElement().querySelector('b') || {}).textContent || '').split(' · ')[0]; c.font = 'bold 16px sans-serif'; c.textAlign = 'center'; c.fillStyle = '#ff3b30'; c.fillText(nm, o3.x, o3.y - bh - 4); }); } catch (e) {}
         c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 6; c.beginPath(); c.moveTo(W * .15, 8); c.lineTo(W * .32, H * .5); c.stroke();
       }
     }
