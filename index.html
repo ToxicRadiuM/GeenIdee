@@ -1460,7 +1460,8 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   </details>
   </div>
   <section id="tabKaart" class="tabPaneel" aria-label="Kaart">
-    <nav id="kmNav" class="segNav" aria-label="Wat staat er op de kaart"><button type="button" data-km="flits" aria-pressed="true">📸 Flitsers</button><button type="button" data-km="plek" aria-pressed="false">📍 Mijn plekjes</button><button type="button" data-km="bij" aria-pressed="false">🗺️ Bijnamen</button><button type="button" data-km="deel" aria-pressed="false">📤 Van de groep</button></nav>
+    <nav id="kmNav" class="segNav" aria-label="Wat staat er op de kaart"><button type="button" data-km="flits" aria-pressed="true">📸 Flitsers</button><button type="button" data-km="verover" aria-pressed="false">🏰 Veroveren</button><button type="button" data-km="plek" aria-pressed="false">📍 Mijn plekjes</button><button type="button" data-km="bij" aria-pressed="false">🗺️ Bijnamen</button><button type="button" data-km="deel" aria-pressed="false">📤 Van de groep</button></nav>
+    <div class="kmDeel" data-km="verover" hidden><div class="kaartKop"><b>🏰 Veroverkaart</b><span class="foot">Wie deze maand de meeste km rijdt in een gemeente, bezit hem. Telt alleen als 👥 Maatjes live aan staat.</span></div><div id="vvPlek"></div></div>
     <div class="kmDeel" data-km="flits">
     <div class="kaartKop"><b>🗺️ Flitsers en meldingen</b><span class="foot">Blauw = van jou · Rood = vast · Oranje = mobiel (groep) · Paars gestippeld = ANWB/flitsers.nl, gaat vanzelf weg. Tik op een stip van jou of de groep om hem te verwijderen.</span></div>
     </div>
@@ -5269,7 +5270,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v194';
+  var VERSION = 'v195';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7489,7 +7490,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   setInterval(function () { if (buurAan && grp && document.visibilityState === 'visible') window.__veroverStuur(); }, 10 * 60e3); setTimeout(function () { if (grp) window.__veroverStuur(!buurAan); }, 8000);
   var vvMap = null;
   function vvToon() {
-    var box = $('vvBox'); if (!box || box.hidden) return; var d = vvData, e = vvEigenaars(d), per = {};
+    var box = $('vvBox'); if (!box || box.offsetParent === null) return; var d = vvData, e = vvEigenaars(d), per = {};
     Object.keys(e).forEach(function (g) { var o = e[g]; (per[o.van] = per[o.van] || { n: o.n, l: [] }).l.push(g); });
     var rang = Object.keys(per).sort(function (a, b) { return per[b].l.length - per[a].l.length; });
     $('vvRang').innerHTML = rang.length ? rang.map(function (v, i) { return '<div style="display:flex;gap:8px;align-items:center;margin:3px 0"><b style="width:18px">' + (i + 1) + '</b><span style="width:12px;height:12px;border-radius:6px;background:' + vvKleur(v) + '"></span><span style="flex:1">' + (per[v].n || '?') + (v === mijnId ? ' (jij)' : '') + '</span><b>' + per[v].l.length + ' 🏰</b></div>'; }).join('') : '<p class="foot">Nog niemand heeft deze maand een gemeente. Rij een stukje met "Maatjes live" aan!</p>';
@@ -7503,8 +7504,8 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   }
   function vvZoom(feats) { if (!feats.length || !vvMap) return; var b = new maplibregl.LngLatBounds(); feats.forEach(function (f) { b.extend(f.geometry.coordinates); }); try { vvMap.fitBounds(b, { padding: 40, maxZoom: 10, duration: 0 }); } catch (e) {} }
   setTimeout(function () {
-    var kg = $('kopGroep'); if (!kg || $('vvBox')) return; var w = document.createElement('div'); w.innerHTML = '<p class="sub">🏰 Veroverkaart <small>(wie reed deze maand de meeste km in een gemeente, bezit hem)</small></p><div class="btns"><button class="btn" id="vvKnop" type="button">🏰 Veroverkaart bekijken</button></div><div id="vvBox" hidden><div id="vvKaart" style="height:320px;border-radius:14px;overflow:hidden;margin:8px 0"></div><div id="vvRang"></div><p class="foot">Telt alleen als "Maatjes live" aan staat. Je km per gemeente gaan naar je groep, verder niets.</p></div>';
-    kg.appendChild(w); $('vvKnop').addEventListener('click', function () { var bx = $('vvBox'); bx.hidden = !bx.hidden; this.textContent = bx.hidden ? '🏰 Veroverkaart bekijken' : '🏰 Veroverkaart verbergen'; if (!bx.hidden) { window.__veroverStuur(!buurAan); vvToon(); if (vvMap) setTimeout(function () { vvMap.resize(); }, 50); } });
+    var kg = $('vvPlek'); if (!kg || $('vvBox')) return; var w = document.createElement('div'); w.innerHTML = '<div id="vvBox"><div id="vvKaart" style="height:320px;border-radius:14px;overflow:hidden;margin:8px 0"></div><div id="vvRang"></div><p class="foot">Telt alleen als "Maatjes live" aan staat. Je km per gemeente gaan naar je groep, verder niets.</p></div>';
+    kg.appendChild(w); window.__vvOpen = function () { window.__veroverStuur(!buurAan); vvToon(); if (vvMap) setTimeout(function () { vvMap.resize(); }, 50); }; if (window.__kaartModus && window.__kaartModus() === 'verover') window.__vvOpen();
   }, 0);
 
   /* ---------- v192: ghosts: rij tegen een eerdere rit van een groepslid op hetzelfde stuk weg (geen echte auto!) ---------- */
@@ -8383,7 +8384,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     kaartModus = m; try { localStorage.setItem(KMKEY, m); } catch (e) {}
     document.querySelectorAll('#kmNav button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.km === m ? 'true' : 'false'); });
     document.querySelectorAll('.kmDeel').forEach(function (d) { d.hidden = d.dataset.km !== m; });
-    document.body.classList.toggle('kmNiet', m !== 'flits');
+    document.body.classList.toggle('kmNiet', m !== 'flits'); var kp = $('kaartPlek'); if (kp) kp.hidden = m === 'verover'; if (m === 'verover') { try { window.__vvOpen && window.__vvOpen(); } catch (e) {} return; }
     var tip = $('kmTip'); if (tip) tip.textContent = { flits: 'Tip: tik ergens op de kaart om daar zelf een flitser of controle toe te voegen.', plek: 'Tip: tik ergens op de kaart om daar een plekje te bewaren.', bij: 'Bijnamen komen vanzelf: als Buddy twee keer iets voelt op dezelfde plek, krijgt die plek een naam.', deel: 'Hier zie je de plekjes die iemand uit je groep heeft gedeeld.' }[m] || '';
     try { flKaartVul(); } catch (e) {}
   }
@@ -9342,6 +9343,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v195', '16 nov', ['Veroverkaart verhuisd naar het Kaart-tabblad (🏰 Veroveren, naast Flitsers)']],
       ['v194', '16 nov', ['Testmaatje en groepsmaatjes ook in 3D in de first-person-stand']],
       ['v193', '16 nov', ['Snelbalk bovenaan: Rijden, Naar huis, Naar werk, Ergens heen', 'Geluidknop 🔊 op het rijscherm', 'Route hervatten zonder keuzescherm', 'Pontjes vermijden: routes met pontje komen niet meer in de lijst', 'Crash bij raket afvuren opgelost', 'Dit lijstje met alle versies']],
       ['v192', '16 nov', ['👥 Maatjes live: groepsleden binnen 5 km in 3D op de kaart, in je spiegel en op Buddy+', '🚀 Items: raket (ontwijken door te tikken), ⚡ nitro, 💣 mijn', 'Toeteren, volgen, konvooi en start-duel tot 50', '🎁 Cadeautjes verstoppen en Buddy Wrapped', '🏰 Veroverkaart, 👻 ghosts van groepsleden en kletsende Buddy\'s', '🧪 Testmaatje om alles alleen te proberen', 'Nieuw-kaart op het Buddy-tabblad']],
