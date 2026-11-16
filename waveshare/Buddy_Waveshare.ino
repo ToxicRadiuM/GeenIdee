@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 118;   // v118: internet via telefoon betrouwbaarder na verbinden, log niet meer dubbel
+static const int FW_VERSIE = 119;   // v119: groepsmaatjes live op de kaart, raket ontwijken met een tik
+// oud:   // v118: internet via telefoon betrouwbaarder na verbinden, log niet meer dubbel
 // oud:   // v117: route als boog bovenin, rijstroken klein onderaan, midden vrij
 // oud:   // v116: route als rechte lijn in het bordje bovenin (zoals de Tesla)
 // oud:   // v115: rijstroken, rotonde-afslagnummer, aankomst duidelijker, 'goed zo' na een afslag, nachtkaart, sneller internet via de telefoon
@@ -1202,6 +1203,7 @@ static int tjAvg = 0, tjLim = 0, tjRest = 0; static float tjFrac = 0; static uin
 static char nvBaan[14] = ""; static int nvAfrit = 0; static uint32_t goedZoT = 0;   // v115: rijstroken (+ = goede baan; L l S r R U), afrit op de rotonde, duim na een afslag
 static char nvNaam[26] = "", nvEta[6] = ""; static int nvRest = -1; static uint32_t nvT = 0;   // v85: straat van de volgende afslag, resterende afstand (100 m) en aankomsttijd
 static bool blLijn(); static void tekenLijn(float x0, float x1, float y);   // v116
+struct Maat { char n[12]; float lat, lon; }; static Maat maten[6]; static int matenN = 0; static uint32_t matenT = 0, raketTot = 0;   // v119: groepsmaatjes live en raketten
 static char eNavC = 0; static int eNavD = 0;   // v103
 struct StapPt { float lat, lon; char c; }; static StapPt *stA = nullptr, *stB = nullptr, *stappen = nullptr; static volatile int stapN = 0; static int stNieuwN = 0; static bool stBezig = false;   // v85: afslagen en rotondes op de route
 static const int AW_MAX = 900; static float *awA = nullptr, *awB = nullptr, *awPt = nullptr; static uint8_t *awFA = nullptr, *awFB = nullptr, *awF = nullptr; static volatile int awN = 0; static int awNieuwN = 0; static bool awBezig = false;   // v85: wegen om je heen van de app (bit 1 = begin van een weg, bit 2 = grote weg)
@@ -1231,6 +1233,11 @@ static void parsePhone(char *line) {
     else bnStaat = 3;
     return;
   }
+  if (pinOk && !strncmp(line, "MT:", 3)) {   // v119: maatjes die live in de buurt rijden: naam,lat,lon;naam,lat,lon
+    int n = 0; char *q = line + 3; while (*q && n < 6) { char *k = strchr(q, ','); if (!k) break; int L = k - q; if (L > 11) L = 11; memcpy(maten[n].n, q, L); maten[n].n[L] = 0; q = k + 1;
+      maten[n].lat = strtof(q, &q); if (*q != ',') break; maten[n].lon = strtof(q + 1, &q); n++; if (*q == ';') q++; else break; }
+    matenN = n; matenT = millis(); return; }
+  if (pinOk && !strncmp(line, "RK:", 3)) { raketTot = line[3] == 'X' ? 0 : millis() + 2000; if (raketTot) playGeluid(GL_PLING); return; }   // v119: raket komt eraan
   if (pinOk && !strncmp(line, "HART:", 5)) { bool a = line[5] == '1'; if (a != hartjesAan) { hartjesAan = a; buddyPrefs.putBool("hart", a); } return; }   // v109
   if (pinOk && !strncmp(line, "RT:", 3)) {   // v76: route binnenhalen (B = begin, P = punten, E = klaar, X = gestopt)
     const char *a = line + 3;
@@ -3268,6 +3275,12 @@ static void drawKaart() {
       circle(x, y, 5.5f, 0xFFFF); circle(x, y, 4, cs[i].type == 3 ? 0xFD20 : 0xF800); } }
   if (appCams) for (int i = 0; i < appCamN; i++) { const AppCam &c = appCams[i]; if (fabsf(c.lat - lat) > dla || fabsf(c.lon - lon) > dlo) continue; float x, y; proj(c.lat, c.lon, x, y); if (!binnen(x, y)) continue;   // v81: flitsers van de app
     circle(x, y, 6, 0xFFFF); circle(x, y, 4.5f, c.type == 3 ? 0xFD20 : c.type == 2 ? 0x041F : 0xF800); }
+  if (matenN && millis() - matenT < 5000) for (int i = 0; i < matenN; i++) {   // v119: groepsmaatjes: rood stipje met naam, of een pijltje aan de rand
+    float x, y; proj(maten[i].lat, maten[i].lon, x, y); float dx = x - 120, dy = y - 120, r = sqrtf(dx * dx + dy * dy);
+    frame->setTextSize(1); frame->setTextColor(0xFFFF); int tw = strlen(maten[i].n) * 6;
+    if (r < 100) { circle(x, y, 7, 0xFFFF); circle(x, y, 5.5f, 0xF800); roundRect(x - tw / 2 - 3, y - 20, tw + 6, 11, 4, 0xF800); frame->setCursor(X(x - tw / 2), Y(y - 18)); frame->print(maten[i].n); }
+    else { float ux = dx / r, uy = dy / r, ex = 120 + ux * 104, ey = 120 + uy * 104; triF(ex + ux * 9, ey + uy * 9, ex - uy * 7, ey + ux * 7, ex + uy * 7, ey - ux * 7, 0xF800);
+      float tx = 120 + ux * 84 - tw / 2.f, ty = 120 + uy * 84 - 4; roundRect(tx - 3, ty - 2, tw + 6, 11, 4, 0xF800); frame->setCursor(X(tx), Y(ty)); frame->print(maten[i].n); } }
   triF(CX, CY - 12, CX - 9, CY + 9, CX + 9, CY + 9, 0xFFFF); triF(CX, CY - 7, CX - 5, CY + 6, CX + 5, CY + 6, 0x3D7F);   // jouw auto
   circle(36, 166, 19, 0x2945); circle(36, 166, 17.5f, 0x0000); miniBuddy(36, 167, .4f, false, 0);   // v116: Buddy klein linksonder, niet meer bovenin waar je weg vooruit loopt
   // v111: kompas-N weggehaald
@@ -3321,6 +3334,13 @@ static void boogStuk(float f0, float f1, float r, float w, uint16_t kl) {   // f
   const float A0 = .61f, A1 = -.96f; f0 = fmaxf(0, fminf(1, f0)); f1 = fmaxf(0, fminf(1, f1)); int n = 2 + (int)(fabsf(f1 - f0) * 30);
   for (int i = 0; i < n; i++) { float a = A0 + (A1 - A0) * (f0 + (f1 - f0) * i / n), b = A0 + (A1 - A0) * (f0 + (f1 - f0) * (i + 1) / n); dikLijn(120 + cosf(a) * r, 120 + sinf(a) * r, 120 + cosf(b) * r, 120 + sinf(b) * r, w, kl); }
 }
+static void tekenRaket() {   // v119: raket valt 2 seconden van boven naar Buddy; tik op het scherm om te ontwijken
+  if (!raketTot) return; int32_t rest = (int32_t)(raketTot - millis()); if (rest <= 0) { raketTot = 0; return; }
+  float p = 1 - rest / 2000.f, x = 120 + sinf(p * 9) * 6, y = 10 + p * 120;
+  triF(x - 7, y - 22, x + 7, y - 22, x, y + 4, 0xF800); roundRect(x - 7, y - 40, 14, 20, 4, 0xFFFF); triF(x - 7, y - 40, x + 7, y - 40, x, y - 50, 0xF800);
+  triF(x - 10, y - 26, x - 7, y - 36, x - 7, y - 22, 0x8410); triF(x + 10, y - 26, x + 7, y - 36, x + 7, y - 22, 0x8410);
+  if (((millis() / 80) & 1)) triF(x - 5, y - 50, x + 5, y - 50, x, y - 62, 0xFD20);
+  frame->setTextSize(2); frame->setTextColor(0xFFFF); frame->setCursor(X(120 - 30), Y(196)); frame->print("TIK!"); }
 static void drawRand(bool kaart) {
   if (menuOpen || venster || (int32_t)(showTot - millis()) > 0) return;
   uint32_t nu = millis();
@@ -3944,7 +3964,8 @@ void handleTouch(){
    // loslaten = een tik afhandelen
    if (down && !lang && now - downMs < 600) {
      if (rtN && lY < 90) logRegel("tik bovenin (%.0f,%.0f) venster=%d menu=%d spel=%d", lX, lY, (int)venster, (int)menuOpen, (int)(spel != 0));   // v109: zoeken waarom KAART niet reageert
-     if (venster == 1 && fabsf(lX - dX) > 45.0f && fabsf(lY - dY) < 60.0f) { infoBlad = !infoBlad; vensterTot = now + 30000; playGeluid(GL_PLING); }   // v111: vegen
+     if (raketTot && (int32_t)(raketTot - now) > 0) { raketTot = 0; bleSend("RKT"); playGeluid(GL_PLING); logRegel("raket ontweken (tik op Buddy+)"); }   // v119
+     else if (venster == 1 && fabsf(lX - dX) > 45.0f && fabsf(lY - dY) < 60.0f) { infoBlad = !infoBlad; vensterTot = now + 30000; playGeluid(GL_PLING); }   // v111: vegen
      else if (venster == 1 && infoBlad && lY > 58.0f && lY < 94.0f) { vensterTot = now + 30000; hartjesAan = !hartjesAan; buddyPrefs.putBool("hart", hartjesAan); bleSend(hartjesAan ? "HART:1" : "HART:0");
          if (hartjesAan) { aaiTot = now + 2500; playGeluid(GL_GIECHEL); } else playGeluid(GL_PLING); logRegel("hartjes %s (op Buddy+)", hartjesAan ? "aan" : "uit"); }
      else if (venster == 1 && infoBlad && lY >= 96.0f && lY < 130.0f) { vensterTot = now + 30000; nachtStil = !nachtStil; buddyPrefs.putBool("nstil", nachtStil); playGeluid(GL_PLING); }
@@ -4178,7 +4199,7 @@ void loop(){
  if (menuOpen && (int32_t)(menuTot - millis()) < 0) menuOpen = false;
  updateMood(dt); updateParticles(dt);
  uint32_t drawStartUs=micros();
- drawFace(); drawRand(kaartNu()); { bool kn = kaartNu(); if (!kn && !((int32_t)(showTot - millis()) > 0) && !((int32_t)(meterTot - millis()) > 0)) drawKaartKnop(); }   // v84; v110: KAART-knop bovenop
+ drawFace(); drawRand(kaartNu()); tekenRaket(); { bool kn = kaartNu(); if (!kn && !((int32_t)(showTot - millis()) > 0) && !((int32_t)(meterTot - millis()) > 0)) drawKaartKnop(); }   // v84; v110: KAART-knop bovenop
  uint32_t drawDoneUs=micros();
  flushDirty();
  uint32_t flushDoneUs=drawDoneUs+flushLastUs;  // v16: verzendtijd van het vorige beeld (loopt parallel)

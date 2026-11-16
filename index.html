@@ -1187,7 +1187,7 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
         <p class="sub">Meldingen</p>
         <div class="switchrow"><input type="checkbox" id="grSignaalOn" checked><label for="grSignaalOn">Geluidje en trillen bij een groepsbericht</label></div>
         <div class="switchrow"><input type="checkbox" id="grGezienOn" checked><label for="grGezienOn">Laat collega’s zien dat ik hun bericht heb gezien (✓)</label></div>
-        <div class="switchrow"><input type="checkbox" id="buurIn"><label for="buurIn">Groepsmaatjes onderweg: zolang je rijdt zien groepsleden die binnen 5 km rijden je live op de kaart (en jij hen). Sta je stil, dan verdwijn je. Er wordt niets bewaard.</label></div>
+        <div class="switchrow"><input type="checkbox" id="buurIn"><label for="buurIn">Groepsmaatjes onderweg: zolang je rijdt zien groepsleden die binnen 5 km rijden je live op de kaart (en jij hen). Sta je stil, dan verdwijn je. Er wordt niets bewaard.</label></div><button class="btn" id="nepKnop" type="button">🧪 Test met een nepmaatje</button>
         <p class="sub">Flitsers</p>
         <button class="btn" id="grpDel" type="button">Mijn laatst toegevoegde flitser verwijderen</button>
         <button class="btn" id="kaartKnop" type="button">🗺️ Flitsers op de kaart (bekijken en verwijderen)</button>
@@ -7259,7 +7259,7 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
     if (it === 'ster') { mem.item = null; save(); itemToon(); sterTot = Date.now() + 10000; try { window.__autoFx && window.__autoFx('ster', 10000); } catch (e) {} startGag('raket'); setEv('excited', 5, '⚡ NITRO! Tien seconden onverwoestbaar!'); beep('excited'); say('Nitro!'); lg('item: nitro gebruikt'); return; }
     if ((S.speed || 0) < 20) { toast('Dat kan alleen als je rijdt.'); return; }
     if (it === 'mijn') { mijnLeg(); return; }
-    if (!buurAan) { toast('Zet eerst "Collega in de buurt" aan (Groep), dan zie je wie er rijdt.'); return; }
+    if (!buurAan && !nep) { toast('Zet eerst "Collega in de buurt" aan (Groep), dan zie je wie er rijdt.'); return; }
     var bl = window.__buren && Date.now() - window.__buren.t < 90e3 ? window.__buren.l.filter(function (b) { return !b.d || b.d <= 2; }) : [];
     var LV = window.__live || {}; Object.keys(LV).forEach(function (k) { var x = LV[k], d = gdist(lastPos.lat, lastPos.lon, x.lat, x.lon); bl = bl.filter(function (b) { return b.van !== k; }); if (d <= 2000) bl.push({ van: k, n: x.n, d: d / 1000 }); });
     if (!bl.length) { toast('Er rijdt nu niemand uit je groep binnen 2 km. Bewaar je raket nog even!'); return; }
@@ -7269,7 +7269,7 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
     itemZend(doel.van, 'itbal' + Date.now().toString(36));
     setEv('mischief', 3, '🚀 Raket afgevuurd op ' + (doel.n || 'je maatje') + '!'); beep('pet'); lg('item: raket naar ' + (doel.n || '?'));
   }
-  function itemZend(aan, r) { if (window.__liveStuur && window.__liveStuur(aan, r)) return; grStuur('gezien', '&aan=' + encodeURIComponent(aan) + '&r=' + r).catch(function () {}); }   /* live = meteen, anders via de groepsberichten */
+  function itemZend(aan, r) { if (aan === 'nep') { nepAntwoord(r); return; } if (window.__liveStuur && window.__liveStuur(aan, r)) return; grStuur('gezien', '&aan=' + encodeURIComponent(aan) + '&r=' + r).catch(function () {}); }   /* live = meteen, anders via de groepsberichten */
 
   /* ---------- v192: LIVE: elke seconde je plek naar groepsmaatjes binnen 5 km (alleen als je rijdt; niets wordt bewaard) ---------- */
   var live = { ws: null, open: false, laatst: 0, stilT: 0, fout: 0, gezien: {} }; window.__live = {};
@@ -7302,11 +7302,12 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
   function raketKomt(b, wie) {
     var el = document.createElement('div'); el.id = 'raketIn'; el.textContent = '🚀'; document.body.appendChild(el);
     var ontweken = false; setEv('startled', 2, '🚀 ' + wie + ' vuurt een raket af! TIK op Buddy!'); beep('wake'); say('Raket! Tik!');
-    function tik(e) { if (ontweken) return; ontweken = true; try { window.__autoFx && window.__autoFx('zij'); } catch (x) {} el.classList.add('mis'); setEv('excited', 3, '💨 Ontweken! Haha, mis ' + wie + '!'); beep('excited'); itemZend(b.van, 'itmis' + Date.now().toString(36)); lg('item: raket van ' + wie + ' ontweken'); }
+    function tik(e) { if (ontweken) return; ontweken = true; try { window.__autoFx && window.__autoFx('zij'); } catch (x) {} el.classList.add('mis'); tel('ontweken'); setEv('excited', 3, '💨 Ontweken! Haha, mis ' + wie + '!'); beep('excited'); itemZend(b.van, 'itmis' + Date.now().toString(36)); lg('item: raket van ' + wie + ' ontweken'); }
     var doel = document.querySelector('main'); if (doel) doel.addEventListener('pointerdown', tik, { once: true }); el.addEventListener('pointerdown', tik, { once: true });
-    setTimeout(function () { if (doel) doel.removeEventListener('pointerdown', tik); setTimeout(function () { el.remove(); }, 400); if (ontweken) return;
+    window.__raketTik = tik; try { window.__scStuur && window.__scStuur('RK:1'); } catch (e) {}
+    setTimeout(function () { window.__raketTik = null; if (doel) doel.removeEventListener('pointerdown', tik); setTimeout(function () { el.remove(); }, 400); if (ontweken) return;
       try { window.__autoFx && window.__autoFx('salto'); } catch (e) {} setEv('startled', 4, '💥 BOEM! ' + wie + ' schoot ons met een raket!'); startGag && startGag('spin'); beep('wake'); say(wie + ' raakte ons!');
-      lg('item: geraakt door ' + wie); itemZend(b.van, 'itraak' + Date.now().toString(36)); }, 2000);
+      tel('geraakt'); lg('item: geraakt door ' + wie); itemZend(b.van, 'itraak' + Date.now().toString(36)); }, 2000);
   }
   /* ---- mijn leggen en erover rijden ---- */
   var mijnen = {}, mijnGeraakt = {};
@@ -7331,7 +7332,7 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
     var w = document.createElement('div'); w.id = 'maatMenu'; w.innerHTML = '<b>' + wie + '</b><button type="button" data-a="t">📯 Toeteren</button><button type="button" data-a="v">' + (volg && volg.van === van ? '✋ Stop met volgen' : '🧭 Volg ' + wie) + '</button><button type="button" data-a="x">✕</button>';
     document.body.appendChild(w); setTimeout(function () { if (w.parentNode) w.remove(); }, 8000);
     w.addEventListener('click', function (e) { var a = e.target && e.target.getAttribute('data-a'); if (!a) return; w.remove();
-      if (a === 't') { itemZend(van, 'toet' + Date.now().toString(36)); toast('📯 Getoeterd naar ' + wie); beep('pet'); }
+      if (a === 't') { tel('toeter'); itemZend(van, 'toet' + Date.now().toString(36)); toast('📯 Getoeterd naar ' + wie); beep('pet'); }
       if (a === 'v') { if (volg && volg.van === van) { volg = null; toast('Je volgt ' + wie + ' niet meer.'); return; } volg = { van: van, n: wie, t: 0, la: null, lo: null }; volgStap(true); toast('🧭 Je volgt ' + wie + '. Buddy rijdt je achter hem aan.'); lg('live: volgt ' + wie); } });
   };
   function volgStap(nu) {
@@ -7377,14 +7378,56 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
   }
   function raceKlaar(wie) { setEv('excited', 4, '🏁 Duel met ' + wie + '! Wacht op groen… wie het eerst 50 haalt wint. Blijf binnen de limiet!'); say('Duel! Wacht op groen.'); lg('start-duel met ' + wie); }
   function raceUitslag() { if (!race || race.mijn == null || race.ander == null) return; var w = race.mijn <= race.ander, f = function (x) { return (x / 1000).toFixed(1).replace('.', ','); };
-    var m = (w ? '🏆 Gewonnen! ' : '😤 Verloren… ') + 'Jij ' + f(race.mijn) + ' s, ' + race.n + ' ' + f(race.ander) + ' s.'; setEv(w ? 'excited' : 'sad', 5, m); say(w ? 'Gewonnen!' : 'Verloren!'); toast(m); lg('start-duel: ' + m); race.fase = 'af'; race = null; }
-  setInterval(function () { try { mijnKijk(); konvooiStap(); volgStap(false); raceStap(); } catch (e) {} }, 1000);
+    tel(w ? 'duelWin' : 'duelVerlies'); var m = (w ? '🏆 Gewonnen! ' : '😤 Verloren… ') + 'Jij ' + f(race.mijn) + ' s, ' + race.n + ' ' + f(race.ander) + ' s.'; setEv(w ? 'excited' : 'sad', 5, m); say(w ? 'Gewonnen!' : 'Verloren!'); toast(m); lg('start-duel: ' + m); race.fase = 'af'; race = null; }
+  var mtLeeg = true;
+  function maatjesNaarScherm() {   /* v192: maatjes ook op Buddy+ */
+    var L = window.__live || {}, ks = Object.keys(L).slice(0, 6); if (!ks.length && mtLeeg) return;
+    var r = 'MT:' + ks.map(function (k) { var x = L[k], n = String(x.n || 'Maatje').replace(/[^A-Za-z0-9 \-]/g, '').slice(0, 11) || 'Maatje';
+      var dt = Math.min(10, (Date.now() - x.rx) / 1000), sp = (x.v || 0) / 3.6 * dt, hd = (x.hd || 0) * Math.PI / 180;
+      return n + ',' + (x.lat + Math.cos(hd) * sp / 110540).toFixed(5) + ',' + (x.lon + Math.sin(hd) * sp / (111320 * Math.cos(x.lat * Math.PI / 180))).toFixed(5); }).join(';');
+    mtLeeg = !ks.length; try { window.__scStuur && window.__scStuur(r); } catch (e) {}
+  }
+  function tel(k) { mem.spel = mem.spel || {}; mem.spel[k] = (mem.spel[k] || 0) + 1; save(); }   /* v192: voor Wrapped */
+  window.__spelTel = tel;
+  /* ---------- v192: testmaatje: een nepauto om alles in je eentje te testen ---------- */
+  var nep = null;
+  function nepStart() {
+    if (!lastPos) { toast('Zet eerst de GPS aan.'); return; }
+    nep = { t0: Date.now(), start: Date.now(), fase: (S.speed || 0) < 20 ? 'stil' : 'rij', ev: {} }; window.__live = window.__live || {};
+    toast(nep.fase === 'stil' ? '🧪 Testmaatje staat naast je: daag hem uit voor een duel. Ga je rijden (boven 20), dan haalt hij je in en vuurt hij een raket af.' : '🧪 Testmaatje komt van achteren. Hij haalt je in en vuurt een raket af: tik dan op Buddy!');
+    lg('test: nepmaatje gestart (' + nep.fase + ')');
+  }
+  function nepStap() {
+    if (!nep || !lastPos) return; var nu = Date.now();
+    if (nu - nep.start > 10 * 60e3) { delete window.__live.nep; nep = null; toast('🧪 Test klaar.'); return; }
+    if (nep.fase === 'stil' && (S.speed || 0) >= 20) { nep.fase = 'rij'; nep.t0 = nu; nep.ev = {}; toast('🧪 Testmaatje rijdt nu achter je…'); }
+    var t = (nu - nep.t0) / 1000, hd = lastPos.hd != null ? lastPos.hd : 0, h = hd * Math.PI / 180;
+    var voor = nep.fase === 'stil' ? 0 : Math.min(400, -250 + 14 * t), opzij = 3.6, oost = Math.sin(h) * voor + Math.cos(h) * opzij, noord = Math.cos(h) * voor - Math.sin(h) * opzij;
+    window.__live.nep = { van: 'nep', n: 'Testmaatje', lat: lastPos.lat + noord / 110540, lon: lastPos.lon + oost / (111320 * Math.cos(lastPos.lat * Math.PI / 180)), hd: hd, v: nep.fase === 'stil' ? 0 : (S.speed || 0) + (t < 46 ? 50 : 0), rx: nu };
+    function een(k, s0, f) { if (t >= s0 && !nep.ev[k]) { nep.ev[k] = 1; f(); } }
+    if (nep.fase === 'rij') {
+      een('toet', 8, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'toet' }); });
+      een('raket', 22, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'itbal' + nu.toString(36) }); });
+      een('item', 34, function () { if (!mem.item) { mem.item = 'bal'; save(); itemToon(); } toast('🧪 Je hebt een raket: vuur hem af op Testmaatje (gele knop)!'); });
+      if (t > 90) { delete window.__live.nep; nep = null; toast('🧪 Test klaar. Alles gezien?'); lg('test: nepmaatje klaar'); }
+    }
+  }
+  function nepAntwoord(r) {
+    setTimeout(function () { var p = { van: 'nep', n: 'Testmaatje' };
+      if (/^itbal/.test(r)) { p.r = (Math.random() < .5 ? 'itraak' : 'itmis') + '1'; window.__itemPing(p); }
+      else if (/^toet/.test(r)) { p.r = 'toet1'; window.__itemPing(p); }
+      else if (/^raceq/.test(r)) { p.r = 'racej1'; window.__itemPing(p); }
+      else if (/^racet/.test(r)) { p.r = 'racet' + (3500 + Math.round(Math.random() * 3500)); window.__itemPing(p); } }, 1200);
+  }
+  setTimeout(function () { var k = $('nepKnop'); if (k) k.addEventListener('click', nepStart); }, 0);
+  setInterval(function () { try { nepStap(); } catch (e) {} }, 250);
+  setInterval(function () { try { mijnKijk(); konvooiStap(); volgStap(false); raceStap(); maatjesNaarScherm(); } catch (e) {} }, 1000);
 
   window.__itemPing = function (b) {
     var wie = b.n || 'Iemand';
     if (/^toet/.test(b.r)) { var t0 = '📯 ' + wie + ' toetert naar je!'; setEv('excited', 3, t0); beep('excited'); say(wie + ' toetert naar je!'); toast(t0); lg('live: getoeterd door ' + wie); return; }
     if (/^mijn/.test(b.r) && isFinite(b.lat)) { mijnen[b.r] = { id: b.r, lat: +b.lat, lon: +b.lon, van: b.van, n: wie, t: Date.now() }; return; }
-    if (/^itmijnraak/.test(b.r)) { setEv('laugh', 4, '💣 HA! ' + wie + ' reed op jouw mijn!'); beep('excited'); say(wie + ' reed op jouw mijn!'); return; }
+    if (/^itmijnraak/.test(b.r)) { tel('mijnRaak'); setEv('laugh', 4, '💣 HA! ' + wie + ' reed op jouw mijn!'); beep('excited'); say(wie + ' reed op jouw mijn!'); return; }
     if (/^itmis/.test(b.r)) { setEv('sad', 3, '💨 ' + wie + ' ontweek je raket!'); return; }
     if (/^race/.test(b.r)) { raceBericht(b); return; }
     if (/^itbal/.test(b.r)) {
@@ -7394,7 +7437,7 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
       if (Date.now() >= sterTot) { raketKomt(b, wie); return; }
       setEv('excited', 3, '⚡ Ha! ' + wie + ' vuurde een raket af, maar met nitro voel je er niks van!'); itemZend(b.van, 'itblok' + Date.now().toString(36)); return;
     }
-    if (/^itraak/.test(b.r)) { setEv('excited', 4, '💥 Raak! ' + wie + ' ging ondersteboven!'); beep('excited'); say('Raak!'); return; }
+    if (/^itraak/.test(b.r)) { tel('raketRaak'); setEv('excited', 4, '💥 Raak! ' + wie + ' ging ondersteboven!'); beep('excited'); say('Raak!'); return; }
     if (/^itblok/.test(b.r)) { setEv('sad', 3, '⚡ ' + wie + ' had nitro. Raket deed niks!'); return; }
     if (/^itcad/.test(b.r)) { var m = '🎁 ' + wie + ' heeft je cadeautje gevonden!'; setEv('happy', 4, m); toast(m); beep('pet'); grLijstAdd && grLijstAdd('in', m); }
   };
@@ -7444,6 +7487,10 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
       pl.length ? { bg: 'linear-gradient(160deg,#ffd60a,#ff9f0a)', h: '<div class="em">📍</div><p>Jouw vaste plek</p><div class="groot" style="font-size:44px">' + pl[0].naam + '</div><small>' + (pl[0].n || 1) + ' keer langs geweest</small>' } : null,
       (best || gm) ? { bg: 'linear-gradient(160deg,#ff453a,#1c1c1e)', h: '<div class="em">🏁</div>' + (best ? '<p>Snelste 0–100</p><div class="groot">' + best.toFixed(1).replace('.', ',') + ' s</div>' : '') + (gm ? '<small>Hardste bocht: ' + (+gm).toFixed(2).replace('.', ',') + ' G 🌀</small>' : '') } : null,
       gStijl != null ? { bg: 'linear-gradient(160deg,#64d2ff,#30d158)', h: '<div class="em">' + (gStijl >= 85 ? '😇' : gStijl >= 65 ? '😎' : '😅') + '</div><p>Gemiddelde rijstijl</p><div class="groot">' + gStijl + '</div><small>' + (gStijl >= 85 ? 'Zo zacht als een wolkje.' : gStijl >= 65 ? 'Lekker gereden!' : 'Volgend jaar iets rustiger? 😉') + '</small>' } : null,
+      (function () { var kv = mem.konvooi || {}, ks = Object.keys(kv).sort(function (a, b) { return kv[b] - kv[a]; }); if (!ks.length) return null; var tot = ks.reduce(function (a, k) { return a + kv[k]; }, 0);
+        return { bg: 'linear-gradient(160deg,#ff9f0a,#30d158)', h: '<div class="em">🚗🚙</div><p>In konvooi gereden</p><div class="groot">' + Math.round(tot) + ' km</div><small>Het meest met ' + ks[0] + ' (' + Math.round(kv[ks[0]]) + ' km)</small>' }; })(),
+      (function () { var sp = mem.spel || {}; if (!sp.raketRaak && !sp.geraakt && !sp.ontweken && !sp.duelWin && !sp.duelVerlies && !sp.mijnRaak) return null;
+        return { bg: 'linear-gradient(160deg,#ff3b30,#5e0000)', h: '<div class="em">🚀</div><p>Oorlog op de weg</p><div class="groot" style="font-size:48px">' + (sp.raketRaak || 0) + ' raak</div><p>' + (sp.ontweken || 0) + '× ontweken · ' + (sp.geraakt || 0) + '× zelf geraakt<br>💣 ' + (sp.mijnRaak || 0) + ' mijn-slachtoffers · 🏁 ' + (sp.duelWin || 0) + '–' + (sp.duelVerlies || 0) + ' in duels</p>' }; })(),
       { bg: 'linear-gradient(160deg,#1c1c1e,#3a3a3c)', h: '<div class="em">❤️</div><p>Bedankt voor alle ritjes' + (myWho() ? ', ' + myWho() : '') + '!</p><div class="groot" style="font-size:40px">Op naar ' + (jr + 1) + '</div><small>Liefs, Buddy</small>' }
     ].filter(Boolean);
     var w = document.createElement('div'); w.id = 'wrapped'; document.body.appendChild(w); var i = 0;
@@ -8345,6 +8392,7 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
       if (t === 'PIN:OK') { pinBev = true; lg('scherm: code goed, verbonden'); stat('✅ Verbonden met Buddy+. Het schermpje krijgt nu elke seconde de info van je telefoon.'); toast('✅ Verbonden met Buddy+'); setTimeout(stuurInst, 300); setTimeout(netStuur, 900); setTimeout(function () { klein('NET:JA'); }, 1300); setTimeout(function () { klein('HART:' + (window.__hartjesAan && window.__hartjesAan() ? 1 : 0)); }, 1700); setTimeout(persStuur, 1500); setTimeout(function () { klein('STAT?'); }, 2500); setTimeout(vraagLog, 3500); if (window.__rtOpnieuw) window.__rtOpnieuw(); return; }   /* alles wat vóór de code kwam, nog een keer */
       if (t === 'PIN:FOUT') { lg('scherm: verkeerde code'); try { localStorage.removeItem(PINKEY); } catch (e) {} toast('Die code klopt niet. Kijk bovenaan het schermpje.'); setTimeout(function () { stuurPin(true); }, 600); return; }
       if (t === 'PIN?') { stuurPin(); return; }
+      if (t === 'RKT') { try { window.__raketTik && window.__raketTik(); } catch (e) {} return; }   /* v192: raket ontweken via Buddy+ */
       if (t === 'HART:1' || t === 'HART:0') { try { localStorage.setItem('dashboardmaatje-hartjes', t.slice(5)); var hc = $('hartjesOn'); if (hc) hc.checked = t === 'HART:1'; } catch (e) {} lg('hartjes ' + (t === 'HART:1' ? 'aan' : 'uit') + ' gezet op Buddy+'); return; }   /* v171 */
       if (t.indexOf('NQ|') === 0) { var q1 = t.indexOf('|', 3), nid = t.slice(3, q1); if (nqId !== nid) { nqId = nid; nqUrl = ''; } nqUrl += t.slice(q1 + 1); return; }   /* v168: internet voor Buddy+ */
       if (t.indexOf('NQE|') === 0) { var dl2 = t.slice(4).split('|'), nid2 = dl2[0], len2 = dl2[1] ? +dl2[1] : -1;
