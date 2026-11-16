@@ -606,6 +606,7 @@ async function groep(url, env, g, json) {
     for (const [k, v] of Object.entries(map)) {
       if (k === van) continue;
       const d = Math.hypot((v.lat - lat) * 111195, (v.lon - lon) * 111195 * Math.cos(lat * Math.PI / 180));
+      if (q('pos') && d < 5000 && nu - v.t < 90e3) { buren.push({ van: k, n: v.n, a: v.a, d: d < 600 ? undefined : Math.max(1, Math.round(d / 1000)), lat: v.lat, lon: v.lon, hd: v.hd, v: v.v, oud: nu - v.t }); continue; } // v192: binnen 5 km en allebei rijdend: elkaar op de kaart zien
       if (d < 600) buren.push({ van: k, n: v.n, a: v.a });
       else if (q('ver') && d < 5000) buren.push({ van: k, n: v.n, a: v.a, d: Math.max(1, Math.round(d / 1000)) }); // v63: verder weg, alleen hele km
     }
@@ -613,7 +614,7 @@ async function groep(url, env, g, json) {
     const ik = map[van];
     const verplaatst = !ik || Math.hypot((ik.lat - lat) * 111195, (ik.lon - lon) * 111195 * Math.cos(lat * Math.PI / 180)) > 150 || nu - ik.t > 150e3;
     if (verplaatst) {
-      map[van] = { lat: +lat.toFixed(4), lon: +lon.toFixed(4), t: nu, n: naam(q('n')), a: auto(q('a')) };
+      map[van] = { lat: +lat.toFixed(4), lon: +lon.toFixed(4), t: nu, n: naam(q('n')), a: auto(q('a')), hd: getal(q('hd'), 359), v: getal(q('v'), 250) };   // v192: richting en snelheid, zodat de ander je kan laten doorrijden op de kaart
       if (Object.keys(map).length > GR_LEDEN) { const oudste = Object.entries(map).sort((a, b) => a[1].t - b[1].t)[0]; delete map[oudste[0]]; }
       await env.FLITS.put(key, JSON.stringify(map));
     }

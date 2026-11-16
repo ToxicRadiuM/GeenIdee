@@ -946,6 +946,10 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
 #wrapped .wk .em { font-size: 72px; } #wrapped .wk p { font-size: 18px; line-height: 1.35; margin: 6px 0; } #wrapped .wk small { opacity: .75; font-size: 14px; }
 #wrapped .wbalk { position: absolute; top: 12px; left: 16px; right: 16px; display: flex; gap: 4px; } #wrapped .wbalk i { flex: 1; height: 4px; border-radius: 2px; background: #fff4; } #wrapped .wbalk i.v { background: #fff; }
 #wrapped .wx { position: absolute; top: 22px; right: 18px; font-size: 26px; background: none; border: 0; color: #fff; }
+.maatMk { display: flex; flex-direction: column; align-items: center; pointer-events: none; } .maatMk .mmAuto { font-size: 30px; filter: drop-shadow(0 3px 4px #000a); }
+.maatMk b, .maatPijl b { font: 700 12px/1 var(--f-body); color: #fff; background: #ff3b30; padding: 3px 7px; border-radius: 9px; white-space: nowrap; box-shadow: 0 2px 6px #0007; }
+.maatPijl { position: fixed; z-index: 48; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; }
+.maatPijl[hidden] { display: none; } .maatPijl i { font-style: normal; font-size: 26px; color: #ff3b30; text-shadow: 0 0 3px #fff, 0 2px 6px #000a; line-height: 1; }
 </style>
 
 </head>
@@ -7215,7 +7219,7 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
     var dichtbij = window.__buren && window.__buren.l.length && Date.now() - window.__buren.t < 5 * 60e3;
     if (T - buurT < (dichtbij ? 25 : 180)) return;
     buurT = T;
-    fetch(gUrl('/hier', grQ('&lat=' + lastPos.lat.toFixed(4) + '&lon=' + lastPos.lon.toFixed(4) + '&ver=1'))).then(function (r) { return r.json(); }).then(function (j) {
+    fetch(gUrl('/hier', grQ('&lat=' + lastPos.lat.toFixed(4) + '&lon=' + lastPos.lon.toFixed(4) + '&ver=1&pos=1' + (lastPos.hd != null ? '&hd=' + Math.round((lastPos.hd + 360) % 360) : '') + '&v=' + Math.round(S.speed || 0)))).then(function (r) { return r.json(); }).then(function (j) {
       window.__buren = { t: Date.now(), l: (j && Array.isArray(j.buren) ? j.buren : []).filter(function (b) { return b && b.van; }) };   /* v192: voor de stuiterbal */
       (j && Array.isArray(j.buren) ? j.buren : []).forEach(function (b) {
         if (!b || !b.van || (buurGezien[b.van] && Date.now() - buurGezien[b.van] < 30 * 60e3)) return;
@@ -11041,6 +11045,30 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
     }
     /* v159: 3D-auto als je achter de auto kijkt, en ritreplay in 3D */
     var a3dKnip = 0;
+    /* v192: groepsmaatjes die binnen 5 km rijden op de kaart, en een pijltje met naam aan de rand als ze buiten beeld zijn */
+    var maatMk = {}, maatPijl = {};
+    function maatjes() {
+      var B = window.__buren, lijst = B && Date.now() - B.t < 90e3 ? B.l.filter(function (b) { return isFinite(b.lat) && isFinite(b.lon); }) : [];
+      var zicht = map && mk && st.aan && document.body.classList.contains('car'), weg = {};
+      if (zicht) { var ik = mk.getLngLat(), W = map.getContainer().clientWidth, H = map.getContainer().clientHeight, mb = map.getBearing();
+        lijst.forEach(function (b) {
+          var dt = Math.min(60, ((Date.now() - B.t) + (b.oud || 0)) / 1000), sp = (b.v || 0) / 3.6 * dt, hd = (b.hd || 0) * Math.PI / 180;   /* doorrijden waar hij nu ongeveer is */
+          var la = b.lat + Math.cos(hd) * sp / 110540, lo = b.lon + Math.sin(hd) * sp / (111320 * Math.cos(b.lat * Math.PI / 180)); weg[b.van] = 1;
+          var m = maatMk[b.van]; if (!m) { var el = document.createElement('div'); el.className = 'maatMk'; el.innerHTML = '<span class="mmAuto">🚙</span><b></b>'; m = maatMk[b.van] = new maplibregl.Marker({ element: el, anchor: 'bottom', rotationAlignment: 'viewport' }).setLngLat([lo, la]).addTo(map); }
+          m.setLngLat([lo, la]); var afst = gdist(ik.lat, ik.lng, la, lo); m.getElement().querySelector('b').textContent = (b.n || 'Maatje') + ' · ' + (afst < 1000 ? Math.round(afst / 10) * 10 + ' m' : (afst / 1000).toFixed(1).replace('.', ',') + ' km');
+          var q = map.project([lo, la]), binnen = q.x > 20 && q.x < W - 20 && q.y > 40 && q.y < H - 20 && afst < 3000;
+          m.getElement().style.display = binnen ? '' : 'none';
+          var pl = maatPijl[b.van]; if (!pl) { pl = maatPijl[b.van] = document.createElement('div'); pl.className = 'maatPijl'; pl.innerHTML = '<i>▲</i><b></b>'; document.body.appendChild(pl); }
+          pl.hidden = binnen; if (!binnen) {
+            var y = Math.sin((lo - ik.lng) * Math.PI / 180) * Math.cos(la * Math.PI / 180), x = Math.cos(ik.lat * Math.PI / 180) * Math.sin(la * Math.PI / 180) - Math.sin(ik.lat * Math.PI / 180) * Math.cos(la * Math.PI / 180) * Math.cos((lo - ik.lng) * Math.PI / 180);
+            var rel = (Math.atan2(y, x) * 180 / Math.PI - mb + 720) % 360, r = rel * Math.PI / 180, rx = W / 2 - 46, ry = H / 2 - 70, k = Math.min(rx / Math.max(.001, Math.abs(Math.sin(r))), ry / Math.max(.001, Math.abs(Math.cos(r))));
+            pl.style.left = (W / 2 + Math.sin(r) * k) + 'px'; pl.style.top = (H / 2 - Math.cos(r) * k) + 'px'; pl.querySelector('i').style.transform = 'rotate(' + rel + 'deg)';
+            pl.querySelector('b').textContent = (b.n || 'Maatje') + ' ' + (afst < 1000 ? Math.round(afst / 10) * 10 + ' m' : (afst / 1000).toFixed(1).replace('.', ',') + ' km'); }
+        }); }
+      Object.keys(maatMk).forEach(function (k) { if (!weg[k]) { maatMk[k].remove(); delete maatMk[k]; } });
+      Object.keys(maatPijl).forEach(function (k) { if (!weg[k]) { maatPijl[k].remove(); delete maatPijl[k]; } });
+    }
+    setInterval(function () { try { maatjes(); } catch (e) {} }, 300);
     /* v192: effecten op je eigen 3D-autootje: 'salto' (geraakt door een raket) en 'ster' = nitro (groot en vurig) */
     window.__autoFx = function (soort, ms) { auto3d.fx = { s: soort, t0: performance.now(), dur: ms || (soort === 'ster' ? 10000 : 1400) };
       (function stap() { var fx = auto3d.fx; if (!fx) return; if (performance.now() - fx.t0 > fx.dur) { auto3d.fx = null; } if (auto3d.laatst) auto3d.apply(null, auto3d.laatst); if (auto3d.fx) requestAnimationFrame(stap); })(); };
