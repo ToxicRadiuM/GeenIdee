@@ -10922,7 +10922,8 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
     /* v159: 3D-auto als je achter de auto kijkt, en ritreplay in 3D */
     var a3dKnip = 0;
     function auto3d(lat, lon, brg) {
-      if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return; var aan = st.kijk === 0 && st.aan; document.body.classList.toggle('auto3d', aan);
+      var aan = st.kijk === 0 && st.aan; document.body.classList.toggle('auto3d', aan);   /* v191: het platte autootje meteen weg, niet eerst plat en dan pas 3D */
+      if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) { clearTimeout(auto3d.tm); auto3d.tm = setTimeout(function () { auto3d(lat, lon, brg); }, 150); return; }
       var f = [];
       if (aan) { var a = AUTOS[st.auto % AUTOS.length], S3 = Math.max(1.8, Math.min(3.2, 34 * 156543.03 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom()) / 4.75)),   /* v162: hooguit ~3x echte grootte, past in de straat */ b = brg * Math.PI / 180, cb = Math.cos(b), sb = Math.sin(b), kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
         var rem = mkEl && mkEl.classList.contains('rem'), kL = mkEl && mkEl.classList.contains('knipL'), kR = mkEl && mkEl.classList.contains('knipR'), knipAan = (Date.now() % 800) < 400, nacht = document.body.classList.contains('nacht');
@@ -10985,7 +10986,7 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
     }
     function toon() {
       var aan = st.aan && document.body.classList.contains('car');
-      document.body.classList.toggle('kaartrij', st.aan);
+      document.body.classList.toggle('kaartrij', st.aan); document.body.classList.toggle('auto3d', st.aan && st.kijk === 0);   /* v191: vanaf het begin 3D */
       $('carKaartKnop').textContent = st.aan ? '🗺️ Kaart uit' : '🗺️ Kaart';
       var nu = aan; if (nu === toon.was && !toon.forceer) return;   /* v128: ook staand */ toon.was = nu; toon.forceer = false;
       clearInterval(tik); tik = null;
