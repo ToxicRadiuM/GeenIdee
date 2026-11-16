@@ -5270,7 +5270,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v195';
+  var VERSION = 'v196';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7428,7 +7428,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   function nepStart() {
     if (nep) { nepStop(); return; }
     if (!lastPos) { toast('Zet eerst de GPS aan.'); return; }
-    nep = { t0: Date.now(), start: Date.now(), fase: (S.speed || 0) < 20 ? 'stil' : 'rij', ev: {} }; window.__live = window.__live || {};
+    nep = { t0: Date.now(), start: Date.now(), fase: (S.speed || 0) < 20 ? 'stil' : 'rij', ev: {}, voor: -250, doel: -40 }; window.__live = window.__live || {};
     toast(nep.fase === 'stil' ? '🧪 Testmaatje staat naast je. Zo meteen toetert hij en vuurt hij een raket af (tik op Buddy!), daarna krijg jij een raket. Stoppen: 👥-knop → Testmaatje stoppen.' : '🧪 Testmaatje komt van achteren. Hij haalt je in en vuurt een raket af: tik dan op Buddy!');
     lg('test: nepmaatje gestart (' + nep.fase + ')');
   }
@@ -7436,26 +7436,46 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   window.__nepAan = function () { return !!nep; };
   function nepLabels() { var t = nep ? '🧪 Testmaatje stoppen' : '🧪 Testmaatje'; var k = $('nepKnop'); if (k) k.textContent = nep ? t : '🧪 Test met een nepmaatje'; var n = document.querySelector('#kopNieuw [data-a="nep"]'); if (n) n.textContent = t; }
   setInterval(nepLabels, 1000);
+  /* v196: het testmaatje rijdt de hele rit met je mee, alsof er echt een maatje naast je rijdt.
+     Achter je volgt hij jouw eigen spoor, voor je rijdt hij over je route; soms haalt hij in, soms laat hij zich zakken. Stoppen: nog een keer op de knop. */
+  var mijnSp = [];
+  function nepPunt(voor) {
+    var hd = lastPos.hd != null ? lastPos.hd : 0, cos = Math.cos(lastPos.lat * Math.PI / 180), p = { lat: lastPos.lat, lon: lastPos.lon, hd: hd };
+    if (voor < -5 && mijnSp.length > 2) {   /* achter je: over jouw eigen spoor terug */
+      var doel = mijnSp[mijnSp.length - 1].d + voor; for (var i = mijnSp.length - 1; i > 0; i--) if (mijnSp[i - 1].d <= doel) { var a = mijnSp[i - 1], b = mijnSp[i], f = (doel - a.d) / Math.max(.1, b.d - a.d); p = { lat: a.lat + (b.lat - a.lat) * f, lon: a.lon + (b.lon - a.lon) * f, hd: brgTussen([a.lat, a.lon], [b.lat, b.lon]) }; break; } }
+    else if (voor > 5) { var N = window.__nav && window.__nav.nu(), g = N && N.geom, gevonden = false;
+      if (g && g.length > 2) { var bi = 0, bd = 1e9; for (var k = 0; k < g.length; k++) { var dk = gdist(lastPos.lat, lastPos.lon, g[k].lat, g[k].lon); if (dk < bd) { bd = dk; bi = k; } }
+        if (bd < 60) { var rest = voor; for (var q = bi; q < g.length - 1 && !gevonden; q++) { var sg = gdist(g[q].lat, g[q].lon, g[q + 1].lat, g[q + 1].lon); if (sg >= rest) { var ff = rest / Math.max(.1, sg); p = { lat: g[q].lat + (g[q + 1].lat - g[q].lat) * ff, lon: g[q].lon + (g[q + 1].lon - g[q].lon) * ff, hd: brgTussen([g[q].lat, g[q].lon], [g[q + 1].lat, g[q + 1].lon]) }; gevonden = true; } else rest -= sg; } } }
+      if (!gevonden) { var h0 = hd * Math.PI / 180; p = { lat: lastPos.lat + Math.cos(h0) * voor / 110540, lon: lastPos.lon + Math.sin(h0) * voor / (111320 * cos), hd: hd }; } }
+    var h = p.hd * Math.PI / 180, op = 3.6;   /* een rijstrook naast je */
+    return { lat: p.lat - Math.sin(h) * op / 110540, lon: p.lon + Math.cos(h) * op / (111320 * cos), hd: p.hd };
+  }
   function nepStap() {
-    if (!nep || !lastPos) return; var nu = Date.now();
-    if (nu - nep.start > 10 * 60e3) { delete window.__live.nep; nep = null; toast('🧪 Test klaar.'); return; }
-    if (nep.fase === 'stil' && (S.speed || 0) >= 20) { nep.fase = 'rij'; nep.t0 = nu; nep.ev = {}; toast('🧪 Testmaatje rijdt nu achter je…'); }
-    var t = (nu - nep.t0) / 1000, hd = lastPos.hd != null ? lastPos.hd : 0, h = hd * Math.PI / 180;
-    var voor = nep.fase === 'stil' ? 0 : Math.min(400, -250 + 14 * t), opzij = 3.6, oost = Math.sin(h) * voor + Math.cos(h) * opzij, noord = Math.cos(h) * voor - Math.sin(h) * opzij;
-    window.__live.nep = { van: 'nep', n: 'Testmaatje', lat: lastPos.lat + noord / 110540, lon: lastPos.lon + oost / (111320 * Math.cos(lastPos.lat * Math.PI / 180)), hd: hd, v: nep.fase === 'stil' ? 0 : (S.speed || 0) + (t < 46 ? 50 : 0), rx: nu };
+    if (!nep || !lastPos) return; var nu = Date.now(), v = S.speed || 0;
+    var l = mijnSp[mijnSp.length - 1]; if (!l || gdist(l.lat, l.lon, lastPos.lat, lastPos.lon) > 3) { mijnSp.push({ lat: lastPos.lat, lon: lastPos.lon, d: l ? l.d + gdist(l.lat, l.lon, lastPos.lat, lastPos.lon) : 0 }); if (mijnSp.length > 600) mijnSp.shift(); }
+    if (nep.fase === 'stil' && v >= 20) { nep.fase = 'rij'; nep.t0 = nu; nep.ev = {}; nep.voor = -250; nep.doel = -40; toast('🧪 Testmaatje rijdt met je mee. Stoppen: 👥 → Testmaatje stoppen.'); }
+    var t = (nu - nep.t0) / 1000, dt = Math.min(1, (nu - (nep.tik || nu)) / 1000); nep.tik = nu;
+    if (nep.fase === 'rij') {
+      if (v < 3) nep.doel = 0;   /* jij staat stil (stoplicht): hij komt naast je staan */
+      else if (!nep.wissel || nu > nep.wissel) { nep.wissel = nu + (30 + Math.random() * 60) * 1000; var r = Math.random(); nep.doel = r < .35 ? -(40 + Math.random() * 160) : r < .7 ? 40 + Math.random() * 200 : (Math.random() < .5 ? -12 : 12); }
+      var stap = Math.max(-6, Math.min(6, nep.doel - nep.voor)) * dt; nep.voor += stap; nep.relV = stap / Math.max(.05, dt) * 3.6;
+    }
+    var pos = nep.fase === 'stil' ? nepPunt(0) : nepPunt(nep.voor);
+    window.__live.nep = { van: 'nep', n: 'Testmaatje', lat: pos.lat, lon: pos.lon, hd: pos.hd, v: nep.fase === 'stil' ? 0 : Math.max(0, v + (nep.relV || 0)), rx: nu };
     function een(k, s0, f) { if (t >= s0 && !nep.ev[k]) { nep.ev[k] = 1; f(); } }
-    if (nep.fase === 'stil') {   /* v192: ook stilstaand alles kunnen proberen */
+    if (nep.fase === 'stil') {   /* stilstaand meteen alles proberen */
       een('toet', 4, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'toet' }); });
       een('raket', 10, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'itbal' + nu.toString(36) }); });
       een('item', 16, function () { mem.item = 'bal'; save(); itemToon(); toast('🧪 Je hebt een raket 🚀 (gele knop rechts): vuur hem af op Testmaatje!'); });
       een('klets', 26, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'klets' + Math.floor(Math.random() * 12) + 'v' }); });
       een('item2', 40, function () { if (!mem.item) { mem.item = 'ster'; save(); itemToon(); toast('🧪 Nu heb je ⚡ nitro: tik erop en je auto wordt groot en vurig.'); } });
     }
-    if (nep.fase === 'rij') {
-      een('toet', 8, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'toet' }); });
-      een('raket', 22, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'itbal' + nu.toString(36) }); });
-      een('item', 34, function () { if (!mem.item) { mem.item = 'bal'; save(); itemToon(); } toast('🧪 Je hebt een raket: vuur hem af op Testmaatje (gele knop)!'); });
-      if (t > 90) { delete window.__live.nep; nep = null; toast('🧪 Test klaar. Alles gezien?'); lg('test: nepmaatje klaar'); }
+    if (nep.fase === 'rij' && v >= 20) {   /* onderweg af en toe iets, zoals een echt maatje */
+      if (!nep.volgende) nep.volgende = nu + 90e3;
+      if (nu > nep.volgende) { nep.volgende = nu + (4 + Math.random() * 6) * 60e3; var w = Math.random();
+        if (w < .4) window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'toet' });
+        else if (w < .75 && Math.abs(nep.voor) < 300) window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'itbal' + nu.toString(36) });
+        else if (!mem.item) { mem.item = Math.random() < .5 ? 'bal' : 'ster'; save(); itemToon(); toast('🧪 Testmaatje gooide je een ' + (mem.item === 'bal' ? 'raket 🚀' : 'nitro ⚡') + ' toe!'); } }
     }
   }
   function nepAntwoord(r) {
@@ -9343,6 +9363,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v196', '16 nov', ['Testmaatje rijdt de hele rit mee: over je route, haalt in, laat zich zakken, staat naast je bij het stoplicht, toetert, kletst en schiet af en toe']],
       ['v195', '16 nov', ['Veroverkaart verhuisd naar het Kaart-tabblad (🏰 Veroveren, naast Flitsers)']],
       ['v194', '16 nov', ['Testmaatje en groepsmaatjes ook in 3D in de first-person-stand']],
       ['v193', '16 nov', ['Snelbalk bovenaan: Rijden, Naar huis, Naar werk, Ergens heen', 'Geluidknop 🔊 op het rijscherm', 'Route hervatten zonder keuzescherm', 'Pontjes vermijden: routes met pontje komen niet meer in de lijst', 'Crash bij raket afvuren opgelost', 'Dit lijstje met alle versies']],
