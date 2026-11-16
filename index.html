@@ -929,6 +929,23 @@ body.car.kaartrij #rijBalk.hor .rbPunt { width: 20px; height: 20px; margin-left:
 body.car.kaartrij #rijBalk.hor .rbIk { font-size: 17px; top: -10px; }
 @media (orientation: landscape) { body.car.kaartrij #rijAfslag { right: calc(200px + var(--sa-r)) !important; } }
 body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !important; }   /* v191: knipperpijltjes weg */
+/* v192: items (stuiterbal, ster), cadeautjes en Buddy Wrapped */
+#itemKnop, #cadeauKnop { display: none; }
+body.car #itemKnop:not([hidden]) { display: grid; place-items: center; position: fixed; z-index: 52; right: calc(12px + var(--sa-r)); bottom: calc(140px + var(--sa-b)); width: 64px; height: 64px; border-radius: 32px; border: 3px solid #fff; background: radial-gradient(circle at 35% 30%, #fff6, #0000 40%), #1b1f24; font-size: 32px; box-shadow: 0 0 0 4px #ffcc00, 0 6px 16px #0008; animation: itemPuls 1.2s ease-in-out infinite; }
+@keyframes itemPuls { 50% { box-shadow: 0 0 0 8px #ffcc0055, 0 6px 16px #0008; } }
+body.car #cadeauKnop { display: grid; place-items: center; position: fixed; z-index: 50; right: calc(12px + var(--sa-r)); bottom: calc(212px + var(--sa-b)); width: 44px; height: 44px; border-radius: 22px; border: 0; background: rgba(20,24,28,.7); font-size: 22px; opacity: .8; }
+body.car:not(.kaartrij) #cadeauKnop { display: none; }
+@media (orientation: landscape) { body.car #itemKnop:not([hidden]) { bottom: calc(84px + var(--sa-b)); right: calc(84px + var(--sa-r)); } body.car #cadeauKnop { bottom: calc(150px + var(--sa-b)); right: calc(96px + var(--sa-r)); } }
+#itemVlieg { position: fixed; z-index: 9000; left: 50%; top: 55%; font-size: 64px; pointer-events: none; animation: itemVlieg 1s ease-in forwards; }
+@keyframes itemVlieg { 0% { transform: translate(-50%, 0) scale(1); } 100% { transform: translate(-50%, -60vh) scale(.2) rotate(720deg); opacity: 0; } }
+#cadeauVenster, #wrapped { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.8); display: grid; place-items: center; }
+#cadeauVenster .cv { background: #16181c; border: 1px solid #444; border-radius: 16px; padding: 18px; width: min(340px, 90vw); color: #eee; text-align: center; }
+#cadeauVenster input { width: 100%; box-sizing: border-box; font-size: 17px; padding: 10px; border-radius: 10px; border: 1px solid #555; background: #0d0f12; color: #fff; margin: 10px 0; }
+#wrapped .wk { width: min(380px, 92vw); height: min(640px, 86vh); border-radius: 24px; padding: 28px 24px; box-sizing: border-box; color: #fff; display: flex; flex-direction: column; justify-content: center; text-align: center; position: relative; overflow: hidden; box-shadow: 0 20px 60px #000a; }
+#wrapped .wk .groot { font-size: 64px; font-weight: 800; line-height: 1.05; margin: 10px 0; letter-spacing: -1px; }
+#wrapped .wk .em { font-size: 72px; } #wrapped .wk p { font-size: 18px; line-height: 1.35; margin: 6px 0; } #wrapped .wk small { opacity: .75; font-size: 14px; }
+#wrapped .wbalk { position: absolute; top: 12px; left: 16px; right: 16px; display: flex; gap: 4px; } #wrapped .wbalk i { flex: 1; height: 4px; border-radius: 2px; background: #fff4; } #wrapped .wbalk i.v { background: #fff; }
+#wrapped .wx { position: absolute; top: 22px; right: 18px; font-size: 26px; background: none; border: 0; color: #fff; }
 </style>
 
 </head>
@@ -964,7 +981,7 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
     <div class="rkKnoppen"><button id="ritKaartReplay" type="button">▶️ Replay</button><button id="ritKaartOpKaart" type="button">🗺️ Kaart</button><button id="ritKaartDeel" type="button">📤 Delen</button><button id="ritKaartSluit" type="button">Sluiten</button></div>
   </div>
 </div>
-<button id="carAdd" class="rijRond" type="button">Vaste<br>flitser</button>
+<button id="itemKnop" type="button" hidden aria-label="Item gebruiken"></button><button id="cadeauKnop" type="button" aria-label="Cadeautje verstoppen">🎁</button><button id="carAdd" class="rijRond" type="button">Vaste<br>flitser</button>
 <button id="carAddM" class="rijRond" type="button">Mobiele<br>flitser</button>
 <button id="carGroep" class="rijRond rijWeg" type="button" aria-label="Bericht naar de groep"><span class="gi">👋</span><span>Groep</span></button>
 <div id="grPaneel" hidden role="dialog" aria-label="Bericht naar de groep">
@@ -1203,7 +1220,7 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
       <p class="sub" id="plusRitKop" hidden>🤖 Ritten die Buddy+ alleen zag</p>
       <ol id="plusRitLijst" class="v77lijst"></ol>
       <p class="chip" id="weekStat">Deze week nog geen ritten.</p>
-      <button class="btn" id="weekKnop" type="button">📅 Weekrapport bekijken</button>
+      <button class="btn" id="weekKnop" type="button">📅 Weekrapport bekijken</button> <button class="btn" id="wrappedKnop" type="button">🎁 Buddy Wrapped</button>
       <button class="btn" id="dagKnop" type="button">📔 Dagboek van vandaag</button>
       <button class="btn" id="dbKnop" type="button">📚 Eerdere dagen</button><div id="dbLijst" class="dbLijst" hidden></div>
       <button class="btn" id="maandKnop" type="button">📊 Maandoverzicht</button>
@@ -5208,7 +5225,7 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v191';
+  var VERSION = 'v192';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6135,6 +6152,7 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
       else { var mr = mijnRec(b.r || 'nul'); mem.uitdaging = { van: b.van, n: b.n || 'Een collega', r: b.r || 'nul', t: Date.now(), basis: mr }; save(); m = '⚔️ ' + wie(b) + ' daagt je uit op de ' + uk.n + '! Verbeter ' + (mr ? 'je ' + uk.f(mr) : 'je tijd') + ' binnen 7 dagen.'; setEv('excited', 5, m); beep('excited'); }
     }
     else if (s === 'feli') { m = '🎉 ' + wie(b) + ' feliciteert je met je verjaardag!'; cheer(m); }
+    else if (s === 'gezien' && /^(itbal|itraak|itblok|itcad)/.test(b.r || '')) { try { if (window.__itemPing) window.__itemPing(b); } catch (e) {} return; }   /* v192: items en cadeautjes */
     else if (s === 'gezien') {
       var wat = GR_GEZIEN_VOOR[grMijn[b.r]] || 'bericht';
       m = '✓ ' + wie(b) + ' heeft je ' + wat + (grMijn[b.r] === 'test' ? ' ontvangen.' : ' gezien.'); toast(m); grSignaal(true); lg('groepsbericht gezien door ' + (b.n || '?'));
@@ -7190,9 +7208,15 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
   var BUURKEY = 'dashboardmaatje-buur-v1', buurAan = false, buurT = -9999, buurGezien = {};
   try { buurAan = localStorage.getItem(BUURKEY) === '1'; } catch (e) {}
   function buurCheck() {
-    if (!buurAan || !S.live || !lastPos || !grp || !pbase() || T - buurT < 180) return;
+    if (!buurAan || !S.live || !lastPos || !grp || !pbase()) return;
+    /* v192: je bent alleen zichtbaar als je echt rijdt; sta je een minuut stil, dan haal je jezelf weg */
+    if ((S.speed || 0) < 20) { if (!buurCheck.stil) buurCheck.stil = T; if (T - buurCheck.stil > 60 && !buurCheck.weg) { buurCheck.weg = true; buurUit(); window.__buren = { t: Date.now(), l: [] }; } return; }
+    buurCheck.stil = 0; buurCheck.weg = false;
+    var dichtbij = window.__buren && window.__buren.l.length && Date.now() - window.__buren.t < 5 * 60e3;
+    if (T - buurT < (dichtbij ? 25 : 180)) return;
     buurT = T;
     fetch(gUrl('/hier', grQ('&lat=' + lastPos.lat.toFixed(4) + '&lon=' + lastPos.lon.toFixed(4) + '&ver=1'))).then(function (r) { return r.json(); }).then(function (j) {
+      window.__buren = { t: Date.now(), l: (j && Array.isArray(j.buren) ? j.buren : []).filter(function (b) { return b && b.van; }) };   /* v192: voor de stuiterbal */
       (j && Array.isArray(j.buren) ? j.buren : []).forEach(function (b) {
         if (!b || !b.van || (buurGezien[b.van] && Date.now() - buurGezien[b.van] < 30 * 60e3)) return;
         if (b.d >= 1) {  /* v63: nieuwe Worker geeft ook collega's tot 5 km, afgerond op hele km (nooit een precieze plek) */
@@ -7208,6 +7232,96 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
     }).catch(function () { lg('FOUT buurcheck'); });
   }
   function buurUit() { if (grp && pbase()) fetch(gUrl('/hier', grQ('&uit=1'))).catch(function () {}); }
+
+  /* ---------- v192: items onderweg (eigen ontwerp: rode stuiterbal en regenboogster) ---------- */
+  var ITEMS = { bal: { i: '🔴', n: 'rode stuiterbal' }, ster: { i: '🌟', n: 'regenboogster' } }, sterTot = 0;
+  function itemToon() { var k = $('itemKnop'); if (!k) return; var it = ITEMS[mem.item]; k.hidden = !it; if (it) k.textContent = it.i; }
+  function itemDoos() {   /* elke 12 km rijden: een itemdoos */
+    if (!S.live || (S.speed || 0) < 20) return; var km = mem.kmLive || 0; if (mem.itemKm == null) { mem.itemKm = km; save(); return; }
+    if (km - mem.itemKm < 12) return; mem.itemKm = km; if (mem.item) { save(); return; }
+    mem.item = Math.random() < .7 ? 'bal' : 'ster'; save(); itemToon(); var it = ITEMS[mem.item];
+    var m = '❓ Itemdoos! Je hebt een ' + it.n + ' ' + it.i + '. Tik erop om hem te gebruiken.'; setEv('excited', 4, m); beep('excited'); toast(m); lg('item gekregen: ' + mem.item);
+  }
+  function itemGebruik() {
+    var it = mem.item; if (!it) return;
+    if (it === 'ster') { mem.item = null; save(); itemToon(); sterTot = Date.now() + 10000; try { window.__autoFx && window.__autoFx('ster', 10000); } catch (e) {} startGag('regenboog'); setEv('excited', 5, '🌟 Sterrenkracht! Tien seconden onkwetsbaar!'); beep('excited'); say('Sterrenkracht!'); lg('item: ster gebruikt'); return; }
+    if ((S.speed || 0) < 20) { toast('Gooien kan alleen als je rijdt.'); return; }
+    if (!buurAan) { toast('Zet eerst "Collega in de buurt" aan (Groep), dan zie je wie er rijdt.'); return; }
+    var bl = window.__buren && Date.now() - window.__buren.t < 90e3 ? window.__buren.l.filter(function (b) { return !b.d || b.d <= 2; }) : [];
+    if (!bl.length) { toast('Er rijdt nu niemand uit je groep binnen 2 km. Bewaar hem nog even!'); return; }
+    bl.sort(function (a, b) { return (a.d || 0) - (b.d || 0); }); var doel = bl[0];
+    mem.item = null; save(); itemToon();
+    var v = document.createElement('div'); v.id = 'itemVlieg'; v.textContent = '🔴'; document.body.appendChild(v); setTimeout(function () { v.remove(); }, 1100);
+    grStuur('gezien', '&aan=' + encodeURIComponent(doel.van) + '&r=itbal' + Date.now().toString(36)).catch(function () {});
+    setEv('mischief', 3, '🔴 Stuiterbal gegooid naar ' + (doel.n || 'je maatje') + '!'); beep('pet'); lg('item: stuiterbal naar ' + (doel.n || '?'));
+  }
+  window.__itemPing = function (b) {
+    var wie = b.n || 'Iemand';
+    if (/^itbal/.test(b.r)) {
+      if ((S.speed || 0) < 20) return;   /* alleen raak als je zelf ook rijdt */
+      if (Date.now() < sterTot) { setEv('excited', 3, '🌟 Ha! ' + wie + ' gooide een stuiterbal, maar jouw ster blokte hem!'); grStuur('gezien', '&aan=' + encodeURIComponent(b.van) + '&r=itblok' + Date.now().toString(36)).catch(function () {}); return; }
+      try { window.__autoFx && window.__autoFx('salto'); } catch (e) {} setEv('startled', 4, '💥 Boing! ' + wie + ' raakte ons met een rode stuiterbal!'); startGag && startGag('spin'); beep('wake'); say(wie + ' raakte ons!');
+      lg('item: geraakt door ' + wie); grStuur('gezien', '&aan=' + encodeURIComponent(b.van) + '&r=itraak' + Date.now().toString(36)).catch(function () {}); return;
+    }
+    if (/^itraak/.test(b.r)) { setEv('excited', 4, '💥 Raak! ' + wie + ' maakte een salto!'); beep('excited'); say('Raak!'); return; }
+    if (/^itblok/.test(b.r)) { setEv('sad', 3, '🌟 ' + wie + ' had een ster. Geblokt!'); return; }
+    if (/^itcad/.test(b.r)) { var m = '🎁 ' + wie + ' heeft je cadeautje gevonden!'; setEv('happy', 4, m); toast(m); beep('pet'); grLijstAdd && grLijstAdd('in', m); }
+  };
+  setInterval(function () { try { itemDoos(); itemToon(); cadeauKijk(); } catch (e) {} }, 3000);
+  setTimeout(function () { try { itemToon(); var k = $('itemKnop'); if (k) k.addEventListener('click', itemGebruik); var c = $('cadeauKnop'); if (c) c.addEventListener('click', cadeauVerstop); var w = $('wrappedKnop'); if (w) w.addEventListener('click', wrappedToon); } catch (e) {} }, 0);
+
+  /* ---------- v192: cadeautjes verstoppen voor de groep (gedeeld plekje van soort 'cadeau') ---------- */
+  var CADKEY = 'dashboardmaatje-cadeau-gevonden-v1', cadGevonden = {}; try { cadGevonden = JSON.parse(localStorage.getItem(CADKEY)) || {}; } catch (e) {}
+  function cadeauVerstop() {
+    if (!grp || !pbase()) { toast('Daarvoor heb je een groep nodig.'); return; } if (!lastPos) { toast('Nog geen GPS.'); return; }
+    if ((S.speed || 0) > 10) { toast('🎁 Verstop een cadeautje als je stilstaat (of laat je bijrijder het doen).'); return; }
+    var la = lastPos.lat, lo = lastPos.lon, oud = document.getElementById('cadeauVenster'); if (oud) oud.remove();
+    var w = document.createElement('div'); w.id = 'cadeauVenster';
+    w.innerHTML = '<div class="cv"><div style="font-size:44px">🎁</div><p style="margin:6px 0"><b>Cadeautje verstoppen</b><br><small>Hier, waar je nu bent. Wie uit je groep erlangs rijdt, vindt het.</small></p><input id="cadIn" maxlength="40" placeholder="Berichtje, bv. Goeiemorgen Henk!"><div class="btns"><button class="btn" id="cadNee" type="button">Annuleren</button><button class="btn" id="cadJa" type="button">Verstoppen</button></div></div>';
+    document.body.appendChild(w); var i = w.querySelector('#cadIn'); setTimeout(function () { i.focus(); }, 100);
+    w.querySelector('#cadNee').onclick = function () { w.remove(); };
+    w.querySelector('#cadJa').onclick = function () { var t = i.value.replace(/[^A-Za-z0-9À-ſ '\-.,!?&()]/g, '').trim().slice(0, 40) || 'Verrassing!'; w.remove();
+      var id = 'cad' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+      fetch(gUrl('/plek', '&s=deel&id=' + id + '&lat=' + la.toFixed(5) + '&lon=' + lo.toFixed(5) + '&wat=cadeau&wie=' + encodeURIComponent(myWho() || '') + '&van=' + mijnId + '&naam=' + encodeURIComponent(t)))
+        .then(function (r) { return r.json(); }).then(function (j) { if (j && j.error) throw new Error(j.error); toast('🎁 Verstopt! Wie erlangs rijdt, vindt het.'); setEv('mischief', 3, '🎁 Cadeautje verstopt. Ssst!'); lg('cadeautje verstopt: ' + t); try { window.__bij && window.__bij.pull(true); } catch (e) {} })
+        .catch(function (e) { toast('Verstoppen lukte niet: ' + ((e && e.message) || e)); }); };
+  }
+  function cadeauKijk() {
+    if (!lastPos || !S.live) return; var l = window.__cadeaus || [];
+    l.forEach(function (x) { if (!x || x.wat !== 'cadeau' || x.van === mijnId || cadGevonden[x.id]) return;
+      if (gdist(lastPos.lat, lastPos.lon, x.lat, x.lon) > 120) return; cadGevonden[x.id] = Date.now(); try { localStorage.setItem(CADKEY, JSON.stringify(cadGevonden)); } catch (e) {}
+      var wie = (x.wie && x.wie[0]) || 'Iemand uit je groep', m = '🎁 ' + wie + ' heeft hier iets voor je verstopt: "' + (x.naam || 'Verrassing!') + '"';
+      setEv('love', 6, m); startGag && startGag('cadeau'); beep('excited'); say(wie + ' heeft hier een cadeautje voor je verstopt. ' + (x.naam || '')); toast(m); lg('cadeautje gevonden van ' + wie);
+      if (x.van) grStuur('gezien', '&aan=' + encodeURIComponent(x.van) + '&r=itcad' + Date.now().toString(36)).catch(function () {}); });
+  }
+
+  /* ---------- v192: Buddy Wrapped (jaaroverzicht als swipe-kaartjes) ---------- */
+  function wrappedToon() {
+    var jr = new Date().getFullYear(), rt = (typeof ritten !== 'undefined' ? ritten : []).filter(function (r) { return r && new Date(r.t0 || 0).getFullYear() === jr; });
+    var km = Math.round(mem.kmLive || 0), nRit = mem.ritLive || rt.length, min = rt.reduce(function (a, r) { return a + (r.min || 0); }, 0);
+    var lang = rt.slice().sort(function (a, b) { return (b.km || 0) - (a.km || 0); })[0], vroeg = rt.slice().sort(function (a, b) { var ha = new Date(a.t0).getHours() * 60 + new Date(a.t0).getMinutes(), hb = new Date(b.t0).getHours() * 60 + new Date(b.t0).getMinutes(); return ha - hb; })[0];
+    var dag = {}; rt.forEach(function (r) { var d = new Date(r.t0).toLocaleDateString('nl-NL', { weekday: 'long' }); dag[d] = (dag[d] || 0) + (r.km || 0); }); var topDag = Object.keys(dag).sort(function (a, b) { return dag[b] - dag[a]; })[0];
+    var gem = Object.keys(mem.gemeenten || {}).length, best = mem.best100Live, gm = mem.gmaxLive, pl = [];
+    try { pl = (typeof plekken !== 'undefined' ? plekken : []).filter(function (p) { return p && p.naam; }).sort(function (a, b) { return (b.n || 0) - (a.n || 0); }); } catch (e) {}
+    var stijl = rt.filter(function (r) { return r.stijl != null; }), gStijl = stijl.length ? Math.round(stijl.reduce(function (a, r) { return a + r.stijl; }, 0) / stijl.length) : null;
+    var K = [
+      { bg: 'linear-gradient(160deg,#ff2d55,#7a1cff)', h: '<div class="em">🎁</div><p>Jouw jaar met Buddy</p><div class="groot">' + jr + '</div><small>Tik om verder te gaan</small>' },
+      { bg: 'linear-gradient(160deg,#0a84ff,#00c7be)', h: '<p>Samen gereden</p><div class="groot">' + km.toLocaleString('nl-NL') + ' km</div><p>in ' + nRit + ' ritten' + (min ? ', ' + Math.round(min / 60) + ' uur achter het stuur' : '') + '.</p><small>Dat is ' + (km / 40075 * 100).toFixed(1).replace('.', ',') + '% van een rondje om de aarde 🌍</small>' },
+      lang ? { bg: 'linear-gradient(160deg,#ff9f0a,#ff375f)', h: '<div class="em">🛣️</div><p>Je langste rit</p><div class="groot">' + String(lang.km).replace('.', ',') + ' km</div><small>' + new Date(lang.t0).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' }) + '</small>' } : null,
+      topDag ? { bg: 'linear-gradient(160deg,#30d158,#0a84ff)', h: '<div class="em">📅</div><p>Je favoriete rijdag</p><div class="groot" style="font-size:52px">' + topDag + '</div>' + (vroeg ? '<small>Vroegste vertrek: ' + new Date(vroeg.t0).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) + ' ☕</small>' : '') } : null,
+      gem ? { bg: 'linear-gradient(160deg,#bf5af2,#5e5ce6)', h: '<div class="em">🗺️</div><p>Gemeentes verzameld</p><div class="groot">' + gem + '</div><small>van de 342 in Nederland</small>' } : null,
+      pl.length ? { bg: 'linear-gradient(160deg,#ffd60a,#ff9f0a)', h: '<div class="em">📍</div><p>Jouw vaste plek</p><div class="groot" style="font-size:44px">' + pl[0].naam + '</div><small>' + (pl[0].n || 1) + ' keer langs geweest</small>' } : null,
+      (best || gm) ? { bg: 'linear-gradient(160deg,#ff453a,#1c1c1e)', h: '<div class="em">🏁</div>' + (best ? '<p>Snelste 0–100</p><div class="groot">' + best.toFixed(1).replace('.', ',') + ' s</div>' : '') + (gm ? '<small>Hardste bocht: ' + (+gm).toFixed(2).replace('.', ',') + ' G 🌀</small>' : '') } : null,
+      gStijl != null ? { bg: 'linear-gradient(160deg,#64d2ff,#30d158)', h: '<div class="em">' + (gStijl >= 85 ? '😇' : gStijl >= 65 ? '😎' : '😅') + '</div><p>Gemiddelde rijstijl</p><div class="groot">' + gStijl + '</div><small>' + (gStijl >= 85 ? 'Zo zacht als een wolkje.' : gStijl >= 65 ? 'Lekker gereden!' : 'Volgend jaar iets rustiger? 😉') + '</small>' } : null,
+      { bg: 'linear-gradient(160deg,#1c1c1e,#3a3a3c)', h: '<div class="em">❤️</div><p>Bedankt voor alle ritjes' + (myWho() ? ', ' + myWho() : '') + '!</p><div class="groot" style="font-size:40px">Op naar ' + (jr + 1) + '</div><small>Liefs, Buddy</small>' }
+    ].filter(Boolean);
+    var w = document.createElement('div'); w.id = 'wrapped'; document.body.appendChild(w); var i = 0;
+    function toon() { var k = K[i]; w.innerHTML = '<div class="wk" style="background:' + k.bg + '"><div class="wbalk">' + K.map(function (_, j) { return '<i class="' + (j <= i ? 'v' : '') + '"></i>'; }).join('') + '</div><button class="wx" type="button">✕</button>' + k.h + '</div>';
+      w.querySelector('.wx').onclick = function (e) { e.stopPropagation(); w.remove(); }; }
+    w.addEventListener('click', function (e) { var r = w.querySelector('.wk').getBoundingClientRect(); if (e.clientX < r.left + r.width * .3) i = Math.max(0, i - 1); else if (i < K.length - 1) i++; else { w.remove(); return; } toon(); });
+    toon(); lg('Buddy Wrapped bekeken');
+  }
+  window.__wrapped = wrappedToon;
 
   /* ---------- v63: nieuwe animaties bij echte gebeurtenissen ---------- */
   function laatNacht() { var h = new Date().getHours(); return h >= 23 || h < 5; }
@@ -7618,12 +7732,12 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
     if (!grp || !pbase() || (!nu && Date.now() - gPlekT < 10 * 60e3)) return; gPlekT = Date.now();
     fetch(gUrl('/plekken')).then(function (r) { return r.json(); }).then(function (j) {
       if (!j || !Array.isArray(j.plekken)) return;
-      gPlekken = j.plekken.filter(function (x) { return x && isFinite(x.lat) && isFinite(x.lon); });
+      gPlekken = j.plekken.filter(function (x) { return x && isFinite(x.lat) && isFinite(x.lon); }); window.__cadeaus = gPlekken.filter(function (x) { return x.wat === 'cadeau'; }); gPlekken = gPlekken.filter(function (x) { return x.wat !== 'cadeau'; });   /* v192: cadeautjes niet op de kaart */
       try { localStorage.setItem(GPLEKKEY, JSON.stringify(gPlekken)); } catch (e) {}
       var eerst = !gPlekGezien; if (eerst) gPlekGezien = {};
       gPlekken.forEach(function (x) {
         if (gPlekGezien[x.id]) return; gPlekGezien[x.id] = 1;
-        if (eerst || x.s !== 'deel' || x.van === mijnId) return;
+        if (eerst || x.s !== 'deel' || x.van === mijnId || x.wat === 'cadeau') return;   /* v192: cadeautjes blijven een verrassing */
         var m = '📍 ' + ((x.wie && x.wie[0]) || 'Een collega') + ' deelde een plekje: ' + (WATI[x.wat] || '📍') + ' ' + (x.naam || WATN[x.wat] || 'plekje') + (x.p ? ' in ' + x.p : '') + '. Kijk bij Kaart.';
         grLijstAdd('in', m); toast(m);
       });
@@ -10927,14 +11041,20 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
     }
     /* v159: 3D-auto als je achter de auto kijkt, en ritreplay in 3D */
     var a3dKnip = 0;
+    /* v192: effecten op je eigen 3D-autootje: 'salto' (geraakt door een stuiterbal) en 'ster' (groot en regenboog) */
+    window.__autoFx = function (soort, ms) { auto3d.fx = { s: soort, t0: performance.now(), dur: ms || (soort === 'ster' ? 10000 : 1400) };
+      (function stap() { var fx = auto3d.fx; if (!fx) return; if (performance.now() - fx.t0 > fx.dur) { auto3d.fx = null; } if (auto3d.laatst) auto3d.apply(null, auto3d.laatst); if (auto3d.fx) requestAnimationFrame(stap); })(); };
     function auto3d(lat, lon, brg) {
+      auto3d.laatst = [lat, lon, brg]; var fx = auto3d.fx, fp = fx ? Math.min(1, (performance.now() - fx.t0) / fx.dur) : 0, hop = 0, groei = 1, kleur = null;
+      if (fx && fx.s === 'salto') { hop = Math.sin(Math.PI * fp) * 3.2; brg = brg + 360 * (fp < .5 ? 2 * fp * fp : 1 - Math.pow(-2 * fp + 2, 2) / 2) * 2; }
+      if (fx && fx.s === 'ster') { groei = 1.7 - (fp > .9 ? (fp - .9) * 7 : 0); kleur = 'hsl(' + Math.round(performance.now() / 4 % 360) + ',100%,55%)'; }
       var aan = st.kijk === 0 && st.aan; document.body.classList.toggle('auto3d', aan);   /* v191: het platte autootje meteen weg, niet eerst plat en dan pas 3D */
       if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) { clearTimeout(auto3d.tm); auto3d.tm = setTimeout(function () { auto3d(lat, lon, brg); }, 150); return; }
       var f = [];
-      if (aan) { var a = AUTOS[st.auto % AUTOS.length], S3 = Math.max(1.8, Math.min(3.2, 34 * 156543.03 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom()) / 4.75)),   /* v162: hooguit ~3x echte grootte, past in de straat */ b = brg * Math.PI / 180, cb = Math.cos(b), sb = Math.sin(b), kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+      if (aan) { var a = AUTOS[st.auto % AUTOS.length], S3 = groei * Math.max(1.8, Math.min(3.2, 34 * 156543.03 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom()) / 4.75)),   /* v162: hooguit ~3x echte grootte, past in de straat */ b = brg * Math.PI / 180, cb = Math.cos(b), sb = Math.sin(b), kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
         var rem = mkEl && mkEl.classList.contains('rem'), kL = mkEl && mkEl.classList.contains('knipL'), kR = mkEl && mkEl.classList.contains('knipR'), knipAan = (Date.now() % 800) < 400, nacht = document.body.classList.contains('nacht');
         var L = a.vorm === 'bus' ? 2.6 : 2.37, W = a.vorm === 'race' ? .9 : .96, H = a.vorm === 'bus' ? 1.9 : a.vorm === 'sport' || a.vorm === 'race' ? .85 : 1.0;
-        function doos(x0, x1, y0, y1, h0, h1, kl) { var pt = [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(function (q) { var x = q[0] * S3, y = q[1] * S3; return [lon + (x * cb + y * sb) / kx, lat + (-x * sb + y * cb) / ky]; }); f.push({ type: 'Feature', properties: { b: h0 * S3, h: h1 * S3, kl: kl }, geometry: { type: 'Polygon', coordinates: [pt] } }); }
+        function doos(x0, x1, y0, y1, h0, h1, kl) { var pt = [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(function (q) { var x = q[0] * S3, y = q[1] * S3; return [lon + (x * cb + y * sb) / kx, lat + (-x * sb + y * cb) / ky]; }); f.push({ type: 'Feature', properties: { b: (h0 + hop) * S3, h: (h1 + hop) * S3, kl: kleur && kl === a.k ? kleur : kl }, geometry: { type: 'Polygon', coordinates: [pt] } }); }
         if (a.d) { L = a.d.l / 2; W = a.d.b / 2; H = a.d.bh; }
         doos(-W, W, -L, L, .28, H, a.k);   /* carrosserie */
         if (a.d) { var c0 = a.d.c0 * L, c1 = a.d.c1 * L, dh = a.d.h; doos(-W + .1, W - .1, c0, c1, H, dh - .06, a.r); doos(-W + .16, W - .16, c0 + .25, c1 - .15, dh - .06, dh, a.k);   /* ramen en dak */
