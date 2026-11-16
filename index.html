@@ -969,6 +969,9 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
 #kopNieuw { margin: 10px 12px; padding: 14px 16px; border-radius: 18px; background: linear-gradient(150deg, #ff2d55 0%, #7a1cff 100%); color: #fff; }
 #kopNieuw h2 { margin: 0 0 6px; font-size: 19px; } #kopNieuw ul { margin: 6px 0 10px; padding-left: 18px; } #kopNieuw li { margin: 5px 0; line-height: 1.3; }
 #kopNieuw .btns { display: flex; flex-wrap: wrap; gap: 6px; } #kopNieuw button { font: 700 14px var(--f-body); padding: 9px 12px; border-radius: 12px; border: 0; background: #fff; color: #3a0d6e; } #kopNieuw button.zacht { background: #ffffff33; color: #fff; }
+#ghostStrip { position: fixed; z-index: 47; left: 50%; transform: translateX(-50%); top: calc(var(--kt, 80px) + 4px); display: flex; gap: 8px; align-items: center; padding: 6px 12px; border-radius: 14px; background: rgba(120,140,255,.22); border: 1.5px dashed rgba(220,230,255,.8); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); color: #eef2ff; font: 500 13px/1.25 var(--f-body); text-shadow: 0 1px 2px #0008; pointer-events: none; }
+#ghostStrip[hidden] { display: none; } #ghostStrip .gIc { font-size: 22px; opacity: .85; } body:not(.car) #ghostStrip { display: none; }
+@media (orientation: landscape) { #ghostStrip { top: auto; bottom: calc(14px + var(--sa-b)); } }
 </style>
 
 </head>
@@ -6813,7 +6816,7 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
     r.van = r0.van || (r0.pts && r0.pts.length >= 2 ? [r0.pts[0], r0.pts[1]] : null);
     r.naar = lastPos ? [+lastPos.lat.toFixed(5), +lastPos.lon.toFixed(5)] : (r0.pts && r0.pts.length >= 2 ? [r0.pts[r0.pts.length - 2], r0.pts[r0.pts.length - 1]] : null);
     setTimeout(function () { try { if (window.ritAdressen) window.ritAdressen(r); } catch (e) {} }, 1500);
-    ritten.push(r); if (ritten.length > 80) ritten = ritten.slice(-80); lg('rit bewaard: ' + r.km + ' km, ' + r.min + ' min, stijl ' + r.stijl);   /* v134 */
+    ritten.push(r); if (ritten.length > 80) ritten = ritten.slice(-80); lg('rit bewaard: ' + r.km + ' km, ' + r.min + ' min, stijl ' + r.stijl); try { window.__spoorStuur && window.__spoorStuur(); window.__veroverStuur && window.__veroverStuur(); } catch (e) {}   /* v134 */
     try { localStorage.setItem(RITKEY, JSON.stringify(ritten)); } catch (e) {}
     /* week en badges */
     var w = wk(); w.ritten++; w.stijlSom += r.stijl; if (r.g && r.g > (w.gmax || 0)) w.gmax = r.g; try { stijlWkAdd(r.t0, r.stijl); } catch (e) {}
@@ -6946,6 +6949,7 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
     gmBezig = true; var p = { lat: lastPos.lat, lon: lastPos.lon };
     fetch('https://api.pdok.nl/bzk/locatieserver/search/v3_1/reverse?lat=' + p.lat.toFixed(5) + '&lon=' + p.lon.toFixed(5) + '&rows=1&fl=gemeentenaam').then(function (r) { return r.json(); }).then(function (j) {
       gmVorig = p; var n = j && j.response && j.response.docs && j.response.docs[0] && j.response.docs[0].gemeentenaam; if (!n) return;
+      window.__gmNu = n; mem.gmPlek = mem.gmPlek || {}; if (!mem.gmPlek[n]) mem.gmPlek[n] = [+p.lat.toFixed(3), +p.lon.toFixed(3)];   /* v192: voor veroveren */
       mem.gemeenten = mem.gemeenten || {}; if (mem.gemeenten[n]) return;
       mem.gemeenten[n] = Date.now(); save(); var tot = Object.keys(mem.gemeenten).length; lg('nieuwe gemeente: ' + n + ' (' + tot + ')');
       if (tot > 1) { queueCheer('🗺️ Nieuwe gemeente: ' + n + '! Dat is nummer ' + tot + ' op onze verzamelkaart.'); gmWeetje(n); } gmToon(); try { grLid(true); } catch (e) {}
@@ -7430,6 +7434,7 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
       een('toet', 4, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'toet' }); });
       een('raket', 10, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'itbal' + nu.toString(36) }); });
       een('item', 16, function () { mem.item = 'bal'; save(); itemToon(); toast('🧪 Je hebt een raket 🚀 (gele knop rechts): vuur hem af op Testmaatje!'); });
+      een('klets', 26, function () { window.__itemPing({ van: 'nep', n: 'Testmaatje', r: 'klets' + Math.floor(Math.random() * 12) + 'v' }); });
       een('item2', 40, function () { if (!mem.item) { mem.item = 'ster'; save(); itemToon(); toast('🧪 Nu heb je ⚡ nitro: tik erop en je auto wordt groot en vurig.'); } });
     }
     if (nep.fase === 'rij') {
@@ -7441,12 +7446,102 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
   }
   function nepAntwoord(r) {
     setTimeout(function () { var p = { van: 'nep', n: 'Testmaatje' };
+      if (/^klets\d+v/.test(r)) { p.r = r.replace(/v$/, 'a'); window.__itemPing(p); return; }
       if (/^itbal/.test(r)) { p.r = (Math.random() < .5 ? 'itraak' : 'itmis') + '1'; window.__itemPing(p); }
       else if (/^toet/.test(r)) { p.r = 'toet1'; window.__itemPing(p); }
       else if (/^raceq/.test(r)) { p.r = 'racej1'; window.__itemPing(p); }
       else if (/^racet/.test(r)) { p.r = 'racet' + (3500 + Math.round(Math.random() * 3500)); window.__itemPing(p); } }, 1200);
   }
   setTimeout(function () { var k = $('nepKnop'); if (k) k.addEventListener('click', nepStart); }, 0);
+  /* ---------- v192: gemeentes veroveren (Veroverkaart op het Groep-tabblad) ---------- */
+  function liveBase() { try { var u = new URL(pbase()); return 'https://' + u.host.replace(/^[^.]+/, 'buddy-live'); } catch (e) { return null; } }
+  function maandNu() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }
+  var vvKm0 = null, vvData = null, vvT = 0, KLEUR = ['#ff3b30', '#0a84ff', '#30d158', '#ff9f0a', '#bf5af2', '#64d2ff', '#ffd60a', '#ff375f'];
+  function vvKleur(van) { var h = 0; for (var i = 0; i < van.length; i++) h = (h * 31 + van.charCodeAt(i)) >>> 0; return van === mijnId ? '#ff3b30' : KLEUR[1 + h % (KLEUR.length - 1)]; }
+  setInterval(function () { var k = mem.kmLive || 0; if (vvKm0 == null) { vvKm0 = k; return; } var dk = k - vvKm0; vvKm0 = k; var g = window.__gmNu;
+    if (!g || dk <= 0 || dk > 2) return; var m = maandNu(); mem.verover = mem.verover || {}; var vm = mem.verover[m] || (mem.verover[m] = {}); vm[g] = Math.round(((vm[g] || 0) + dk) * 100) / 100;
+    var ms = Object.keys(mem.verover).sort(); while (ms.length > 3) delete mem.verover[ms.shift()]; }, 5000);
+  function vvEigenaars(d) { var e = {}; Object.keys((d && d.gm) || {}).forEach(function (g) { var best = null; Object.keys(d.gm[g]).forEach(function (v) { var x = d.gm[g][v]; if (!best || x.km > best.km) best = { van: v, n: x.n, km: x.km }; }); if (best && best.km >= 1) e[g] = best; }); return e; }
+  function vvVerwerk(d) {
+    vvData = d; vvT = Date.now(); var e = vvEigenaars(d), mijn = Object.keys(e).filter(function (g) { return e[g].van === mijnId; }), oud = mem.vvMijn || null;
+    if (oud) { mijn.filter(function (g) { return oud.indexOf(g) < 0; }).slice(0, 2).forEach(function (g) { setEv('excited', 4, '🏰 Je hebt ' + g + ' veroverd!'); lg('veroverd: ' + g); });
+      oud.filter(function (g) { return mijn.indexOf(g) < 0 && e[g]; }).slice(0, 2).forEach(function (g) { var t = '😤 ' + (e[g].n || 'Iemand') + ' pikte ' + g + ' van je!'; setEv('angry', 4, t); toast(t); lg(t); }); }
+    mem.vvMijn = mijn; save(); vvToon();
+  }
+  window.__veroverStuur = function (alleenHalen) {
+    var b = liveBase(); if (!b || !grp) return; var m = maandNu(), km = (mem.verover && mem.verover[m]) || {}, u = b + '/verover?g=' + encodeURIComponent(grp.toLowerCase()) + '&m=' + m;
+    var vraag = alleenHalen || !buurAan ? fetch(u) : fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ van: mijnId, n: myWho() || '', km: km, plek: mem.gmPlek || {} }) });
+    vraag.then(function (r) { return r.json(); }).then(vvVerwerk).catch(function () {});
+  };
+  setInterval(function () { if (buurAan && grp && document.visibilityState === 'visible') window.__veroverStuur(); }, 10 * 60e3); setTimeout(function () { if (grp) window.__veroverStuur(!buurAan); }, 8000);
+  var vvMap = null;
+  function vvToon() {
+    var box = $('vvBox'); if (!box || box.hidden) return; var d = vvData, e = vvEigenaars(d), per = {};
+    Object.keys(e).forEach(function (g) { var o = e[g]; (per[o.van] = per[o.van] || { n: o.n, l: [] }).l.push(g); });
+    var rang = Object.keys(per).sort(function (a, b) { return per[b].l.length - per[a].l.length; });
+    $('vvRang').innerHTML = rang.length ? rang.map(function (v, i) { return '<div style="display:flex;gap:8px;align-items:center;margin:3px 0"><b style="width:18px">' + (i + 1) + '</b><span style="width:12px;height:12px;border-radius:6px;background:' + vvKleur(v) + '"></span><span style="flex:1">' + (per[v].n || '?') + (v === mijnId ? ' (jij)' : '') + '</span><b>' + per[v].l.length + ' 🏰</b></div>'; }).join('') : '<p class="foot">Nog niemand heeft deze maand een gemeente. Rij een stukje met "Maatjes live" aan!</p>';
+    if (!window.maplibregl) { var c = document.createElement('link'); c.rel = 'stylesheet'; c.href = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css'; document.head.appendChild(c); var sc = document.createElement('script'); sc.src = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js'; sc.onload = vvToon; document.head.appendChild(sc); return; }
+    var feats = Object.keys(e).filter(function (g) { return d.plek && d.plek[g]; }).map(function (g) { var o = e[g]; return { type: 'Feature', properties: { g: g, kl: vvKleur(o.van), t: g + '\n' + (o.n || '?') + ' · ' + Math.round(o.km) + ' km' }, geometry: { type: 'Point', coordinates: [d.plek[g][1], d.plek[g][0]] } }; });
+    var data = { type: 'FeatureCollection', features: feats };
+    if (!vvMap) { vvMap = new maplibregl.Map({ container: 'vvKaart', style: 'https://tiles.openfreemap.org/styles/positron', center: [4.9, 52.1], zoom: 7, attributionControl: false });
+      vvMap.on('load', function () { vvMap.addSource('vv', { type: 'geojson', data: data }); vvMap.addLayer({ id: 'vvc', type: 'circle', source: 'vv', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 7, 11, 22], 'circle-color': ['get', 'kl'], 'circle-opacity': .75, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } });
+        vvMap.addLayer({ id: 'vvt', type: 'symbol', source: 'vv', minzoom: 8, layout: { 'text-field': ['get', 't'], 'text-size': 11, 'text-offset': [0, 2.2] }, paint: { 'text-color': '#222', 'text-halo-color': '#fff', 'text-halo-width': 1.5 } }); vvZoom(feats); }); }
+    else if (vvMap.getSource('vv')) { vvMap.getSource('vv').setData(data); vvZoom(feats); }
+  }
+  function vvZoom(feats) { if (!feats.length || !vvMap) return; var b = new maplibregl.LngLatBounds(); feats.forEach(function (f) { b.extend(f.geometry.coordinates); }); try { vvMap.fitBounds(b, { padding: 40, maxZoom: 10, duration: 0 }); } catch (e) {} }
+  setTimeout(function () {
+    var kg = $('kopGroep'); if (!kg || $('vvBox')) return; var w = document.createElement('div'); w.innerHTML = '<p class="sub">🏰 Veroverkaart <small>(wie reed deze maand de meeste km in een gemeente, bezit hem)</small></p><div class="btns"><button class="btn" id="vvKnop" type="button">🏰 Veroverkaart bekijken</button></div><div id="vvBox" hidden><div id="vvKaart" style="height:320px;border-radius:14px;overflow:hidden;margin:8px 0"></div><div id="vvRang"></div><p class="foot">Telt alleen als "Maatjes live" aan staat. Je km per gemeente gaan naar je groep, verder niets.</p></div>';
+    kg.appendChild(w); $('vvKnop').addEventListener('click', function () { var bx = $('vvBox'); bx.hidden = !bx.hidden; this.textContent = bx.hidden ? '🏰 Veroverkaart bekijken' : '🏰 Veroverkaart verbergen'; if (!bx.hidden) { window.__veroverStuur(!buurAan); vvToon(); if (vvMap) setTimeout(function () { vvMap.resize(); }, 50); } });
+  }, 0);
+
+  /* ---------- v192: ghosts: rij tegen een eerdere rit van een groepslid op hetzelfde stuk weg (geen echte auto!) ---------- */
+  var ritSp = [], ritSpT0 = 0, ghSporen = [], ghHaalT = 0, ghHaalPos = null, gh = null;
+  setInterval(function () {
+    if (!S.live || !lastPos || (S.speed || 0) < 5) return; var r0 = S.ritStart && S.ritStart.t; if (!r0) return;
+    if (r0 !== ritSpT0) { ritSpT0 = r0; ritSp = []; }
+    ritSp.push([+lastPos.lat.toFixed(5), +lastPos.lon.toFixed(5), Math.round((Date.now() - r0) / 1000)]); if (ritSp.length > 2000) ritSp = ritSp.filter(function (_, i) { return i % 2 === 0; });
+  }, 5000);
+  window.__spoorStuur = function () { var b = liveBase(); if (!b || !grp || !buurAan || ritSp.length < 20) return;
+    fetch(b + '/spoor?g=' + encodeURIComponent(grp.toLowerCase()), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ van: mijnId, n: myWho() || '', t0: ritSpT0, p: ritSp }) }).then(function () { lg('ghost: rit gedeeld met de groep (' + ritSp.length + ' punten)'); }).catch(function () {}); };
+  function ghHaal() { var b = liveBase(); if (!b || !grp || !buurAan || !lastPos) return; if (Date.now() - ghHaalT < 10 * 60e3 && ghHaalPos && gdist(ghHaalPos.lat, ghHaalPos.lon, lastPos.lat, lastPos.lon) < 8000) return;
+    ghHaalT = Date.now(); ghHaalPos = { lat: lastPos.lat, lon: lastPos.lon };
+    fetch(b + '/sporen?g=' + encodeURIComponent(grp.toLowerCase()) + '&lat=' + lastPos.lat.toFixed(3) + '&lon=' + lastPos.lon.toFixed(3) + '&van=' + mijnId).then(function (r) { return r.json(); }).then(function (j) { ghSporen = (j && j.sporen) || []; if (ghSporen.length) lg('ghost: ' + ghSporen.length + ' ritten van de groep in de buurt'); }).catch(function () {}); }
+  function brgTussen(a, b) { var y = Math.sin((b[1] - a[1]) * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180), x = Math.cos(a[0] * Math.PI / 180) * Math.sin(b[0] * Math.PI / 180) - Math.sin(a[0] * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180) * Math.cos((b[1] - a[1]) * Math.PI / 180); return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; }
+  function ghStrip(t) { var el = $('ghostStrip'); if (!el) { el = document.createElement('div'); el.id = 'ghostStrip'; document.body.appendChild(el); } el.hidden = !t; if (t) el.innerHTML = t; }
+  function ghStap() {
+    if (!S.live || !lastPos || (S.speed || 0) < 25 || !buurAan) { if (gh) ghEind(); return; } ghHaal(); var nu = Date.now(), hd = lastPos.hd;
+    if (!gh) { if (hd == null) return;
+      for (var k = 0; k < ghSporen.length && !gh; k++) { var sp = ghSporen[k], p = sp.p; for (var i = 0; i < p.length - 30; i++) { if (gdist(lastPos.lat, lastPos.lon, p[i][0], p[i][1]) > 30) continue; var rich = brgTussen(p[i], p[Math.min(p.length - 1, i + 2)]); if (Math.abs(((rich - hd) + 540) % 360 - 180) > 40) continue;
+        gh = { sp: sp, i0: i, j: i, mijnT0: nu, zijnT0: p[i][2], los: 0 }; lg('ghost: start op het spoor van ' + (sp.n || '?')); break; } }
+      return; }
+    var p = gh.sp.p, best = -1, bd = 1e9; for (var q = gh.j; q < Math.min(p.length, gh.j + 40); q++) { var dq = gdist(lastPos.lat, lastPos.lon, p[q][0], p[q][1]); if (dq < bd) { bd = dq; best = q; } }
+    if (bd > 70) { if (!gh.los) gh.los = nu; if (nu - gh.los > 10000) ghEind(); return; } gh.los = 0; gh.j = best;
+    var zijn = p[best][2] - gh.zijnT0, mijn = (nu - gh.mijnT0) / 1000, dlt = Math.round(zijn - mijn); gh.dlt = dlt;
+    var tz = gh.zijnT0 + mijn, g2 = best; while (g2 < p.length - 1 && p[g2 + 1][2] < tz) g2++; while (g2 > 0 && p[g2][2] > tz) g2--; window.__ghostPos = { lat: p[g2][0], lon: p[g2][1], n: gh.sp.n };
+    var dat = new Date(gh.sp.t0).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+    ghStrip('<span class="gIc">👻</span><span><b>GHOST</b> · rit van ' + (gh.sp.n || '?') + ', ' + dat + '<br>' + (Math.abs(dlt) < 2 ? 'gelijk op' : dlt > 0 ? 'je ligt <b>' + dlt + ' s voor</b>' : 'je ligt <b>' + (-dlt) + ' s achter</b>') + '</span>');
+  }
+  function ghEind() { if (gh && gh.dlt != null && (Date.now() - gh.mijnT0) > 60e3) { var t = '👻 Ghost-stuk klaar: je was ' + (gh.dlt >= 0 ? gh.dlt + ' s sneller' : (-gh.dlt) + ' s langzamer') + ' dan ' + (gh.sp.n || 'je maatje') + ' (zijn rit van eerder).'; setEv(gh.dlt >= 0 ? 'happy' : 'think', 4, t); lg(t); } gh = null; window.__ghostPos = null; ghStrip(''); }
+  setInterval(function () { try { ghStap(); } catch (e) {} }, 1000);
+
+  /* ---------- v192: Buddy's die kletsen als jullie dicht bij elkaar rijden (op Buddy+ en in de app) ---------- */
+  var KLETS = [['Hé! Rijdt jouw baas ook zo netjes als de mijne?', 'Haha, netjes… laten we het daar op houden.'], ['Ik zie je! Mooie auto trouwens.', 'Dank je, ik heb hem vanochtend zelf gepoetst. Grapje.'], ['Zullen we samen de file wegtoeteren?', 'Ik doe de hoge tonen, jij de lage!'],
+    ['Weet jouw baas eigenlijk waar hij heen gaat?', 'Nee, daarom heeft hij mij toch?'], ['Wie het eerst thuis is!', 'Netjes binnen de limiet hè, anders tel ik het niet.'], ['Heb jij ook zo’n honger?', 'Ik leef op stroom. Maar een koekje gaat er altijd in.'],
+    ['Ik heb vandaag al drie flitsers gezien.', 'Pfff, ik vier. Maar wie telt er nou.'], ['Jouw baas zingt mee met de radio, ik hoor het tot hier!', 'Zeg niks, hij denkt dat niemand het hoort.'], ['Konvooi! Zo voel ik me net een vrachtwagenchauffeur.', 'Roger that, Big Buddy. Over.'],
+    ['Je hebt iets tussen je wielen zitten.', 'Dat is mijn schaduw, slimmerik.'], ['Zullen we een raket…', 'Waag het niet! Ik heb mijn nitro klaarliggen.'], ['Wat is jouw lievelingsweg?', 'De A2 bij zonsondergang. Zo romantisch.']];
+  var kletsT = 0, kletsWacht = {};
+  function kletsStap() {
+    var L = window.__live || {}, nu = Date.now(); if (nu - kletsT < 4 * 60e3 || !lastPos) return;
+    var ks = Object.keys(L).filter(function (k) { return gdist(lastPos.lat, lastPos.lon, L[k].lat, L[k].lon) < 600; }); if (!ks.length) return;
+    var k = ks[0]; if (mijnId > k && Math.random() < .5) return;   /* niet allebei tegelijk beginnen */
+    kletsT = nu; var i = Math.floor(Math.random() * KLETS.length); kletsZeg(null, KLETS[i][0]); kletsWacht[k] = i; itemZend(k, 'klets' + i + 'v');
+  }
+  function kletsZeg(wie, t) { var m = '🗨️ ' + (wie ? wie + "'s Buddy: " : 'Ik: ') + t; setEv('laugh', 4, m); try { window.__scEvt && window.__scEvt('g', (wie ? wie + ': ' : '') + t); } catch (e) {} lg('klets: ' + m); }
+  window.__klets = function (b) { var mm = /^klets(\d+)([va])/.exec(b.r || ''); if (!mm) return; var i = +mm[1]; if (!KLETS[i]) return;
+    if (mm[2] === 'v') { kletsT = Date.now(); kletsZeg(b.n || 'Maatje', KLETS[i][0]); setTimeout(function () { kletsZeg(null, KLETS[i][1]); itemZend(b.van, 'klets' + i + 'a'); }, 3500); }
+    else kletsZeg(b.n || 'Maatje', KLETS[i][1]); };
+  setInterval(function () { try { kletsStap(); } catch (e) {} }, 15000);
+
   /* ---------- v192: 👥-knop op de kaart en de 'Nieuw'-kaart ---------- */
   function liveAan(v) { var c = $('buurIn'); if (!c) return; if (v == null) v = !c.checked; c.checked = v; c.dispatchEvent(new Event('change')); maatKnopToon(); nieuwToon(); }
   function maatKnopToon() { var k = $('rijMaatKnop'); if (k) k.classList.toggle('aan', !!buurAan); }
@@ -7486,6 +7581,7 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
 
   window.__itemPing = function (b) {
     var wie = b.n || 'Iemand';
+    if (/^klets/.test(b.r)) { try { window.__klets(b); } catch (e) {} return; }
     if (/^toet/.test(b.r)) { var t0 = '📯 ' + wie + ' toetert naar je!'; setEv('excited', 3, t0); beep('excited'); say(wie + ' toetert naar je!'); toast(t0); lg('live: getoeterd door ' + wie); return; }
     if (/^mijn/.test(b.r) && isFinite(b.lat)) { mijnen[b.r] = { id: b.r, lat: +b.lat, lon: +b.lon, van: b.van, n: wie, t: Date.now() }; return; }
     if (/^itmijnraak/.test(b.r)) { tel('mijnRaak'); setEv('laugh', 4, '💣 HA! ' + wie + ' reed op jouw mijn!'); beep('excited'); say(wie + ' reed op jouw mijn!'); return; }
@@ -11262,6 +11358,8 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
           var o3 = scr(r3), bw = 34 * o3.k + 6, bh = 22 * o3.k + 4; c.fillStyle = '#d0d4da'; c.fillRect(o3.x - bw / 2, o3.y - bh, bw, bh); c.fillStyle = '#26303a'; c.fillRect(o3.x - bw * .38, o3.y - bh * .95, bw * .76, bh * .4);
           c.fillStyle = '#fff6b0'; c.fillRect(o3.x - bw / 2 + 1, o3.y - bh * .35, bw * .2, bh * .18); c.fillRect(o3.x + bw / 2 - 1 - bw * .2, o3.y - bh * .35, bw * .2, bh * .18);
           var nm = ((maatMk[kk].getElement().querySelector('b') || {}).textContent || '').split(' · ')[0]; c.font = 'bold 16px sans-serif'; c.textAlign = 'center'; c.fillStyle = '#ff3b30'; c.fillText(nm, o3.x, o3.y - bh - 4); }); } catch (e) {}
+        try { var gp = window.__ghostPos; if (gp) { var r4 = rel({ lat: gp.lat, lon: gp.lon }); if (r4.b > 3 && r4.b < 500 && Math.abs(r4.l) < 60) { var o4 = scr(r4), gw = 34 * o4.k + 6, gh2 = 22 * o4.k + 4;   /* v192: ghost: doorzichtig wit met een spookje, geen echte auto */
+          c.globalAlpha = .45; c.fillStyle = '#e6f0ff'; c.fillRect(o4.x - gw / 2, o4.y - gh2, gw, gh2); c.globalAlpha = 1; c.font = (14 + 12 * o4.k) + 'px sans-serif'; c.textAlign = 'center'; c.fillText('👻', o4.x, o4.y - gh2 - 2); } } } catch (e) {}
         c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 6; c.beginPath(); c.moveTo(W * .15, 8); c.lineTo(W * .32, H * .5); c.stroke();
       }
     }
