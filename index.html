@@ -7287,7 +7287,7 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
     mem.item = null; save(); itemToon();
     var v = document.createElement('div'); v.id = 'itemVlieg'; v.textContent = '🚀'; document.body.appendChild(v); setTimeout(function () { v.remove(); }, 1100);
     itemZend(doel.van, 'itbal' + Date.now().toString(36));
-    setEv('mischief', 3, '🚀 Raket afgevuurd op ' + (doel.n || 'je maatje') + '!'); beep('pet'); lg('item: raket naar ' + (doel.n || '?'));
+    setEv('laugh', 3, '🚀 Raket afgevuurd op ' + (doel.n || 'je maatje') + '!'); beep('pet'); lg('item: raket naar ' + (doel.n || '?'));
   }
   function itemZend(aan, r) { if (aan === 'nep') { nepAntwoord(r); return; } if (window.__liveStuur && window.__liveStuur(aan, r)) return; grStuur('gezien', '&aan=' + encodeURIComponent(aan) + '&r=' + r).catch(function () {}); }   /* live = meteen, anders via de groepsberichten */
 
@@ -7336,7 +7336,7 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
     mem.item = null; save(); itemToon(); mijnGeraakt[id] = 1;
     if (grp && pbase()) fetch(gUrl('/plek', '&s=deel&id=' + id + '&lat=' + la + '&lon=' + lo + '&wat=mijn&wie=' + encodeURIComponent(myWho() || '') + '&van=' + mijnId + '&naam=mijn')).catch(function () {});
     Object.keys(window.__live || {}).forEach(function (k) { if (window.__liveStuurD) window.__liveStuurD(k, { r: id, lat: la, lon: lo }); });
-    setEv('mischief', 3, '💣 Mijn gelegd. Wie achter je rijdt: pas op!'); beep('pet'); lg('item: mijn gelegd');
+    setEv('laugh', 3, '💣 Mijn gelegd. Wie achter je rijdt: pas op!'); beep('pet'); lg('item: mijn gelegd');
   }
   function mijnKijk() {
     if (!lastPos || (S.speed || 0) < 10) return; var l = Object.keys(mijnen).map(function (k) { return mijnen[k]; }).concat(window.__mijnenPlek || []);
@@ -7614,7 +7614,7 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
     w.querySelector('#cadJa').onclick = function () { var t = i.value.replace(/[^A-Za-z0-9À-ſ '\-.,!?&()]/g, '').trim().slice(0, 40) || 'Verrassing!'; w.remove();
       var id = 'cad' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
       fetch(gUrl('/plek', '&s=deel&id=' + id + '&lat=' + la.toFixed(5) + '&lon=' + lo.toFixed(5) + '&wat=cadeau&wie=' + encodeURIComponent(myWho() || '') + '&van=' + mijnId + '&naam=' + encodeURIComponent(t)))
-        .then(function (r) { return r.json(); }).then(function (j) { if (j && j.error) throw new Error(j.error); toast('🎁 Verstopt! Wie erlangs rijdt, vindt het.'); setEv('mischief', 3, '🎁 Cadeautje verstopt. Ssst!'); lg('cadeautje verstopt: ' + t); try { window.__bij && window.__bij.pull(true); } catch (e) {} })
+        .then(function (r) { return r.json(); }).then(function (j) { if (j && j.error) throw new Error(j.error); toast('🎁 Verstopt! Wie erlangs rijdt, vindt het.'); setEv('laugh', 3, '🎁 Cadeautje verstopt. Ssst!'); lg('cadeautje verstopt: ' + t); try { window.__bij && window.__bij.pull(true); } catch (e) {} })
         .catch(function (e) { toast('Verstoppen lukte niet: ' + ((e && e.message) || e)); }); };
   }
   function cadeauKijk() {
