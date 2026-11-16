@@ -3794,7 +3794,9 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
     }
     return false;
   }
-  function verkeerItems() { return verkeerBasis().concat(typeof grFilesVers === 'function' ? grFilesVers() : []); }
+  /* v191: file alleen als de ANWB (of iemand uit je groep) het zegt. NDW-files (meetlussen) tellen niet meer mee: die gaven files die er niet (meer) waren.
+     Ongelukken, afsluitingen, werk en tijdelijke limieten van NDW blijven wel. */
+  function verkeerItems() { return verkeerBasis().filter(function (it) { return !(it && it.k === 'jam' && it.src !== 'anwb' && it.src !== 'groep'); }).concat(typeof grFilesVers === 'function' ? grFilesVers() : []); }
   function verkeerBasis() {
     var aOk = anwbV.t && Date.now() - anwbV.t < 10 * 60e3, nOk = ndw.t && Date.now() - ndw.t < 20 * 60e3;
     var a = aOk ? anwbV.items : [], n = nOk ? ndw.items : [];
