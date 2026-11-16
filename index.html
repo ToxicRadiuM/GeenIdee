@@ -928,6 +928,7 @@ body.car.kaartrij #rijBalk.hor #rbBaan { left: 12px; right: 8px; top: 11px; heig
 body.car.kaartrij #rijBalk.hor .rbPunt { width: 20px; height: 20px; margin-left: -10px; top: -9px; font-size: 10px; line-height: 16px; border-width: 2px; }
 body.car.kaartrij #rijBalk.hor .rbIk { font-size: 17px; top: -10px; }
 @media (orientation: landscape) { body.car.kaartrij #rijAfslag { right: calc(200px + var(--sa-r)) !important; } }
+body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !important; }   /* v191: knipperpijltjes weg */
 </style>
 
 </head>
@@ -4694,7 +4695,7 @@ body.car.kaartrij #rijBalk.hor .rbIk { font-size: 17px; top: -10px; }
       var m = Math.round(c.rt.duration / 60), ex = Math.round((c.rt.duration - snelste) / 60);
       b.innerHTML = '<span class="rkKl"></span><span class="rkTxt"><b></b><small></small></span><span class="rkTag"></span>';
       b.querySelector('.rkKl').style.background = ['#0a84ff', '#34c759', '#ff9f0a', '#bf5af2'][i];
-      b.querySelector('b').textContent = (m >= 60 ? Math.floor(m / 60) + ' u ' + (m % 60) + ' min' : m + ' min') + (ex > 0 ? '  (+' + ex + ' min)' : '  · snelste');
+      b.querySelector('b').textContent = (m >= 60 ? Math.floor(m / 60) + ' u ' + (m % 60) + ' min' : m + ' min') + (ex > 0 ? '  · ' + ex + ' min langer' : '  · snelste');
       b.querySelector('small').textContent = (Math.round(c.rt.distance / 100) / 10).toString().replace('.', ',') + ' km · ' + inf.via + (inf.snel ? ' · ' + inf.snel + '% snelweg' : '');
       b.querySelector('.rkTag').textContent = inf.pont ? '⛴️ pontje' : '';
       b.addEventListener('click', function () { ov.hidden = true; try { if (window.__keuzeLijnen) window.__keuzeLijnen(null); } catch (e) {} navBouw(c.rt, naar, false, c.via); });
@@ -6956,6 +6957,11 @@ body.car.kaartrij #rijBalk.hor .rbIk { font-size: 17px; top: -10px; }
     }
     return false;
   }
+  function vcRichting(m) {   /* v191: je gewone route gaat twee kanten op; een file aan de overkant telt niet */
+    try { var N = window.__nav && window.__nav.nu(); if (N && N.geom && window.__fileVlaggen) return m.k === 'closure' || window.__fileVlaggen(N.geom, [m]).some(Boolean); } catch (e) {}
+    if (!lastPos || m.pts.length < 2) return true; var a = m.pts[0], b = m.pts[m.pts.length - 1]; a = Array.isArray(a) ? a : [a.lat, a.lon]; b = Array.isArray(b) ? b : [b.lat, b.lon];
+    return gdist(lastPos.lat, lastPos.lon, a[0], a[1]) <= gdist(lastPos.lat, lastPos.lon, b[0], b[1]);   /* het begin (staart) van de file ligt dichter bij jou dan de kop: dan rij je er vanzelf in */
+  }
   function vertrekCheck(reden) {
     var el = $('vcStat');
     if (!pbase()) { if (el) el.textContent = 'Vul eerst het Worker-adres in.'; return Promise.resolve(null); }
@@ -6964,7 +6970,7 @@ body.car.kaartrij #rijBalk.hor .rbIk { font-size: 17px; top: -10px; }
     vc.bezig = true; vc.t = T; if (el) el.textContent = 'Route checken…';
     return getText(pbase() + '/verkeer').then(function (txt) {
       var j = JSON.parse(txt); if (!j || !Array.isArray(j.meldingen)) throw new Error('onverwacht antwoord');
-      var hit = j.meldingen.filter(function (m) { return (m.k === 'jam' || m.k === 'accident' || m.k === 'closure') && Array.isArray(m.pts) && opMijnRoute(m.pts); });
+      var hit = j.meldingen.filter(function (m) { return (m.k === 'jam' || m.k === 'accident' || m.k === 'closure') && Array.isArray(m.pts) && opMijnRoute(m.pts) && vcRichting(m); });   /* v191: alleen files in de richting die jij op gaat */
       hit.sort(function (a, b) { return (b.vertraging || 0) - (a.vertraging || 0); });
       var msg;
       if (!hit.length) msg = 'Vertrekcheck: geen files of afsluitingen op je gewone route.';
@@ -7514,7 +7520,7 @@ body.car.kaartrij #rijBalk.hor .rbIk { font-size: 17px; top: -10px; }
       var verk = pbase() ? getText(pbase() + '/verkeer').then(function (t) { return JSON.parse(t); }).catch(function () { return null; }) : Promise.resolve(null);
       return verk.then(function (vj) {
         var extra = 0, files = [];
-        if (vj && Array.isArray(vj.meldingen)) vj.meldingen.forEach(function (m) { if ((m.k === 'jam' || m.k === 'closure') && Array.isArray(m.pts) && m.pts.length && opRouteLijn(m.pts, geom)) { extra += m.vertraging || 0; files.push(m); } });
+        if (vj && Array.isArray(vj.meldingen)) vj.meldingen.forEach(function (m) { if ((m.k === 'jam' || m.k === 'closure') && Array.isArray(m.pts) && m.pts.length && opRouteLijn(m.pts, geom) && (m.k === 'closure' || !window.__fileVlaggen || window.__fileVlaggen(geom, [m]).some(Boolean))) { extra += m.vertraging || 0; files.push(m); } });   /* v191: alleen files in jouw rijrichting */
         var sec = rt.duration * 1.08 + extra, aan = Date.now() + sec * 1000; window.__thuisEta = { tijd: tijdStr(aan), t: Date.now() };
         var msg = 'Als je nu vertrekt ben je om ' + tijdStr(aan) + ' thuis (' + minTekst(sec) + ').';
         if (files.length) msg += ' ' + (files.length === 1 ? 'Er staat file' + (files[0].weg ? ' op de ' + files[0].weg : '') : 'Er staan ' + files.length + ' files') + (extra ? ', +' + Math.max(1, Math.round(extra / 60)) + ' min.' : ' op je route.');
@@ -10985,12 +10991,25 @@ body.car.kaartrij #rijBalk.hor .rbIk { font-size: 17px; top: -10px; }
     }
     $('carKaartKnop').addEventListener('click', function () { st.aan = !st.aan; bewaar(); toon(); });
     $('rijAutoKnop').addEventListener('click', function () { st.auto = (st.auto + 1) % AUTOS.length; bewaar(); if (mkEl) mkEl.innerHTML = autoSvg(AUTOS[st.auto]); toast('🚗 ' + AUTOS[st.auto].n); });
+    /* v191: echte nachtkaart: donkere ondergrond, donkerblauw water, gedempte wegen; de blauwe route blijft fel */
+    var nachtOrig = {}, nachtNu = null, EIGEN = /^(auto3d|files-lijn|keuze|lucht|rad|rit|route-lijn|route-rand|sporen|warm)$/;
+    function kaartNacht(n) {
+      if (!map || !map.getStyle || !map.isStyleLoaded || !map.isStyleLoaded()) return; var lagen = (map.getStyle() || {}).layers || []; var sleutel = n + '|' + lagen.length; if (sleutel === nachtNu) return; nachtNu = sleutel;
+      function zet(id, prop, w) { try { var k = id + '|' + prop; if (!(k in nachtOrig)) nachtOrig[k] = map.getPaintProperty(id, prop); map.setPaintProperty(id, prop, n ? w : nachtOrig[k]); } catch (e) {} }
+      lagen.forEach(function (l) { var id = l.id; if (EIGEN.test(id) || l.type === 'raster' || l.type === 'hillshade') return;
+        if (l.type === 'background') zet(id, 'background-color', '#14181d');
+        else if (l.type === 'fill') zet(id, 'fill-color', /water/.test(id) ? '#0c1d2b' : /park|wood|grass|landcover|forest|green|farm|scrub/.test(id) ? '#16201a' : /building/.test(id) ? '#23272c' : '#191d22');
+        else if (l.type === 'fill-extrusion') zet(id, 'fill-extrusion-color', '#2b3036');
+        else if (l.type === 'line') zet(id, 'line-color', /water|river|stream|canal/.test(id) ? '#0c1d2b' : /casing/.test(id) ? '#0d1013' : /motorway|trunk/.test(id) ? '#8a5a26' : /primary|secondary/.test(id) ? '#4a4f57' : '#353a41');
+        else if (l.type === 'symbol') { zet(id, 'text-color', '#c3cad3'); zet(id, 'text-halo-color', '#0d1013'); } });
+    }
+    window.__kaartNacht = function () { kaartNacht(document.body.classList.contains('nacht')); };
     function lucht() {   /* v129: echte lucht boven de horizon (dag blauw, nacht donker) */
-      if (!map || !map.setSky) return; var n = document.body.classList.contains('nacht');
+      if (!map || !map.setSky) return; var n = document.body.classList.contains('nacht'); kaartNacht(n);
       var zh = zonHoogte(); if (zh > -7 && zh < 7) { try { map.setSky({ 'sky-color': '#ff9a4d', 'horizon-color': '#ffd27a', 'fog-color': '#f6b48a', 'sky-horizon-blend': .7, 'horizon-fog-blend': .6, 'fog-ground-blend': .7 }); } catch (e) {} return; }   /* v137: zonsopkomst en -ondergang */
       try { map.setSky(n ? { 'sky-color': '#0b1a33', 'horizon-color': '#24324d', 'fog-color': '#1a2433', 'sky-horizon-blend': .6, 'horizon-fog-blend': .6, 'fog-ground-blend': .6 } : { 'sky-color': '#6fb4ff', 'horizon-color': '#cfe6ff', 'fog-color': '#e2eefb', 'sky-horizon-blend': .5, 'horizon-fog-blend': .5, 'fog-ground-blend': .85 }); } catch (e) {}
     }
-    window.__lucht = lucht; setInterval(lucht, 5 * 60e3);
+    window.__lucht = lucht; setInterval(lucht, 5 * 60e3); setInterval(function () { try { kaartNacht(document.body.classList.contains('nacht')); } catch (e) {} }, 3000);   /* v191: ook na het wisselen van kaartstijl */
     function zonHoogte() {   /* hoe hoog de zon staat (graden), benadering */
       var p = lastPos || { lat: 52, lon: 5 }, nu = new Date(), dag = Math.floor((nu - new Date(nu.getFullYear(), 0, 0)) / 864e5), dec = -23.44 * Math.cos(2 * Math.PI / 365 * (dag + 10)) * Math.PI / 180;
       var uur = nu.getUTCHours() + nu.getUTCMinutes() / 60 + p.lon / 15, ha = (uur - 12) * 15 * Math.PI / 180, la = p.lat * Math.PI / 180;
