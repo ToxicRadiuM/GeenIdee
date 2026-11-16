@@ -3959,10 +3959,10 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
       if (el && oud > MSI_VERS) el.textContent += ' Te oud (' + oud + ' min), dus Buddy waarschuwt er niet voor: hij gebruikt ze alleen als ze minder dan ' + MSI_VERS + ' minuten oud zijn.';
     }).catch(function (e) { ms.fail = T; lg('FOUT matrix ' + (e.message || e)); var el = $('msiStat'); if (el) el.textContent = 'Matrixborden laden mislukt (' + (e.message || e) + ').'; }).then(function () { ms.busy = false; });
   }
-  var MSI_VERS = 5;   /* v157: matrixborden alleen gebruiken als de gegevens minder dan 5 minuten oud zijn (ze waren vaak 20-30 min oud) */
+  var MSI_VERS = 9;   /* v191: de matrixdata wordt nu elke 3 minuten ververst, dus 9 min is ruim genoeg en toch actueel. v157: matrixborden alleen gebruiken als de gegevens minder dan 5 minuten oud zijn (ze waren vaak 20-30 min oud) */
   function msVers() { return ms.bron && (Date.now() / 1000 - ms.bron) / 60 <= MSI_VERS; }
   window.__msiItems = function () { return T - ms.t < 1200 && msVers() ? ms.items : []; };
-  window.__msiLaad = function () { if (!ms.busy && T - ms.t > 240 && T - ms.fail > 120) msLoad(); };
+  window.__msiLaad = function () { if (!ms.busy && T - ms.t > 120 && T - ms.fail > 120) msLoad(); };
   function msFix(lat, lon, acc) {
     var on = $('msiOn'); if (on && !on.checked) return;
     window.__msiLaad(); if (!ms.arr || acc >= 60 || S.liveSpeed < 30) return;
@@ -6214,7 +6214,7 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
   }
   function grBord() {
     if (!grp || !pbase()) { bordToon(); return; }
-    fetch(gUrl('/bord')).then(function (r) { return r.json(); }).then(function (j) { bordData = (Array.isArray(j.leden) ? j.leden : []).filter(function (l) { return l && l.n && String(l.n).trim(); });   /* v126: naamlozen weg */ bordToon(); try { recordWacht(); } catch (e) {} try { weekWinnaar(); } catch (e) {} }).catch(function () { bordToon('Leaderboard ophalen mislukt.'); });
+    fetch(gUrl('/bord')).then(function (r) { return r.json(); }).then(function (j) { bordData = (Array.isArray(j.leden) ? j.leden : []).filter(function (l) { return l && l.n && String(l.n).trim(); });   /* v126: naamlozen weg */ if (!myWho()) { var ikL = bordData.filter(function (l) { return l.van === mijnId; })[0]; if (ikL) { mem.me = String(ikL.n).slice(0, 18); save(); lg('naam teruggezet uit de groep: ' + mem.me); } }   /* v191: naam kwijt (bv. na de overstap naar de app)? terughalen uit de groep */ bordToon(); try { recordWacht(); } catch (e) {} try { weekWinnaar(); } catch (e) {} }).catch(function () { bordToon('Leaderboard ophalen mislukt.'); });
   }
   /* v92: sprinttabel 0-80 / 0-100 / G-kracht voor de hele groep, met reacties */
   var REACT = ['🔥', '👏', '😮', '🚀', '🐢'], REACTTXT = ['vuur', 'applaus', 'wauw', 'raket', 'slakje'], sprintSort = 'nul', sprintOpen = null;
@@ -7900,6 +7900,7 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
   }
   function logStuur(beacon) {
     if (!logUp.aan || !pbase()) return; var x = logUpTekst(); if (!x) return;
+    if (!myWho() && !window.__naamZoek) { window.__naamZoek = 1; try { grBord(); } catch (e) {} lg('let op: je naam is niet ingevuld (Instellingen → Jouw naam)'); }
     var u = pbase() + '/log?id=' + encodeURIComponent(mijnId) + '&n=' + encodeURIComponent(myWho() || '');
     if (beacon && navigator.sendBeacon) { try { if (navigator.sendBeacon(u, new Blob([x.tekst], { type: 'text/plain' }))) { logUp.tot = x.tot; logUpBewaar(); } } catch (e) {} return; }
     fetch(u, { method: 'POST', body: x.tekst, headers: { 'Content-Type': 'text/plain' } }).then(function (r) { if (r.ok) { logUp.tot = x.tot; logUpBewaar(); } }).catch(function () {});
@@ -8101,11 +8102,16 @@ body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !importan
       if (t === 'PIN?') { stuurPin(); return; }
       if (t === 'HART:1' || t === 'HART:0') { try { localStorage.setItem('dashboardmaatje-hartjes', t.slice(5)); var hc = $('hartjesOn'); if (hc) hc.checked = t === 'HART:1'; } catch (e) {} lg('hartjes ' + (t === 'HART:1' ? 'aan' : 'uit') + ' gezet op Buddy+'); return; }   /* v171 */
       if (t.indexOf('NQ|') === 0) { var q1 = t.indexOf('|', 3), nid = t.slice(3, q1); if (nqId !== nid) { nqId = nid; nqUrl = ''; } nqUrl += t.slice(q1 + 1); return; }   /* v168: internet voor Buddy+ */
-      if (t.indexOf('NQE|') === 0) { var nid2 = t.slice(4); if (nid2 === nqId) netHaal(nid2, nqUrl); nqId = null; nqUrl = ''; return; }
+      if (t.indexOf('NQE|') === 0) { var dl2 = t.slice(4).split('|'), nid2 = dl2[0], len2 = dl2[1] ? +dl2[1] : -1;
+        if (nid2 === nqId && len2 >= 0 && nqUrl.length !== len2) { lg('Buddy+ adres kwam half aan (' + nqUrl.length + '/' + len2 + '), hij stuurt het opnieuw'); netQ.push('NX|' + nid2 + '|2'); netPomp(); }   /* v191 */
+        else if (nid2 === nqId) netHaal(nid2, nqUrl); nqId = null; nqUrl = ''; return; }
       if (t.indexOf('RIT:') === 0) { try { plusRitBinnen(t.slice(4)); } catch (e) { lg('FOUT rit van Buddy+: ' + e.message); } return; }   /* v104 */
       /* v76: logboek van het schermpje komt in stukjes binnen en gaat in de gewone Buddy-log (-> buddy-logs) */
       if (t === 'LOGBEGIN') { logBuf = ''; return; }
-      if (t === 'LOGEND') { if (logBuf != null) { var r = logBuf.split('\n').filter(function (x) { return x.trim(); }); r.forEach(function (x) { lg('scherm| ' + x.slice(0, 220)); }); stat('✅ Logboek van het schermpje opgehaald (' + r.length + ' regels). Het gaat mee met de gewone log.'); if (typeof logStuur === 'function') setTimeout(logStuur, 1500); } logBuf = null; return; }
+      if (t === 'LOGEND') { if (logBuf != null) { var r = logBuf.split('\n').filter(function (x) { return x.trim(); });
+          /* v191: alleen regels die we nog niet hadden (Buddy+ stuurt steeds zijn laatste 12 KB, dan stond alles 3x in de log) */
+          var gz = []; try { gz = JSON.parse(localStorage.getItem('buddy-plus-loggezien') || '[]'); } catch (e) {} var gzS = new Set(gz), nw = r.filter(function (x) { return x.length > 12 && !gzS.has(x); });
+          nw.forEach(function (x) { lg('scherm| ' + x.slice(0, 220)); }); try { localStorage.setItem('buddy-plus-loggezien', JSON.stringify(gz.concat(nw).slice(-900))); } catch (e) {} r = nw; stat('✅ Logboek van het schermpje opgehaald (' + r.length + ' regels). Het gaat mee met de gewone log.'); if (typeof logStuur === 'function') setTimeout(logStuur, 1500); } logBuf = null; return; }
       if (t.indexOf('S:') === 0 && t.length < 20 && t.indexOf('\n') < 0 && /^S:[a-z]+=/.test(t)) { schStatZet(t.slice(2)); return; }   /* v86: gezondheid nooit in het logboek mengen */
       if (logBuf != null) { logBuf += t; return; }
       if (t.indexOf('S:') === 0) { schStatZet(t.slice(2)); return; }   /* v83: gezondheid van het schermpje */

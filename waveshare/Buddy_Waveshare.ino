@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 117;   // v117: route als boog bovenin, rijstroken klein onderaan, midden vrij
+static const int FW_VERSIE = 118;   // v118: internet via telefoon betrouwbaarder na verbinden, log niet meer dubbel
+// oud:   // v117: route als boog bovenin, rijstroken klein onderaan, midden vrij
 // oud:   // v116: route als rechte lijn in het bordje bovenin (zoals de Tesla)
 // oud:   // v115: rijstroken, rotonde-afslagnummer, aankomst duidelijker, 'goed zo' na een afslag, nachtkaart, sneller internet via de telefoon
 // v114:   // v114: kaart: wegen en files op de goede plek (verkeerde rekensom gaf kriskras-lijnen)
@@ -1191,7 +1192,7 @@ static char bleBuf[640]; static size_t bleLen = 0;   // v115: groter (stukken va
 static volatile bool hartjesAan = false;   // v109: hartjes-ogen, hartjes-wolkjes en kusjes alleen als je dat wilt
 static volatile bool bnIsOta = false;   // v113: download-voortgang bij updates via de telefoon
 static volatile bool appNet = false; static volatile uint8_t bnStaat = 0; static uint8_t *bnBuf = nullptr; static volatile size_t bnLen = 0, bnCap = 0;
-static volatile uint16_t bnId = 0, bnSeq = 0; static volatile uint32_t bnLaatst = 0; static char bnVraag[300]; static volatile bool bnVraagKlaar = false;
+static volatile uint16_t bnId = 0, bnSeq = 0; static volatile uint32_t bnLaatst = 0; static char bnVraag[300]; static volatile bool bnVraagKlaar = false; static volatile uint8_t bnHerhaal = 0;
 // v76: route van de app (voor de kaart op Buddy+). Twee vaste buffers in PSRAM, nooit vrijgeven (tekenen en ontvangen lopen tegelijk)
 static const int RT_MAX = 1200; static float *rtA = nullptr, *rtB = nullptr, *rtPt = nullptr; static volatile int rtN = 0; static int rtNieuwN = 0; static bool rtBezig = false;
 static uint8_t kaartStand = 0; static uint32_t kaartGezichtTot = 0, kaartOvergangT = 0, kaartSluitT = 0; static bool kaartVorige = false;
@@ -1226,6 +1227,7 @@ static void parsePhone(char *line) {
     else if (line[1] == 'D') { unsigned sq = strtoul(e + 1, &e, 10); if (!bnBuf || sq != bnSeq || *e != '|') { bnStaat = 3; return; }
       size_t ol = 0; if (mbedtls_base64_decode(bnBuf + bnLen, bnCap - 1 - bnLen, &ol, (const unsigned char *)e + 1, strlen(e + 1)) != 0) { bnStaat = 3; return; } bnLen += ol; bnSeq++; if (bnIsOta && bnCap > 1) otaPct = (int)(bnLen * 100 / bnCap); }
     else if (line[1] == 'E') { if (bnBuf) { bnBuf[bnLen] = 0; bnStaat = 2; } else bnStaat = 3; }
+    else if (*e == '|' && e[1] == '2' && bnHerhaal < 2) { bnHerhaal++; bnVraagKlaar = true; }   // v118: adres kwam half aan: nog een keer sturen
     else bnStaat = 3;
     return;
   }
@@ -2308,17 +2310,17 @@ static bool viaTelOk() { return bleConnected && pinOk && appNet; }
 static uint8_t *bleHaal(const char *url, size_t &len) {   // v106: wacht tot de app het bestand heeft doorgestuurd (max 15 s stilte)
   len = 0; if (!viaTelOk()) return nullptr;
   while (bnVraagKlaar) vTaskDelay(pdMS_TO_TICKS(20));
-  bnId = bnId + 1; if (!bnId) bnId = 1; if (bnBuf) { free(bnBuf); bnBuf = nullptr; } bnLen = bnCap = 0; bnSeq = 0;
+  bnId = bnId + 1; if (!bnId) bnId = 1; bnHerhaal = 0; if (bnBuf) { free(bnBuf); bnBuf = nullptr; } bnLen = bnCap = 0; bnSeq = 0;
   strncpy(bnVraag, url, sizeof bnVraag - 1); bnVraag[sizeof bnVraag - 1] = 0; bnLaatst = millis(); bnStaat = 1; bnVraagKlaar = true;
   while (bnStaat == 1 && millis() - bnLaatst < 15000 && viaTelOk()) vTaskDelay(pdMS_TO_TICKS(20));
   if (bnStaat != 2) { logRegel("net via telefoon: %s mislukt", url + (strlen(url) > 40 ? strlen(url) - 40 : 0)); bnStaat = 0; netFoutT = millis(); if (bnBuf) { free(bnBuf); bnBuf = nullptr; } return nullptr; }
   uint8_t *b = bnBuf; bnBuf = nullptr; len = bnLen; bnStaat = 0; netOkT = millis(); return b;
 }
 static void bnVraagStap() {   // in de loop: de vraag versturen (Bluetooth alleen vanuit de loop)
-  if (!bnVraagKlaar || !bleConnected || logBezig) return;
+  if (!bnVraagKlaar || !bleConnected || logBezig || !pinOk || millis() - verbindT < 2500) return;   // v118: na verbinden even wachten tot alles klaarstaat
   char m[200]; size_t L = strlen(bnVraag);
   for (size_t o = 0; o < L; o += 150) { snprintf(m, sizeof m, "NQ|%u|%.*s", (unsigned)bnId, (int)(L - o < 150 ? L - o : 150), bnVraag + o); bleSend(m); delay(15); }
-  snprintf(m, sizeof m, "NQE|%u", (unsigned)bnId); bleSend(m); bnVraagKlaar = false; bnLaatst = millis();
+  snprintf(m, sizeof m, "NQE|%u|%u", (unsigned)bnId, (unsigned)L); bleSend(m);   // v118: met lengte, zodat de app ziet of het adres heel is bnVraagKlaar = false; bnLaatst = millis();
 }
 static uint8_t *haalUrlWifi(const char *url, size_t &len);
 static uint8_t *haalUrl(const char *url, size_t &len) {

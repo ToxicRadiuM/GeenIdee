@@ -1,10 +1,13 @@
-# Buddy: elke 10 minuten de matrixborden boven de snelweg (NDW) omzetten naar een klein lijstje.
+# Buddy: elke 3 minuten de matrixborden boven de snelweg (NDW) omzetten naar een klein lijstje.
+# v191: GitHub start geplande taken vaak pas na een uur of later (data was 40-80 min oud). Daarom draait er nu
+# één taak die zelf elke 3 minuten bijwerkt, tot ~5,5 uur lang. Het uurlijkse schema zet alvast de volgende klaar
+# (die wacht in de rij), zodat er altijd eentje loopt. Voor openbare repo's kost dit niets.
 # Het lijstje komt op branch "msi" (elke keer helemaal vervangen); de app haalt het op via raw.githubusercontent.com.
 name: Matrixborden bijwerken
 
 on:
   schedule:
-    - cron: '*/10 5-22 * * *'
+    - cron: '5 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -12,12 +15,12 @@ permissions:
 
 concurrency:
   group: msi
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   msi:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,10 +36,20 @@ jobs:
           key: msi-loc2-${{ github.run_id }}
           restore-keys: msi-loc2-
       - run: pip install pyshp pyproj
-      - run: mkdir -p uit && python tools/msi.py uit/msi.json msi_locaties.json
-      - name: Publiceren op branch msi
+      - name: Elke 3 minuten bijwerken en publiceren
         run: |
-          cd uit
-          git init -q && git checkout -q -b msi && git add -A
-          git -c user.name="Buddy-bot" -c user.email="buddy-bot@users.noreply.github.com" commit -q -m "Matrixborden $(date -u +%H:%M)"
-          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" msi
+          start=$(date +%s)
+          while :; do
+            uur=$(TZ=Europe/Amsterdam date +%H)
+            if [ "$uur" -lt 5 ] || [ "$uur" -ge 23 ]; then echo "nacht, stoppen"; break; fi
+            if true; then
+              rm -rf uit && mkdir -p uit
+              if python tools/msi.py uit/msi.json msi_locaties.json; then
+                ( cd uit && git init -q && git checkout -q -b msi && git add -A \
+                  && git -c user.name="Buddy-bot" -c user.email="buddy-bot@users.noreply.github.com" commit -q -m "Matrixborden $(date -u +%H:%M)" \
+                  && git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" msi ) || echo "publiceren mislukt"
+              else echo "msi.py mislukt"; fi
+            fi
+            [ $(( $(date +%s) - start )) -gt 19800 ] && break
+            sleep 180
+          done
