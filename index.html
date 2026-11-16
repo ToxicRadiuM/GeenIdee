@@ -914,6 +914,20 @@ body.car.kaartrij #rijSeizoen .blad:nth-child(n+4) { display: none !important; }
 #rijBalk.hor .rbIk { bottom: auto !important; top: -10px; left: 0; right: auto; width: 24px; margin-left: -12px; color: #ff3b30; font-size: 20px; line-height: 24px; text-shadow: 0 0 3px #fff, 0 0 1px #fff; transition: left 1s linear; z-index: 3; }
 #rijBalk.hor .rbStuk { top: -2px; height: 8px; width: auto; left: 0; border-radius: 4px; }
 #rijBalk.hor .rbPunt { top: -10px; bottom: auto !important; left: 0; width: 22px; height: 22px; margin: 0 0 0 -11px; border-radius: 11px; font-size: 11px; line-height: 18px; }
+/* v191: geen dikke groene balk meer: een slanke donkere strook. Boven: afstand + wat je moet doen + km/tijd. Onder: rijstroken klein en daarnaast de routelijn met alles erop */
+body.car.kaartrij #rijAfslag { background: rgba(14,18,22,.62); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 2px 10px rgba(0,0,0,.25); border-radius: 14px; padding: 6px 12px 2px; gap: 0 10px; flex-wrap: wrap; align-items: baseline; font-size: 14px; }
+body.car.kaartrij #rijAfslagD { font-size: 20px; }
+body.car.kaartrij #rijAfslagT { flex: 1 1 0; min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+body.car.kaartrij #rijAfslag::after { content: ''; order: 7; flex-basis: 100%; height: 0; }   /* rijstroken + lijn altijd op de tweede regel */
+body.car.kaartrij #rijAfslagR { font-size: 13px; opacity: .75; }
+body.car.kaartrij #rijStroken { order: 8; flex-basis: auto; align-self: center; gap: 3px; margin-right: 2px; }
+body.car.kaartrij #rijStroken span { min-width: 18px; padding: 0 3px; font-size: 12px; line-height: 18px; border-radius: 5px; background: rgba(255,255,255,.12); color: rgba(255,255,255,.45); }
+body.car.kaartrij #rijStroken span.ok { background: #fff; color: #111; }
+body.car.kaartrij #rijBalk.hor { position: relative !important; inset: auto !important; top: auto !important; bottom: auto !important; left: auto !important; right: auto !important; transform: none !important; order: 9; flex: 1 1 140px; width: auto !important; height: 26px; margin: 0; align-self: center; }
+body.car.kaartrij #rijBalk.hor #rbBaan { left: 12px; right: 8px; top: 11px; height: 3px; background: #4aa8ff; }
+body.car.kaartrij #rijBalk.hor .rbPunt { width: 20px; height: 20px; margin-left: -10px; top: -9px; font-size: 10px; line-height: 16px; border-width: 2px; }
+body.car.kaartrij #rijBalk.hor .rbIk { font-size: 17px; top: -10px; }
+@media (orientation: landscape) { body.car.kaartrij #rijAfslag { right: calc(200px + var(--sa-r)) !important; } }
 </style>
 
 </head>
