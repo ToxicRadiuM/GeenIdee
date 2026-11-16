@@ -4787,7 +4787,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
         /* v191: rijdend nooit een nieuwe route die begint met 'omkeren': je rijdt bewust deze kant op (bv. om een file heen). Liever een route die vooruit verder gaat */
         if ((S.speed || 0) > 15) { var vooruit = ok.filter(function (c) { return !heeftOmkeer(c.rt); }); if (vooruit.length && vooruit[0] !== ok[0]) lg('route: route zonder omkeren gekozen (' + Math.round(vooruit[0].rt.distance / 100) / 10 + ' km)'); if (vooruit.length) ok = vooruit; }
         var c = ok[0]; navBouw(c.rt, naar, true, c.via); return; }
-      if (navPont) { var vrij = lijst.filter(function (c) { return !heeftPont(c.rt); }); if (vrij.length) lijst = vrij.concat(lijst.filter(function (c) { return heeftPont(c.rt); })); }
+      if (navPont) { var vrij = lijst.filter(function (c) { return !heeftPont(c.rt); }); if (vrij.length) { if (vrij.length < lijst.length) lg('route: ' + (lijst.length - vrij.length) + ' route(s) met pontje weggelaten'); lijst = vrij; } else toast('⛴️ Er is geen route zonder pontje, dus deze gaan met een pontje.'); }   /* v193: pontjes vermijden = ze niet eens laten zien */
       if (lijst.length === 1) { navBouw(lijst[0].rt, naar, false, lijst[0].via); return; }
       navStat('Kies een route.'); routeKies(lijst, naar);
     }).catch(function (e) { navStat('Route berekenen mislukt (' + (e.message || e) + ').'); lg('FOUT route ' + (e.message || e)); })
@@ -9342,7 +9342,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
-      ['v193', '16 nov', ['Snelbalk bovenaan: Rijden, Naar huis, Naar werk, Ergens heen', 'Geluidknop 🔊 op het rijscherm', 'Route hervatten zonder keuzescherm', 'Crash bij raket afvuren opgelost', 'Dit lijstje met alle versies']],
+      ['v193', '16 nov', ['Snelbalk bovenaan: Rijden, Naar huis, Naar werk, Ergens heen', 'Geluidknop 🔊 op het rijscherm', 'Route hervatten zonder keuzescherm', 'Pontjes vermijden: routes met pontje komen niet meer in de lijst', 'Crash bij raket afvuren opgelost', 'Dit lijstje met alle versies']],
       ['v192', '16 nov', ['👥 Maatjes live: groepsleden binnen 5 km in 3D op de kaart, in je spiegel en op Buddy+', '🚀 Items: raket (ontwijken door te tikken), ⚡ nitro, 💣 mijn', 'Toeteren, volgen, konvooi en start-duel tot 50', '🎁 Cadeautjes verstoppen en Buddy Wrapped', '🏰 Veroverkaart, 👻 ghosts van groepsleden en kletsende Buddy\'s', '🧪 Testmaatje om alles alleen te proberen', 'Nieuw-kaart op het Buddy-tabblad']],
       ['v191', '16 nov', ['Slanke afslagstrook met routelijn in plaats van groen blok', '🌙 Echte nachtkaart', 'Auto meteen in 3D', 'Files alleen nog van de ANWB, en alleen in jouw rijrichting', 'Geen routes meer met afrit-rotonde-oprit of die beginnen met omkeren', 'Matrixborden elke 3 minuten vers', 'Je naam komt terug in de log, Buddy+-log niet meer dubbel']],
       ['v190', '13 nov', ['Buddy tikt door met het scherm uit (rit en GPS kloppen weer)', 'Groene afslagbalk springt na een rotonde meteen door', 'Bij omrijden laat Buddy het tussenpunt van de route los']],
