@@ -950,6 +950,12 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
 .maatMk b, .maatPijl b { font: 700 12px/1 var(--f-body); color: #fff; background: #ff3b30; padding: 3px 7px; border-radius: 9px; white-space: nowrap; box-shadow: 0 2px 6px #0007; }
 .maatPijl { position: fixed; z-index: 48; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; }
 .maatPijl[hidden] { display: none; } .maatPijl i { font-style: normal; font-size: 26px; color: #ff3b30; text-shadow: 0 0 3px #fff, 0 2px 6px #000a; line-height: 1; }
+#raketIn { position: fixed; z-index: 9000; left: 50%; top: -60px; font-size: 70px; transform: translateX(-50%) rotate(180deg); animation: raketIn 2s linear forwards; pointer-events: auto; }
+#raketIn.mis { animation: raketMis .4s ease-out forwards; }
+@keyframes raketIn { to { top: 62%; } } @keyframes raketMis { to { transform: translate(200%, -40px) rotate(120deg); opacity: 0; } }
+#maatMenu, #vraagBalk { position: fixed; z-index: 9500; left: 50%; bottom: calc(24px + var(--sa-b)); transform: translateX(-50%); display: flex; gap: 8px; align-items: center; background: rgba(16,18,22,.94); color: #fff; padding: 10px 12px; border-radius: 16px; box-shadow: 0 8px 24px #000a; font: 600 15px var(--f-body); max-width: 94vw; }
+#maatMenu button, #vraagBalk button { font: 700 15px var(--f-body); padding: 9px 12px; border-radius: 12px; border: 0; background: #ff3b30; color: #fff; }
+#maatMenu button[data-a="x"] { background: #333; } .maatMk b { pointer-events: auto; cursor: pointer; } .maatPijl { pointer-events: auto; cursor: pointer; }
 </style>
 
 </head>
@@ -4844,6 +4850,7 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
   $('navStop').addEventListener('click', function () { navStop(false); });
   window.__nav = {   /* v113: voor de rijkaart */
     nu: function () { return nav; }, heeftPos: function () { return !!lastPos; }, tekst: navTekst, start: navStart, stop: navStop,
+    naar: function (r) { if (lastPos) navRoute({ lat: lastPos.lat, lon: lastPos.lon }, r, true); },   /* v192: zonder keuzescherm (voor Volg) */
     zoek: zoekAlles
   };
   $('navSpk').checked = navSpk;
@@ -7239,18 +7246,19 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
   function buurUit() { if (grp && pbase()) fetch(gUrl('/hier', grQ('&uit=1'))).catch(function () {}); }
 
   /* ---------- v192: items onderweg: raket (op een maatje) en nitro (groot, vurig, onkwetsbaar) ---------- */
-  var ITEMS = { bal: { i: '🚀', n: 'raket' }, ster: { i: '⚡', n: 'nitro' } }, sterTot = 0;
+  var ITEMS = { bal: { i: '🚀', n: 'raket' }, ster: { i: '⚡', n: 'nitro' }, mijn: { i: '💣', n: 'mijn' } }, sterTot = 0;
   function itemToon() { var k = $('itemKnop'); if (!k) return; var it = ITEMS[mem.item]; k.hidden = !it; if (it) k.textContent = it.i; }
   function itemDoos() {   /* elke 12 km rijden: een itemdoos */
     if (!S.live || (S.speed || 0) < 20) return; var km = mem.kmLive || 0; if (mem.itemKm == null) { mem.itemKm = km; save(); return; }
     if (km - mem.itemKm < 12) return; mem.itemKm = km; if (mem.item) { save(); return; }
-    mem.item = Math.random() < .7 ? 'bal' : 'ster'; save(); itemToon(); var it = ITEMS[mem.item];
+    var rr = Math.random(); mem.item = rr < .5 ? 'bal' : rr < .75 ? 'ster' : 'mijn'; save(); itemToon(); var it = ITEMS[mem.item];
     var m = '❓ Itemdoos! Je hebt een ' + it.n + ' ' + it.i + '. Tik erop om hem te gebruiken.'; setEv('excited', 4, m); beep('excited'); toast(m); lg('item gekregen: ' + mem.item);
   }
   function itemGebruik() {
     var it = mem.item; if (!it) return;
     if (it === 'ster') { mem.item = null; save(); itemToon(); sterTot = Date.now() + 10000; try { window.__autoFx && window.__autoFx('ster', 10000); } catch (e) {} startGag('raket'); setEv('excited', 5, '⚡ NITRO! Tien seconden onverwoestbaar!'); beep('excited'); say('Nitro!'); lg('item: nitro gebruikt'); return; }
-    if ((S.speed || 0) < 20) { toast('Afvuren kan alleen als je rijdt.'); return; }
+    if ((S.speed || 0) < 20) { toast('Dat kan alleen als je rijdt.'); return; }
+    if (it === 'mijn') { mijnLeg(); return; }
     if (!buurAan) { toast('Zet eerst "Collega in de buurt" aan (Groep), dan zie je wie er rijdt.'); return; }
     var bl = window.__buren && Date.now() - window.__buren.t < 90e3 ? window.__buren.l.filter(function (b) { return !b.d || b.d <= 2; }) : [];
     var LV = window.__live || {}; Object.keys(LV).forEach(function (k) { var x = LV[k], d = gdist(lastPos.lat, lastPos.lon, x.lat, x.lon); bl = bl.filter(function (b) { return b.van !== k; }); if (d <= 2000) bl.push({ van: k, n: x.n, d: d / 1000 }); });
@@ -7277,24 +7285,114 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
       if (m.t === 'p' && m.van) { var nieuw = !window.__live[m.van]; window.__live[m.van] = { van: m.van, n: m.n, a: m.a, lat: m.lat, lon: m.lon, hd: m.hd, v: m.v, rx: Date.now() };
         if (nieuw && (!live.gezien[m.van] || Date.now() - live.gezien[m.van] > 30 * 60e3)) { live.gezien[m.van] = Date.now(); var t = '📡 ' + (m.n || 'Een maatje') + ' rijdt live bij je in de buurt!'; setEv('excited', 3.5, t); beep('pet'); toast(t); lg('live: ' + (m.n || '?') + ' in de buurt'); } }
       else if (m.t === 'weg' && m.van) delete window.__live[m.van];
-      else if (m.t === 'x' && m.d && m.d.r) { try { window.__itemPing({ van: m.van, n: m.n, r: String(m.d.r) }); } catch (x) {} } };
+      else if (m.t === 'x' && m.d && m.d.r) { try { window.__itemPing({ van: m.van, n: m.n, r: String(m.d.r), lat: m.d.lat, lon: m.d.lon }); } catch (x) {} } };
   }
   function liveSluit() { if (live.ws) { try { live.ws.send(JSON.stringify({ t: 'stil' })); live.ws.close(); } catch (e) {} } live.ws = null; live.open = false; window.__live = {}; }
   window.__liveTik = function () {
     var rijdt = buurAan && S.live && lastPos && (S.speed || 0) >= 20;
-    if (rijdt) { live.stilT = 0; liveVerbind(); if (live.open && Date.now() - live.laatst > 950) { live.laatst = Date.now(); try { live.ws.send(JSON.stringify({ t: 'p', lat: +lastPos.lat.toFixed(5), lon: +lastPos.lon.toFixed(5), hd: lastPos.hd != null ? Math.round((lastPos.hd + 360) % 360) : 0, v: Math.round(S.speed || 0) })); } catch (e) {} } }
-    else { if (!live.stilT) live.stilT = Date.now(); if (Date.now() - live.stilT > 60000 && live.ws) { liveSluit(); lg('live: uit (je staat stil)'); } }
+    if (rijdt) { live.stilT = 0; liveVerbind(); }
+    if (live.open && (rijdt || Date.now() - live.stilT < 60000) && Date.now() - live.laatst > 950) { if (true) { live.laatst = Date.now(); try { live.ws.send(JSON.stringify({ t: 'p', lat: +lastPos.lat.toFixed(5), lon: +lastPos.lon.toFixed(5), hd: lastPos.hd != null ? Math.round((lastPos.hd + 360) % 360) : 0, v: Math.round(S.speed || 0) })); } catch (e) {} } }
+    if (!rijdt) { if (!live.stilT) live.stilT = Date.now(); if (Date.now() - live.stilT > 60000 && live.ws) { liveSluit(); lg('live: uit (je staat stil)'); } }
     for (var k in window.__live) if (Date.now() - window.__live[k].rx > 15000) delete window.__live[k];
   };
   setInterval(function () { try { window.__liveTik(); } catch (e) {} }, 250);
-  window.__liveStuur = function (aan, r) { if (live.open) { try { live.ws.send(JSON.stringify({ t: 'x', aan: aan, d: { r: r } })); return true; } catch (e) {} } return false; };
+  window.__liveStuur = function (aan, r) { return window.__liveStuurD(aan, { r: r }); };
+  window.__liveStuurD = function (aan, d) { if (live.open) { try { live.ws.send(JSON.stringify({ t: 'x', aan: aan, d: d })); return true; } catch (e) {} } return false; };
+  /* ---- raket ontwijken: hij vliegt 2 seconden op je af; tik op Buddy om te ontwijken ---- */
+  function raketKomt(b, wie) {
+    var el = document.createElement('div'); el.id = 'raketIn'; el.textContent = '🚀'; document.body.appendChild(el);
+    var ontweken = false; setEv('startled', 2, '🚀 ' + wie + ' vuurt een raket af! TIK op Buddy!'); beep('wake'); say('Raket! Tik!');
+    function tik(e) { if (ontweken) return; ontweken = true; try { window.__autoFx && window.__autoFx('zij'); } catch (x) {} el.classList.add('mis'); setEv('excited', 3, '💨 Ontweken! Haha, mis ' + wie + '!'); beep('excited'); itemZend(b.van, 'itmis' + Date.now().toString(36)); lg('item: raket van ' + wie + ' ontweken'); }
+    var doel = document.querySelector('main'); if (doel) doel.addEventListener('pointerdown', tik, { once: true }); el.addEventListener('pointerdown', tik, { once: true });
+    setTimeout(function () { if (doel) doel.removeEventListener('pointerdown', tik); setTimeout(function () { el.remove(); }, 400); if (ontweken) return;
+      try { window.__autoFx && window.__autoFx('salto'); } catch (e) {} setEv('startled', 4, '💥 BOEM! ' + wie + ' schoot ons met een raket!'); startGag && startGag('spin'); beep('wake'); say(wie + ' raakte ons!');
+      lg('item: geraakt door ' + wie); itemZend(b.van, 'itraak' + Date.now().toString(36)); }, 2000);
+  }
+  /* ---- mijn leggen en erover rijden ---- */
+  var mijnen = {}, mijnGeraakt = {};
+  function mijnLeg() {
+    if (!lastPos) return; var id = 'mijn' + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), la = +lastPos.lat.toFixed(5), lo = +lastPos.lon.toFixed(5);
+    mem.item = null; save(); itemToon(); mijnGeraakt[id] = 1;
+    if (grp && pbase()) fetch(gUrl('/plek', '&s=deel&id=' + id + '&lat=' + la + '&lon=' + lo + '&wat=mijn&wie=' + encodeURIComponent(myWho() || '') + '&van=' + mijnId + '&naam=mijn')).catch(function () {});
+    Object.keys(window.__live || {}).forEach(function (k) { if (window.__liveStuurD) window.__liveStuurD(k, { r: id, lat: la, lon: lo }); });
+    setEv('mischief', 3, '💣 Mijn gelegd. Wie achter je rijdt: pas op!'); beep('pet'); lg('item: mijn gelegd');
+  }
+  function mijnKijk() {
+    if (!lastPos || (S.speed || 0) < 10) return; var l = Object.keys(mijnen).map(function (k) { return mijnen[k]; }).concat(window.__mijnenPlek || []);
+    l.forEach(function (x) { var id = x.id; if (!id || mijnGeraakt[id] || x.van === mijnId) return; var tt = parseInt(id.slice(4, 12), 36); if (isFinite(tt) && Date.now() - tt > 60 * 60e3) return;   /* een uur scherp */
+      if (gdist(lastPos.lat, lastPos.lon, x.lat, x.lon) > 22) return; mijnGeraakt[id] = 1;
+      var wie = x.n || (x.wie && x.wie[0]) || 'Iemand'; try { window.__autoFx && window.__autoFx('salto'); } catch (e) {} setEv('startled', 4, '💣 BOEM! Je reed op een mijn van ' + wie + '!'); startGag && startGag('spin'); beep('wake'); say('Boem! Een mijn van ' + wie + '!');
+      lg('item: op mijn van ' + wie); if (x.van) itemZend(x.van, 'itmijnraak' + Date.now().toString(36)); });
+  }
+  /* ---- toeteren en volgen (tik op het naamkaartje van een maatje) ---- */
+  var volg = null;
+  window.__maatMenu = function (van) {
+    var x = window.__live && window.__live[van], wie = (x && x.n) || 'je maatje', oud = document.getElementById('maatMenu'); if (oud) oud.remove();
+    var w = document.createElement('div'); w.id = 'maatMenu'; w.innerHTML = '<b>' + wie + '</b><button type="button" data-a="t">📯 Toeteren</button><button type="button" data-a="v">' + (volg && volg.van === van ? '✋ Stop met volgen' : '🧭 Volg ' + wie) + '</button><button type="button" data-a="x">✕</button>';
+    document.body.appendChild(w); setTimeout(function () { if (w.parentNode) w.remove(); }, 8000);
+    w.addEventListener('click', function (e) { var a = e.target && e.target.getAttribute('data-a'); if (!a) return; w.remove();
+      if (a === 't') { itemZend(van, 'toet' + Date.now().toString(36)); toast('📯 Getoeterd naar ' + wie); beep('pet'); }
+      if (a === 'v') { if (volg && volg.van === van) { volg = null; toast('Je volgt ' + wie + ' niet meer.'); return; } volg = { van: van, n: wie, t: 0, la: null, lo: null }; volgStap(true); toast('🧭 Je volgt ' + wie + '. Buddy rijdt je achter hem aan.'); lg('live: volgt ' + wie); } });
+  };
+  function volgStap(nu) {
+    if (!volg || !lastPos || !window.__nav) return; var x = window.__live && window.__live[volg.van];
+    if (!x) { if (Date.now() - (volg.weg || (volg.weg = Date.now())) > 60e3) { toast(volg.n + ' is uit beeld. Volgen gestopt.'); volg = null; } return; } volg.weg = 0;
+    var dIk = gdist(lastPos.lat, lastPos.lon, x.lat, x.lon); if (dIk < 80 && !nu) return;
+    if (!nu && Date.now() - volg.t < 30e3) return; if (!nu && volg.la != null && gdist(volg.la, volg.lo, x.lat, x.lon) < 800) return;
+    volg.t = Date.now(); volg.la = x.lat; volg.lo = x.lon; window.__nav.naar({ lat: x.lat, lon: x.lon, naam: volg.n + ' (volgen)' });
+  }
+  /* ---- konvooi: langer dan 5 minuten samen binnen 500 m ---- */
+  var konv = {};
+  function konvooiStap() {
+    var L = window.__live || {}, nu = Date.now();
+    Object.keys(L).forEach(function (k) { var x = L[k]; if (!lastPos) return; var d = gdist(lastPos.lat, lastPos.lon, x.lat, x.lon), c = konv[k];
+      if (d < 500) { if (!c) c = konv[k] = { start: nu, km0: mem.kmLive || 0, n: x.n }; c.dicht = nu;
+        if (!c.aan && nu - c.start > 5 * 60e3) { c.aan = true; c.km0 = mem.kmLive || 0; var m = '🚗🚙 Konvooi met ' + (x.n || 'je maatje') + ' gestart!'; setEv('excited', 4, m); beep('excited'); say('Konvooi gestart!'); toast(m); lg('konvooi gestart met ' + (x.n || '?')); } } });
+    Object.keys(konv).forEach(function (k) { var c = konv[k]; if (nu - (c.dicht || 0) < 2 * 60e3) return; delete konv[k]; if (!c.aan) return;
+      var km = Math.max(0, (mem.kmLive || 0) - c.km0); mem.konvooi = mem.konvooi || {}; mem.konvooi[c.n || '?'] = Math.round(((mem.konvooi[c.n || '?'] || 0) + km) * 10) / 10; save();
+      var m = '🏁 Konvooi met ' + (c.n || 'je maatje') + ' klaar: ' + km.toFixed(1).replace('.', ',') + ' km samen gereden!'; setEv('happy', 4, m); toast(m); lg(m); });
+  }
+  /* ---- start-duel bij het stoplicht: wie haalt het eerst 50 km/u ---- */
+  var race = null, raceAanbodT = {}, vMeet = [];
+  function vraagBalk(tekst, knop, ok, ms) { var o = document.getElementById('vraagBalk'); if (o) o.remove(); var w = document.createElement('div'); w.id = 'vraagBalk'; w.innerHTML = '<span></span><button type="button"></button>'; w.querySelector('span').textContent = tekst; w.querySelector('button').textContent = knop; document.body.appendChild(w);
+    w.querySelector('button').onclick = function () { w.remove(); ok(); }; setTimeout(function () { if (w.parentNode) w.remove(); }, ms || 12000); }
+  function raceStap() {
+    var v = S.speed || 0, nu = Date.now(); vMeet.push([nu, v]); if (vMeet.length > 120) vMeet.shift();
+    if (!race) {   /* aanbod: allebei stil, binnen 30 m */
+      if (v > 3 || !lastPos) return; var L = window.__live || {};
+      Object.keys(L).forEach(function (k) { var x = L[k]; if (nu - x.rx > 3000 || x.v > 3 || gdist(lastPos.lat, lastPos.lon, x.lat, x.lon) > 30 || nu - (raceAanbodT[k] || 0) < 5 * 60e3) return; raceAanbodT[k] = nu;
+        vraagBalk('🏁 ' + (x.n || 'Je maatje') + ' staat naast je! Start-duel tot 50?', 'Uitdagen', function () { itemZend(k, 'raceq' + nu.toString(36)); toast('Uitdaging verstuurd…'); }); });
+      return; }
+    if (race.fase === 'klaar' && v < 3) race.stil = true;
+    if (race.fase === 'klaar' && race.stil && v >= 3 && !race.t0) race.t0 = tussen(3);
+    if (race.fase === 'klaar' && race.t0 && v >= 50) { var t50 = tussen(50), ms = Math.max(500, t50 - race.t0); race.mijn = ms; race.fase = 'wacht'; itemZend(race.van, 'racet' + ms); toast('⏱️ 0–50 in ' + (ms / 1000).toFixed(1).replace('.', ',') + ' s'); raceUitslag(); }
+    if (nu - race.t > 90e3) { if (race.fase !== 'af') toast('Start-duel verlopen.'); race = null; }
+  }
+  function tussen(doelV) { for (var i = vMeet.length - 1; i > 0; i--) { var a = vMeet[i - 1], b = vMeet[i]; if (a[1] < doelV && b[1] >= doelV) return a[0] + (b[0] - a[0]) * (doelV - a[1]) / Math.max(.1, b[1] - a[1]); } return Date.now(); }
+  function raceBericht(b) {
+    var wie = b.n || 'Je maatje';
+    if (/^raceq/.test(b.r)) { vraagBalk('🏁 ' + wie + ' daagt je uit voor een start-duel tot 50!', 'Accepteren', function () { race = { van: b.van, n: wie, fase: 'klaar', t: Date.now() }; itemZend(b.van, 'racej' + Date.now().toString(36)); raceKlaar(wie); }); return; }
+    if (/^racej/.test(b.r)) { race = { van: b.van, n: wie, fase: 'klaar', t: Date.now() }; raceKlaar(wie); return; }
+    if (/^racet/.test(b.r) && race && race.van === b.van) { race.ander = parseInt(b.r.slice(5), 10); raceUitslag(); }
+  }
+  function raceKlaar(wie) { setEv('excited', 4, '🏁 Duel met ' + wie + '! Wacht op groen… wie het eerst 50 haalt wint. Blijf binnen de limiet!'); say('Duel! Wacht op groen.'); lg('start-duel met ' + wie); }
+  function raceUitslag() { if (!race || race.mijn == null || race.ander == null) return; var w = race.mijn <= race.ander, f = function (x) { return (x / 1000).toFixed(1).replace('.', ','); };
+    var m = (w ? '🏆 Gewonnen! ' : '😤 Verloren… ') + 'Jij ' + f(race.mijn) + ' s, ' + race.n + ' ' + f(race.ander) + ' s.'; setEv(w ? 'excited' : 'sad', 5, m); say(w ? 'Gewonnen!' : 'Verloren!'); toast(m); lg('start-duel: ' + m); race.fase = 'af'; race = null; }
+  setInterval(function () { try { mijnKijk(); konvooiStap(); volgStap(false); raceStap(); } catch (e) {} }, 1000);
+
   window.__itemPing = function (b) {
     var wie = b.n || 'Iemand';
+    if (/^toet/.test(b.r)) { var t0 = '📯 ' + wie + ' toetert naar je!'; setEv('excited', 3, t0); beep('excited'); say(wie + ' toetert naar je!'); toast(t0); lg('live: getoeterd door ' + wie); return; }
+    if (/^mijn/.test(b.r) && isFinite(b.lat)) { mijnen[b.r] = { id: b.r, lat: +b.lat, lon: +b.lon, van: b.van, n: wie, t: Date.now() }; return; }
+    if (/^itmijnraak/.test(b.r)) { setEv('laugh', 4, '💣 HA! ' + wie + ' reed op jouw mijn!'); beep('excited'); say(wie + ' reed op jouw mijn!'); return; }
+    if (/^itmis/.test(b.r)) { setEv('sad', 3, '💨 ' + wie + ' ontweek je raket!'); return; }
+    if (/^race/.test(b.r)) { raceBericht(b); return; }
     if (/^itbal/.test(b.r)) {
       if ((S.speed || 0) < 20) return;   /* alleen raak als je zelf ook rijdt */
-      if (Date.now() < sterTot) { setEv('excited', 3, '⚡ Ha! ' + wie + ' vuurde een raket af, maar met nitro voel je er niks van!'); itemZend(b.van, 'itblok' + Date.now().toString(36)); return; }
-      try { window.__autoFx && window.__autoFx('salto'); } catch (e) {} setEv('startled', 4, '💥 BOEM! ' + wie + ' schoot ons met een raket!'); startGag && startGag('spin'); beep('wake'); say(wie + ' raakte ons!');
-      lg('item: geraakt door ' + wie); itemZend(b.van, 'itraak' + Date.now().toString(36)); return;
+      var sch = window.__live && window.__live[b.van], ds = sch && lastPos ? gdist(lastPos.lat, lastPos.lon, sch.lat, sch.lon) : 0;   /* v192: verder dan 300 m? dan kan de raket het niet halen */
+      if (ds > 300 && Math.random() > Math.max(.3, 1 - (ds - 300) / 2000)) { setEv('happy', 3, '💨 ' + wie + ' vuurde een raket af, maar je zat te ver weg. Mis!'); itemZend(b.van, 'itmis' + Date.now().toString(36)); return; }
+      if (Date.now() >= sterTot) { raketKomt(b, wie); return; }
+      setEv('excited', 3, '⚡ Ha! ' + wie + ' vuurde een raket af, maar met nitro voel je er niks van!'); itemZend(b.van, 'itblok' + Date.now().toString(36)); return;
     }
     if (/^itraak/.test(b.r)) { setEv('excited', 4, '💥 Raak! ' + wie + ' ging ondersteboven!'); beep('excited'); say('Raak!'); return; }
     if (/^itblok/.test(b.r)) { setEv('sad', 3, '⚡ ' + wie + ' had nitro. Raket deed niks!'); return; }
@@ -7765,12 +7863,12 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
     if (!grp || !pbase() || (!nu && Date.now() - gPlekT < 10 * 60e3)) return; gPlekT = Date.now();
     fetch(gUrl('/plekken')).then(function (r) { return r.json(); }).then(function (j) {
       if (!j || !Array.isArray(j.plekken)) return;
-      gPlekken = j.plekken.filter(function (x) { return x && isFinite(x.lat) && isFinite(x.lon); }); window.__cadeaus = gPlekken.filter(function (x) { return x.wat === 'cadeau'; }); gPlekken = gPlekken.filter(function (x) { return x.wat !== 'cadeau'; });   /* v192: cadeautjes niet op de kaart */
+      gPlekken = j.plekken.filter(function (x) { return x && isFinite(x.lat) && isFinite(x.lon); }); window.__cadeaus = gPlekken.filter(function (x) { return x.wat === 'cadeau'; }); window.__mijnenPlek = gPlekken.filter(function (x) { return x.wat === 'mijn'; }); gPlekken = gPlekken.filter(function (x) { return x.wat !== 'cadeau' && x.wat !== 'mijn'; });   /* v192: cadeautjes niet op de kaart */
       try { localStorage.setItem(GPLEKKEY, JSON.stringify(gPlekken)); } catch (e) {}
       var eerst = !gPlekGezien; if (eerst) gPlekGezien = {};
       gPlekken.forEach(function (x) {
         if (gPlekGezien[x.id]) return; gPlekGezien[x.id] = 1;
-        if (eerst || x.s !== 'deel' || x.van === mijnId || x.wat === 'cadeau') return;   /* v192: cadeautjes blijven een verrassing */
+        if (eerst || x.s !== 'deel' || x.van === mijnId || x.wat === 'cadeau' || x.wat === 'mijn') return;   /* v192: cadeautjes blijven een verrassing */
         var m = '📍 ' + ((x.wie && x.wie[0]) || 'Een collega') + ' deelde een plekje: ' + (WATI[x.wat] || '📍') + ' ' + (x.naam || WATN[x.wat] || 'plekje') + (x.p ? ' in ' + x.p : '') + '. Kijk bij Kaart.';
         grLijstAdd('in', m); toast(m);
       });
@@ -11088,11 +11186,11 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
         lijst.forEach(function (b) {
           var dt = Math.min(60, ((Date.now() - (b.rx || 0)) + (b.oud || 0)) / 1000), sp = (b.v || 0) / 3.6 * dt, hd = (b.hd || 0) * Math.PI / 180;   /* doorrijden waar hij nu ongeveer is */
           var la = b.lat + Math.cos(hd) * sp / 110540, lo = b.lon + Math.sin(hd) * sp / (111320 * Math.cos(b.lat * Math.PI / 180)); weg[b.van] = 1;
-          var m = maatMk[b.van]; if (!m) { var el = document.createElement('div'); el.className = 'maatMk'; el.innerHTML = '<span class="mmAuto">🚙</span><b></b>'; m = maatMk[b.van] = new maplibregl.Marker({ element: el, anchor: 'bottom', rotationAlignment: 'viewport' }).setLngLat([lo, la]).addTo(map); }
+          var m = maatMk[b.van]; if (!m) { var el = document.createElement('div'); el.className = 'maatMk'; el.innerHTML = '<span class="mmAuto">🚙</span><b></b>'; (function (v) { el.querySelector('b').addEventListener('click', function (e) { e.stopPropagation(); window.__maatMenu && window.__maatMenu(v); }); })(b.van); m = maatMk[b.van] = new maplibregl.Marker({ element: el, anchor: 'bottom', rotationAlignment: 'viewport' }).setLngLat([lo, la]).addTo(map); }
           m.setLngLat([lo, la]); var afst = gdist(ik.lat, ik.lng, la, lo); m.getElement().querySelector('b').textContent = (b.n || 'Maatje') + ' · ' + (afst < 1000 ? Math.round(afst / 10) * 10 + ' m' : (afst / 1000).toFixed(1).replace('.', ',') + ' km');
           var q = map.project([lo, la]), binnen = q.x > 20 && q.x < W - 20 && q.y > 40 && q.y < H - 20 && afst < 3000;
           m.getElement().style.display = binnen ? '' : 'none';
-          var pl = maatPijl[b.van]; if (!pl) { pl = maatPijl[b.van] = document.createElement('div'); pl.className = 'maatPijl'; pl.innerHTML = '<i>▲</i><b></b>'; document.body.appendChild(pl); }
+          var pl = maatPijl[b.van]; if (!pl) { pl = maatPijl[b.van] = document.createElement('div'); pl.className = 'maatPijl'; pl.innerHTML = '<i>▲</i><b></b>'; document.body.appendChild(pl); (function (v) { pl.addEventListener('click', function () { window.__maatMenu && window.__maatMenu(v); }); })(b.van); }
           pl.hidden = binnen; if (!binnen) {
             var y = Math.sin((lo - ik.lng) * Math.PI / 180) * Math.cos(la * Math.PI / 180), x = Math.cos(ik.lat * Math.PI / 180) * Math.sin(la * Math.PI / 180) - Math.sin(ik.lat * Math.PI / 180) * Math.cos(la * Math.PI / 180) * Math.cos((lo - ik.lng) * Math.PI / 180);
             var rel = (Math.atan2(y, x) * 180 / Math.PI - mb + 720) % 360, r = rel * Math.PI / 180, rx = W / 2 - 46, ry = H / 2 - 70, k = Math.min(rx / Math.max(.001, Math.abs(Math.sin(r))), ry / Math.max(.001, Math.abs(Math.cos(r))));
@@ -11104,11 +11202,12 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
     }
     setInterval(function () { try { maatjes(); } catch (e) {} }, 100);
     /* v192: effecten op je eigen 3D-autootje: 'salto' (geraakt door een raket) en 'ster' = nitro (groot en vurig) */
-    window.__autoFx = function (soort, ms) { auto3d.fx = { s: soort, t0: performance.now(), dur: ms || (soort === 'ster' ? 10000 : 1400) };
+    window.__autoFx = function (soort, ms) { auto3d.fx = { s: soort, t0: performance.now(), dur: ms || (soort === 'ster' ? 10000 : soort === 'zij' ? 700 : 1400) };
       (function stap() { var fx = auto3d.fx; if (!fx) return; if (performance.now() - fx.t0 > fx.dur) { auto3d.fx = null; } if (auto3d.laatst) auto3d.apply(null, auto3d.laatst); if (auto3d.fx) requestAnimationFrame(stap); })(); };
     function auto3d(lat, lon, brg) {
       auto3d.laatst = [lat, lon, brg]; var fx = auto3d.fx, fp = fx ? Math.min(1, (performance.now() - fx.t0) / fx.dur) : 0, hop = 0, groei = 1, kleur = null;
       if (fx && fx.s === 'salto') { hop = Math.sin(Math.PI * fp) * 3.2; brg = brg + 360 * (fp < .5 ? 2 * fp * fp : 1 - Math.pow(-2 * fp + 2, 2) / 2) * 2; }
+      var zij = fx && fx.s === 'zij' ? Math.sin(Math.PI * fp) * 2.4 : 0;   /* ontwijken: zijsprongetje */
       if (fx && fx.s === 'ster') { groei = 1.7 - (fp > .9 ? (fp - .9) * 7 : 0); var vl = performance.now() / 70; kleur = (Math.floor(vl) % 3 === 0) ? '#ff3b00' : (Math.floor(vl) % 3 === 1 ? '#ff9500' : '#ffd000');   /* nitro: flakkerend vuur */ }
       var aan = st.kijk === 0 && st.aan; document.body.classList.toggle('auto3d', aan);   /* v191: het platte autootje meteen weg, niet eerst plat en dan pas 3D */
       if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) { clearTimeout(auto3d.tm); auto3d.tm = setTimeout(function () { auto3d(lat, lon, brg); }, 150); return; }
@@ -11116,7 +11215,7 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
       if (aan) { var a = AUTOS[st.auto % AUTOS.length], S3 = groei * Math.max(1.8, Math.min(3.2, 34 * 156543.03 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom()) / 4.75)),   /* v162: hooguit ~3x echte grootte, past in de straat */ b = brg * Math.PI / 180, cb = Math.cos(b), sb = Math.sin(b), kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
         var rem = mkEl && mkEl.classList.contains('rem'), kL = mkEl && mkEl.classList.contains('knipL'), kR = mkEl && mkEl.classList.contains('knipR'), knipAan = (Date.now() % 800) < 400, nacht = document.body.classList.contains('nacht');
         var L = a.vorm === 'bus' ? 2.6 : 2.37, W = a.vorm === 'race' ? .9 : .96, H = a.vorm === 'bus' ? 1.9 : a.vorm === 'sport' || a.vorm === 'race' ? .85 : 1.0;
-        function doos(x0, x1, y0, y1, h0, h1, kl) { var pt = [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(function (q) { var x = q[0] * S3, y = q[1] * S3; return [lon + (x * cb + y * sb) / kx, lat + (-x * sb + y * cb) / ky]; }); f.push({ type: 'Feature', properties: { b: (h0 + hop) * S3, h: (h1 + hop) * S3, kl: kleur && kl === a.k ? kleur : kl }, geometry: { type: 'Polygon', coordinates: [pt] } }); }
+        function doos(x0, x1, y0, y1, h0, h1, kl) { var pt = [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(function (q) { var x = (q[0] + zij) * S3, y = q[1] * S3; return [lon + (x * cb + y * sb) / kx, lat + (-x * sb + y * cb) / ky]; }); f.push({ type: 'Feature', properties: { b: (h0 + hop) * S3, h: (h1 + hop) * S3, kl: kleur && kl === a.k ? kleur : kl }, geometry: { type: 'Polygon', coordinates: [pt] } }); }
         if (a.d) { L = a.d.l / 2; W = a.d.b / 2; H = a.d.bh; }
         doos(-W, W, -L, L, .28, H, a.k);   /* carrosserie */
         if (a.d) { var c0 = a.d.c0 * L, c1 = a.d.c1 * L, dh = a.d.h; doos(-W + .1, W - .1, c0, c1, H, dh - .06, a.r); doos(-W + .16, W - .16, c0 + .25, c1 - .15, dh - .06, dh, a.k);   /* ramen en dak */
