@@ -901,7 +901,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
 .namecard .mobrow { flex-direction: row; } .namecard .mobrow .btn { flex: 1; }
 /* v187: opgeruimd rijscherm: Buddy klein in de hoek (niet meer midden voor je neus), knopjes netjes onder het afslagbord, niets meer achter de Android-balken */
 @media (orientation: portrait) {
-  body.car.kaartrij { --bh: min(30vw, 15vh); }
+  body.car.kaartrij { --bh: min(42vw, 21vh); }   /* v201: Buddy groter (was 30vw/15vh) */
   body.car.kaartrij main { left: calc(10px + var(--sa-l)) !important; bottom: calc(10px + var(--sa-b)) !important; transform: rotate(var(--stuurDraai, 0deg)) !important; }
   body.car.kaartrij #carGroep { left: calc(var(--bh) + 22px + var(--sa-l)) !important; bottom: calc(12px + var(--sa-b)) !important; }
   body.car.kaartrij #rijKnipL { left: calc(50% - 46px); bottom: calc(74px + var(--sa-b)); } body.car.kaartrij #rijKnipR { left: calc(50% + 16px); bottom: calc(74px + var(--sa-b)); }
@@ -917,7 +917,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   body.car.kaartrij #carAdd { bottom: calc(74px + var(--sa-b)) !important; } body.car.kaartrij #carAddM { bottom: calc(12px + var(--sa-b)) !important; }
 }
 @media (orientation: landscape) {
-  body.car.kaartrij { --bh: min(28vh, 17vw); }
+  body.car.kaartrij { --bh: min(42vh, 24vw); }   /* v201: Buddy groter (was 28vh/17vw) */
   body.car.kaartrij main { left: calc(10px + var(--sa-l)) !important; bottom: calc(8px + var(--sa-b)) !important; }
   body.car.kaartrij #carGroep { left: calc(var(--bh) + 22px + var(--sa-l)) !important; }
   body.car.kaartrij #rijAfslag { left: calc(180px + var(--sa-l)) !important; right: calc(124px + var(--sa-r)) !important; transform: none !important; width: auto !important; max-width: none !important; }
@@ -9498,7 +9498,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
-      ['v201', '17 nov', ['🎮 Live XP: tijdens het rijden zie je +XP in beeld (rotonde, afslag, netjes langs flitser, aankomst, raket raak, veroverde gemeente…) en onderin loopt een XP-balk vol', '🎯 Balken vullen: onder Buddy dag- en weekbalken; elke volle balk geeft extra XP', 'De lucht loopt nu helemaal door tot de horizon, geen zwarte balk meer (vooral te zien bij zonsondergang)', 'Navigatie stuurt je niet meer de snelweg af en via een rotonde er weer op (zoals op de A2 en A59): de route blijft op de snelweg']],
+      ['v201', '17 nov', ['🎮 Live XP: tijdens het rijden zie je +XP in beeld (rotonde, afslag, netjes langs flitser, aankomst, raket raak, veroverde gemeente…) en onderin loopt een XP-balk vol', '🎯 Balken vullen: onder Buddy dag- en weekbalken; elke volle balk geeft extra XP', 'Buddy is in het rijscherm een stuk groter (staand en liggend)', 'De lucht loopt nu helemaal door tot de horizon, geen zwarte balk meer (vooral te zien bij zonsondergang)', 'Navigatie stuurt je niet meer de snelweg af en via een rotonde er weer op (zoals op de A2 en A59): de route blijft op de snelweg']],
       ['v200', '17 nov', ['🔄-knop in het Groep-tab: vernieuwt in één tik leden, ranglijst, berichten, gemelde flitsers en live maatjes', '👥 Maatjes live staat nu standaard aan en werkt tot 10 km (was 5 km)', '🏰 Veroverkaart als vlakken: groen = van jou, rood = van een ander (zonder naam); de ranglijst toont alleen aantallen']],
       ['v199', '17 nov', ['De routelijn bovenin onthoudt hoe ver je al bent, ook als de route opnieuw berekend wordt of je de app even sluit', 'De blauwe navigatielijn loopt niet meer door je auto heen']],
       ['v198', '17 nov', ['Navigeer je, dan zie je alleen de flitsers langs je route (geen zee van 📸 meer aan de horizon)', 'Maatjes en testmaatje rijden vloeiend, niet meer schokkerig', 'Liggend staat de ⚡-itemknop niet meer over de 👥-knop', 'Horizon opgeruimd: laadpalen, borden, files en flitsers die ver weg liggen verdwijnen als je schuin kijkt']],
