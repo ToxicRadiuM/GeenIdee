@@ -172,7 +172,7 @@ body {
   background: var(--bg);
   color: var(--ink);
   font: 400 15px/1.5 var(--f-body);
-  padding-block: 22px 48px;
+  padding-block: max(22px, calc(var(--sa-t) + 12px)) 48px;
   padding-left: max(16px, var(--sa-l));
   padding-right: max(16px, var(--sa-r));
 }
@@ -1010,6 +1010,7 @@ body.car:not(.kaartrij) #cadeauKnop { display: none; }
 #raketIn.mis { animation: raketMis .4s ease-out forwards; }
 @keyframes raketIn { to { top: 62%; } } @keyframes raketMis { to { transform: translate(200%, -40px) rotate(120deg); opacity: 0; } }
 #maatMenu { flex-wrap: wrap; justify-content: center; width: min(94vw, 440px); box-sizing: border-box; } #maatMenu > b { width: 100%; text-align: center; }
+#vraagBalk { max-width: 94vw; box-sizing: border-box; } #vraagBalk > span, #vraagBalk > div { min-width: 0; } body:not(.car) #vraagBalk { bottom: calc(96px + var(--sa-b)); }
 #maatMenu, #vraagBalk { position: fixed; z-index: 9500; left: 50%; bottom: calc(24px + var(--sa-b)); transform: translateX(-50%); display: flex; gap: 8px; align-items: center; background: rgba(16,18,22,.94); color: #fff; padding: 10px 12px; border-radius: 16px; box-shadow: 0 8px 24px #000a; font: 600 15px var(--f-body); max-width: 94vw; }
 #maatMenu button[data-a="e"], #maatMenu button[data-a="l"], #maatMenu button[data-a="t"] { background: #2c2f36; font-size: 20px; padding: 6px 9px; }
 #maatMenu button, #vraagBalk button { font: 700 15px var(--f-body); padding: 9px 12px; border-radius: 12px; border: 0; background: #ff3b30; color: #fff; }
@@ -5473,7 +5474,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v208';
+  var VERSION = 'v209';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7696,7 +7697,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     var v = S.speed || 0, nu = Date.now(); vMeet.push([nu, v]); if (vMeet.length > 120) vMeet.shift();
     if (!race) {   /* aanbod: allebei stil, binnen 30 m */
       if (v > 3 || !lastPos) return; var L = window.__live || {};
-      Object.keys(L).forEach(function (k) { var x = L[k]; if (nu - x.rx > 3000 || x.v > 3 || gdist(lastPos.lat, lastPos.lon, x.lat, x.lon) > 30 || nu - (raceAanbodT[k] || 0) < 5 * 60e3) return; raceAanbodT[k] = nu;
+      Object.keys(L).forEach(function (k) { var x = L[k]; if (nu - x.rx > 3000 || x.v > 3 || gdist(lastPos.lat, lastPos.lon, x.lat, x.lon) > 30 || nu - (raceAanbodT[k] || 0) < 5 * 60e3 || !document.body.classList.contains('car')) return; raceAanbodT[k] = nu;   /* v209: alleen in het rijscherm, niet over de tabbladen */
         vraagBalk('🏁 ' + (x.n || 'Je maatje') + ' staat naast je! Start-duel tot 50?', 'Uitdagen', function () { itemZend(k, 'raceq' + nu.toString(36)); toast('Uitdaging verstuurd…'); }); });
       return; }
     if (race.fase === 'klaar' && v < 3) race.stil = true;
@@ -8808,6 +8809,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
         });
       }
       setTimeout(function () { flMap.invalidateSize(); flKaartVul(); }, 100);
+      try { if (!flMap._ro && window.ResizeObserver) { flMap._ro = new ResizeObserver(function () { try { flMap.invalidateSize(); } catch (e) {} }); flMap._ro.observe($('flKaartMap')); } } catch (e) {}   /* v209: kaart tekende maar één tegel als hij in een verborgen tab werd gemaakt */
     }).catch(function () { toast('De kaart laadt nu niet, de lijst werkt wel.'); });
   });
   $('flKaartSluit').addEventListener('click', function () { $('flKaart').hidden = true; });
@@ -9676,6 +9678,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v209', '18 nov', ['Flitserkaart (Kaart-tab) laadt meteen helemaal in plaats van één hoekje', 'De start-duel-vraag verschijnt alleen nog in het rijscherm, niet over de tabbladen', 'In de app valt de titel niet meer onder de klok en de statusbalk']],
       ['v208', '18 nov', ['Liggend ligt de 10 km-balk plat bovenin het midden, zodat hij niet meer door de knoppen rechts loopt', 'Liggend staat de itemknop niet meer over de 😜-knop']],
       ['v207', '18 nov', ['De XP-balk onderin is dikker en laat altijd je level en XP zien', '🎮 Eerste persoon staand: Buddy wordt je stuur, onderin het midden, en draait mee in de bochten']],
       ['v206', '18 nov', ['Lucht in één kleur tot aan de horizon: geen donkere balk of naad meer', 'Liggend staan de geluid-, maatjes- en itemknop naast de 10 km-balk in plaats van eroverheen']],
