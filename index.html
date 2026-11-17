@@ -5270,7 +5270,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v196';
+  var VERSION = 'v197';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7456,8 +7456,8 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     if (nep.fase === 'stil' && v >= 20) { nep.fase = 'rij'; nep.t0 = nu; nep.ev = {}; nep.voor = -250; nep.doel = -40; toast('🧪 Testmaatje rijdt met je mee. Stoppen: 👥 → Testmaatje stoppen.'); }
     var t = (nu - nep.t0) / 1000, dt = Math.min(1, (nu - (nep.tik || nu)) / 1000); nep.tik = nu;
     if (nep.fase === 'rij') {
-      if (v < 3) nep.doel = 0;   /* jij staat stil (stoplicht): hij komt naast je staan */
-      else if (!nep.wissel || nu > nep.wissel) { nep.wissel = nu + (30 + Math.random() * 60) * 1000; var r = Math.random(); nep.doel = r < .35 ? -(40 + Math.random() * 160) : r < .7 ? 40 + Math.random() * 200 : (Math.random() < .5 ? -12 : 12); }
+      if (v < 3) nep.doel = nep.voor > 0 ? 18 : -12;   /* jij staat stil: hij wacht een stukje voor of achter je, niet bovenop je */
+      else if (!nep.wissel || nu > nep.wissel) { nep.wissel = nu + (30 + Math.random() * 60) * 1000; var r = Math.random(); nep.doel = r < .45 ? -(60 + Math.random() * 200) : r < .9 ? 60 + Math.random() * 260 : (Math.random() < .5 ? -25 : 25); }   /* v197: minder plakkerig: meestal op afstand, af en toe even naast je */
       var stap = Math.max(-6, Math.min(6, nep.doel - nep.voor)) * dt; nep.voor += stap; nep.relV = stap / Math.max(.05, dt) * 3.6;
     }
     var pos = nep.fase === 'stil' ? nepPunt(0) : nepPunt(nep.voor);
@@ -9363,6 +9363,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v197', '17 nov', ['Nieuwe kijkstand: dicht achter je auto, zoals in de Tesla (🧭-knop)', 'Maatjes en je eigen auto op echte grootte als je dichtbij kijkt', 'Testmaatje minder plakkerig: meestal 60–260 m voor of achter je']],
       ['v196', '16 nov', ['Testmaatje rijdt de hele rit mee: over je route, haalt in, laat zich zakken, staat naast je bij het stoplicht, toetert, kletst en schiet af en toe']],
       ['v195', '16 nov', ['Veroverkaart verhuisd naar het Kaart-tabblad (🏰 Veroveren, naast Flitsers)']],
       ['v194', '16 nov', ['Testmaatje en groepsmaatjes ook in 3D in de first-person-stand']],
@@ -11139,7 +11140,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
       b.hidden = false;
     }
     setInterval(function () { try { balkToon(); } catch (e) {} }, 3000);
-    function zetPadding() { if (!map) return; var h = $('rijKaart').clientHeight || 400, mn = document.querySelector('main') || {}, bw = mn.clientWidth || 0, staand = innerHeight > innerWidth; var bo = st.kijk === 2 || !staand ? 0 : Math.min(h * .4, (mn.clientHeight || 0) + 12); map.setPadding({ top: st.kijk === 2 ? 0 : Math.round(h * (staand ? .4 : .42)), bottom: Math.round(bo), left: 0, right: 0 }); }   /* v140: Buddy zit onderin als stuur, auto erboven */   /* v111: auto in het midden van het stuk naast Buddy */
+    function zetPadding() { if (!map) return; var h = $('rijKaart').clientHeight || 400, mn = document.querySelector('main') || {}, bw = mn.clientWidth || 0, staand = innerHeight > innerWidth; var bo = st.kijk === 2 || !staand ? 0 : Math.min(h * .4, (mn.clientHeight || 0) + 12); map.setPadding({ top: st.kijk === 2 ? 0 : Math.round(h * (st.kijk === 3 ? (staand ? .5 : .55) : staand ? .4 : .42)), bottom: Math.round(bo), left: 0, right: 0 }); }   /* v140: Buddy zit onderin als stuur, auto erboven */   /* v111: auto in het midden van het stuk naast Buddy */
     function opRoute(N, la, lo) {   /* dichtstbijzijnde punt op de route (alleen rond waar je bent) */
       var g = N.geom; if (!g || g.length < 2) return null; var kx = 111320 * Math.cos(la * Math.PI / 180), ky = 110540, best = null;
       var i0 = Math.max(0, (N.van || 0) - 40), i1 = Math.min(g.length - 1, (N.van || 0) + 400); if (opRoute.mis > 5) { i0 = 0; i1 = g.length - 1; }
@@ -11187,7 +11188,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
       try { extraStap(p, sp, fp, Nv, dk); } catch (e) {}
       if (stap.kijkW !== st.kijk) { stap.kijkW = st.kijk; flT = 0; }
       var zoom = sp > 90 ? 15.2 : sp > 60 ? 15.8 : sp > 30 ? 16.5 : 17.2;
-      anim = { lat: p.lat, lon: p.lon, t: performance.now(), v: sp > 2 ? sp / 3.6 : 0, brg: koers, fp: fp, noord: st.kijk === 1, zoom: fp ? 19.2 : zoom, pitch: fp ? 80 : st.kijk === 1 ? 0 : 62 };
+      anim = { lat: p.lat, lon: p.lon, t: performance.now(), v: sp > 2 ? sp / 3.6 : 0, brg: koers, fp: fp, noord: st.kijk === 1, zoom: fp ? 19.2 : st.kijk === 3 ? 18.9 : zoom, pitch: fp ? 80 : st.kijk === 1 ? 0 : st.kijk === 3 ? 74 : 62 };
       if (!rafId) rafId = requestAnimationFrame(beeld);
     }
     /* v139: eerste persoon: binnenspiegel, snelheidsmeter met naald, knipperlicht, regendruppels, turbo en mist */
@@ -11494,10 +11495,10 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
       if (fx && fx.s === 'salto') { hop = Math.sin(Math.PI * fp) * 3.2; brg = brg + 360 * (fp < .5 ? 2 * fp * fp : 1 - Math.pow(-2 * fp + 2, 2) / 2) * 2; }
       var zij = fx && fx.s === 'zij' ? Math.sin(Math.PI * fp) * 2.4 : 0;   /* ontwijken: zijsprongetje */
       if (fx && fx.s === 'ster') { groei = 1.7 - (fp > .9 ? (fp - .9) * 7 : 0); var vl = performance.now() / 70; kleur = (Math.floor(vl) % 3 === 0) ? '#ff3b00' : (Math.floor(vl) % 3 === 1 ? '#ff9500' : '#ffd000');   /* nitro: flakkerend vuur */ }
-      var aan = st.kijk === 0 && st.aan; document.body.classList.toggle('auto3d', aan);   /* v191: het platte autootje meteen weg, niet eerst plat en dan pas 3D */
+      var aan = (st.kijk === 0 || st.kijk === 3) && st.aan; document.body.classList.toggle('auto3d', aan);   /* v191: het platte autootje meteen weg, niet eerst plat en dan pas 3D */
       if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) { clearTimeout(auto3d.tm); auto3d.tm = setTimeout(function () { auto3d(lat, lon, brg); }, 150); return; }
       var f = [];
-      if (aan) { var a = AUTOS[st.auto % AUTOS.length], S3 = groei * Math.max(1.8, Math.min(3.2, 34 * 156543.03 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom()) / 4.75)),   /* v162: hooguit ~3x echte grootte, past in de straat */ b = brg * Math.PI / 180, cb = Math.cos(b), sb = Math.sin(b), kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+      if (aan) { var a = AUTOS[st.auto % AUTOS.length], S3 = groei * Math.max(st.kijk === 3 ? 1 : 1.8, Math.min(3.2, 34 * 156543.03 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom()) / 4.75)),   /* v162: hooguit ~3x echte grootte, past in de straat */ b = brg * Math.PI / 180, cb = Math.cos(b), sb = Math.sin(b), kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
         var rem = mkEl && mkEl.classList.contains('rem'), kL = mkEl && mkEl.classList.contains('knipL'), kR = mkEl && mkEl.classList.contains('knipR'), knipAan = (Date.now() % 800) < 400, nacht = document.body.classList.contains('nacht');
         var L = a.vorm === 'bus' ? 2.6 : 2.37, W = a.vorm === 'race' ? .9 : .96, H = a.vorm === 'bus' ? 1.9 : a.vorm === 'sport' || a.vorm === 'race' ? .85 : 1.0;
         function doos(x0, x1, y0, y1, h0, h1, kl) { var pt = [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(function (q) { var x = (q[0] + zij) * S3, y = q[1] * S3; return [lon + (x * cb + y * sb) / kx, lat + (-x * sb + y * cb) / ky]; }); f.push({ type: 'Feature', properties: { b: (h0 + hop) * S3, h: (h1 + hop) * S3, kl: kleur && kl === a.k ? kleur : kl }, geometry: { type: 'Polygon', coordinates: [pt] } }); }
@@ -11514,7 +11515,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
         if (kL && knipAan) { doos(-W - .06, -W, L - .5, L - .1, .6, .74, '#ffb02e'); doos(-W - .06, -W, -L + .1, -L + .5, .6, .74, '#ffb02e'); }
         if (kR && knipAan) { doos(W, W + .06, L - .5, L - .1, .6, .74, '#ffb02e'); doos(W, W + .06, -L + .1, -L + .5, .6, .74, '#ffb02e'); } }
       if (st.aan) try { Object.keys(maatMk).forEach(function (k) { var p = maatMk[k]._p;   /* v194: ook in first person (je eigen auto zie je dan niet, maatjes wel) */ if (!p || gdist(lat, lon, p.lat, p.lon) > 800) return;   /* v192: groepsmaatjes ook in 3D (rood) */
-        var S2 = Math.max(1.8, Math.min(3.2, 34 * 156543.03 * Math.cos(p.lat * Math.PI / 180) / Math.pow(2, map.getZoom()) / 4.75)), b2 = p.hd * Math.PI / 180, c2 = Math.cos(b2), s2 = Math.sin(b2), kx2 = 111320 * Math.cos(p.lat * Math.PI / 180);
+        var S2 = Math.max(st.kijk === 2 || st.kijk === 3 ? 1 : 1.8, Math.min(3.2, 34 * 156543.03 * Math.cos(p.lat * Math.PI / 180) / Math.pow(2, map.getZoom()) / 4.75)),   /* v197: dichtbij gewoon echte grootte */ b2 = p.hd * Math.PI / 180, c2 = Math.cos(b2), s2 = Math.sin(b2), kx2 = 111320 * Math.cos(p.lat * Math.PI / 180);
         function d2(x0, x1, y0, y1, h0, h1, kl) { var pt = [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(function (q) { var x = q[0] * S2, y = q[1] * S2; return [p.lon + (x * c2 + y * s2) / kx2, p.lat + (-x * s2 + y * c2) / 110540]; }); f.push({ type: 'Feature', properties: { b: h0 * S2, h: h1 * S2, kl: kl }, geometry: { type: 'Polygon', coordinates: [pt] } }); }
         d2(-.95, .95, -2.35, 2.35, .28, 1.0, '#e8262c'); d2(-.8, .8, -1.1, .95, 1.0, 1.48, '#1d2630'); d2(-.72, .72, -.9, .7, 1.48, 1.54, '#e8262c');
         [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(function (w) { d2(w[0] > 0 ? .83 : -.99, w[0] > 0 ? .99 : -.83, w[1] * 1.43 - .36, w[1] * 1.43 + .36, 0, .62, '#111'); });
@@ -11564,7 +11565,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     }
     function toon() {
       var aan = st.aan && document.body.classList.contains('car');
-      document.body.classList.toggle('kaartrij', st.aan); document.body.classList.toggle('auto3d', st.aan && st.kijk === 0);   /* v191: vanaf het begin 3D */
+      document.body.classList.toggle('kaartrij', st.aan); document.body.classList.toggle('auto3d', st.aan && (st.kijk === 0 || st.kijk === 3));   /* v191: vanaf het begin 3D */
       $('carKaartKnop').textContent = st.aan ? '🗺️ Kaart uit' : '🗺️ Kaart';
       var nu = aan; if (nu === toon.was && !toon.forceer) return;   /* v128: ook staand */ toon.was = nu; toon.forceer = false;
       clearInterval(tik); tik = null;
@@ -11608,7 +11609,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     }
     window.__satZet = satZet;
     $('rijSatKnop').addEventListener('click', function () { st.sat = !st.sat; bewaar(); satZet(); toast(st.sat ? '🛰️ Luchtfoto aan' : '🗺️ Gewone kaart'); });
-    $('rijNoordKnop').addEventListener('click', function () { st.kijk = st.kijk === 0 ? 1 : 0; bewaar(); toast(['🧭 3D, achter de auto', '🧭 Van bovenaf, noorden boven'][st.kijk]); fpKnop(); zetPadding(); volgZet(true); });   /* v120: kompas wisselt alleen 3D/bovenaf */
+    $('rijNoordKnop').addEventListener('click', function () { st.kijk = st.kijk === 0 ? 3 : st.kijk === 3 ? 1 : 0; bewaar(); toast({ 0: '🧭 3D, overzicht', 3: '🧭 Achter je auto (zoals in de Tesla)', 1: '🧭 Van bovenaf, noorden boven' }[st.kijk]); fpKnop(); zetPadding(); volgZet(true); });   /* v197: derde stand: dicht achter je auto */   /* v120: kompas wisselt alleen 3D/bovenaf */
     $('rijFpKnop').addEventListener('click', function () { flT = 0; if (st.kijk === 2) { st.kijk = st.vorigeKijk || 0; toast('🎮 Eerste persoon uit'); } else { st.vorigeKijk = st.kijk; st.kijk = 2; toast('🎮 Eerste persoon: jij achter het stuur!'); } bewaar(); fpKnop(); zetPadding(); volgZet(true); });
     setTimeout(fpKnop, 0);
     $('rijTerug').addEventListener('click', function () { volgZet(true); });
