@@ -52,13 +52,14 @@ export class BuddyGroep {
       if (!(lat > 50.6 && lat < 53.7 && lon > 3.0 && lon < 7.4)) return;
       ik.lat = +lat.toFixed(5); ik.lon = +lon.toFixed(5); ik.hd = Math.round(+m.hd || 0) % 360; ik.v = Math.max(0, Math.min(250, Math.round(+m.v || 0))); ik.ts = nu;
       ws.serializeAttachment(ik);
-      const uit = JSON.stringify({ t: 'p', van: ik.van, n: ik.n, a: ik.a, lat: ik.lat, lon: ik.lon, hd: ik.hd, v: ik.v });
+      const dk = String(m.dk || '').replace(/[^a-z0-9]/g, '').slice(0, 12), eta = Math.max(0, Math.min(36000, Math.round(+m.eta || 0)));   // v204: doelcode (gehusseld) en resttijd, voor 'wie is er eerst'
+      const uit = JSON.stringify({ t: 'p', van: ik.van, n: ik.n, a: ik.a, lat: ik.lat, lon: ik.lon, hd: ik.hd, v: ik.v, dk, eta });
       for (const ander of this.state.getWebSockets()) { if (ander === ws) continue; const b = ander.deserializeAttachment();
         if (b && b.ts && nu - b.ts < 30e3 && afst(ik, b) < BEREIK) try { ander.send(uit); } catch (e) {} }
       return;
     }
     if (m.t === 'stil') { delete ik.lat; delete ik.ts; ws.serializeAttachment(ik); this.weg(ws, ik.van); return; }
-    if (m.t === 'x' && m.aan) {   // iets voor één maatje (raket, nitro-blok, raak), alleen als die in de buurt rijdt
+    if (m.t === 'x' && m.aan) {   // iets voor één maatje (raket, nitro-blok, raak, munt, reactie), alleen als die in de buurt rijdt
       for (const ander of this.state.getWebSockets()) { const b = ander.deserializeAttachment();
         if (b && b.van === m.aan && b.ts && ik.ts && afst(ik, b) < BEREIK) try { ander.send(JSON.stringify({ t: 'x', van: ik.van, n: ik.n, d: m.d || {} })); } catch (e) {} }
     }
