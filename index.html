@@ -430,6 +430,7 @@ body.car.kaartrij #rijTerug { bottom: calc(var(--bh) + 16px); }
 #rijSnelLim { width: 62px; height: 62px; border-radius: 50%; background: #fff; border: 7px solid #e3121b; box-sizing: border-box; color: #111; font: 800 22px/48px var(--f-display); letter-spacing: -1px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,.5); }
 #rijSnelV { font: 800 34px/1 var(--f-display); color: #fff; text-shadow: 0 2px 8px #000, 0 0 2px #000; margin-top: 4px; }
 #rijSnel small { font: 700 11px var(--f-body); color: #cfd4da; text-shadow: 0 1px 3px #000; }
+#rijKlok { margin-top: 6px; font: 700 15px var(--f-display); font-style: normal; color: #fff; background: rgba(16,20,24,.72); padding: 2px 9px; border-radius: 10px; letter-spacing: .5px; }   /* v211: klok */
 #rijSnel.te #rijSnelV { color: #ff453a; }
 @media (orientation: landscape) { #rijSnel { right: 124px; top: 74px; } }
 @media (orientation: landscape) { body.car.kaartrij #rijAfslag, body.car.kaartrij #rijZoek { left: 50%; right: auto; transform: translateX(-50%); width: min(460px, calc(100vw - 248px)); } }   /* v141: liggend precies in het midden */
@@ -521,11 +522,13 @@ body.car #carSpel.zichtbaar { display: block; }
 #ritKaart .rkKnoppen { display: flex; justify-content: center; gap: 10px; }
 #ritKaartDeel { min-height: 52px; padding: 0 24px; border-radius: 26px; border: 1px solid #34c759; background: #0b2414; color: #8ff0a8; font: 600 16px var(--f-display); }
 .lvBalk { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+#grLeden, #grLevels { display: none !important; }   /* v211: dubbel met de ranglijst; level staat als bolletje bij iedereen */
 .grSamen, .grLevels { margin-top: 10px; } .grSamen:empty, .grLevels:empty { display: none; }
 .grSamen { padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(135deg, rgba(48,209,88,.10), transparent); }
 .grSamen .lvBalk { height: 14px; border-radius: 7px; margin-top: 6px; } .grSamen .lvBalk i { background: linear-gradient(90deg, #30d158, #8ff0a8); border-radius: 7px; }
 .grLvRij { display: flex; align-items: center; gap: 10px; margin: 7px 0; } .grLvRij .qM { flex: 1; } .grLvRij.ik .qT span { font-weight: 700; }
 .grLvRij .lvNr { min-width: 34px; height: 34px; border-radius: 17px; display: grid; place-items: center; font: 800 13px var(--f-display); background: #ffb02e22; color: #ffb02e; border: 2px solid #ffb02e88; }
+.grWkMeer { list-style: none; text-align: center; margin-top: 4px; } .grWkMeer .btn { width: 100%; min-height: 40px; }
 .qRij { display: flex; gap: 10px; align-items: center; margin: 6px 0; }
 .qI { font-size: 20px; width: 26px; text-align: center; }
 .qM { flex: 1; min-width: 0; }
@@ -1077,7 +1080,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
 <div id="rijFlits" aria-hidden="true"></div><div id="rijFinish" aria-hidden="true">🏁<b>AANGEKOMEN!</b></div><div id="rijVloek" aria-hidden="true">#@%&!</div><div id="rijPunten" aria-hidden="true"></div><div id="rijScore" aria-hidden="true" hidden></div><canvas id="rijSpiegel" width="400" height="120" hidden aria-hidden="true"></canvas><div id="rijMsiBord" hidden aria-hidden="true"></div><div id="rijTurbo" aria-hidden="true"></div><div id="rijMist" aria-hidden="true"></div>
 <div id="rijHand" aria-hidden="true"></div>
 <div id="rijPiek" aria-hidden="true"><svg viewBox="0 0 120 120"><rect x="10" y="22" width="100" height="86" rx="30" fill="#0d1117" stroke="#5ac8fa" stroke-width="5"/><path d="M14 52 Q60 40 106 52 L104 66 Q86 74 66 64 L54 64 Q34 74 16 66 Z" fill="#05070a"/><path d="M22 54 L34 52 L28 62 Z M70 54 L82 52 L76 62 Z" fill="#fff" opacity=".55"/><g id="rijPiekOog"><rect x="70" y="52" width="30" height="14" rx="6" fill="#05070a"/></g><path d="M44 88 Q60 98 78 86" stroke="#5ac8fa" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="50" y="6" width="20" height="18" rx="6" fill="#c8102e"/></svg></div>
-<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg class="dashBand" viewBox="0 0 400 170" preserveAspectRatio="none"><path d="M0 170 L0 112 Q200 66 400 112 L400 170 Z" fill="#111417"/><path d="M0 112 Q200 66 400 112" stroke="#2a2f35" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/></svg><svg class="dashWiel" viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><g class="dashMeter" transform="translate(75 150)"><path d="M-34 0 A34 34 0 0 1 34 0 Z" fill="#0b0d10" stroke="#30363d" stroke-width="2"/><g id="rijMeterLim" style="transform: rotate(-90deg)"><line x1="0" y1="-24" x2="0" y2="-33" stroke="#ff453a" stroke-width="3"/></g><g id="rijNaald" style="transform: rotate(-90deg); transition: transform 1s linear"><line x1="0" y1="2" x2="0" y2="-29" stroke="#ffd60a" stroke-width="2.5" stroke-linecap="round" id="rijNaaldL"/></g><circle r="3.5" fill="#c8ccd0"/><text y="-9" text-anchor="middle" fill="#5ac8fa" font-size="11" font-weight="700" font-family="sans-serif" id="rijStuurKmu">0</text></g><g id="rijWielPos" transform="translate(170 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg><div id="rijWissers"><div id="rijDruppels"></div><i></i><i></i></div><i class="knip" id="rijKnipL">◀</i><i class="knip" id="rijKnipR">▶</i><div id="rijKoplamp"></div></div><div id="rijSnel" hidden><b id="rijSnelLim"></b><span id="rijSnelV">0</span><small>km/u</small></div><div id="rijCamChip" hidden><span>📸</span><b></b><i><em></em></i></div><div id="rijZon" hidden></div><div id="rijFun" aria-hidden="true"></div><div id="rijSeizoen" aria-hidden="true"></div><div id="rijBliksem" aria-hidden="true"></div><div id="rijBalk" aria-label="Wat komt eraan" hidden><span class="rbKop" id="rbKop"></span><div class="rbBaan" id="rbBaan"></div><span class="rbIk">▲</span></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small><div id="rijStroken" hidden></div></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijFav" class="rzFav"></div><button type="button" id="rijPont" class="rzPont"></button><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
+<button id="rijTerug" type="button" hidden>🚗 Terug naar de auto</button><div id="rijStuur" hidden aria-hidden="true"><svg class="dashBand" viewBox="0 0 400 170" preserveAspectRatio="none"><path d="M0 170 L0 112 Q200 66 400 112 L400 170 Z" fill="#111417"/><path d="M0 112 Q200 66 400 112" stroke="#2a2f35" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/></svg><svg class="dashWiel" viewBox="0 0 400 170" preserveAspectRatio="xMidYMax meet"><g class="dashMeter" transform="translate(75 150)"><path d="M-34 0 A34 34 0 0 1 34 0 Z" fill="#0b0d10" stroke="#30363d" stroke-width="2"/><g id="rijMeterLim" style="transform: rotate(-90deg)"><line x1="0" y1="-24" x2="0" y2="-33" stroke="#ff453a" stroke-width="3"/></g><g id="rijNaald" style="transform: rotate(-90deg); transition: transform 1s linear"><line x1="0" y1="2" x2="0" y2="-29" stroke="#ffd60a" stroke-width="2.5" stroke-linecap="round" id="rijNaaldL"/></g><circle r="3.5" fill="#c8ccd0"/><text y="-9" text-anchor="middle" fill="#5ac8fa" font-size="11" font-weight="700" font-family="sans-serif" id="rijStuurKmu">0</text></g><g id="rijWielPos" transform="translate(170 150)"><g id="rijStuurWiel" style="transition: transform 1s linear"><circle r="78" fill="none" stroke="#1d2126" stroke-width="16"/><circle r="78" fill="none" stroke="#2c3238" stroke-width="3"/><path d="M-70 -10 Q0 -32 70 -10 L40 18 Q0 8 -40 18 Z" fill="#1d2126"/><circle r="17" fill="#2c3238"/><text y="5" text-anchor="middle" fill="#c8102e" font-size="13" font-weight="700" font-family="sans-serif">B</text></g></g></svg><div id="rijWissers"><div id="rijDruppels"></div><i></i><i></i></div><i class="knip" id="rijKnipL">◀</i><i class="knip" id="rijKnipR">▶</i><div id="rijKoplamp"></div></div><div id="rijSnel" hidden><b id="rijSnelLim"></b><span id="rijSnelV">0</span><small>km/u</small><em id="rijKlok"></em></div><div id="rijCamChip" hidden><span>📸</span><b></b><i><em></em></i></div><div id="rijZon" hidden></div><div id="rijFun" aria-hidden="true"></div><div id="rijSeizoen" aria-hidden="true"></div><div id="rijBliksem" aria-hidden="true"></div><div id="rijBalk" aria-label="Wat komt eraan" hidden><span class="rbKop" id="rbKop"></span><div class="rbBaan" id="rbBaan"></div><span class="rbIk">▲</span></div><div id="rijAfslag" hidden><b id="rijAfslagD"></b><span id="rijAfslagT"></span><small id="rijAfslagR"></small><div id="rijStroken" hidden></div></div><div id="rijZoek" hidden><div class="rzKop"><input type="text" id="rijZoekIn" autocomplete="off" placeholder="Waar gaan we heen?"><button type="button" id="rijZoekSluit">✕</button></div><div id="rijFav" class="rzFav"></div><button type="button" id="rijPont" class="rzPont"></button><div id="rijZoekRes"></div><button type="button" id="rijRouteStop" hidden>⏹ Route stoppen</button></div><p id="rijMelding" hidden></p></div>
 <button id="carRit" class="rijRond rijWeg" type="button">🏁 Rit klaar</button>
 <button id="carSpel" type="button">🎲 Spel</button>
 <div id="spel" hidden role="dialog" aria-label="Spelletjes">
@@ -5347,6 +5350,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     box.innerHTML = h;
   }
   setTimeout(qToon, 300); setInterval(qToon, 15000);
+  (function klok() { var k = $('rijKlok'); if (k) { var d = new Date(); k.textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); } setTimeout(klok, 5000); })();   /* v211: klok in het rijscherm */
   setTimeout(function () { if (!mem.best100Kurve && mem.last100Kurve && mem.last100Kurve.v && mem.last100Kurve.v.length > 2) { mem.best100Kurve = mem.last100Kurve; mem.kurveNietRecord = 1; save(); try { grLid(true); } catch (e) {} } }, 4000);   /* v210: wel een laatste sprint-grafiek, geen record-grafiek: die delen */
   /* v202: Android in de browser? Dan een balkje om de echte app te installeren (7 dagen weg met ✕) */
   setTimeout(function () { var b = $('apkBalk'); if (!b) return; var weg = +(localStorage.getItem('dashboardmaatje-apkweg') || 0);
@@ -5366,7 +5370,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     var box = $('grLevels'), sb = $('grSamen'); if (!box || !sb) return; var L = (bordData || []).slice();
     if (!L.length) { box.innerHTML = ''; sb.innerHTML = ''; return; }
     var sm = grSamenKm(), f = Math.min(1, sm.km / GR_DOEL);
-    sb.innerHTML = '<div class="qT"><span>🤝 <b>Samen deze week</b></span><b>' + Math.round(sm.km) + ' / ' + GR_DOEL + ' km</b></div><div class="lvBalk"><i style="width:' + Math.round(f * 100) + '%"></i></div><p class="foot" style="margin:6px 0 0">' + (f >= 1 ? '🎉 Gehaald! Iedereen kreeg +100 XP.' : sm.wie + ' van jullie reden al mee. Vol = +100 XP voor iedereen.') + '</p>';
+    sb.innerHTML = '<div class="qT"><span>🤝 <b>Samen deze week</b>' + (f >= 1 ? ' 🎉' : ' <small style="opacity:.6">vol = +100 XP</small>') + '</span><b>' + Math.round(sm.km) + ' / ' + GR_DOEL + ' km</b></div><div class="lvBalk"><i style="width:' + Math.round(f * 100) + '%"></i></div>';
     var oudLv = mem.grLv || {}, nieuwLv = {};
     L.forEach(function (l) { l._lv = l.van === mijnId ? lvVan(lvXp()) : (+l.lv || 1); var m = /^xp(\d+)$/.exec(bdCode(l, 'xp')); l._f = l.van === mijnId ? (function () { var xp = lvXp(), a = lvGrens(l._lv), b = lvGrens(l._lv + 1); return (xp - a) / Math.max(1, b - a); })() : (m ? +m[1] / 100 : 0); nieuwLv[l.van] = l._lv;
       if (l.van !== mijnId && oudLv[l.van] && l._lv > oudLv[l.van]) { var t = '🎉 ' + l.n + ' is nu level ' + l._lv + '!'; setTimeout(function () { setEv('excited', 4, t); toast(t); lg(t); }, 1500); } });
@@ -5476,7 +5480,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v210';
+  var VERSION = 'v211';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6835,7 +6839,8 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     setTimeout(toon, 900);
   })();
   function weekZacht() { var w = wk(); return w.zKm >= 20 ? Math.round(w.zSom / w.zKm) : 0; }
-  var BORD = { zacht: { naam: 'Soepelste rijder van de week (bochten, remmen en optrekken, gemeten met de bewegingssensor)', w: function (l) { return l.zacht && l.zacht.w === weekIdx() && l.zacht.v > 0 ? l.zacht.v : -1; }, f: function (l) { return l.zacht && l.zacht.w === weekIdx() && l.zacht.v > 0 ? l.zacht.v + '/100' : 'nog niet genoeg km'; } },
+  var BORD = { level: { naam: 'Hoogste level (XP van rijden, rotondes, flitsers, raketten…)', w: function (l) { var lv = l.van === mijnId ? lvVan(lvXp()) : (+l.lv || 1), m = /(?:^|\.)xp(\d+)(?:\.|$)/.exec(String(l.bd || '')); return lv + (m ? +m[1] / 100 : 0); }, f: function (l) { var lv = l.van === mijnId ? lvVan(lvXp()) : (+l.lv || 1), m = /(?:^|\.)xp(\d+)(?:\.|$)/.exec(String(l.bd || '')); return 'Lv ' + lv + (m ? ' · ' + m[1] + '%' : ''); } },
+    zacht: { naam: 'Soepelste rijder van de week (bochten, remmen en optrekken, gemeten met de bewegingssensor)', w: function (l) { return l.zacht && l.zacht.w === weekIdx() && l.zacht.v > 0 ? l.zacht.v : -1; }, f: function (l) { return l.zacht && l.zacht.w === weekIdx() && l.zacht.v > 0 ? l.zacht.v + '/100' : 'nog niet genoeg km'; } },
     week: { naam: 'Weekchallenge', w: function (l) { return l.week && l.week.w === weekIdx() && l.week.v > 0 ? l.week.v : -1; }, f: function (l) { return l.week && l.week.w === weekIdx() && l.week.v > 0 ? l.week.v + chal(weekIdx()).eenh : 'nog niets'; } },
     km: { naam: 'Km met Buddy', w: function (l) { return l.km || 0; }, f: function (l) { return (l.km || 0) + ' km'; } },
     netjes: { naam: 'Netjes langs flitsers', w: function (l) { return l.netjes || 0; }, f: function (l) { return (l.netjes || 0) + '×'; } },
@@ -6966,10 +6971,10 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   $('grKoffieNee').addEventListener('click', function () { grKoffieAntw(false); });
   document.querySelectorAll('#bordTabs button').forEach(function (b) { b.addEventListener('click', function () { bordSoort = b.dataset.soort; bordToon(); }); });
   (function () {   /* v137: alle ranglijsten in één keuzelijst */
-    var GRP = [['🏆 Deze week', ['week', 'zacht']], ['📊 Algemeen', ['km', 'gemeld', 'gem']], ['🧘 Netjes', ['stijl', 'netjes']], ['🚀 Records', ['nul', 'tachtig']], ['⏱️ Sprints en rijstijl', ['sprint', 'stijlgraf']]];
+    var GRP = [['🏆 Deze week', ['week', 'zacht']], ['📊 Algemeen', ['level', 'km', 'gemeld', 'gem']], ['🧘 Netjes', ['stijl', 'netjes']], ['🚀 Records', ['nul', 'tachtig']], ['⏱️ Sprints en rijstijl', ['sprint', 'stijlgraf']]];
     var sel = $('bordKies'); if (!sel) return; var gezien = {};
     GRP.forEach(function (g) { var og = document.createElement('optgroup'); og.label = g[0];
-      g[1].forEach(function (k) { var b = document.querySelector('#bordTabs button[data-soort="' + k + '"]'), o = document.createElement('option'); o.value = k; o.textContent = k === 'stijlgraf' ? '📈 Rijstijl-grafiek' : k === 'gem' ? '🗺️ Gemeenten' : b ? b.textContent : k; og.appendChild(o); gezien[k] = 1; }); sel.appendChild(og); });
+      g[1].forEach(function (k) { var b = document.querySelector('#bordTabs button[data-soort="' + k + '"]'), o = document.createElement('option'); o.value = k; o.textContent = k === 'stijlgraf' ? '📈 Rijstijl-grafiek' : k === 'gem' ? '🗺️ Gemeenten' : k === 'level' ? '⭐ Level' : b ? b.textContent : k; og.appendChild(o); gezien[k] = 1; }); sel.appendChild(og); });
     document.querySelectorAll('#bordTabs button').forEach(function (b) { if (gezien[b.dataset.soort]) return; var o = document.createElement('option'); o.value = b.dataset.soort; o.textContent = b.textContent; sel.appendChild(o); });
     sel.addEventListener('change', function () { bordSoort = sel.value; bordToon(); });
     $('bordVervers2').addEventListener('click', function () { $('bordVervers').click(); });
@@ -9510,7 +9515,8 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     var groep = [0, 0, 0, 0, 0, 0, 0], som = 0; lijst.forEach(function (x) { if (x.w && x.w.d) x.w.d.forEach(function (v, i) { groep[i] += v || 0; }); if (x.w) som += x.w.km; });
     if (tot && heeftWeek) { var gm = Math.max.apply(null, groep.concat([1])); var wr = document.createElement('div'); wr.className = 'grWeekGraf'; var b = document.createElement('b'); b.textContent = 'Samen ' + Math.round(som).toLocaleString('nl-NL') + ' km deze week'; wr.appendChild(b); wr.appendChild(svgBalk(groep, gm, 46, 280, '#0a84ff', true)); tot.appendChild(wr); }
     if (!lijst.length) { var li0 = document.createElement('li'); li0.className = 'leeg'; li0.textContent = 'Nog niemand in de groep geladen.'; ol.appendChild(li0); return; }
-    lijst.forEach(function (x, i) { var l = x.l, ik = l.van === mijnId, li = document.createElement('li'); li.className = 'grWk' + (ik ? ' ik' : '') + (weekOpen === l.van ? ' open' : '');
+    var nIk = lijst.findIndex(function (x) { return x.l.van === mijnId; });
+    lijst.forEach(function (x, i) { if (!weekAlles && i >= 3 && i !== nIk) return; var l = x.l, ik = l.van === mijnId, li = document.createElement('li'); li.className = 'grWk' + (ik ? ' ik' : '') + (weekOpen === l.van ? ' open' : '');
       var km = heeftWeek ? (x.w ? x.w.km : 0) : (l.km || 0);
       var r1 = document.createElement('div'); r1.className = 'r1'; var pl = document.createElement('span'); pl.className = 'pl'; pl.textContent = i === 0 && km ? '🥇' : i === 1 && km ? '🥈' : i === 2 && km ? '🥉' : (i + 1) + '.';
       var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = (l.n || 'Naamloos') + (ik ? ' (jij)' : '') + (beker && beker.van === l.van ? ' 🏆' : ''); var au = document.createElement('small'); au.textContent = l.a || ''; nm.appendChild(au);
@@ -9520,7 +9526,9 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       if (weekOpen === l.van) li.appendChild(lidStats(l, x.w));
       li.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('.lidSt button')) return; weekOpen = weekOpen === l.van ? null : l.van; weekToon(); });
       ol.appendChild(li); });
+    if (lijst.length > 3) { var mr = document.createElement('li'); mr.className = 'grWkMeer'; var mb = document.createElement('button'); mb.type = 'button'; mb.className = 'btn'; mb.textContent = weekAlles ? 'Minder tonen' : 'Iedereen tonen (' + lijst.length + ')'; mb.addEventListener('click', function () { weekAlles = !weekAlles; weekToon(); }); mr.appendChild(mb); ol.appendChild(mr); }
   }
+  var weekAlles = false;   /* v211: week-lijst kort (top 3 en jij) */
   function lidStats(l, w) {
     var d = document.createElement('div'); d.className = 'lidSt';
     if (w && w.d) { var g = document.createElement('div'); g.className = 'grWeekGraf'; var b = document.createElement('b'); b.textContent = 'Km per dag'; g.appendChild(b); g.appendChild(svgBalk(w.d, Math.max.apply(null, w.d.concat([1])), 50, 280, l.van === mijnId ? '#ff6b6b' : '#5ac8fa', true)); d.appendChild(g); }
@@ -9680,6 +9688,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v211', '18 nov', ['Groep-tab opgeruimd: geen dubbele ledenrij en levels-lijst meer, de weeklijst toont top 3 en jou (rest met één tik), groepsbalk compacter', '⭐ Level staat nu als eigen ranglijst bij Alle ranglijsten', '🕐 Klok in het rijscherm, onder je snelheid']],
       ['v210', '18 nov', ['Record-sprint-grafiek: had je record al van vóór de grafiek? Dan deelt Buddy je eerstvolgende volledige 0–100 met grafiek, zodat collega\'s hem ook zien']],
       ['v209', '18 nov', ['Flitserkaart (Kaart-tab) laadt meteen helemaal in plaats van één hoekje', 'De start-duel-vraag verschijnt alleen nog in het rijscherm, niet over de tabbladen', 'In de app valt de titel niet meer onder de klok en de statusbalk']],
       ['v208', '18 nov', ['Liggend ligt de 10 km-balk plat bovenin het midden, zodat hij niet meer door de knoppen rechts loopt', 'Liggend staat de itemknop niet meer over de 😜-knop']],
