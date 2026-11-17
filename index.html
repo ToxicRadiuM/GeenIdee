@@ -5304,9 +5304,14 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   setTimeout(qToon, 300); setInterval(qToon, 15000);
   /* v202: Android in de browser? Dan een balkje om de echte app te installeren (7 dagen weg met ✕) */
   setTimeout(function () { var b = $('apkBalk'); if (!b) return; var weg = +(localStorage.getItem('dashboardmaatje-apkweg') || 0);
+    var ios = /iPhone|iPad|iPod/i.test(navigator.userAgent), losStaand = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
     if (/Android/i.test(navigator.userAgent) && !window.__native && !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) && Date.now() - weg > 7 * 864e5) { b.hidden = false; lg('apk-balkje getoond (browser op Android)'); }
+    else if (ios && !losStaand && Date.now() - weg > 7 * 864e5) {   /* v202: iPhone: geen APK mogelijk, wel als app op het beginscherm (schermvullend, blijft beter wakker) */
+      b.querySelector('b').textContent = 'Zet Buddy op je beginscherm'; b.querySelector('small').textContent = 'Dan werkt hij als een echte app, zonder Safari-balken';
+      var a = $('apkLink'); a.textContent = 'Hoe?'; a.removeAttribute('href'); a.addEventListener('click', function (e) { e.preventDefault(); toast('Tik onderin Safari op Delen (vierkantje met pijl omhoog) → "Zet op beginscherm" → Voeg toe. Open Buddy daarna via het nieuwe icoon.'); });
+      b.hidden = false; lg('beginscherm-balkje getoond (iPhone in Safari)'); }
     $('apkLater').addEventListener('click', function () { b.hidden = true; try { localStorage.setItem('dashboardmaatje-apkweg', String(Date.now())); } catch (e) {} });
-    $('apkLink').addEventListener('click', function () { lg('apk-download aangetikt'); toast('📲 Download gestart. Open hem en kies "Installeren". Vraagt Android om toestemming voor onbekende apps, sta die toe.'); }); }, 3000);
+    $('apkLink').addEventListener('click', function () { if (!$('apkLink').getAttribute('href')) return; lg('apk-download aangetikt'); toast('📲 Download gestart. Open hem en kies "Installeren". Vraagt Android om toestemming voor onbekende apps, sta die toe.'); }); }, 3000);
   /* ---------- v202: groepsbalk (samen km deze week) en levels van de groep, met seintje bij een level omhoog ---------- */
   var GR_DOEL = 2000;
   function bdCode(l, pre) { var m = String(l.bd || '').split('.').filter(function (k) { return k.indexOf(pre) === 0; })[0]; return m || ''; }
@@ -9543,7 +9548,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
-      ['v202', '17 nov', ['📲 Gebruik je Buddy in de browser op Android? Dan staat bovenin een knop om de echte app te installeren', '⭐ Levels van de groep met balkjes in het Groep-tab, en een seintje als een collega een level omhoog gaat', '🤝 Groepsbalk: samen 2000 km per week; vol = +100 XP voor iedereen (ook onder Buddy)', '🤖 Buddy+ (v120) laat +XP zien met een balkje langs de onderrand', 'Buddy is in het rijscherm een stuk groter (staand en liggend)']],
+      ['v202', '17 nov', ['📲 Buddy in de browser? Op Android staat bovenin een knop voor de echte app, op een iPhone uitleg om Buddy op je beginscherm te zetten', '⭐ Levels van de groep met balkjes in het Groep-tab, en een seintje als een collega een level omhoog gaat', '🤝 Groepsbalk: samen 2000 km per week; vol = +100 XP voor iedereen (ook onder Buddy)', '🤖 Buddy+ (v120) laat +XP zien met een balkje langs de onderrand', 'Buddy is in het rijscherm een stuk groter (staand en liggend)']],
       ['v201', '17 nov', ['🎮 Live XP: tijdens het rijden zie je +XP in beeld (rotonde, afslag, netjes langs flitser, aankomst, raket raak, veroverde gemeente…) en onderin loopt een XP-balk vol', '🎯 Balken vullen: onder Buddy dag- en weekbalken; elke volle balk geeft extra XP', 'De lucht loopt nu helemaal door tot de horizon, geen zwarte balk meer (vooral te zien bij zonsondergang)', 'Navigatie stuurt je niet meer de snelweg af en via een rotonde er weer op (zoals op de A2 en A59): de route blijft op de snelweg']],
       ['v200', '17 nov', ['🔄-knop in het Groep-tab: vernieuwt in één tik leden, ranglijst, berichten, gemelde flitsers en live maatjes', '👥 Maatjes live staat nu standaard aan en werkt tot 10 km (was 5 km)', '🏰 Veroverkaart als vlakken: groen = van jou, rood = van een ander (zonder naam); de ranglijst toont alleen aantallen']],
       ['v199', '17 nov', ['De routelijn bovenin onthoudt hoe ver je al bent, ook als de route opnieuw berekend wordt of je de app even sluit', 'De blauwe navigatielijn loopt niet meer door je auto heen']],
