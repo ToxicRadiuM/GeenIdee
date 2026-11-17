@@ -9372,7 +9372,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
-      ['v198', '17 nov', ['Navigeer je, dan zie je alleen de flitsers langs je route (geen zee van 📸 meer aan de horizon)', 'Maatjes en testmaatje rijden vloeiend, niet meer schokkerig', 'Liggend staat de ⚡-itemknop niet meer over de 👥-knop']],
+      ['v198', '17 nov', ['Navigeer je, dan zie je alleen de flitsers langs je route (geen zee van 📸 meer aan de horizon)', 'Maatjes en testmaatje rijden vloeiend, niet meer schokkerig', 'Liggend staat de ⚡-itemknop niet meer over de 👥-knop', 'Horizon opgeruimd: laadpalen, borden, files en flitsers die ver weg liggen verdwijnen als je schuin kijkt']],
       ['v197', '17 nov', ['Nieuwe kijkstand: dicht achter je auto, zoals in de Tesla (🧭-knop)', 'Maatjes en je eigen auto op echte grootte als je dichtbij kijkt', 'Testmaatje minder plakkerig: meestal 60–260 m voor of achter je', 'Raket: je ziet groot RAAK, MIS of GEBLOKT, en het geraakte maatje vliegt de lucht in', 'Raket ontwijken: hij ontploft (GERED!)', 'Liggend vallen de geluid-, maatjes- en itemknop niet meer over je snelheid']],
       ['v196', '16 nov', ['Testmaatje rijdt de hele rit mee: over je route, haalt in, laat zich zakken, staat naast je bij het stoplicht, toetert, kletst en schiet af en toe']],
       ['v195', '16 nov', ['Veroverkaart verhuisd naar het Kaart-tabblad (🏰 Veroveren, naast Flitsers)']],
@@ -10964,6 +10964,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
       melding('Kaart laden…');
       laadGL().then(function () {
         var p = lastPos || { lat: 52.1, lon: 5.1 };
+        try { if (typeof verPatch === 'function') verPatch(); } catch (e) {}
         map = new maplibregl.Map({ container: 'rijMap', style: 'https://tiles.openfreemap.org/styles/liberty', center: [p.lon, p.lat], zoom: 17, pitch: 62, bearing: 0, maxPitch: 85, attributionControl: { compact: true }, interactive: true, doubleClickZoom: false, pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5), fadeDuration: 0, maxTileCacheSize: 300, antialias: false });   /* v134: vloeiender (minder pixels, geen fade) */
         volgInstellen();
         map.on('load', function () { setTimeout(function () { try { window.__satZet(); } catch (e) {} try { lucht(); } catch (e) {} }, 300);
@@ -11510,6 +11511,12 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
       Object.keys(maatPijl).forEach(function (k) { if (!weg[k]) { maatPijl[k].remove(); delete maatPijl[k]; } });
     }
     setInterval(function () { try { maatjes(); } catch (e) {} }, 100);
+    /* v198: schuin kijken = geen muur van iconen aan de horizon. Alles wat ver weg ligt (laadpalen, flitsers, borden, files) verbergen; dichtbij blijft het gewoon staan */
+    var verMk = [];
+    function verPatch() { if (verPatch.ok || !window.maplibregl) return; verPatch.ok = 1; var P = maplibregl.Marker.prototype, oud = P.addTo; P.addTo = function (m) { verMk.push(this); return oud.call(this, m); }; }
+    setInterval(function () { try { verPatch(); if (!map || !mk) return; var ik = mk.getLngLat(), pt = map.getPitch(), MAX = pt < 45 ? 1e9 : st.kijk === 3 || st.kijk === 2 ? 1800 : pt < 66 ? 4500 : 2500;
+      verMk = verMk.filter(function (m) { return m._map; }); verMk.forEach(function (m) { var el = m.getElement(); if (m === mk || el.classList.contains('maatMk') || (typeof doelMk !== 'undefined' && m === doelMk)) return;
+        var ll = m.getLngLat(), ver = gdist(ik.lat, ik.lng, ll.lat, ll.lng) > MAX; if (el._ver !== ver) { el._ver = ver; el.style.visibility = ver ? 'hidden' : ''; } }); } catch (e) {} }, 400);
     function maatGlad(m) {   /* v198: maatjes glijden vloeiend (elk beeldje doorrekenen en zacht bijsturen, geen sprongetjes per seconde) */
       var d = m._doel, nu = performance.now(); if (!d) return m._p; var dt = Math.min(3, (nu - d.t) / 1000), h = d.hd * Math.PI / 180, s = d.v * dt;
       var pl = d.lat + Math.cos(h) * s / 110540, po = d.lon + Math.sin(h) * s / (111320 * Math.cos(d.lat * Math.PI / 180)), z = m._p, td = Math.min(.25, (nu - (m._zt || nu)) / 1000); m._zt = nu;
