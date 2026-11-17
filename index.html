@@ -715,6 +715,26 @@ body.auto3d .rijAuto, body.auto3d .rijDakBuddy { opacity: 0; }
 #bordLijst { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 #bordLijst li { display: grid; grid-template-columns: 2.4em 1fr auto; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
 #bordLijst li.ik { border-color: #5ac8fa; }
+#bordLijst li.bRij { grid-template-columns: 48px 1fr auto auto; gap: 12px; padding: 10px 12px; border-radius: 16px; background: rgba(255,255,255,.03); }
+#bordLijst li.bRij.ik { background: rgba(90,200,250,.08); }
+#bordLijst li.top1 { border-color: #ffd60a88; background: linear-gradient(90deg, rgba(255,214,10,.12), transparent 70%); }
+#bordLijst li.top2 { border-color: #c7c7cc77; background: linear-gradient(90deg, rgba(199,199,204,.10), transparent 70%); }
+#bordLijst li.top3 { border-color: #ff9f0a66; background: linear-gradient(90deg, rgba(255,159,10,.10), transparent 70%); }
+#bordLijst li.ik.top1, #bordLijst li.ik.top2, #bordLijst li.ik.top3 { border-color: #5ac8fa; }
+.bAv { position: relative; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 800 19px var(--f-display); text-shadow: 0 1px 2px #0006; }
+.bAv i { position: absolute; right: -4px; bottom: -4px; min-width: 20px; height: 20px; padding: 0 4px; box-sizing: border-box; border-radius: 10px; background: #ffb02e; color: #1b1f24; font: 800 11px/20px var(--f-display); font-style: normal; text-align: center; border: 2px solid var(--bg, #15181d); text-shadow: none; }
+.bAv .bPl { position: absolute; left: -6px; top: -8px; font-size: 18px; line-height: 1; color: var(--ink); font-weight: 800; text-shadow: none; }
+.bAv .bPl:not(:empty) { min-width: 18px; text-align: center; }
+#bordLijst .bNaam { display: block; font-weight: 700; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#bordLijst .nm { min-width: 0; }
+#bordLijst .nm small { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 1px; }
+.bChip { margin-left: 2px; display: inline-block; padding: 1px 7px; border-radius: 9px; background: rgba(255,255,255,.08); color: var(--ink); font-size: 11px; line-height: 16px; }
+.bChip.open { background: none; padding: 0; font-size: 14px; line-height: 1.5; letter-spacing: 1px; }
+.bBalk { display: block; height: 5px; border-radius: 3px; background: rgba(255,255,255,.08); margin-top: 6px; overflow: hidden; }
+.bBalk i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #5ac8fa, #bf5af2); }
+#bordLijst li.top1 .bBalk i { background: linear-gradient(90deg, #ffb02e, #ffd60a); }
+#bordLijst .wd { font-size: 17px; text-align: right; }
+#bordLijst .wd.leeg { color: var(--muted); font-weight: 600; }
 #bordLijst .pl { font-weight: 700; text-align: center; }
 #bordLijst .nm small { display: block; color: var(--muted); font-size: 12px; }
 #bordLijst .wd { font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -6832,15 +6852,22 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     bordData.forEach(function (l) { var v = l.week && l.week.w === vw ? l.week.v : (l.vorige && l.vorige.w === vw ? l.vorige.v : 0); if (v > bekerV) { bekerV = v; beker = l.van; } });
     window.__ikBeker = !!(beker && beker === mijnId);   /* v81: schermpje viert het mee */
     var ikPlek = -1; lijst.forEach(function (l, i) { if (l.van === mijnId) ikPlek = i; });
+    var laag = bordSoort === 'tachtig' || bordSoort === 'nul', heeft = function (l) { var v = B.w(l); return laag ? v > -1e8 : v > 0; }, topW = lijst.reduce(function (m, l) { return heeft(l) ? Math.max(m, Math.abs(B.w(l))) : m; }, 0), bestL = lijst.filter(heeft).reduce(function (m, l) { return Math.min(m, Math.abs(B.w(l))); }, 1e9);
     lijst.forEach(function (l, i) {
       if (!grRangOpen && i >= 3 && i !== ikPlek) return;   /* kort: top 3 (en jij) */
-      var li = document.createElement('li'); if (l.van === mijnId) li.className = 'ik';
-      var a = document.createElement('span'); a.className = 'pl'; a.textContent = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
-      var n = document.createElement('span'); n.className = 'nm'; n.textContent = (l.n || 'Naamloos') + (l.van === mijnId ? ' (jij)' : '') + (l.lv ? ' · Lv ' + l.lv : '') + (l.jr && l.jr === mmdd(new Date()) ? ' 🎂' : '');
-      var bds = String(l.bd || '').split('.').map(function (k) { return BADGEMAP[k] ? BADGEMAP[k].i : ''; }).join('');
-      if (l.a || bds) { var au = document.createElement('small'); au.textContent = (l.a || '') + (bds ? (l.a ? '  ' : '') + bds : ''); n.appendChild(au); }
-      var w = document.createElement('span'); w.className = 'wd'; w.textContent = B.f(l);
-      if (beker && l.van === beker) { var bk = document.createElement('span'); bk.textContent = ' 🏆'; bk.title = 'Wisselbeker: winnaar van de weekchallenge van vorige week'; n.insertBefore(bk, n.childNodes[1] || null); }
+      /* v202: mooiere rij: rondje met letter en level, naam + auto, balkje t.o.v. de koploper, badges als telletje (tik voor alles) */
+      var li = document.createElement('li'); li.className = 'bRij' + (l.van === mijnId ? ' ik' : '') + (i < 3 && heeft(l) ? ' top' + (i + 1) : '');
+      var a = document.createElement('span'); a.className = 'bAv'; var h = 0; String(l.van || l.n || '').split('').forEach(function (c, ci) { h += c.charCodeAt(0) * (ci + 7); }); h = Math.round(h * 137.508) % 360;
+      a.style.background = 'linear-gradient(135deg, hsl(' + h + ',70%,55%), hsl(' + ((h + 40) % 360) + ',70%,40%))'; a.textContent = String(l.n || '?').trim().charAt(0).toUpperCase();
+      var lvb = document.createElement('i'); lvb.textContent = l.van === mijnId ? lvVan(lvXp()) : (l.lv || 1); a.appendChild(lvb);
+      var pl = document.createElement('b'); pl.className = 'bPl'; pl.textContent = heeft(l) ? (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1)) : ''; a.appendChild(pl);
+      var n = document.createElement('span'); n.className = 'nm';
+      var nk = document.createElement('span'); nk.className = 'bNaam'; nk.textContent = (l.n || 'Naamloos') + (l.van === mijnId ? ' (jij)' : '') + (l.jr && l.jr === mmdd(new Date()) ? ' 🎂' : ''); n.appendChild(nk);
+      if (beker && l.van === beker) { var bk = document.createElement('span'); bk.textContent = ' 🏆'; bk.title = 'Wisselbeker: winnaar van de weekchallenge van vorige week'; nk.appendChild(bk); }
+      var bdl = String(l.bd || '').split('.').filter(function (k) { return BADGEMAP[k]; }), open = bordInfo === l.van;
+      var au = document.createElement('small'); au.textContent = (l.a || ''); if (bdl.length) { var ch = document.createElement('span'); ch.className = 'bChip'; ch.textContent = open ? bdl.map(function (k) { return BADGEMAP[k].i; }).join('') : '🏅 ' + bdl.length; if (open) ch.classList.add('open'); au.appendChild(ch); } n.appendChild(au);
+      var wv = heeft(l) ? 1 : 0, fr = !wv ? 0 : laag ? bestL / Math.abs(B.w(l)) : Math.max(.03, B.w(l) / Math.max(1, topW)); if (wv > 0) { var bb = document.createElement('span'); bb.className = 'bBalk'; var bi = document.createElement('i'); bi.style.width = Math.round(fr * 100) + '%'; bb.appendChild(bi); n.appendChild(bb); }
+      var w = document.createElement('span'); w.className = 'wd' + (wv > 0 ? '' : ' leeg'); w.textContent = wv > 0 ? B.f(l) : '—';
       li.appendChild(a); li.appendChild(n); li.appendChild(w);
       li.style.cursor = 'pointer'; li.addEventListener('click', function () { bordInfo = bordInfo === l.van ? null : l.van; bordOpen = bordInfo && l.van !== mijnId ? l.van : null; bordArm = null; bordToon(); });
       ol.appendChild(li);
@@ -9548,7 +9575,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
-      ['v202', '17 nov', ['📲 Buddy in de browser? Op Android staat bovenin een knop voor de echte app, op een iPhone uitleg om Buddy op je beginscherm te zetten', '⭐ Levels van de groep met balkjes in het Groep-tab, en een seintje als een collega een level omhoog gaat', '🤝 Groepsbalk: samen 2000 km per week; vol = +100 XP voor iedereen (ook onder Buddy)', '🤖 Buddy+ (v120) laat +XP zien met een balkje langs de onderrand', 'Buddy is in het rijscherm een stuk groter (staand en liggend)']],
+      ['v202', '17 nov', ['📲 Buddy in de browser? Op Android staat bovenin een knop voor de echte app, op een iPhone uitleg om Buddy op je beginscherm te zetten', '🏆 Ranglijst opnieuw ontworpen: gekleurd rondje met je level, balkje t.o.v. de koploper, badges als telletje (tik voor alles)', '⭐ Levels van de groep met balkjes in het Groep-tab, en een seintje als een collega een level omhoog gaat', '🤝 Groepsbalk: samen 2000 km per week; vol = +100 XP voor iedereen (ook onder Buddy)', '🤖 Buddy+ (v120) laat +XP zien met een balkje langs de onderrand', 'Buddy is in het rijscherm een stuk groter (staand en liggend)']],
       ['v201', '17 nov', ['🎮 Live XP: tijdens het rijden zie je +XP in beeld (rotonde, afslag, netjes langs flitser, aankomst, raket raak, veroverde gemeente…) en onderin loopt een XP-balk vol', '🎯 Balken vullen: onder Buddy dag- en weekbalken; elke volle balk geeft extra XP', 'De lucht loopt nu helemaal door tot de horizon, geen zwarte balk meer (vooral te zien bij zonsondergang)', 'Navigatie stuurt je niet meer de snelweg af en via een rotonde er weer op (zoals op de A2 en A59): de route blijft op de snelweg']],
       ['v200', '17 nov', ['🔄-knop in het Groep-tab: vernieuwt in één tik leden, ranglijst, berichten, gemelde flitsers en live maatjes', '👥 Maatjes live staat nu standaard aan en werkt tot 10 km (was 5 km)', '🏰 Veroverkaart als vlakken: groen = van jou, rood = van een ander (zonder naam); de ranglijst toont alleen aantallen']],
       ['v199', '17 nov', ['De routelijn bovenin onthoudt hoe ver je al bent, ook als de route opnieuw berekend wordt of je de app even sluit', 'De blauwe navigatielijn loopt niet meer door je auto heen']],
