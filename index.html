@@ -165,7 +165,7 @@
 }
 
 * { box-sizing: border-box; }
-:root { --sa-t: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); --sa-b: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); --sa-l: var(--safe-area-inset-left, env(safe-area-inset-left, 0px)); --sa-r: var(--safe-area-inset-right, env(safe-area-inset-right, 0px)); }   /* v178: in de Android-app geeft de app zelf de randen door */
+:root { --sa-t: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); --sa-b0: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); --sa-b: var(--sa-b0); --sa-l: var(--safe-area-inset-left, env(safe-area-inset-left, 0px)); --sa-r: var(--safe-area-inset-right, env(safe-area-inset-right, 0px)); }   /* v178: in de Android-app geeft de app zelf de randen door */
 html { padding-top: var(--sa-t); padding-bottom: var(--sa-b); }
 body { margin: 0; }
 body {
@@ -430,9 +430,10 @@ body.car.kaartrij #rijTerug { bottom: calc(var(--bh) + 16px); }
 #rijSnelLim { width: 62px; height: 62px; border-radius: 50%; background: #fff; border: 7px solid #e3121b; box-sizing: border-box; color: #111; font: 800 22px/48px var(--f-display); letter-spacing: -1px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,.5); }
 #rijSnelV { font: 800 34px/1 var(--f-display); color: #fff; text-shadow: 0 2px 8px #000, 0 0 2px #000; margin-top: 4px; }
 #rijSnel small { font: 700 11px var(--f-body); color: #cfd4da; text-shadow: 0 1px 3px #000; }
+@media (orientation: portrait) { body.car.kaartrij #rijKlok { position: fixed; left: 50%; transform: translateX(-50%); top: calc(var(--kt, 12px) + 8px); margin: 0; font-size: 20px; padding: 4px 14px; border-radius: 14px; z-index: 50; } }   /* v212: staand bovenin tussen de knoppen */
 #rijKlok { margin-top: 6px; font: 700 15px var(--f-display); font-style: normal; color: #fff; background: rgba(16,20,24,.72); padding: 2px 9px; border-radius: 10px; letter-spacing: .5px; }   /* v211: klok */
 #rijSnel.te #rijSnelV { color: #ff453a; }
-@media (orientation: landscape) { #rijSnel { right: 124px; top: 74px; } }
+@media (orientation: landscape) { #rijSnel { right: calc(124px + var(--sa-r)); top: 74px; } }
 @media (orientation: landscape) { body.car.kaartrij #rijAfslag, body.car.kaartrij #rijZoek { left: 50%; right: auto; transform: translateX(-50%); width: min(460px, calc(100vw - 248px)); } }   /* v141: liggend precies in het midden */
 @media (orientation: portrait) { body.car.kaartrij #rijAfslag { top: 8px; bottom: auto; left: 12px; right: 12px; } body.car.kaartrij #rijBalk { top: 116px; bottom: calc(var(--bh) + 24px); } body.car.kaartrij #rijTerug { bottom: calc(var(--bh) + 110px); } body.car.kaartrij #rijZoek { top: 66px; } }
 @media (orientation: landscape) {   /* v141: liggend zit Buddy linksonder als teller, in plaats van de km/u-meter */
@@ -536,7 +537,8 @@ body.car #carSpel.zichtbaar { display: block; }
 .qRij.vol .qB i { background: linear-gradient(90deg, #30d158, #8ff0a8); }
 .qRij.vol .qT b { color: #30d158; }
 #xpBalk, #xpPop { display: none; }
-body.car #xpBalk { display: block; position: fixed; z-index: 51; left: 0; right: 0; bottom: 0; height: calc(13px + var(--sa-b)); background: #000b; }
+body.car { --sa-b: calc(var(--sa-b0) + 14px); }   /* v212: knoppen en Buddy boven de XP-balk */
+body.car #xpBalk { display: block; position: fixed; z-index: 51; left: 0; right: 0; bottom: 0; height: calc(13px + var(--sa-b0)); background: #000b; }
 body.car #xpBalk i { display: block; height: 13px; width: 0; background: linear-gradient(90deg, #5ac8fa, #bf5af2); box-shadow: 0 0 10px #5ac8fa; transition: width 1.2s cubic-bezier(.2,.9,.3,1); }
 body.car #xpBalk b { position: absolute; left: 50%; top: 0; height: 13px; transform: translateX(-50%); font: 700 10px/13px var(--f-body); color: #fff; text-shadow: 0 1px 2px #000, 0 0 3px #000; white-space: nowrap; opacity: .9; }   /* v207: altijd zichtbaar in de balk */
 body.car #xpBalk.flits b { animation: none; }
@@ -584,6 +586,7 @@ body[data-tab="meer"]:not(.car):not(.rond) [data-in-tab]:not([data-in-tab~="meer
 #tabKaart #flKaart { position: static; inset: auto; z-index: auto; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
 #tabKaart #flKaart .fkKop { display: none; }
 #tabKaart #flKaartMap { height: 52vh; min-height: 280px; flex: none; }
+#flKaartMap, .leaflet-container { position: relative; z-index: 0; isolation: isolate; }   /* v212: Leaflet-lagen (z-index 400+) bleven boven de tabbalk */
 #tabKaart #flKaartLijst { max-height: none; overflow: visible; }
 #tabKaart #flKaartLijst li { background: color-mix(in srgb, var(--ink) 6%, transparent); }
 body:not(.dev) #kopBouw { display: none !important; }
@@ -958,6 +961,7 @@ details.kop .kopIn > .sub:first-child { margin-top: 6px; }
   body.car.kaartrij #carGroep { left: calc(var(--bh) + 22px + var(--sa-l)) !important; }
   body.car.kaartrij #rijAfslag { left: calc(180px + var(--sa-l)) !important; right: calc(124px + var(--sa-r)) !important; transform: none !important; width: auto !important; max-width: none !important; }
   body.car.kaartrij #rijBalk { right: calc(12px + var(--sa-r)) !important; }
+  body.car.kaartrij #carKaartKnop, body.car.kaartrij #rijFpKnop, body.car.kaartrij #rijSatKnop { right: calc(66px + var(--sa-r)) !important; }   /* v212: niet meer over de rechterkolom */
   body.car.kaartrij #carBack, body.car.kaartrij #rijAutoKnop, body.car.kaartrij #rijNoordKnop, body.car.kaartrij #rijZoekKnop, body.car.kaartrij #carAddM { right: calc(12px + var(--sa-r)) !important; }
 }
 /* ruitenwissers: af en toe één veeg in plaats van steeds twee zwarte strepen door je beeld */
@@ -986,7 +990,7 @@ body.car.kaartrij #rijBalk.hor { position: relative !important; inset: auto !imp
 body.car.kaartrij #rijBalk.hor #rbBaan { left: 12px; right: 8px; top: 11px; height: 3px; background: #4aa8ff; }
 body.car.kaartrij #rijBalk.hor .rbPunt { width: 20px; height: 20px; margin-left: -10px; top: -9px; font-size: 10px; line-height: 16px; border-width: 2px; }
 body.car.kaartrij #rijBalk.hor .rbIk { font-size: 17px; top: -10px; }
-@media (orientation: landscape) { body.car.kaartrij #rijAfslag { right: calc(200px + var(--sa-r)) !important; } }
+@media (orientation: landscape) { body.car.kaartrij #rijAfslag { left: calc(200px + var(--sa-l)) !important; right: calc(200px + var(--sa-r)) !important; } }   /* v212: links en rechts even ver = in het midden */
 body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !important; }   /* v191: knipperpijltjes weg */
 /* v192: items (stuiterbal, ster), cadeautjes en Buddy Wrapped */
 #itemKnop, #cadeauKnop { display: none; }
@@ -994,7 +998,7 @@ body.car #itemKnop:not([hidden]) { display: grid; place-items: center; position:
 @keyframes itemPuls { 50% { box-shadow: 0 0 0 8px #ffcc0055, 0 6px 16px #0008; } }
 body.car #cadeauKnop { display: grid; place-items: center; position: fixed; z-index: 50; right: calc(12px + var(--sa-r)); bottom: calc(212px + var(--sa-b)); width: 44px; height: 44px; border-radius: 22px; border: 0; background: rgba(20,24,28,.7); font-size: 22px; opacity: .8; }
 body.car:not(.kaartrij) #cadeauKnop { display: none; }
-@media (orientation: landscape) { body.car #itemKnop:not([hidden]) { bottom: calc(14px + var(--sa-b)); right: calc(134px + var(--sa-r)); }   /* v198: liggend onderin, links naast de knoppenrij (niet over 👥) */ body.car #cadeauKnop { bottom: calc(150px + var(--sa-b)); right: calc(96px + var(--sa-r)); } }
+@media (orientation: landscape) { body.car #itemKnop:not([hidden]) { bottom: calc(10px + var(--sa-b)); right: calc(124px + var(--sa-r)); }   /* v198: liggend onderin, links naast de knoppenrij (niet over 👥) */ body.car #cadeauKnop { bottom: calc(150px + var(--sa-b)); right: calc(96px + var(--sa-r)); } }
 #itemVlieg { position: fixed; z-index: 9000; left: 50%; top: 55%; font-size: 64px; pointer-events: none; animation: itemVlieg 1s ease-in forwards; }
 @keyframes itemVlieg { 0% { transform: translate(-50%, 0) scale(1); } 100% { transform: translate(-50%, -60vh) scale(.2) rotate(720deg); opacity: 0; } }
 #cadeauVenster, #wrapped { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.8); display: grid; place-items: center; }
@@ -5480,7 +5484,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v211';
+  var VERSION = 'v212';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9688,6 +9692,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v212', '18 nov', ['Klok staand bovenin tussen de knoppen', 'Liggend: knoppen onderin staan boven de XP-balk, knoppen rechtsboven niet meer over elkaar, navigatiebalk weer in het midden', 'Kaart-tab: de kaart schuift niet meer over de tabbalk']],
       ['v211', '18 nov', ['Groep-tab opgeruimd: geen dubbele ledenrij en levels-lijst meer, de weeklijst toont top 3 en jou (rest met één tik), groepsbalk compacter', '⭐ Level staat nu als eigen ranglijst bij Alle ranglijsten', '🕐 Klok in het rijscherm, onder je snelheid']],
       ['v210', '18 nov', ['Record-sprint-grafiek: had je record al van vóór de grafiek? Dan deelt Buddy je eerstvolgende volledige 0–100 met grafiek, zodat collega\'s hem ook zien']],
       ['v209', '18 nov', ['Flitserkaart (Kaart-tab) laadt meteen helemaal in plaats van één hoekje', 'De start-duel-vraag verschijnt alleen nog in het rijscherm, niet over de tabbladen', 'In de app valt de titel niet meer onder de klok en de statusbalk']],
