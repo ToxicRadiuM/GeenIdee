@@ -640,6 +640,9 @@ body.kmNiet #flKaartLijst, body.kmNiet #flDruk, body.kmNiet #flDrukKop { display
 .segNav button[aria-pressed="true"] { color: var(--ink); border-color: #5ac8fa; background: rgba(90,200,250,.14); }
 .grKaart { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(135deg, rgba(90,200,250,.10), transparent); }
 .grKaart b { display: block; font-size: 17px; }
+.grKnoppen { display: flex; gap: 8px; flex: none; }
+#grVernieuw.draai { animation: grDraai .8s linear infinite; }
+@keyframes grDraai { to { transform: rotate(360deg); } }
 #routeKeuze { position: fixed; z-index: 120; left: 10px; right: 10px; bottom: calc(10px + var(--sa-b)); max-height: calc(100vh - 30px - var(--sa-t) - var(--sa-b)); overflow-y: auto; max-width: 520px; margin: 0 auto; padding: 12px; border-radius: 20px; background: rgba(18,22,28,.96); color: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.5); display: flex; flex-direction: column; gap: 8px; }
 #routeKeuze[hidden] { display: none; } #routeKeuze .rkKop { font: 700 16px var(--f-body); padding: 2px 4px 4px; }
 .rkOptie { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); color: inherit; font: inherit; }
@@ -1201,7 +1204,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   </details>
   <details class="kop" id="kopGroep" open><summary><span class="kopT">👥 Groep</span><span class="kopS">wie, ranglijst, berichten</span></summary>
     <div class="kopIn">
-      <div id="grKaart" class="grKaart"><div><b id="grKaartNaam">Jouw groep</b><span id="grKaartSub">nog niet geladen</span></div><button class="btn grTand" id="grInstKnop" type="button" aria-label="Groep instellen" aria-expanded="false">⚙️</button></div>
+      <div id="grKaart" class="grKaart"><div><b id="grKaartNaam">Jouw groep</b><span id="grKaartSub">nog niet geladen</span></div><span class="grKnoppen"><button class="btn grTand" id="grVernieuw" type="button" aria-label="Groep vernieuwen">🔄</button><button class="btn grTand" id="grInstKnop" type="button" aria-label="Groep instellen" aria-expanded="false">⚙️</button></span></div>
       <div id="grLeden" class="grLeden" aria-label="Wie zitten er in de groep"></div>
       <div class="grPane" data-gp="inst" hidden>
         <p class="sub">Jouw groep</p>
@@ -5283,7 +5286,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v199';
+  var VERSION = 'v200';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6133,6 +6136,12 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     });
   }
   setTimeout(grLijstToon, 0);
+  /* v200: 🔄 groep vernieuwen: leden, ranglijst, berichten, gemelde flitsers, live maatjes en sporen in één tik */
+  setTimeout(function () { var k = $('grVernieuw'); if (!k) return; k.addEventListener('click', function () {
+    if (k.disabled) return; k.disabled = true; k.classList.add('draai'); setTimeout(function () { k.disabled = false; k.classList.remove('draai'); }, 1500);
+    [function () { gBusy = false; gPull(); }, function () { grBord(); }, function () { grBusy = false; grHaal(); }, function () { window.__liveVernieuw && window.__liveVernieuw(); }, function () { window.__sporenVernieuw && window.__sporenVernieuw(); }]
+      .forEach(function (f) { try { f(); } catch (e) {} });
+    lg('groep: handmatig vernieuwd'); toast('🔄 Groep vernieuwd'); }); }, 0);
   function grBerStat(n, nieuw, fout) {
     var e = $('grBerStat'); if (!e) return; e.hidden = !(grp && n < 0);   /* v145: alleen tonen als er iets misgaat */
     if (!grp) { e.textContent = 'Geen groepscode ingevuld.'; return; }
@@ -7321,6 +7330,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v192: LIVE: elke seconde je plek naar groepsmaatjes binnen 5 km (alleen als je rijdt; niets wordt bewaard) ---------- */
   var live = { ws: null, open: false, laatst: 0, stilT: 0, fout: 0, gezien: {} }; window.__live = {};
   function liveUrl() { try { var u = new URL(pbase()); return 'wss://' + u.host.replace(/^[^.]+/, 'buddy-live') + '/live'; } catch (e) { return null; } }
+  window.__liveVernieuw = function () { live.fout = 0; live.foutGemeld = 0; liveVerbind(); };
   function liveVerbind() {
     if (live.ws || !grp || !pbase() || Date.now() - live.fout < 30000) return; var u = liveUrl(); if (!u) return; var ws;
     try { ws = new WebSocket(u + '?g=' + encodeURIComponent(grp.toLowerCase()) + '&van=' + encodeURIComponent(mijnId) + '&n=' + encodeURIComponent(myWho() || '') + '&a=' + encodeURIComponent(mijnAuto() || '')); } catch (e) { live.fout = Date.now(); return; }
@@ -7552,6 +7562,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   }, 5000);
   window.__spoorStuur = function () { var b = liveBase(); if (!b || !grp || !buurAan || ritSp.length < 20) return;
     fetch(b + '/spoor?g=' + encodeURIComponent(grp.toLowerCase()), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ van: mijnId, n: myWho() || '', t0: ritSpT0, p: ritSp }) }).then(function () { lg('ghost: rit gedeeld met de groep (' + ritSp.length + ' punten)'); }).catch(function () {}); };
+  window.__sporenVernieuw = function () { ghHaalT = 0; ghHaal(); };
   function ghHaal() { var b = liveBase(); if (!b || !grp || !buurAan || !lastPos) return; if (Date.now() - ghHaalT < 10 * 60e3 && ghHaalPos && gdist(ghHaalPos.lat, ghHaalPos.lon, lastPos.lat, lastPos.lon) < 8000) return;
     ghHaalT = Date.now(); ghHaalPos = { lat: lastPos.lat, lon: lastPos.lon };
     fetch(b + '/sporen?g=' + encodeURIComponent(grp.toLowerCase()) + '&lat=' + lastPos.lat.toFixed(3) + '&lon=' + lastPos.lon.toFixed(3) + '&van=' + mijnId).then(function (r) { return r.json(); }).then(function (j) { ghSporen = (j && j.sporen) || []; if (ghSporen.length) lg('ghost: ' + ghSporen.length + ' ritten van de groep in de buurt'); }).catch(function () {}); }
@@ -9378,6 +9389,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v200', '17 nov', ['🔄-knop in het Groep-tab: vernieuwt in één tik leden, ranglijst, berichten, gemelde flitsers en live maatjes']],
       ['v199', '17 nov', ['De routelijn bovenin onthoudt hoe ver je al bent, ook als de route opnieuw berekend wordt of je de app even sluit', 'De blauwe navigatielijn loopt niet meer door je auto heen']],
       ['v198', '17 nov', ['Navigeer je, dan zie je alleen de flitsers langs je route (geen zee van 📸 meer aan de horizon)', 'Maatjes en testmaatje rijden vloeiend, niet meer schokkerig', 'Liggend staat de ⚡-itemknop niet meer over de 👥-knop', 'Horizon opgeruimd: laadpalen, borden, files en flitsers die ver weg liggen verdwijnen als je schuin kijkt']],
       ['v197', '17 nov', ['Nieuwe kijkstand: dicht achter je auto, zoals in de Tesla (🧭-knop)', 'Maatjes en je eigen auto op echte grootte als je dichtbij kijkt', 'Testmaatje minder plakkerig: meestal 60–260 m voor of achter je', 'Raket: je ziet groot RAAK, MIS of GEBLOKT, en het geraakte maatje vliegt de lucht in', 'Raket ontwijken: hij ontploft (GERED!)', 'Liggend vallen de geluid-, maatjes- en itemknop niet meer over je snelheid']],
