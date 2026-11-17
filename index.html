@@ -440,9 +440,9 @@ body.car.kaartrij #rijTerug { bottom: calc(var(--bh) + 16px); }
   body.car.kaartrij #rijStuurWiel { display: inline; }   /* stuur terug, Buddy is nu de teller */
   body.car.kaartrij #rijWielPos { transform: translate(200px, 150px); }   /* v142: stuur precies in het midden */
   body.car.kaartrij #carGroep { left: calc(var(--bh) + 24px) !important; }
-  body.car.kaartrij #rijBalk { left: auto; right: 12px; top: 74px; bottom: 12px; }   /* v143: balk helemaal rechts en langer */
-  body.car.kaartrij:has(#rijBalk:not([hidden])) #rijGeluidKnop, body.car.kaartrij:has(#rijBalk:not([hidden])) #rijMaatKnop { right: calc(66px + var(--sa-r)) !important; }   /* v206: knoppen naast de balk, niet eroverheen */
-  body.car.kaartrij:has(#rijBalk:not([hidden])) #itemKnop:not([hidden]) { right: calc(124px + var(--sa-r)) !important; }
+  body.car.kaartrij #rijBalk { --rbH: min(44vw, 420px); left: calc(50% - 22px) !important; right: auto !important; top: calc(44px - var(--rbH) / 2 + var(--sa-t)) !important; bottom: auto !important; height: var(--rbH); transform: rotate(90deg); }   /* v208: liggend ligt de 10 km-balk plat bovenin het midden (jij links, 10 km rechts), niet meer over de knoppen rechts */
+  body.car.kaartrij #rijBalk .rbKop, body.car.kaartrij #rijBalk .rbIk, body.car.kaartrij #rijBalk .rbPunt { transform: rotate(-90deg); }
+  body.car.kaartrij #rijBalk .rbKop { top: -6px; left: 0; right: 0; width: 44px; }
   body.car.kaartrij #carAdd { right: auto !important; left: calc(50% - 145px) !important; bottom: 12px !important; }   /* vaste flitser links van het stuur */
   body.car.kaartrij #carAddM { right: auto !important; left: calc(50% + 89px) !important; bottom: 12px !important; }   /* mobiele flitser rechts van het stuur */
   body.car.kaartrij #rijKnipL { left: calc(50% - 96px); bottom: 21vh; } body.car.kaartrij #rijKnipR { left: calc(50% + 66px); bottom: 21vh; }
@@ -991,7 +991,7 @@ body.car #itemKnop:not([hidden]) { display: grid; place-items: center; position:
 @keyframes itemPuls { 50% { box-shadow: 0 0 0 8px #ffcc0055, 0 6px 16px #0008; } }
 body.car #cadeauKnop { display: grid; place-items: center; position: fixed; z-index: 50; right: calc(12px + var(--sa-r)); bottom: calc(212px + var(--sa-b)); width: 44px; height: 44px; border-radius: 22px; border: 0; background: rgba(20,24,28,.7); font-size: 22px; opacity: .8; }
 body.car:not(.kaartrij) #cadeauKnop { display: none; }
-@media (orientation: landscape) { body.car #itemKnop:not([hidden]) { bottom: calc(14px + var(--sa-b)); right: calc(78px + var(--sa-r)); }   /* v198: liggend onderin, links naast de knoppenrij (niet over 👥) */ body.car #cadeauKnop { bottom: calc(150px + var(--sa-b)); right: calc(96px + var(--sa-r)); } }
+@media (orientation: landscape) { body.car #itemKnop:not([hidden]) { bottom: calc(14px + var(--sa-b)); right: calc(134px + var(--sa-r)); }   /* v198: liggend onderin, links naast de knoppenrij (niet over 👥) */ body.car #cadeauKnop { bottom: calc(150px + var(--sa-b)); right: calc(96px + var(--sa-r)); } }
 #itemVlieg { position: fixed; z-index: 9000; left: 50%; top: 55%; font-size: 64px; pointer-events: none; animation: itemVlieg 1s ease-in forwards; }
 @keyframes itemVlieg { 0% { transform: translate(-50%, 0) scale(1); } 100% { transform: translate(-50%, -60vh) scale(.2) rotate(720deg); opacity: 0; } }
 #cadeauVenster, #wrapped { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.8); display: grid; place-items: center; }
@@ -5473,7 +5473,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v207';
+  var VERSION = 'v208';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9676,6 +9676,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v208', '18 nov', ['Liggend ligt de 10 km-balk plat bovenin het midden, zodat hij niet meer door de knoppen rechts loopt', 'Liggend staat de itemknop niet meer over de 😜-knop']],
       ['v207', '18 nov', ['De XP-balk onderin is dikker en laat altijd je level en XP zien', '🎮 Eerste persoon staand: Buddy wordt je stuur, onderin het midden, en draait mee in de bochten']],
       ['v206', '18 nov', ['Lucht in één kleur tot aan de horizon: geen donkere balk of naad meer', 'Liggend staan de geluid-, maatjes- en itemknop naast de 10 km-balk in plaats van eroverheen']],
       ['v205', '17 nov', ['🎬 Animaties testen staat nu onder Meer, met Buddy groot erboven zodat je ziet wat er gebeurt']],
