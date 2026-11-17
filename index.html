@@ -1027,6 +1027,8 @@ main > header .lede, main > header .eyebrow { display: none; }   /* v192: minder
 #apkBalk[hidden], body.car #apkBalk, body.rond #apkBalk, body:not([data-tab="buddy"]) #apkBalk { display: none; }
 #apkBalk > span { font-size: 26px; } #apkBalk div { flex: 1; min-width: 0; } #apkBalk b { display: block; font-size: 14px; } #apkBalk small { display: block; font-size: 12px; opacity: .75; line-height: 1.3; }
 #apkBalk .btn { min-height: 38px; padding: 0 14px; white-space: nowrap; display: inline-flex; align-items: center; text-decoration: none; } #apkLater { border: 0; background: none; color: inherit; opacity: .6; font-size: 16px; padding: 6px; }
+body[data-tab="meer"].animOpen:not(.car):not(.rond) main > .stage { display: flex !important; position: sticky; top: calc(0px + var(--sa-t, 0px)); z-index: 25; min-height: 0 !important; height: min(40vh, 330px); padding: 6px 0 !important; overflow: hidden; background: var(--bg, #15181d); box-shadow: 0 10px 18px -12px #000a; margin-bottom: 10px; }
+body[data-tab="meer"].animOpen:not(.car):not(.rond) main > .stage .helmet { --hs: min(28vh, 240px) !important; }
 #snelBalk { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 12px 4px; position: sticky; top: calc(4px + var(--sa-t, 0px)); z-index: 30; }
 #snelBalk button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border-radius: 16px; border: 0; background: #1d2026; color: #fff; font-size: 24px; box-shadow: 0 4px 12px #0006; }
 #snelBalk button b { font: 700 12px var(--f-body); } #snelBalk button[data-s="rij"] { background: #ff5a4f; }
@@ -5463,7 +5465,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v204';
+  var VERSION = 'v205';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9666,6 +9668,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v205', '17 nov', ['🎬 Animaties testen staat nu onder Meer, met Buddy groot erboven zodat je ziet wat er gebeurt']],
       ['v204', '17 nov', ['🌬️ Slipstream: rij 50-150 m achter een maatje = elke minuut +5 XP (hij krijgt ook wat)', '🏁 Rijden jullie naar hetzelfde doel? Dan zie je bovenin wie er eerst is; winnaar +30 XP', '🤝 In konvooi telt XP ×1,5, met ⚡ nitro zelfs ×2', '🪙 Muntjes op de weg als er een maatje in de buurt is: wie er het eerst overheen rijdt, heeft hem', '🙌 Gekruist: passeer je een maatje in de andere richting, dan krijg je allebei een high five en XP', '👍😂🔥 Snelle reacties en 💡 lichtsignaal: tik op de naam van een maatje']],
       ['v203', '17 nov', ['Veroverkaart: in de ranglijst eronder ben jij ook groen en de rest rood, net als op de kaart', 'Balken vullen en het weekdoel staan alleen nog in het Buddy-tab (niet meer in elk tabblad); de gemeenten-verzameling staat bij Ritten']],
       ['v202', '17 nov', ['📲 Buddy in de browser? Op Android staat bovenin een knop voor de echte app, op een iPhone uitleg om Buddy op je beginscherm te zetten', '🏆 Ranglijst opnieuw ontworpen: gekleurd rondje met je level, balkje t.o.v. de koploper, badges als telletje (tik voor alles)', '⭐ Levels van de groep met balkjes in het Groep-tab, en een seintje als een collega een level omhoog gaat', '🤝 Groepsbalk: samen 2000 km per week; vol = +100 XP voor iedereen (ook onder Buddy)', '🤖 Buddy+ (v120) laat +XP zien met een balkje langs de onderrand', 'Buddy is in het rijscherm een stuk groter (staand en liggend)']],
@@ -9774,7 +9777,8 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     zet($('kopScherm'), 'plus'); zet($('kopPlusNav'), 'buddy plus'); zet($('kopOver'), 'buddy');   /* v164: Buddy+ heeft zijn eigen tab */   /* v83: schermpje en 'Over Buddy' onder het Buddy-tabblad */
     zet($('buddyStatus'), 'buddy'); zet($('qSectie'), 'buddy'); zet($('wdKaart'), 'buddy'); zet($('kopGemeente'), 'ritten');   /* v203: balken en weekdoel alleen bij Buddy, gemeenten bij Ritten */
     ['kopInst', 'kopHulp', 'kopBouw'].forEach(function (id) { zet($(id), 'meer'); });
-    zet($('kopRitten'), 'ritten'); zet($('kopRecords'), 'ritten'); zet($('kopBadges'), 'ritten'); zet($('kopLaden'), 'ritten'); zet($('kopPlezier'), 'buddy'); zet($('kopAnim'), 'plus');   /* v85: eigen Ritten-tab */
+    zet($('kopRitten'), 'ritten'); zet($('kopRecords'), 'ritten'); zet($('kopBadges'), 'ritten'); zet($('kopLaden'), 'ritten'); zet($('kopPlezier'), 'buddy'); zet($('kopAnim'), 'meer');   /* v205: animaties testen onder Meer, met Buddy erboven */
+    $('kopAnim').addEventListener('toggle', function () { document.body.classList.toggle('animOpen', $('kopAnim').open); if ($('kopAnim').open) window.scrollTo(0, 0); });   /* v85: eigen Ritten-tab */
     zet($('verTxt'), 'meer');
     var koppen = document.querySelector('main > .koppen'); if (koppen) koppen.removeAttribute('data-in-tab');
     /* de flitserkaart en de meld-knoppen verhuizen naar de Kaart-tab */
