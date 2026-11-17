@@ -4745,8 +4745,28 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   function heeftOmkeer(rt) {   /* v191: zit er in de eerste 1,5 km een 'omkeren' in? */
     var d = 0; try { for (var i = 0; i < rt.legs.length; i++) for (var j = 0; j < rt.legs[i].steps.length; j++) { var st = rt.legs[i].steps[j]; if (d > 1500) return false; if (st.maneuver && st.maneuver.modifier === 'uturn') return true; d += st.distance || 0; } } catch (e) {} return false;
   }
+  function lusPlek(rt) {   /* v201: van de snelweg af en binnen 3 km dezelfde snelweg weer op (afrit, rotonde, 'rechtsaf naar A2'): waar en in welke richting reed je? */
+    var vorig = '', af = null, d = 0, gevonden = null;
+    try { rt.legs.forEach(function (l) { l.steps.forEach(function (st) { if (gevonden) return; var m = st.maneuver || {}, ref = (st.ref || '').toUpperCase().replace(/\s/g, ''), naam = (st.name || '') + ' ' + (st.destinations || '');
+      if (m.type === 'off ramp' && /^A\d/.test(vorig)) af = { d: d, ref: vorig.split(';')[0], loc: m.location, hd: m.bearing_before };
+      else if (af && d - af.d < 3000 && d > af.d && (ref.split(';').indexOf(af.ref) >= 0 || (m.type === 'on ramp' && naam.replace(/\s/g, '').toUpperCase().indexOf(af.ref) >= 0))) gevonden = af;
+      else if (af && d - af.d >= 3000) af = null;
+      if (ref) vorig = ref; d += st.distance || 0; }); }); } catch (e) {}
+    return gevonden;
+  }
+  function lusVrij(c, van, naar, qs) {   /* v201: zo'n lus? Dan dezelfde route maar met een tussenpunt óp de snelweg, net voorbij de afrit, in je rijrichting */
+    var L = lusPlek(c.rt); if (!L || !L.loc || L.hd == null) return Promise.resolve(c);
+    var h = L.hd * Math.PI / 180, la = L.loc[1] + Math.cos(h) * 450 / 110540, lo = L.loc[0] + Math.sin(h) * 450 / (111320 * Math.cos(L.loc[1] * Math.PI / 180)), rh = navRoute.rh;
+    var p = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + lo.toFixed(5) + ',' + la.toFixed(5) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5);
+    var q = qs + '&bearings=' + (rh == null ? '' : rh + ',35') + ';' + Math.round(L.hd) + ',20;&radiuses=' + (rh == null ? 'unlimited' : '40') + ';35;unlimited&continue_straight=true';
+    return fetch('https://router.project-osrm.org/route/v1/driving/' + p + q).then(function (r) { return r.json(); }).then(function (k) {
+      var rt = k && k.routes && k.routes[0]; if (!rt || lusPlek(rt) || heeftOmkeer(rt)) return c; echteDuur(rt);
+      if (rt.distance > c.rt.distance + 3000) return c;
+      lg('route: afrit-rotonde-oprit op de ' + L.ref + ' vermeden, ik houd je op de snelweg (' + Math.round(rt.duration / 60) + ' i.p.v. ' + Math.round(c.rt.duration / 60) + ' min)');
+      rt.duration = Math.min(rt.duration, c.rt.duration); return { rt: rt, via: null }; }).catch(function () { return c; });
+  }
   function heeftLus(rt) {   /* v191: route gaat van de snelweg af en binnen 3 km weer op (afrit, rotonde, oprit) = omweg door een tussenpunt dat op een brug/viaduct terechtkwam */
-    var af = -1, d = 0; try { rt.legs.forEach(function (l) { l.steps.forEach(function (st) { var t = st.maneuver && st.maneuver.type; if (t === 'off ramp') af = d; else if (t === 'on ramp' && af >= 0 && d - af < 3000) throw 1; d += st.distance || 0; }); }); } catch (e) { if (e === 1) return true; } return false;
+    if (lusPlek(rt)) return true; var af = -1, d = 0; try { rt.legs.forEach(function (l) { l.steps.forEach(function (st) { var t = st.maneuver && st.maneuver.type; if (t === 'off ramp') af = d; else if (t === 'on ramp' && af >= 0 && d - af < 3000) throw 1; d += st.distance || 0; }); }); } catch (e) { if (e === 1) return true; } return false;
   }
   function routeKandidaten(van, naar, qs) {   /* gewone alternatieven + routes via de bruggen, ontdubbeld */
     var rh = navRoute.rh, br = function (n) { return rh == null ? '' : '&bearings=' + rh + ',35' + new Array(n).join(';') + '&radiuses=40' + new Array(n).join(';unlimited'); };
@@ -4756,7 +4776,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     var vragen = [navGet('/route/' + pad + qa, 'https://router.project-osrm.org/route/v1/driving/' + pad + qa).then(function (j) { return (j && j.routes || []).map(function (rt) { return { rt: rt, via: null }; }); }).catch(function () { return []; })];
     kand.forEach(function (x) { var p = van.lon.toFixed(5) + ',' + van.lat.toFixed(5) + ';' + x.b[1].toFixed(4) + ',' + x.b[0].toFixed(4) + ';' + naar.lon.toFixed(5) + ',' + naar.lat.toFixed(5);
       vragen.push(fetch('https://router.project-osrm.org/route/v1/driving/' + p + qs + br(3)).then(function (r) { return r.json(); }).then(function (k) { return k && k.routes && k.routes[0] ? [{ rt: k.routes[0], via: x.b }] : []; }).catch(function () { return []; })); });
-    return Promise.all(vragen).then(function (rs) { rs.forEach(function (l) { l.forEach(function (c) { echteDuur(c.rt); if (!uit.some(function (u) { return Math.abs(u.rt.distance - c.rt.distance) < c.rt.distance * .02 && Math.abs(u.rt.duration - c.rt.duration) < 60; })) uit.push(c); }); });
+    return Promise.all(vragen).then(function (rs) { return Promise.all(rs.map(function (l) { return Promise.all(l.map(function (c) { echteDuur(c.rt); return lusVrij(c, van, naar, qs); })); })); }).then(function (rs) { rs.forEach(function (l) { l.forEach(function (c) { echteDuur(c.rt); if (!uit.some(function (u) { return Math.abs(u.rt.distance - c.rt.distance) < c.rt.distance * .02 && Math.abs(u.rt.duration - c.rt.duration) < 60; })) uit.push(c); }); });
       uit.sort(function (a, b) { return a.rt.duration - b.rt.duration; });
       var zonder = uit.filter(function (c) { return !heeftLus(c.rt); }); if (zonder.length && zonder.length < uit.length) { lg('route: ' + (uit.length - zonder.length) + ' route(s) met afrit-rotonde-oprit weggelaten'); uit = zonder; }
       return uit.slice(0, 4); });
@@ -9478,7 +9498,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
-      ['v201', '17 nov', ['🎮 Live XP: tijdens het rijden zie je +XP in beeld (rotonde, afslag, netjes langs flitser, aankomst, raket raak, veroverde gemeente…) en onderin loopt een XP-balk vol', '🎯 Balken vullen: onder Buddy dag- en weekbalken; elke volle balk geeft extra XP']],
+      ['v201', '17 nov', ['🎮 Live XP: tijdens het rijden zie je +XP in beeld (rotonde, afslag, netjes langs flitser, aankomst, raket raak, veroverde gemeente…) en onderin loopt een XP-balk vol', '🎯 Balken vullen: onder Buddy dag- en weekbalken; elke volle balk geeft extra XP', 'Navigatie stuurt je niet meer de snelweg af en via een rotonde er weer op (zoals op de A2 en A59): de route blijft op de snelweg']],
       ['v200', '17 nov', ['🔄-knop in het Groep-tab: vernieuwt in één tik leden, ranglijst, berichten, gemelde flitsers en live maatjes', '👥 Maatjes live staat nu standaard aan en werkt tot 10 km (was 5 km)', '🏰 Veroverkaart als vlakken: groen = van jou, rood = van een ander (zonder naam); de ranglijst toont alleen aantallen']],
       ['v199', '17 nov', ['De routelijn bovenin onthoudt hoe ver je al bent, ook als de route opnieuw berekend wordt of je de app even sluit', 'De blauwe navigatielijn loopt niet meer door je auto heen']],
       ['v198', '17 nov', ['Navigeer je, dan zie je alleen de flitsers langs je route (geen zee van 📸 meer aan de horizon)', 'Maatjes en testmaatje rijden vloeiend, niet meer schokkerig', 'Liggend staat de ⚡-itemknop niet meer over de 👥-knop', 'Horizon opgeruimd: laadpalen, borden, files en flitsers die ver weg liggen verdwijnen als je schuin kijkt']],
