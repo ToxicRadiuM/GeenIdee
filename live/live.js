@@ -1,7 +1,7 @@
 // Buddy live: iedereen uit een groep die rijdt, stuurt elke seconde zijn plek. De groep (een Durable Object)
-// stuurt dat alleen door naar groepsleden die binnen 5 km rijden. Niets wordt bewaard: valt de verbinding weg, dan ben je weg.
+// stuurt dat alleen door naar groepsleden die binnen 10 km rijden. Niets wordt bewaard: valt de verbinding weg, dan ben je weg.
 const TOEGESTAAN = 'https://toxicradium.github.io';
-const BEREIK = 5000;   // meter
+const BEREIK = 10000;   // meter (v200: 10 km)
 
 export default {
   async fetch(request, env) {
