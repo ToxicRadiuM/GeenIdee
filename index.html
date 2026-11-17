@@ -7522,9 +7522,9 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     var ms = Object.keys(mem.verover).sort(); while (ms.length > 3) delete mem.verover[ms.shift()]; }, 5000);
   function vvEigenaars(d) { var e = {}; Object.keys((d && d.gm) || {}).forEach(function (g) { var best = null; Object.keys(d.gm[g]).forEach(function (v) { var x = d.gm[g][v]; if (!best || x.km > best.km) best = { van: v, n: x.n, km: x.km }; }); if (best && best.km >= 1) e[g] = best; }); return e; }
   function vvNorm(d) {   /* v200: privacy: alleen je eigen gemeenten, van anderen alleen het aantal (oude server-antwoorden worden hier ook zo ingekort) */
-    if (d && d.mijn && d.rang) return d; var e = vvEigenaars(d), mijn = {}, tel = {};
-    Object.keys(e).forEach(function (g) { var o = e[g]; (tel[o.van] = tel[o.van] || { van: o.van, n: o.n, aantal: 0 }).aantal++; if (o.van === mijnId) mijn[g] = { km: o.km, plek: (d.plek || {})[g] || null }; });
-    return { maand: d && d.maand, mijn: mijn, rang: Object.keys(tel).map(function (v) { return tel[v]; }).sort(function (a, b) { return b.aantal - a.aantal; }) };
+    if (d && d.mijn && d.rang) return d; var e = vvEigenaars(d), mijn = {}, tel = {}, anders = [];
+    Object.keys(e).forEach(function (g) { var o = e[g]; (tel[o.van] = tel[o.van] || { van: o.van, n: o.n, aantal: 0 }).aantal++; if (o.van === mijnId) mijn[g] = { km: o.km, plek: (d.plek || {})[g] || null }; else anders.push(g); });
+    return { maand: d && d.maand, mijn: mijn, anders: anders, rang: Object.keys(tel).map(function (v) { return tel[v]; }).sort(function (a, b) { return b.aantal - a.aantal; }) };
   }
   function vvVerwerk(d) {
     d = vvNorm(d); vvData = d; vvT = Date.now(); var mijn = Object.keys(d.mijn || {}), oud = mem.vvMijn || null;
@@ -7538,23 +7538,29 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     vraag.then(function (r) { return r.json(); }).then(vvVerwerk).catch(function () {});
   };
   setInterval(function () { if (buurAan && grp && document.visibilityState === 'visible') window.__veroverStuur(); }, 10 * 60e3); setTimeout(function () { if (grp) window.__veroverStuur(!buurAan); }, 8000);
-  var vvMap = null;
+  var vvMap = null, vvGm = null, vvGmBezig = 0;
   function vvToon() {
     var box = $('vvBox'); if (!box || box.offsetParent === null) return; var d = vvNorm(vvData || {}), per = {}, mijnG = d.mijn || {};
     (d.rang || []).forEach(function (x) { per[x.van] = { n: x.n, l: { length: x.aantal } }; });
     var rang = (d.rang || []).map(function (x) { return x.van; });
     $('vvRang').innerHTML = rang.length ? rang.map(function (v, i) { return '<div style="display:flex;gap:8px;align-items:center;margin:3px 0"><b style="width:18px">' + (i + 1) + '</b><span style="width:12px;height:12px;border-radius:6px;background:' + vvKleur(v) + '"></span><span style="flex:1">' + (per[v].n || '?') + (v === mijnId ? ' (jij)' : '') + '</span><b>' + per[v].l.length + ' 🏰</b></div>'; }).join('') : '<p class="foot">Nog niemand heeft deze maand een gemeente. Rij een stukje met "Maatjes live" aan!</p>';
     if (!window.maplibregl) { var c = document.createElement('link'); c.rel = 'stylesheet'; c.href = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css'; document.head.appendChild(c); var sc = document.createElement('script'); sc.src = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js'; sc.onload = vvToon; document.head.appendChild(sc); return; }
-    var feats = Object.keys(mijnG).filter(function (g) { return mijnG[g].plek; }).map(function (g) { var o = mijnG[g]; return { type: 'Feature', properties: { g: g, kl: vvKleur(mijnId), t: g + '\n' + Math.round(o.km) + ' km' }, geometry: { type: 'Point', coordinates: [o.plek[1], o.plek[0]] } }; });
+    if (!vvGm) { if (!vvGmBezig) { vvGmBezig = 1; fetch('data/gemeenten.geojson').then(function (r) { return r.json(); }).then(function (j) { vvGm = j; vvToon(); }).catch(function () { vvGmBezig = 0; }); } return; }
+    /* v200: vlakken: groen = van jou, rood = van iemand anders uit de groep (zonder naam), de rest grijs */
+    var anders = {}; (d.anders || []).forEach(function (g) { anders[g] = 1; });
+    var feats = [];
+    vvGm.features.forEach(function (f) { var g = f.properties.n, st = mijnG[g] ? 'mijn' : anders[g] ? 'ander' : ''; if (!st) return; feats.push({ type: 'Feature', properties: { g: g, st: st, t: st === 'mijn' ? g + ' · ' + Math.round(mijnG[g].km) + ' km' : g }, geometry: f.geometry }); });
     var data = { type: 'FeatureCollection', features: feats };
-    if (!vvMap) { vvMap = new maplibregl.Map({ container: 'vvKaart', style: 'https://tiles.openfreemap.org/styles/positron', center: [4.9, 52.1], zoom: 7, attributionControl: false });
-      vvMap.on('load', function () { vvMap.addSource('vv', { type: 'geojson', data: data }); vvMap.addLayer({ id: 'vvc', type: 'circle', source: 'vv', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 7, 11, 22], 'circle-color': ['get', 'kl'], 'circle-opacity': .75, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } });
-        vvMap.addLayer({ id: 'vvt', type: 'symbol', source: 'vv', minzoom: 8, layout: { 'text-field': ['get', 't'], 'text-size': 11, 'text-offset': [0, 2.2] }, paint: { 'text-color': '#222', 'text-halo-color': '#fff', 'text-halo-width': 1.5 } }); vvZoom(feats); }); }
+    if (!vvMap) { vvMap = new maplibregl.Map({ container: 'vvKaart', style: 'https://tiles.openfreemap.org/styles/positron', center: [5.3, 52.1], zoom: 6.3, attributionControl: false });
+      vvMap.on('load', function () { vvMap.addSource('vv', { type: 'geojson', data: data });
+        vvMap.addLayer({ id: 'vvf', type: 'fill', source: 'vv', paint: { 'fill-color': ['match', ['get', 'st'], 'mijn', '#30d158', '#ff3b30'], 'fill-opacity': .45 } });
+        vvMap.addLayer({ id: 'vvl', type: 'line', source: 'vv', paint: { 'line-color': ['match', ['get', 'st'], 'mijn', '#1f9e43', '#c4271f'], 'line-width': 1.2 } });
+        vvMap.addLayer({ id: 'vvt', type: 'symbol', source: 'vv', minzoom: 8, layout: { 'text-field': ['get', 't'], 'text-size': 11 }, paint: { 'text-color': '#222', 'text-halo-color': '#fff', 'text-halo-width': 1.5 } }); vvZoom(feats); }); }
     else if (vvMap.getSource('vv')) { vvMap.getSource('vv').setData(data); vvZoom(feats); }
   }
-  function vvZoom(feats) { if (!feats.length || !vvMap) return; var b = new maplibregl.LngLatBounds(); feats.forEach(function (f) { b.extend(f.geometry.coordinates); }); try { vvMap.fitBounds(b, { padding: 40, maxZoom: 10, duration: 0 }); } catch (e) {} }
+  function vvZoom(feats) { if (!feats.length || !vvMap || vvZoom.klaar) return; vvZoom.klaar = 1; var b = new maplibregl.LngLatBounds(), add = function (c) { if (typeof c[0] === 'number') b.extend(c); else c.forEach(add); }; feats.forEach(function (f) { add(f.geometry.coordinates); }); try { vvMap.fitBounds(b, { padding: 40, maxZoom: 10, duration: 0 }); } catch (e) {} }
   setTimeout(function () {
-    var kg = $('vvPlek'); if (!kg || $('vvBox')) return; var w = document.createElement('div'); w.innerHTML = '<div id="vvBox"><div id="vvKaart" style="height:320px;border-radius:14px;overflow:hidden;margin:8px 0"></div><div id="vvRang"></div><p class="foot">Op de kaart zie je alleen je eigen gemeenten. Van de anderen zie je alleen hoeveel ze er hebben, niet welke. Telt alleen als "Maatjes live" aan staat.</p></div>';
+    var kg = $('vvPlek'); if (!kg || $('vvBox')) return; var w = document.createElement('div'); w.innerHTML = '<div id="vvBox"><div id="vvKaart" style="height:320px;border-radius:14px;overflow:hidden;margin:8px 0"></div><div id="vvRang"></div><p class="foot">🟩 van jou · 🟥 van iemand anders uit de groep (je ziet niet van wie). Rij er meer km dan de rest en hij wordt groen. Telt alleen als "Maatjes live" aan staat. Grenzen: © CBS/Kadaster.</p></div>';
     kg.appendChild(w); window.__vvOpen = function () { window.__veroverStuur(!buurAan); vvToon(); if (vvMap) setTimeout(function () { vvMap.resize(); }, 50); }; if (window.__kaartModus && window.__kaartModus() === 'verover') window.__vvOpen();
   }, 0);
 
@@ -9394,7 +9400,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
-      ['v200', '17 nov', ['🔄-knop in het Groep-tab: vernieuwt in één tik leden, ranglijst, berichten, gemelde flitsers en live maatjes', '👥 Maatjes live staat nu standaard aan en werkt tot 10 km (was 5 km)', '🏰 Veroverkaart privé: je ziet alleen je eigen gemeenten; van anderen alleen hoeveel, niet waar']],
+      ['v200', '17 nov', ['🔄-knop in het Groep-tab: vernieuwt in één tik leden, ranglijst, berichten, gemelde flitsers en live maatjes', '👥 Maatjes live staat nu standaard aan en werkt tot 10 km (was 5 km)', '🏰 Veroverkaart als vlakken: groen = van jou, rood = van een ander (zonder naam); de ranglijst toont alleen aantallen']],
       ['v199', '17 nov', ['De routelijn bovenin onthoudt hoe ver je al bent, ook als de route opnieuw berekend wordt of je de app even sluit', 'De blauwe navigatielijn loopt niet meer door je auto heen']],
       ['v198', '17 nov', ['Navigeer je, dan zie je alleen de flitsers langs je route (geen zee van 📸 meer aan de horizon)', 'Maatjes en testmaatje rijden vloeiend, niet meer schokkerig', 'Liggend staat de ⚡-itemknop niet meer over de 👥-knop', 'Horizon opgeruimd: laadpalen, borden, files en flitsers die ver weg liggen verdwijnen als je schuin kijkt']],
       ['v197', '17 nov', ['Nieuwe kijkstand: dicht achter je auto, zoals in de Tesla (🧭-knop)', 'Maatjes en je eigen auto op echte grootte als je dichtbij kijkt', 'Testmaatje minder plakkerig: meestal 60–260 m voor of achter je', 'Raket: je ziet groot RAAK, MIS of GEBLOKT, en het geraakte maatje vliegt de lucht in', 'Raket ontwijken: hij ontploft (GERED!)', 'Liggend vallen de geluid-, maatjes- en itemknop niet meer over je snelheid']],

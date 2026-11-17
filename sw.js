@@ -5,7 +5,7 @@
    - Al het andere (je Worker, PDOK, OpenStreetMap, weer…) gaat gewoon via internet en wordt hier niet bewaard.
    Verander bij elke nieuwe versie KAST, dan ruimt de telefoon de oude kopie vanzelf op. */
 const KAST = 'buddy-v165';
-const KERN = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './msi-locaties.json', './data/flitsers-nl.json', './geluid/sterren.mp3'];
+const KERN = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './msi-locaties.json', './data/flitsers-nl.json', './data/gemeenten.geojson', './geluid/sterren.mp3'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(KAST).then((c) => c.addAll(KERN.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
