@@ -519,6 +519,11 @@ body.car #carSpel.zichtbaar { display: block; }
 #ritKaart .rkKnoppen { display: flex; justify-content: center; gap: 10px; }
 #ritKaartDeel { min-height: 52px; padding: 0 24px; border-radius: 26px; border: 1px solid #34c759; background: #0b2414; color: #8ff0a8; font: 600 16px var(--f-display); }
 .lvBalk { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+.grSamen, .grLevels { margin-top: 10px; } .grSamen:empty, .grLevels:empty { display: none; }
+.grSamen { padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(135deg, rgba(48,209,88,.10), transparent); }
+.grSamen .lvBalk { height: 14px; border-radius: 7px; margin-top: 6px; } .grSamen .lvBalk i { background: linear-gradient(90deg, #30d158, #8ff0a8); border-radius: 7px; }
+.grLvRij { display: flex; align-items: center; gap: 10px; margin: 7px 0; } .grLvRij .qM { flex: 1; } .grLvRij.ik .qT span { font-weight: 700; }
+.grLvRij .lvNr { min-width: 34px; height: 34px; border-radius: 17px; display: grid; place-items: center; font: 800 13px var(--f-display); background: #ffb02e22; color: #ffb02e; border: 2px solid #ffb02e88; }
 .qRij { display: flex; gap: 10px; align-items: center; margin: 6px 0; }
 .qI { font-size: 20px; width: 26px; text-align: center; }
 .qM { flex: 1; min-width: 0; }
@@ -996,6 +1001,10 @@ body.car #kopNieuw, body.rond #kopNieuw { display: none !important; } #kopNieuw[
 #ghostStrip[hidden] { display: none; } #ghostStrip .gIc { font-size: 22px; opacity: .85; } body:not(.car) #ghostStrip { display: none; }
 @media (orientation: landscape) { #ghostStrip { top: auto; bottom: calc(14px + var(--sa-b)); } }
 main > header .lede, main > header .eyebrow { display: none; }   /* v192: minder tekst bovenaan, Buddy en de knoppen eerder in beeld */
+#apkBalk { display: flex; align-items: center; gap: 10px; margin: 8px 12px 0; padding: 10px 10px 10px 14px; border-radius: 16px; background: linear-gradient(135deg, #0a84ff33, #30d15822); border: 1px solid #0a84ff66; }
+#apkBalk[hidden], body.car #apkBalk, body.rond #apkBalk, body:not([data-tab="buddy"]) #apkBalk { display: none; }
+#apkBalk > span { font-size: 26px; } #apkBalk div { flex: 1; min-width: 0; } #apkBalk b { display: block; font-size: 14px; } #apkBalk small { display: block; font-size: 12px; opacity: .75; line-height: 1.3; }
+#apkBalk .btn { min-height: 38px; padding: 0 14px; white-space: nowrap; display: inline-flex; align-items: center; text-decoration: none; } #apkLater { border: 0; background: none; color: inherit; opacity: .6; font-size: 16px; padding: 6px; }
 #snelBalk { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 12px 4px; position: sticky; top: calc(4px + var(--sa-t, 0px)); z-index: 30; }
 #snelBalk button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border-radius: 16px; border: 0; background: #1d2026; color: #fff; font-size: 24px; box-shadow: 0 4px 12px #0006; }
 #snelBalk button b { font: 700 12px var(--f-body); } #snelBalk button[data-s="rij"] { background: #ff5a4f; }
@@ -1063,7 +1072,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
 <button id="carStart" class="rijRond rijWeg" type="button" aria-label="Start met startvlag"><svg class="vlag" viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="6" width="4" height="54" rx="2" fill="#8ff0a8"/><rect x="12" y="8" width="40" height="32" fill="#f4f4f4"/><g fill="#111"><rect x="12" y="8" width="8" height="8"/><rect x="28" y="8" width="8" height="8"/><rect x="44" y="8" width="8" height="8"/><rect x="20" y="16" width="8" height="8"/><rect x="36" y="16" width="8" height="8"/><rect x="12" y="24" width="8" height="8"/><rect x="28" y="24" width="8" height="8"/><rect x="44" y="24" width="8" height="8"/><rect x="20" y="32" width="8" height="8"/><rect x="36" y="32" width="8" height="8"/></g></svg></button>
 <div id="updBar" hidden style="position:fixed;left:8px;right:8px;bottom:8px;z-index:98;background:#0b2414;border:2px solid #34c759;color:#d9fbe3;padding:10px 12px;border-radius:14px;font:14px system-ui;display:flex;gap:10px;align-items:center"><span id="updTxt" style="flex:1"></span><button id="updKnop" type="button" style="min-height:40px;padding:0 14px;border-radius:20px;border:0;background:#34c759;color:#000;font:600 14px system-ui">Nu bijwerken</button></div>
 <div id="errBar" hidden onclick="this.hidden=true" style="position:fixed;left:8px;right:8px;top:8px;z-index:99;background:#b71c1c;color:#fff;padding:10px 12px;border-radius:10px;font:13px system-ui"></div>
-<main><div id="snelBalk"><button type="button" data-s="rij">🚗<b>Rijden</b></button><button type="button" data-s="thuis">🏠<b>Naar huis</b></button><button type="button" data-s="werk">💼<b>Naar werk</b></button><button type="button" data-s="zoek">🔍<b>Ergens heen</b></button></div>
+<main><div id="apkBalk" hidden><span>📲</span><div><b>Installeer de Buddy-app</b><small>GPS op de achtergrond en Bluetooth</small></div><a class="btn primary" id="apkLink" href="https://github.com/ToxicRadiuM/GeenIdee/raw/apk/Buddy.apk">Download</a><button type="button" id="apkLater" aria-label="Later">✕</button></div><div id="snelBalk"><button type="button" data-s="rij">🚗<b>Rijden</b></button><button type="button" data-s="thuis">🏠<b>Naar huis</b></button><button type="button" data-s="werk">💼<b>Naar werk</b></button><button type="button" data-s="zoek">🔍<b>Ergens heen</b></button></div>
   <header>
     <p class="eyebrow">Jouw maatje voor in de auto</p>
     <h1>Buddy</h1>
@@ -1101,6 +1110,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   <section class="buddyStatus" id="qSectie" aria-label="Balken vullen">
     <div class="bsKop"><b>🎯 Balken vullen</b></div>
     <div id="qBalken"></div>
+    <div id="qSamen" class="grSamen" style="margin-top:12px"></div>
     <p class="foot" style="margin:6px 0 0;text-align:left">Tijdens het rijden zie je onderin je XP-balk vollopen. Elke volle balk geeft extra XP voor Buddy's level.</p>
   </section>
   <div id="xpBalk" aria-hidden="true"><i id="xpBalkI"></i><b id="xpLv">Lv 1</b></div>
@@ -1233,6 +1243,8 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     <div class="kopIn">
       <div id="grKaart" class="grKaart"><div><b id="grKaartNaam">Jouw groep</b><span id="grKaartSub">nog niet geladen</span></div><span class="grKnoppen"><button class="btn grTand" id="grVernieuw" type="button" aria-label="Groep vernieuwen">🔄</button><button class="btn grTand" id="grInstKnop" type="button" aria-label="Groep instellen" aria-expanded="false">⚙️</button></span></div>
       <div id="grLeden" class="grLeden" aria-label="Wie zitten er in de groep"></div>
+      <div id="grSamen" class="grSamen"></div>
+      <div id="grLevels" class="grLevels"></div>
       <div class="grPane" data-gp="inst" hidden>
         <p class="sub">Jouw groep</p>
         <div class="mobrow"><input type="text" id="grpCode" maxlength="32" autocomplete="off" autocapitalize="none" placeholder="Groepscode"><button class="btn" id="grpSave" type="button">Opslaan</button></div>
@@ -5260,6 +5272,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     var nu = Date.now(); if (!groot && xpWacht[tekst] && nu - xpWacht[tekst] < 15000) return; xpWacht[tekst] = nu;
     if (!alGeteld) { mem.xpB = (mem.xpB || 0) + n; save(); }
     xpRij.push({ n: n, t: tekst, groot: groot }); xpVolgende(); try { lvToon(); } catch (e) {} xpBalkToon();
+    try { var xp = lvXp(), l = lvVan(xp), a = lvGrens(l), b = lvGrens(l + 1); window.__scStuur && window.__scStuur('XP:' + Math.round((xp - a) / Math.max(1, b - a) * 1000) + '|' + n + '|' + l); } catch (e) {}   /* v202: ook op Buddy+ */
   }
   window.__xp = xpGeef; window.__qTel = qTel;
   function xpVolgende() {
@@ -5272,6 +5285,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     var xp = lvXp(), l = lvVan(xp), a = lvGrens(l), b = lvGrens(l + 1), f = (xp - a) / Math.max(1, b - a), i = $('xpBalkI'), t = $('xpLv');
     if (i) i.style.width = Math.max(1, Math.round(f * 1000) / 10) + '%'; if (t) t.textContent = 'Lv ' + l + ' · ' + (xp - a) + '/' + (b - a);
   }
+  setTimeout(function () { ['xpBalk', 'xpPop'].forEach(function (id) { var e = $(id); if (e && e.parentNode !== document.body) document.body.appendChild(e); }); }, 0);   /* buiten <main>, anders verbergt de autostand ze */
   setInterval(xpBalkToon, 3000); setTimeout(xpBalkToon, 500);
   /* km: elke 10 km een plaatje (de km tellen al mee), de balken vullen per km */
   var xpKm0 = null, xpRust0 = 0;
@@ -5288,6 +5302,33 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     box.innerHTML = h;
   }
   setTimeout(qToon, 300); setInterval(qToon, 15000);
+  /* v202: Android in de browser? Dan een balkje om de echte app te installeren (7 dagen weg met ✕) */
+  setTimeout(function () { var b = $('apkBalk'); if (!b) return; var weg = +(localStorage.getItem('dashboardmaatje-apkweg') || 0);
+    if (/Android/i.test(navigator.userAgent) && !window.__native && !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) && Date.now() - weg > 7 * 864e5) { b.hidden = false; lg('apk-balkje getoond (browser op Android)'); }
+    $('apkLater').addEventListener('click', function () { b.hidden = true; try { localStorage.setItem('dashboardmaatje-apkweg', String(Date.now())); } catch (e) {} });
+    $('apkLink').addEventListener('click', function () { lg('apk-download aangetikt'); toast('📲 Download gestart. Open hem en kies "Installeren". Vraagt Android om toestemming voor onbekende apps, sta die toe.'); }); }, 3000);
+  /* ---------- v202: groepsbalk (samen km deze week) en levels van de groep, met seintje bij een level omhoog ---------- */
+  var GR_DOEL = 2000;
+  function bdCode(l, pre) { var m = String(l.bd || '').split('.').filter(function (k) { return k.indexOf(pre) === 0; })[0]; return m || ''; }
+  function grSamenKm() { var w = weekIdx(), tot = 0, wie = 0; (bordData || []).forEach(function (l) { var m = /^wk(\d+)k(\d+)$/.exec(bdCode(l, 'wk')); if (l.van === mijnId) return; if (m && +m[1] === w) { tot += +m[2]; if (+m[2] > 0) wie++; } }); var ik = wkKmNu(); return { km: tot + ik, wie: wie + (ik > 0 ? 1 : 0) }; }
+  window.__grLevelsToon = function () {
+    var box = $('grLevels'), sb = $('grSamen'); if (!box || !sb) return; var L = (bordData || []).slice();
+    if (!L.length) { box.innerHTML = ''; sb.innerHTML = ''; return; }
+    var sm = grSamenKm(), f = Math.min(1, sm.km / GR_DOEL);
+    sb.innerHTML = '<div class="qT"><span>🤝 <b>Samen deze week</b></span><b>' + Math.round(sm.km) + ' / ' + GR_DOEL + ' km</b></div><div class="lvBalk"><i style="width:' + Math.round(f * 100) + '%"></i></div><p class="foot" style="margin:6px 0 0">' + (f >= 1 ? '🎉 Gehaald! Iedereen kreeg +100 XP.' : sm.wie + ' van jullie reden al mee. Vol = +100 XP voor iedereen.') + '</p>';
+    var oudLv = mem.grLv || {}, nieuwLv = {};
+    L.forEach(function (l) { l._lv = l.van === mijnId ? lvVan(lvXp()) : (+l.lv || 1); var m = /^xp(\d+)$/.exec(bdCode(l, 'xp')); l._f = l.van === mijnId ? (function () { var xp = lvXp(), a = lvGrens(l._lv), b = lvGrens(l._lv + 1); return (xp - a) / Math.max(1, b - a); })() : (m ? +m[1] / 100 : 0); nieuwLv[l.van] = l._lv;
+      if (l.van !== mijnId && oudLv[l.van] && l._lv > oudLv[l.van]) { var t = '🎉 ' + l.n + ' is nu level ' + l._lv + '!'; setTimeout(function () { setEv('excited', 4, t); toast(t); lg(t); }, 1500); } });
+    mem.grLv = nieuwLv; save();
+    L.sort(function (a, b) { return (b._lv + b._f) - (a._lv + a._f); });
+    box.innerHTML = '<p class="sub" style="margin:4px 0">⭐ Levels</p>' + L.map(function (l) { return '<div class="grLvRij' + (l.van === mijnId ? ' ik' : '') + '"><span class="lvNr">' + l._lv + '</span><div class="qM"><div class="qT"><span></span><b>' + Math.round(l._f * 100) + '%</b></div><div class="lvBalk qB"><i style="width:' + Math.round(l._f * 100) + '%"></i></div></div></div>'; }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('.grLvRij'), function (rij, i) { rij.querySelector('.qT span').textContent = L[i].n + (L[i].van === mijnId ? ' (jij)' : ''); });
+    /* groepsbalk vol = +100 XP, één keer per week */
+    if (f >= 1 && mem.grDoelW !== weekIdx()) { mem.grDoelW = weekIdx(); save(); xpGeef(100, '🤝 Groepsbalk vol!', 0, 1); }
+    /* ook onder Buddy */
+    var gq = $('qSamen'); if (gq) gq.innerHTML = sb.innerHTML;
+  };
+  setInterval(function () { try { window.__grLevelsToon(); } catch (e) {} }, 20000);
 
   /* ---------- Goedemorgen-briefing: eerste rit van de dag ---------- */
   function briefing() {
@@ -5384,7 +5425,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v201';
+  var VERSION = 'v202';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6397,7 +6438,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   }
   function grBord() {
     if (!grp || !pbase()) { bordToon(); return; }
-    fetch(gUrl('/bord')).then(function (r) { return r.json(); }).then(function (j) { bordData = (Array.isArray(j.leden) ? j.leden : []).filter(function (l) { return l && l.n && String(l.n).trim(); });   /* v126: naamlozen weg */ if (!myWho()) { var ikL = bordData.filter(function (l) { return l.van === mijnId; })[0]; if (ikL) { mem.me = String(ikL.n).slice(0, 18); save(); lg('naam teruggezet uit de groep: ' + mem.me); } }   /* v191: naam kwijt (bv. na de overstap naar de app)? terughalen uit de groep */ bordToon(); try { recordWacht(); } catch (e) {} try { weekWinnaar(); } catch (e) {} }).catch(function () { bordToon('Leaderboard ophalen mislukt.'); });
+    fetch(gUrl('/bord')).then(function (r) { return r.json(); }).then(function (j) { bordData = (Array.isArray(j.leden) ? j.leden : []).filter(function (l) { return l && l.n && String(l.n).trim(); });   /* v126: naamlozen weg */ if (!myWho()) { var ikL = bordData.filter(function (l) { return l.van === mijnId; })[0]; if (ikL) { mem.me = String(ikL.n).slice(0, 18); save(); lg('naam teruggezet uit de groep: ' + mem.me); } }   /* v191: naam kwijt (bv. na de overstap naar de app)? terughalen uit de groep */ bordToon(); try { window.__grLevelsToon && window.__grLevelsToon(); } catch (e) {} try { recordWacht(); } catch (e) {} try { weekWinnaar(); } catch (e) {} }).catch(function () { bordToon('Leaderboard ophalen mislukt.'); });
   }
   /* v92: sprinttabel 0-80 / 0-100 / G-kracht voor de hele groep, met reacties */
   var REACT = ['🔥', '👏', '😮', '🚀', '🐢'], REACTTXT = ['vuur', 'applaus', 'wauw', 'raket', 'slakje'], sprintSort = 'nul', sprintOpen = null;
@@ -7368,7 +7409,11 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
       }
     } catch (e) {}
   }
-  function badgeCodes() { return (mem.badges || []).filter(function (k) { return BADGEMAP[k]; }).join('.'); }
+  function badgeCodes() { var c = (mem.badges || []).filter(function (k) { return BADGEMAP[k]; });
+    /* v202: twee extra codes mee (geen echte badges): xp<0-99> = hoe vol je levelbalk is, wk<week>k<km> = km deze week voor de groepsbalk. Geen plekken, alleen getallen */
+    try { var xp = lvXp(), l = lvVan(xp), a = lvGrens(l), b = lvGrens(l + 1); c.push('xp' + Math.min(99, Math.floor((xp - a) / Math.max(1, b - a) * 100))); c.push('wk' + weekIdx() + 'k' + Math.round(wkKmNu())); } catch (e) {}
+    return c.join('.'); }
+  function wkKmNu() { try { return (wk().km) || 0; } catch (e) { return 0; } }
 
   /* ---------- 6. Collega in de buurt (zelf aanzetten; je positie wordt niet doorgegeven aan anderen) ---------- */
   var BUURKEY = 'dashboardmaatje-buur-v1', buurAan = false, buurT = -9999, buurGezien = {};
@@ -9455,7 +9500,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
             mem.kmLive = Math.max(mem.kmLive || 0, +x.km || 0); mem.netjes = Math.max(mem.netjes || 0, +x.netjes || 0); mem.gemeld = Math.max(mem.gemeld || 0, +x.gemeld || 0);
             mem.ritLive = Math.max(mem.ritLive || 0, +x.ritten || 0); if (x.stijl) mem.stijlLive = +x.stijl;
             if (x.nul) mem.best100Live = (+x.nul) / 10; if (x.tachtig) mem.best80Live = (+x.tachtig) / 10;
-            if (x.bd) mem.badges = String(x.bd).split('.').filter(Boolean);
+            if (x.bd) mem.badges = String(x.bd).split('.').filter(function (k) { return k && BADGEMAP[k]; });
             save(); klaar(); toast('Welkom terug, ' + mem.me + '! Even opnieuw laden…'); setTimeout(function () { location.reload(); }, 1200);
           });
           w.appendChild(b);
@@ -9498,7 +9543,8 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
-      ['v201', '17 nov', ['🎮 Live XP: tijdens het rijden zie je +XP in beeld (rotonde, afslag, netjes langs flitser, aankomst, raket raak, veroverde gemeente…) en onderin loopt een XP-balk vol', '🎯 Balken vullen: onder Buddy dag- en weekbalken; elke volle balk geeft extra XP', 'Buddy is in het rijscherm een stuk groter (staand en liggend)', 'De lucht loopt nu helemaal door tot de horizon, geen zwarte balk meer (vooral te zien bij zonsondergang)', 'Navigatie stuurt je niet meer de snelweg af en via een rotonde er weer op (zoals op de A2 en A59): de route blijft op de snelweg']],
+      ['v202', '17 nov', ['📲 Gebruik je Buddy in de browser op Android? Dan staat bovenin een knop om de echte app te installeren', '⭐ Levels van de groep met balkjes in het Groep-tab, en een seintje als een collega een level omhoog gaat', '🤝 Groepsbalk: samen 2000 km per week; vol = +100 XP voor iedereen (ook onder Buddy)', '🤖 Buddy+ (v120) laat +XP zien met een balkje langs de onderrand', 'Buddy is in het rijscherm een stuk groter (staand en liggend)']],
+      ['v201', '17 nov', ['🎮 Live XP: tijdens het rijden zie je +XP in beeld (rotonde, afslag, netjes langs flitser, aankomst, raket raak, veroverde gemeente…) en onderin loopt een XP-balk vol', '🎯 Balken vullen: onder Buddy dag- en weekbalken; elke volle balk geeft extra XP', 'De lucht loopt nu helemaal door tot de horizon, geen zwarte balk meer (vooral te zien bij zonsondergang)', 'Navigatie stuurt je niet meer de snelweg af en via een rotonde er weer op (zoals op de A2 en A59): de route blijft op de snelweg']],
       ['v200', '17 nov', ['🔄-knop in het Groep-tab: vernieuwt in één tik leden, ranglijst, berichten, gemelde flitsers en live maatjes', '👥 Maatjes live staat nu standaard aan en werkt tot 10 km (was 5 km)', '🏰 Veroverkaart als vlakken: groen = van jou, rood = van een ander (zonder naam); de ranglijst toont alleen aantallen']],
       ['v199', '17 nov', ['De routelijn bovenin onthoudt hoe ver je al bent, ook als de route opnieuw berekend wordt of je de app even sluit', 'De blauwe navigatielijn loopt niet meer door je auto heen']],
       ['v198', '17 nov', ['Navigeer je, dan zie je alleen de flitsers langs je route (geen zee van 📸 meer aan de horizon)', 'Maatjes en testmaatje rijden vloeiend, niet meer schokkerig', 'Liggend staat de ⚡-itemknop niet meer over de 👥-knop', 'Horizon opgeruimd: laadpalen, borden, files en flitsers die ver weg liggen verdwijnen als je schuin kijkt']],

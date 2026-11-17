@@ -38,7 +38,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 119;   // v119: groepsmaatjes live op de kaart, raket ontwijken met een tik
+static const int FW_VERSIE = 120;   // v120: XP-balkje onderin bij +XP uit de app
 // oud:   // v118: internet via telefoon betrouwbaarder na verbinden, log niet meer dubbel
 // oud:   // v117: route als boog bovenin, rijstroken klein onderaan, midden vrij
 // oud:   // v116: route als rechte lijn in het bordje bovenin (zoals de Tesla)
@@ -1204,6 +1204,7 @@ static char nvBaan[14] = ""; static int nvAfrit = 0; static uint32_t goedZoT = 0
 static char nvNaam[26] = "", nvEta[6] = ""; static int nvRest = -1; static uint32_t nvT = 0;   // v85: straat van de volgende afslag, resterende afstand (100 m) en aankomsttijd
 static bool blLijn(); static void tekenLijn(float x0, float x1, float y);   // v116
 struct Maat { char n[12]; float lat, lon; }; static Maat maten[6]; static int matenN = 0; static uint32_t matenT = 0, raketTot = 0;   // v119: groepsmaatjes live en raketten
+static uint32_t xpTot = 0; static int xpFrac = 0, xpN = 0, xpLv = 0;   // v120: +XP uit de app
 static char eNavC = 0; static int eNavD = 0;   // v103
 struct StapPt { float lat, lon; char c; }; static StapPt *stA = nullptr, *stB = nullptr, *stappen = nullptr; static volatile int stapN = 0; static int stNieuwN = 0; static bool stBezig = false;   // v85: afslagen en rotondes op de route
 static const int AW_MAX = 900; static float *awA = nullptr, *awB = nullptr, *awPt = nullptr; static uint8_t *awFA = nullptr, *awFB = nullptr, *awF = nullptr; static volatile int awN = 0; static int awNieuwN = 0; static bool awBezig = false;   // v85: wegen om je heen van de app (bit 1 = begin van een weg, bit 2 = grote weg)
@@ -1237,6 +1238,7 @@ static void parsePhone(char *line) {
     int n = 0; char *q = line + 3; while (*q && n < 6) { char *k = strchr(q, ','); if (!k) break; int L = k - q; if (L > 11) L = 11; memcpy(maten[n].n, q, L); maten[n].n[L] = 0; q = k + 1;
       maten[n].lat = strtof(q, &q); if (*q != ',') break; maten[n].lon = strtof(q + 1, &q); n++; if (*q == ';') q++; else break; }
     matenN = n; matenT = millis(); return; }
+  if (pinOk && !strncmp(line, "XP:", 3)) { int f = 0, n = 0, l = 0; if (sscanf(line + 3, "%d|%d|%d", &f, &n, &l) >= 2) { xpFrac = constrain(f, 0, 1000); xpN = n; xpLv = l; xpTot = millis() + 2600; } return; }   // v120: XP:frac(0-1000)|+n|level
   if (pinOk && !strncmp(line, "RK:", 3)) { raketTot = line[3] == 'X' ? 0 : millis() + 2000; if (raketTot) playGeluid(GL_PLING); return; }   // v119: raket komt eraan
   if (pinOk && !strncmp(line, "HART:", 5)) { bool a = line[5] == '1'; if (a != hartjesAan) { hartjesAan = a; buddyPrefs.putBool("hart", a); } return; }   // v109
   if (pinOk && !strncmp(line, "RT:", 3)) {   // v76: route binnenhalen (B = begin, P = punten, E = klaar, X = gestopt)
@@ -3341,6 +3343,16 @@ static void tekenRaket() {   // v119: raket valt 2 seconden van boven naar Buddy
   triF(x - 10, y - 26, x - 7, y - 36, x - 7, y - 22, 0x8410); triF(x + 10, y - 26, x + 7, y - 36, x + 7, y - 22, 0x8410);
   if (((millis() / 80) & 1)) triF(x - 5, y - 50, x + 5, y - 50, x, y - 62, 0xFD20);
   frame->setTextSize(2); frame->setTextColor(0xFFFF); frame->setCursor(X(120 - 30), Y(196)); frame->print("TIK!"); }
+static void tekenXp() {   // v120: 2,6 s een balkje langs de onderrand dat volloopt, met +XP erboven
+  if (!xpTot) return; int32_t rest = (int32_t)(xpTot - millis()); if (rest <= 0) { xpTot = 0; boxAdd(40, 176, 200, 240); return; }
+  if (menuOpen || venster) return;
+  boxAdd(40, 176, 200, 240);
+  float groei = fminf(1.f, (2600 - rest) / 700.f), f = xpFrac / 1000.f * (.85f + .15f * groei);
+  const float A0 = 2.27f, A1 = .87f, R = 113;   // van linksonder naar rechtsonder
+  for (int i = 0; i <= 40; i++) { float t = i / 40.f, a = A0 + (A1 - A0) * t; circle(120 + cosf(a) * R, 120 + sinf(a) * R, 2.6f, t <= f ? (t > f - .05f ? 0xFFFF : 0x5E5F) : 0x2124); }
+  char b[16]; snprintf(b, sizeof b, "+%d XP", xpN); frame->setTextSize(2); frame->setTextColor(0x5E5F); int w = strlen(b) * 12; frame->setCursor(X(120 - w / 2), Y(186)); frame->print(b);
+  if (xpLv > 0) { snprintf(b, sizeof b, "Lv %d", xpLv); frame->setTextSize(1); frame->setTextColor(0xBDF7); frame->setCursor(X(120 - strlen(b) * 3), Y(206)); frame->print(b); }
+}
 static void drawRand(bool kaart) {
   if (menuOpen || venster || (int32_t)(showTot - millis()) > 0) return;
   uint32_t nu = millis();
@@ -4199,7 +4211,7 @@ void loop(){
  if (menuOpen && (int32_t)(menuTot - millis()) < 0) menuOpen = false;
  updateMood(dt); updateParticles(dt);
  uint32_t drawStartUs=micros();
- drawFace(); drawRand(kaartNu()); tekenRaket(); { bool kn = kaartNu(); if (!kn && !((int32_t)(showTot - millis()) > 0) && !((int32_t)(meterTot - millis()) > 0)) drawKaartKnop(); }   // v84; v110: KAART-knop bovenop
+ drawFace(); drawRand(kaartNu()); tekenRaket(); tekenXp(); { bool kn = kaartNu(); if (!kn && !((int32_t)(showTot - millis()) > 0) && !((int32_t)(meterTot - millis()) > 0)) drawKaartKnop(); }   // v84; v110: KAART-knop bovenop
  uint32_t drawDoneUs=micros();
  flushDirty();
  uint32_t flushDoneUs=drawDoneUs+flushLastUs;  // v16: verzendtijd van het vorige beeld (loopt parallel)
