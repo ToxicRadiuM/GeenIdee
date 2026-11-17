@@ -76,7 +76,12 @@ export class BuddyGroep {
         const p = (b.plek || {})[gm0]; if (Array.isArray(p) && !tab.plek[gm] && p[0] > 50.6 && p[0] < 53.7 && p[1] > 3 && p[1] < 7.4) tab.plek[gm] = [+(+p[0]).toFixed(3), +(+p[1]).toFixed(3)]; }
       await this.state.storage.put(sleutel, tab);
     }
-    return new Response(JSON.stringify({ maand, ...tab }));
+    // v200: privacy: je krijgt alleen je eigen gemeenten terug; van anderen alleen hoeveel gemeenten ze hebben, niet welke
+    const ik = (url.searchParams.get('van') || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 24), mijn = {}, tel = {};
+    for (const [gm, per] of Object.entries(tab.gm)) { let best = null, bv = null; for (const [v, x] of Object.entries(per)) if (!best || x.km > best.km) { best = x; bv = v; }
+      if (!best || best.km < 1) continue; tel[bv] = tel[bv] || { n: best.n, aantal: 0 }; tel[bv].aantal++; if (ik && bv === ik) mijn[gm] = { km: best.km, plek: tab.plek[gm] || null }; }
+    const rang = Object.entries(tel).map(([van, x]) => ({ van, n: x.n, aantal: x.aantal })).sort((a, b) => b.aantal - a.aantal);
+    return new Response(JSON.stringify({ maand, mijn, rang }));
   }
   // ---- ghosts: ritten van de groep (30 dagen bewaard) ----
   async spoorBewaar(request) {
