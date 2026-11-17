@@ -4741,8 +4741,9 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
       var geom = (rt.geometry && rt.geometry.coordinates || []).map(function (c) { return { lat: c[1], lon: c[0] }; });
       /* Voor elke afslag: waar ligt hij op de routelijn? Zo weet Buddy straks of je er voorbij bent, ook als je er niet heel dichtbij kwam */
       var gi = 0; steps.forEach(function (st0) { var bd = 1e9, bi = gi; for (var q = gi; q < geom.length; q++) { var dd = gdist(st0.lat, st0.lon, geom[q].lat, geom[q].lon); if (dd < bd) { bd = dd; bi = q; } if (bd < 5 && dd > 400) break; } st0.gi = bi; gi = bi; });
-      nav = { dest: naar, steps: steps, geom: geom, idx: 1, min: 1e9, said: {}, dist: rt.distance, dur: rt.duration, t: Date.now(), van: 0, via: via || null, pont: heeftPont(rt) };
-      try { localStorage.setItem(NAVKEY, JSON.stringify({ dest: naar, t: Date.now() })); } catch (e) {}
+      var al = opnieuw ? (nav && nav.dest === naar ? navGedaan() : (navHerstelAl || 0)) : 0; navHerstelAl = 0;   /* v199: al gereden stuk van de rit onthouden, ook na opnieuw berekenen of de app opnieuw openen */
+      nav = { dest: naar, steps: steps, geom: geom, idx: 1, min: 1e9, said: {}, dist: rt.distance, dur: rt.duration, t: Date.now(), van: 0, via: via || null, pont: heeftPont(rt), al: al };
+      navBewaar();
       lg('route: ' + Math.round(rt.distance / 100) / 10 + ' km, ' + steps.length + ' stappen' + (opnieuw ? ' (opnieuw berekend)' : ''));
       $('navStop').hidden = false;
       if (opnieuw) { navZeg('Route opnieuw berekend.'); toast('Route opnieuw berekend.'); }
@@ -4773,6 +4774,11 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     var x = document.createElement('button'); x.type = 'button'; x.className = 'rkAnnuleer'; x.textContent = 'Annuleren'; x.addEventListener('click', function () { ov.hidden = true; try { if (window.__keuzeLijnen) window.__keuzeLijnen(null); } catch (e) {} navStat(''); }); ov.appendChild(x);
     ov.hidden = false; try { if (window.__keuzeLijnen) window.__keuzeLijnen(lijst.map(function (c) { return c.rt; })); } catch (e) {}
   }
+  var navHerstelAl = 0;
+  function navGedaan() {   /* meters van de hele rit die je al gereden hebt */
+    if (!nav || !nav.geom) return 0; var g = nav.geom, v = Math.min(nav.van || 0, g.length - 1), d = 0; for (var i = 1; i <= v; i++) d += gdist(g[i - 1].lat, g[i - 1].lon, g[i].lat, g[i].lon); return (nav.al || 0) + d; }
+  function navBewaar() { if (!nav || !nav.dest) return; try { localStorage.setItem(NAVKEY, JSON.stringify({ dest: nav.dest, t: Date.now(), al: Math.round(navGedaan()) })); } catch (e) {} }
+  setInterval(function () { try { navBewaar(); } catch (e) {} }, 15000);
   function navRoute(van, naar, opnieuw) {
     if (navBusy) return; navBusy = true; navLastRoute = T;
     var qs = '?overview=full&geometries=geojson&steps=true';
@@ -4902,7 +4908,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   $('navSpk').addEventListener('change', function () { navSpk = $('navSpk').checked; try { localStorage.setItem(NAVSPKKEY, navSpk ? '1' : '0'); } catch (e) {} if (navSpk) navZeg('Ik zeg de afslagen hardop.'); });
   /* Na herstarten binnen een uur: de laatste bestemming weer oppakken zodra de GPS er is */
   var navHerstel = null;
-  try { var nv = JSON.parse(localStorage.getItem(NAVKEY) || 'null'); if (nv && nv.dest && Date.now() - nv.t < 3600e3) navHerstel = nv.dest; } catch (e) {}
+  try { var nv = JSON.parse(localStorage.getItem(NAVKEY) || 'null'); if (nv && nv.dest && Date.now() - nv.t < 3600e3) { navHerstel = nv.dest; navHerstelAl = +nv.al || 0; } } catch (e) {}
   setInterval(function () {
     if (navHerstel && S.live && lastPos && !nav && !navBusy) {
       var d0 = navHerstel; navHerstel = null;
@@ -5277,7 +5283,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v198';
+  var VERSION = 'v199';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9372,6 +9378,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v199', '17 nov', ['De routelijn bovenin onthoudt hoe ver je al bent, ook als de route opnieuw berekend wordt of je de app even sluit']],
       ['v198', '17 nov', ['Navigeer je, dan zie je alleen de flitsers langs je route (geen zee van 📸 meer aan de horizon)', 'Maatjes en testmaatje rijden vloeiend, niet meer schokkerig', 'Liggend staat de ⚡-itemknop niet meer over de 👥-knop', 'Horizon opgeruimd: laadpalen, borden, files en flitsers die ver weg liggen verdwijnen als je schuin kijkt']],
       ['v197', '17 nov', ['Nieuwe kijkstand: dicht achter je auto, zoals in de Tesla (🧭-knop)', 'Maatjes en je eigen auto op echte grootte als je dichtbij kijkt', 'Testmaatje minder plakkerig: meestal 60–260 m voor of achter je', 'Raket: je ziet groot RAAK, MIS of GEBLOKT, en het geraakte maatje vliegt de lucht in', 'Raket ontwijken: hij ontploft (GERED!)', 'Liggend vallen de geluid-, maatjes- en itemknop niet meer over je snelheid']],
       ['v196', '16 nov', ['Testmaatje rijdt de hele rit mee: over je route, haalt in, laat zich zakken, staat naast je bij het stoplicht, toetert, kletst en schiet af en toe']],
@@ -11129,7 +11136,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
       var trj = []; try { (typeof TRAJ_ZONES !== 'undefined' ? TRAJ_ZONES : []).forEach(function (z) { trj.push([z.a, z.b]); }); (typeof TRAJ_EXTRA !== 'undefined' ? TRAJ_EXTRA : []).forEach(function (z) { trj.push([[z[0], z[1]], [z[2], z[3]]]); }); } catch (e) {}
       if (N && N.geom && N.geom.length > 1) {   /* afstand langs de route */
         var g = N.geom, cum = [0]; for (var i = 1; i < g.length; i++) cum.push(cum[i - 1] + gdist(g[i - 1].lat, g[i - 1].lon, g[i].lat, g[i].lon));
-        var i0 = Math.max(0, N.van || 0), d0 = cum[i0]; lang = Math.max(100, cum[g.length - 1] - d0); var heel = Math.max(100, cum[g.length - 1]);   /* v184: balk = de hele route, jij schuift omhoog */
+        var i0 = Math.max(0, N.van || 0), d0 = cum[i0]; lang = Math.max(100, cum[g.length - 1] - d0); var heel = Math.max(100, cum[g.length - 1] + (N.al || 0));   /* v199: + wat je al reed vóór opnieuw berekenen / app opnieuw openen */   /* v184: balk = de hele route, jij schuift omhoog */
         opPad = function (pla, plo, max) { var best = 1e9, bi = -1; for (var k = i0; k < g.length; k += (g.length - i0 > 3000 ? 3 : 1)) { if (Math.abs(g[k].lat - pla) > .01) continue; var dd = gdist(pla, plo, g[k].lat, g[k].lon); if (dd < best) { best = dd; bi = k; } } return best < (max || 60) ? cum[bi] - d0 : -1; };
         $('rbKop').textContent = (lang / 1000).toFixed(lang < 10000 ? 1 : 0).replace('.', ',') + ' km';
       } else {   /* geen route: 10 km in je rijrichting */
