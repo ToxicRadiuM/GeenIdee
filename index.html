@@ -519,6 +519,26 @@ body.car #carSpel.zichtbaar { display: block; }
 #ritKaart .rkKnoppen { display: flex; justify-content: center; gap: 10px; }
 #ritKaartDeel { min-height: 52px; padding: 0 24px; border-radius: 26px; border: 1px solid #34c759; background: #0b2414; color: #8ff0a8; font: 600 16px var(--f-display); }
 .lvBalk { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+.qRij { display: flex; gap: 10px; align-items: center; margin: 6px 0; }
+.qI { font-size: 20px; width: 26px; text-align: center; }
+.qM { flex: 1; min-width: 0; }
+.qT { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 3px; }
+.qRij.vol .qB i { background: linear-gradient(90deg, #30d158, #8ff0a8); }
+.qRij.vol .qT b { color: #30d158; }
+#xpBalk, #xpPop { display: none; }
+body.car #xpBalk { display: block; position: fixed; z-index: 51; left: 0; right: 0; bottom: 0; height: calc(7px + var(--sa-b)); background: #0009; }
+body.car #xpBalk i { display: block; height: 7px; width: 0; background: linear-gradient(90deg, #5ac8fa, #bf5af2); box-shadow: 0 0 10px #5ac8fa; transition: width 1.2s cubic-bezier(.2,.9,.3,1); }
+body.car #xpBalk b { position: absolute; left: 50%; bottom: calc(10px + var(--sa-b)); transform: translateX(-50%); font-size: 11px; color: #fffc; text-shadow: 0 1px 3px #000; white-space: nowrap; opacity: 0; transition: opacity .4s; }
+body.car #xpBalk.flits b { animation: xpLvF 2.4s ease; }
+body.car #xpBalk.flits i { animation: xpGlim 1s ease; }
+@keyframes xpLvF { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes xpGlim { 0%, 100% { filter: none; } 30% { filter: brightness(1.8); } }
+body.car #xpPop { display: flex; flex-direction: column; align-items: center; position: fixed; z-index: 60; left: 50%; bottom: calc(150px + var(--sa-b)); transform: translate(-50%, 20px) scale(.8); opacity: 0; pointer-events: none; transition: transform .35s cubic-bezier(.2,1.4,.4,1), opacity .3s; text-shadow: 0 2px 6px #000c; }
+body.car #xpPop.aan { opacity: 1; transform: translate(-50%, 0) scale(1); }
+body.car #xpPop b { font-size: 30px; font-weight: 900; color: #8ff0ff; letter-spacing: .5px; }
+body.car #xpPop.groot b { font-size: 40px; color: #ffd60a; }
+body.car #xpPop span { font-size: 14px; color: #fff; font-weight: 600; }
+@media (orientation: landscape) { body.car #xpPop { bottom: calc(90px + var(--sa-b)); } }
 .lvBalk i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffb02e, #ffd27a); border-radius: 5px; transition: width .6s; }
 body.nacht #spel .spBox { filter: brightness(.8); }
 .navRes { display: grid; gap: 6px; }
@@ -1078,6 +1098,13 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     <p class="foot" style="margin:6px 0 0;text-align:left">Tik op <b>ⓘ</b> voor uitleg. Rijstijl 100 = superrustig gereden, elke schrikactie kost punten.</p>
     <p class="foot bsUitleg" id="bsUitleg" hidden></p>
   </section>
+  <section class="buddyStatus" id="qSectie" aria-label="Balken vullen">
+    <div class="bsKop"><b>🎯 Balken vullen</b></div>
+    <div id="qBalken"></div>
+    <p class="foot" style="margin:6px 0 0;text-align:left">Tijdens het rijden zie je onderin je XP-balk vollopen. Elke volle balk geeft extra XP voor Buddy's level.</p>
+  </section>
+  <div id="xpBalk" aria-hidden="true"><i id="xpBalkI"></i><b id="xpLv">Lv 1</b></div>
+  <div id="xpPop" aria-live="polite"></div>
   <section class="topKnoppen" aria-label="Rijden">
     <div class="readout">
     <output class="num" id="spd" for="speed">0</output><span class="unit">KM/H</span>
@@ -1946,16 +1973,16 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
       else if (S.turnS > 6) { S.raRechts = (S.raRechts || 0) + S.turnS * dt; if (S.raRechts > 120) { S.raSum = 0; S.raStart = 0; S.raRechts = 0; } }
       if (!S.raGedaan && !S.asleep) {
         if (S.raSum >= 300) {
-          S.raGedaan = 1; S.dizzyUntil = T + 2.6; setEv('excited', 3.2, 'Helemaal rond! Wheee, ik word draaierig.'); beep('excited'); lg('rotonde: helemaal rond (' + Math.round(S.raSum) + '°)');
+          S.raGedaan = 1; S.dizzyUntil = T + 2.6; setEv('excited', 3.2, 'Helemaal rond! Wheee, ik word draaierig.'); beep('excited'); lg('rotonde: helemaal rond (' + Math.round(S.raSum) + '°)'); try { window.__xp(10, 'Rotonde'); if (!S.raQ) { S.raQ = 1; window.__qTel('rot'); } } catch (e) {}
         } else if (S.raSum >= 60 && T - (S.opRotondeT || -99) < 4 && !S.raKaart) {
-          S.raKaart = 1; S.hop = .6; setEv('excited', 2, 'Rotonde!'); if (window.__scDoe && Math.random() < .35) window.__scDoe('rotonde'); beep('wake'); lg('rotonde: herkend op de kaart'); dagTel('rot'); plekMerk('rotonde');
+          S.raKaart = 1; S.hop = .6; setEv('excited', 2, 'Rotonde!'); if (window.__scDoe && Math.random() < .35) window.__scDoe('rotonde'); beep('wake'); lg('rotonde: herkend op de kaart'); try { window.__xp(10, 'Rotonde'); if (!S.raQ) { S.raQ = 1; window.__qTel('rot'); } } catch (e) {} dagTel('rot'); plekMerk('rotonde');
         }
       }
     }
     /* Klaar met draaien? Dan afrekenen: een gewone rotonde (rechtdoor of rechtsaf) krijgt een kort "Rondje!" */
     if (S.raSum && T - S.raT > 2.5) {
-      if (!S.raGedaan && !S.raKaart && S.raSum >= 150 && !S.asleep && T - S.raStart < 18) { S.hop = .7; S.dizzyUntil = T + .9; setEv('happy', 2.2, 'Rondje! Wheee.'); beep('wake'); dagTel('rot'); lg('rotonde: rondje (' + Math.round(S.raSum) + '°)'); }
-      S.raSum = 0; S.raStart = 0; S.raGedaan = 0; S.raKaart = 0; S.raRechts = 0;
+      if (!S.raGedaan && !S.raKaart && S.raSum >= 150 && !S.asleep && T - S.raStart < 18) { S.hop = .7; S.dizzyUntil = T + .9; setEv('happy', 2.2, 'Rondje! Wheee.'); beep('wake'); dagTel('rot'); try { window.__xp(10, 'Rotonde'); if (!S.raQ) { S.raQ = 1; window.__qTel('rot'); } } catch (e) {} lg('rotonde: rondje (' + Math.round(S.raSum) + '°)'); }
+      S.raSum = 0; S.raStart = 0; S.raGedaan = 0; S.raKaart = 0; S.raRechts = 0; S.raQ = 0;
     }
     if (Math.abs(S.latG) > 0.5 && S.speed > 25 && T - S.lastCorner > 6 && !S.asleep) {
       S.lastCorner = T; S.style = Math.max(0, S.style - 6); setEv('worried', 2.4, 'Rustig in de bocht!'); beep('startled');
@@ -4123,7 +4150,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
       setTimeout(function () { try { nogDaarVraag(e); } catch (x) {} }, 4500);   /* v93 */
       if (e.limit == null) setEv('alert', 2.5, 'Flitser gepasseerd.');
       else if (e.over) { S.flash = 1; setEv('startled', 3.5, 'Flitser gepasseerd met ' + Math.round(e.v) + ' bij limiet ' + e.limit + '.'); beep('startled'); S.style = Math.max(0, S.style - 15); }
-      else { if (typeof ondeugend !== 'undefined' && ondeugend) { try { startGag(Math.random() < .35 ? 'gooi' : 'tong'); } catch (e) {} } else setEv('happy', 3, 'Netjes! Flitser gepasseerd.'); beep('wake'); S.love = Math.min(100, S.love + 6); mem.netjes = (mem.netjes || 0) + 1; wk().netjes++; save(); try { ritFlitsNetjes(); } catch (e) {} }
+      else { if (typeof ondeugend !== 'undefined' && ondeugend) { try { startGag(Math.random() < .35 ? 'gooi' : 'tong'); } catch (e) {} } else setEv('happy', 3, 'Netjes! Flitser gepasseerd.'); beep('wake'); S.love = Math.min(100, S.love + 6); mem.netjes = (mem.netjes || 0) + 1; wk().netjes++; save(); try { ritFlitsNetjes(); } catch (e) {} try { window.__xp(5, 'Netjes langs de flitser', 1, 1); window.__qTel('netjes'); } catch (e) {} }
     } else if (e.type === 'traj_start') {
       setEv('alert', 2.5, 'Trajectcontrole begint. Ik bewaak het gemiddelde.');
     } else if (e.type === 'traj_end') {
@@ -4829,7 +4856,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     if (nav.vanNieuw != null) nav.van = nav.vanNieuw;
     return best;
   }
-  function navAankomst() { navZeg('Je bent er!'); setEv('excited', 4, 'We zijn er! 🏁'); beep('race'); lg('route: aangekomen'); navStop(true); }
+  function navAankomst() { navZeg('Je bent er!'); setEv('excited', 4, 'We zijn er! 🏁'); beep('race'); lg('route: aangekomen'); navStop(true); try { window.__xp(25, 'Aangekomen 🏁', 0, 1); window.__qTel('aankomst'); } catch (e) {} }
   function navFix(lat, lon, acc) {
     if (!nav || !S.live) return;
     var st = nav.steps[nav.idx];
@@ -4845,7 +4872,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     var stappen = 0;
     while (st && (d < 20 || voorbij || (nav.min < dicht && d > nav.min + 35)) && stappen < 8) {
       if (st.type === 'arrive') { navAankomst(); return; }
-      lg('route: afslag ' + nav.idx + ' voorbij (' + navTekst(st) + ')' + (voorbij ? ' [voortgang]' : ''));
+      lg('route: afslag ' + nav.idx + ' voorbij (' + navTekst(st) + ')' + (voorbij ? ' [voortgang]' : '')); try { window.__xp(5, 'Afslag goed genomen'); window.__qTel('afslag'); } catch (e) {}
       nav.idx++; nav.min = 1e9; nav.said = {}; st = nav.steps[nav.idx]; stappen++;
       if (!st) return;
       d = gdist(lat, lon, st.lat, st.lon);
@@ -5174,7 +5201,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
 
   /* ---------- Levels: Buddy groeit mee ---------- */
   var LVNAMEN = ['Nieuwkomer', 'Ritmaatje', 'Wegwijs', 'Vaste rijder', 'Flitserspotter', 'Rotonde-ridder', 'Snelwegheld', 'Filefluisteraar', 'Routekoning', 'Nachtnavigator', 'Weg-legende', 'Kilometervreter', 'Buddy-meester', 'Asfalt-artiest', 'Grootmeester', 'Wegwijze wijsgeer', 'Kaartkampioen', 'Snelweg-sensei', 'Horizon-held', 'Legende van de A12', 'Mythische maatje', 'Kosmische cruiser', 'Ster van de snelweg', 'Ultieme Buddy', 'Buddy-god'];   /* v85: 25 levels */
-  function lvXp() { return Math.round((mem.kmLive || 0) + (mem.netjes || 0) * 5 + (mem.gemeld || 0) * 10 + (mem.ritLive || 0) * 3 + (mem.laadPauzes || 0) * 2); }
+  function lvXp() { return Math.round((mem.kmLive || 0) + (mem.netjes || 0) * 5 + (mem.gemeld || 0) * 10 + (mem.ritLive || 0) * 3 + (mem.laadPauzes || 0) * 2 + (mem.xpB || 0)); }
   function lvVan(xp) { return Math.floor(Math.sqrt(xp / 20)) + 1; }
   function lvGrens(l) { return 20 * (l - 1) * (l - 1); }
   function lvNaam(l) { return LVNAMEN[Math.min(l, LVNAMEN.length) - 1] + (l > LVNAMEN.length ? ' ' + (l - LVNAMEN.length + 1) : ''); }
@@ -5190,6 +5217,57 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     }
   }
   setInterval(lvToon, 5000);
+
+  /* ---------- v201: live XP: +XP in beeld tijdens het rijden, XP-balk onderin, en dag/week-balken onder Buddy ---------- */
+  var xpWacht = {}, xpRij = [], xpBezig = 0;
+  function xpDag() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  var QDAG = [{ k: 'km', i: '🛣️', n: '50 km rijden', max: 50 }, { k: 'rot', i: '🔄', n: '5 rotondes', max: 5 }, { k: 'netjes', i: '😇', n: '3× netjes langs een flitser', max: 3 }, { k: 'afslag', i: '↪️', n: '10 afslagen goed genomen', max: 10 }];
+  var QWEEK = [{ k: 'km', i: '🛣️', n: '300 km rijden', max: 300 }, { k: 'rust', i: '🧘', n: '5 ritten met rijstijl 80+', max: 5 }, { k: 'gm', i: '🏰', n: '3 gemeenten veroveren', max: 3 }, { k: 'raak', i: '🚀', n: '3× raket raak', max: 3 }, { k: 'aankomst', i: '🏁', n: '5× aangekomen met navigatie', max: 5 }];
+  function qData() {
+    var d = xpDag(), w = typeof weekIdx === 'function' ? weekIdx() : 0;
+    if (!mem.qDag || mem.qDag.d !== d) mem.qDag = { d: d, v: {}, klaar: {} };
+    if (!mem.qWeek || mem.qWeek.w !== w) mem.qWeek = { w: w, v: {}, klaar: {} };
+    return { dag: mem.qDag, week: mem.qWeek };
+  }
+  function qTel(k, n) {   /* een balk vullen; vol = bonus-XP */
+    var q = qData(); n = n || 1;
+    [[q.dag, QDAG, 50, 'Dagbalk'], [q.week, QWEEK, 150, 'Weekbalk']].forEach(function (x) { var Q = x[1].filter(function (y) { return y.k === k; })[0]; if (!Q) return;
+      x[0].v[k] = Math.min(Q.max, (x[0].v[k] || 0) + n);
+      if (x[0].v[k] >= Q.max && !x[0].klaar[k]) { x[0].klaar[k] = 1; setTimeout(function () { xpGeef(x[2], x[3] + ' vol: ' + Q.n, 0, 1); try { window.__salto && window.__salto(); } catch (e) {} setEv('excited', 4, '🎯 ' + x[3] + ' vol: ' + Q.n + '! +' + x[2] + ' XP'); }, 600); } });
+    save(); qToon();
+  }
+  function xpGeef(n, tekst, alGeteld, groot) {   /* alGeteld: telt al mee in het level (km, flitsers), dan alleen het plaatje */
+    var nu = Date.now(); if (!groot && xpWacht[tekst] && nu - xpWacht[tekst] < 15000) return; xpWacht[tekst] = nu;
+    if (!alGeteld) { mem.xpB = (mem.xpB || 0) + n; save(); }
+    xpRij.push({ n: n, t: tekst, groot: groot }); xpVolgende(); try { lvToon(); } catch (e) {} xpBalkToon();
+  }
+  window.__xp = xpGeef; window.__qTel = qTel;
+  function xpVolgende() {
+    if (xpBezig || !xpRij.length) return; var x = xpRij.shift(), el = $('xpPop'); if (!el) return; xpBezig = 1;
+    el.innerHTML = '<b>+' + x.n + ' XP</b><span></span>'; el.lastChild.textContent = x.t; el.className = 'aan' + (x.groot ? ' groot' : '');
+    var bk = $('xpBalk'); if (bk) { bk.classList.remove('flits'); void bk.offsetWidth; bk.classList.add('flits'); }
+    setTimeout(function () { el.className = ''; setTimeout(function () { xpBezig = 0; xpVolgende(); }, 350); }, x.groot ? 2600 : 1700);
+  }
+  function xpBalkToon() {
+    var xp = lvXp(), l = lvVan(xp), a = lvGrens(l), b = lvGrens(l + 1), f = (xp - a) / Math.max(1, b - a), i = $('xpBalkI'), t = $('xpLv');
+    if (i) i.style.width = Math.max(1, Math.round(f * 1000) / 10) + '%'; if (t) t.textContent = 'Lv ' + l + ' · ' + (xp - a) + '/' + (b - a);
+  }
+  setInterval(xpBalkToon, 3000); setTimeout(xpBalkToon, 500);
+  /* km: elke 10 km een plaatje (de km tellen al mee), de balken vullen per km */
+  var xpKm0 = null, xpRust0 = 0;
+  setInterval(function () { var k = mem.kmLive || 0; if (xpKm0 == null) { xpKm0 = k; return; } var d = k - xpKm0; if (d >= 1) { var hele = Math.floor(d); xpKm0 += hele; qTel('km', hele); if (Math.floor(k / 10) > Math.floor((k - hele) / 10)) xpGeef(10, '10 km gereden', 1); }
+    /* elke 5 minuten rustig rijden (rijstijl nog 90+) = bonus */
+    if (S.live && (S.speed || 0) > 20) { xpRust0 += 5; if (xpRust0 >= 300) { xpRust0 = 0; if ((S.style || 0) >= 90) xpGeef(5, 'Lekker rustig gereden'); } } }, 5000);
+  function qToon() {
+    var box = $('qBalken'); if (!box) return; var q = qData(), h = '';
+    [['Vandaag', q.dag, QDAG, 50], ['Deze week', q.week, QWEEK, 150]].forEach(function (x) {
+      h += '<p class="sub" style="margin:10px 0 4px">' + x[0] + ' <small style="opacity:.6">· vol = +' + x[3] + ' XP</small></p>';
+      x[2].forEach(function (Q) { var v = x[1].v[Q.k] || 0, f = Math.min(1, v / Q.max), vol = f >= 1;
+        h += '<div class="qRij' + (vol ? ' vol' : '') + '"><span class="qI">' + Q.i + '</span><div class="qM"><div class="qT"><span>' + Q.n + '</span><b>' + (vol ? '✓' : Math.floor(v) + '/' + Q.max) + '</b></div><div class="lvBalk qB"><i style="width:' + Math.round(f * 100) + '%"></i></div></div></div>'; });
+    });
+    box.innerHTML = h;
+  }
+  setTimeout(qToon, 300); setInterval(qToon, 15000);
 
   /* ---------- Goedemorgen-briefing: eerste rit van de dag ---------- */
   function briefing() {
@@ -5286,7 +5364,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v200';
+  var VERSION = 'v201';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -5992,7 +6070,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     try { localStorage.setItem(UCKEY, JSON.stringify(ucams)); } catch (e) {}
     applyCamData(); lg('eigen flitser opgeslagen (' + kind + ', ' + ucams.length + ')');
     if (grp && pbase()) {
-      gSeen[u.id] = 1; mem.gemeld = (mem.gemeld || 0) + 1; wk().gemeld++; save();
+      gSeen[u.id] = 1; mem.gemeld = (mem.gemeld || 0) + 1; wk().gemeld++; save(); try { window.__xp(10, 'Melding voor de groep', 1, 1); } catch (e) {}
       placeOf(u.lat, u.lon).then(function (pl) {
         try { grLijstAdd('uit', '📸 Jij meldde ' + (kind === 'mobile' ? 'een mobiele flitser' : 'een vaste flitser') + (pl ? ' bij ' + pl : ''), u.t, 'cam:' + u.id); } catch (e) {}
         return fetch(gUrl('/add', '&id=' + u.id + '&lat=' + u.lat.toFixed(6) + '&lon=' + u.lon.toFixed(6) + '&k=' + kind + (u.limit != null ? '&lim=' + u.limit : '') + '&n=' + encodeURIComponent(myWho()) + '&p=' + encodeURIComponent(pl)));
@@ -6852,7 +6930,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     r.van = r0.van || (r0.pts && r0.pts.length >= 2 ? [r0.pts[0], r0.pts[1]] : null);
     r.naar = lastPos ? [+lastPos.lat.toFixed(5), +lastPos.lon.toFixed(5)] : (r0.pts && r0.pts.length >= 2 ? [r0.pts[r0.pts.length - 2], r0.pts[r0.pts.length - 1]] : null);
     setTimeout(function () { try { if (window.ritAdressen) window.ritAdressen(r); } catch (e) {} }, 1500);
-    ritten.push(r); if (ritten.length > 80) ritten = ritten.slice(-80); lg('rit bewaard: ' + r.km + ' km, ' + r.min + ' min, stijl ' + r.stijl); try { window.__spoorStuur && window.__spoorStuur(); window.__veroverStuur && window.__veroverStuur(); } catch (e) {}   /* v134 */
+    ritten.push(r); try { if (r.km >= 2) { window.__xp(Math.max(3, Math.round((r.stijl || 0) / 5)), 'Rit klaar · rijstijl ' + r.stijl, 0, 1); if ((r.stijl || 0) >= 80) window.__qTel('rust'); } } catch (e) {} if (ritten.length > 80) ritten = ritten.slice(-80); lg('rit bewaard: ' + r.km + ' km, ' + r.min + ' min, stijl ' + r.stijl); try { window.__spoorStuur && window.__spoorStuur(); window.__veroverStuur && window.__veroverStuur(); } catch (e) {}   /* v134 */
     try { localStorage.setItem(RITKEY, JSON.stringify(ritten)); } catch (e) {}
     /* week en badges */
     var w = wk(); w.ritten++; w.stijlSom += r.stijl; if (r.g && r.g > (w.gmax || 0)) w.gmax = r.g; try { stijlWkAdd(r.t0, r.stijl); } catch (e) {}
@@ -7361,7 +7439,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   function raketKomt(b, wie) {
     var el = document.createElement('div'); el.id = 'raketIn'; el.textContent = '🚀'; document.body.appendChild(el);
     var ontweken = false; setEv('startled', 2, '🚀 ' + wie + ' vuurt een raket af! TIK op Buddy!'); beep('wake'); say('Raket! Tik!');
-    function tik(e) { if (ontweken) return; ontweken = true; try { window.__autoFx && window.__autoFx('zij'); } catch (x) {} el.textContent = '💥'; el.classList.add('mis'); grootBeeld('🛡️', 'GERED! Raket opgeblazen', '#30d158'); tel('ontweken'); setEv('excited', 3, '💨 Ontweken! Haha, mis ' + wie + '!'); beep('excited'); itemZend(b.van, 'itmis' + Date.now().toString(36)); lg('item: raket van ' + wie + ' ontweken'); }
+    function tik(e) { if (ontweken) return; ontweken = true; try { window.__xp(15, 'Raket ontweken 🛡️', 0, 1); } catch (x) {} try { window.__autoFx && window.__autoFx('zij'); } catch (x) {} el.textContent = '💥'; el.classList.add('mis'); grootBeeld('🛡️', 'GERED! Raket opgeblazen', '#30d158'); tel('ontweken'); setEv('excited', 3, '💨 Ontweken! Haha, mis ' + wie + '!'); beep('excited'); itemZend(b.van, 'itmis' + Date.now().toString(36)); lg('item: raket van ' + wie + ' ontweken'); }
     var doel = document.querySelector('main'); if (doel) doel.addEventListener('pointerdown', tik, { once: true }); el.addEventListener('pointerdown', tik, { once: true });
     window.__raketTik = tik; try { window.__scStuur && window.__scStuur('RK:1'); } catch (e) {}
     setTimeout(function () { window.__raketTik = null; if (doel) doel.removeEventListener('pointerdown', tik); setTimeout(function () { el.remove(); }, 400); if (ontweken) return;
@@ -7528,7 +7606,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   }
   function vvVerwerk(d) {
     d = vvNorm(d); vvData = d; vvT = Date.now(); var mijn = Object.keys(d.mijn || {}), oud = mem.vvMijn || null;
-    if (oud) { mijn.filter(function (g) { return oud.indexOf(g) < 0; }).slice(0, 2).forEach(function (g) { setEv('excited', 4, '🏰 Je hebt ' + g + ' veroverd!'); lg('veroverd: ' + g); });
+    if (oud) { mijn.filter(function (g) { return oud.indexOf(g) < 0; }).slice(0, 2).forEach(function (g) { setEv('excited', 4, '🏰 Je hebt ' + g + ' veroverd!'); lg('veroverd: ' + g); try { window.__xp(30, g + ' veroverd 🏰', 0, 1); window.__qTel('gm'); } catch (e) {} });
       oud.filter(function (g) { return mijn.indexOf(g) < 0; }).slice(0, 2).forEach(function (g) { var t = '😤 Iemand uit de groep pikte ' + g + ' van je!'; setEv('angry', 4, t); toast(t); lg(t); }); }
     mem.vvMijn = mijn; save(); vvToon();
   }
@@ -7665,7 +7743,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
       if (Date.now() >= sterTot) { raketKomt(b, wie); return; }
       setEv('excited', 3, '⚡ Ha! ' + wie + ' vuurde een raket af, maar met nitro voel je er niks van!'); itemZend(b.van, 'itblok' + Date.now().toString(36)); return;
     }
-    if (/^itraak/.test(b.r)) { tel('raketRaak'); grootBeeld('💥', 'RAAK! ' + wie + ' gaat ondersteboven', '#ff9f0a'); try { window.__maatBoem && window.__maatBoem(b.van); } catch (e) {} setEv('excited', 4, '💥 Raak! ' + wie + ' ging ondersteboven!'); beep('excited'); say('Raak!'); return; }
+    if (/^itraak/.test(b.r)) { tel('raketRaak'); try { window.__xp(20, 'Raket raak 🚀', 0, 1); window.__qTel('raak'); } catch (e) {} grootBeeld('💥', 'RAAK! ' + wie + ' gaat ondersteboven', '#ff9f0a'); try { window.__maatBoem && window.__maatBoem(b.van); } catch (e) {} setEv('excited', 4, '💥 Raak! ' + wie + ' ging ondersteboven!'); beep('excited'); say('Raak!'); return; }
     if (/^itblok/.test(b.r)) { grootBeeld('⚡', 'GEBLOKT! ' + wie + ' had nitro', '#ffd60a'); setEv('sad', 3, '⚡ ' + wie + ' had nitro. Raket deed niks!'); return; }
     if (/^itcad/.test(b.r)) { var m = '🎁 ' + wie + ' heeft je cadeautje gevonden!'; setEv('happy', 4, m); toast(m); beep('pet'); grLijstAdd && grLijstAdd('in', m); }
   };
@@ -9400,6 +9478,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v201', '17 nov', ['🎮 Live XP: tijdens het rijden zie je +XP in beeld (rotonde, afslag, netjes langs flitser, aankomst, raket raak, veroverde gemeente…) en onderin loopt een XP-balk vol', '🎯 Balken vullen: onder Buddy dag- en weekbalken; elke volle balk geeft extra XP']],
       ['v200', '17 nov', ['🔄-knop in het Groep-tab: vernieuwt in één tik leden, ranglijst, berichten, gemelde flitsers en live maatjes', '👥 Maatjes live staat nu standaard aan en werkt tot 10 km (was 5 km)', '🏰 Veroverkaart als vlakken: groen = van jou, rood = van een ander (zonder naam); de ranglijst toont alleen aantallen']],
       ['v199', '17 nov', ['De routelijn bovenin onthoudt hoe ver je al bent, ook als de route opnieuw berekend wordt of je de app even sluit', 'De blauwe navigatielijn loopt niet meer door je auto heen']],
       ['v198', '17 nov', ['Navigeer je, dan zie je alleen de flitsers langs je route (geen zee van 📸 meer aan de horizon)', 'Maatjes en testmaatje rijden vloeiend, niet meer schokkerig', 'Liggend staat de ⚡-itemknop niet meer over de 👥-knop', 'Horizon opgeruimd: laadpalen, borden, files en flitsers die ver weg liggen verdwijnen als je schuin kijkt']],
