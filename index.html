@@ -9498,7 +9498,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
-      ['v201', '17 nov', ['🎮 Live XP: tijdens het rijden zie je +XP in beeld (rotonde, afslag, netjes langs flitser, aankomst, raket raak, veroverde gemeente…) en onderin loopt een XP-balk vol', '🎯 Balken vullen: onder Buddy dag- en weekbalken; elke volle balk geeft extra XP', 'Navigatie stuurt je niet meer de snelweg af en via een rotonde er weer op (zoals op de A2 en A59): de route blijft op de snelweg']],
+      ['v201', '17 nov', ['🎮 Live XP: tijdens het rijden zie je +XP in beeld (rotonde, afslag, netjes langs flitser, aankomst, raket raak, veroverde gemeente…) en onderin loopt een XP-balk vol', '🎯 Balken vullen: onder Buddy dag- en weekbalken; elke volle balk geeft extra XP', 'De lucht loopt nu helemaal door tot de horizon, geen zwarte balk meer (vooral te zien bij zonsondergang)', 'Navigatie stuurt je niet meer de snelweg af en via een rotonde er weer op (zoals op de A2 en A59): de route blijft op de snelweg']],
       ['v200', '17 nov', ['🔄-knop in het Groep-tab: vernieuwt in één tik leden, ranglijst, berichten, gemelde flitsers en live maatjes', '👥 Maatjes live staat nu standaard aan en werkt tot 10 km (was 5 km)', '🏰 Veroverkaart als vlakken: groen = van jou, rood = van een ander (zonder naam); de ranglijst toont alleen aantallen']],
       ['v199', '17 nov', ['De routelijn bovenin onthoudt hoe ver je al bent, ook als de route opnieuw berekend wordt of je de app even sluit', 'De blauwe navigatielijn loopt niet meer door je auto heen']],
       ['v198', '17 nov', ['Navigeer je, dan zie je alleen de flitsers langs je route (geen zee van 📸 meer aan de horizon)', 'Maatjes en testmaatje rijden vloeiend, niet meer schokkerig', 'Liggend staat de ⚡-itemknop niet meer over de 👥-knop', 'Horizon opgeruimd: laadpalen, borden, files en flitsers die ver weg liggen verdwijnen als je schuin kijkt']],
@@ -11757,7 +11757,9 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     window.__kaartNacht = function () { kaartNacht(document.body.classList.contains('nacht')); };
     function lucht() {   /* v129: echte lucht boven de horizon (dag blauw, nacht donker) */
       if (!map || !map.setSky) return; var n = document.body.classList.contains('nacht'); kaartNacht(n);
-      var zh = zonHoogte(); if (zh > -7 && zh < 7) { try { map.setSky({ 'sky-color': '#ff9a4d', 'horizon-color': '#ffd27a', 'fog-color': '#f6b48a', 'sky-horizon-blend': .7, 'horizon-fog-blend': .6, 'fog-ground-blend': .7 }); } catch (e) {} return; }   /* v137: zonsopkomst en -ondergang */
+      var ach = function (a, b) { try { $('rijMap').style.background = 'linear-gradient(180deg, ' + a + ' 0%, ' + b + ' 70%, ' + b + ' 100%)'; } catch (e) {} };   /* v201: geen zwarte balk tussen lucht en horizon: wat de kaart daar niet tekent krijgt dezelfde luchtkleur */
+      var zh = zonHoogte(); if (zh > -7 && zh < 7) { ach('#ff9a4d', '#ffd27a'); try { map.setSky({ 'sky-color': '#ff9a4d', 'horizon-color': '#ffd27a', 'fog-color': '#f6b48a', 'sky-horizon-blend': .7, 'horizon-fog-blend': .6, 'fog-ground-blend': .7 }); } catch (e) {} return; }   /* v137: zonsopkomst en -ondergang */
+      ach(n ? '#0b1a33' : '#6fb4ff', n ? '#24324d' : '#cfe6ff');
       try { map.setSky(n ? { 'sky-color': '#0b1a33', 'horizon-color': '#24324d', 'fog-color': '#1a2433', 'sky-horizon-blend': .6, 'horizon-fog-blend': .6, 'fog-ground-blend': .6 } : { 'sky-color': '#6fb4ff', 'horizon-color': '#cfe6ff', 'fog-color': '#e2eefb', 'sky-horizon-blend': .5, 'horizon-fog-blend': .5, 'fog-ground-blend': .85 }); } catch (e) {}
     }
     window.__lucht = lucht; setInterval(lucht, 5 * 60e3); setInterval(function () { try { kaartNacht(document.body.classList.contains('nacht')); } catch (e) {} }, 3000);   /* v191: ook na het wisselen van kaartstijl */
