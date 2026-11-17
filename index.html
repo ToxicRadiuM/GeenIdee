@@ -5450,7 +5450,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v202';
+  var VERSION = 'v203';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9575,6 +9575,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v203', '17 nov', ['Balken vullen en het weekdoel staan alleen nog in het Buddy-tab (niet meer in elk tabblad); de gemeenten-verzameling staat bij Ritten']],
       ['v202', '17 nov', ['📲 Buddy in de browser? Op Android staat bovenin een knop voor de echte app, op een iPhone uitleg om Buddy op je beginscherm te zetten', '🏆 Ranglijst opnieuw ontworpen: gekleurd rondje met je level, balkje t.o.v. de koploper, badges als telletje (tik voor alles)', '⭐ Levels van de groep met balkjes in het Groep-tab, en een seintje als een collega een level omhoog gaat', '🤝 Groepsbalk: samen 2000 km per week; vol = +100 XP voor iedereen (ook onder Buddy)', '🤖 Buddy+ (v120) laat +XP zien met een balkje langs de onderrand', 'Buddy is in het rijscherm een stuk groter (staand en liggend)']],
       ['v201', '17 nov', ['🎮 Live XP: tijdens het rijden zie je +XP in beeld (rotonde, afslag, netjes langs flitser, aankomst, raket raak, veroverde gemeente…) en onderin loopt een XP-balk vol', '🎯 Balken vullen: onder Buddy dag- en weekbalken; elke volle balk geeft extra XP', 'De lucht loopt nu helemaal door tot de horizon, geen zwarte balk meer (vooral te zien bij zonsondergang)', 'Navigatie stuurt je niet meer de snelweg af en via een rotonde er weer op (zoals op de A2 en A59): de route blijft op de snelweg']],
       ['v200', '17 nov', ['🔄-knop in het Groep-tab: vernieuwt in één tik leden, ranglijst, berichten, gemelde flitsers en live maatjes', '👥 Maatjes live staat nu standaard aan en werkt tot 10 km (was 5 km)', '🏰 Veroverkaart als vlakken: groen = van jou, rood = van een ander (zonder naam); de ranglijst toont alleen aantallen']],
@@ -9679,7 +9680,7 @@ body.car:not(.kaartrij) #rijGeluidKnop { bottom: auto; top: calc(66px + var(--sa
     zet($('kopOnderweg'), 'kaart');
     zet($('kopGroep'), 'groep');
     zet($('kopScherm'), 'plus'); zet($('kopPlusNav'), 'buddy plus'); zet($('kopOver'), 'buddy');   /* v164: Buddy+ heeft zijn eigen tab */   /* v83: schermpje en 'Over Buddy' onder het Buddy-tabblad */
-    zet($('buddyStatus'), 'buddy');
+    zet($('buddyStatus'), 'buddy'); zet($('qSectie'), 'buddy'); zet($('wdKaart'), 'buddy'); zet($('kopGemeente'), 'ritten');   /* v203: balken en weekdoel alleen bij Buddy, gemeenten bij Ritten */
     ['kopInst', 'kopHulp', 'kopBouw'].forEach(function (id) { zet($(id), 'meer'); });
     zet($('kopRitten'), 'ritten'); zet($('kopRecords'), 'ritten'); zet($('kopBadges'), 'ritten'); zet($('kopLaden'), 'ritten'); zet($('kopPlezier'), 'buddy'); zet($('kopAnim'), 'plus');   /* v85: eigen Ritten-tab */
     zet($('verTxt'), 'meer');
