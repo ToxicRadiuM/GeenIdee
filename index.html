@@ -2168,7 +2168,8 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       if (magHier) {
         mem.launchLive = (mem.launchLive || 0) + 1; var wq = wk(); if (!wq.best100 || tt < wq.best100) wq.best100 = tt;
         if (S.sprintKurve) mem.last100Kurve = S.sprintKurve;
-        if (!mem.best100Live || tt < mem.best100Live) { mem.best100Live = tt; mem.best100LiveD = Date.now(); if (S.sprintKurve) mem.best100Kurve = S.sprintKurve; save(); if (typeof grLid === 'function') setTimeout(function () { grLid(true); }, 1500); setTimeout(function () { try { recordNieuw('nul'); } catch (e) {} }, 500); }
+        if (S.sprintKurve && !mem.best100Kurve) { mem.best100Kurve = S.sprintKurve; mem.kurveNietRecord = 1; save(); if (typeof grLid === 'function') setTimeout(function () { grLid(true); }, 1500); }   /* v210: nog geen grafiek van je record (oud record)? Dan je eerste volledige 0-100 met grafiek, zodat de groep hem ook ziet */
+        if (!mem.best100Live || tt < mem.best100Live) { mem.best100Live = tt; mem.best100LiveD = Date.now(); if (S.sprintKurve) { mem.best100Kurve = S.sprintKurve; mem.kurveNietRecord = 0; } save(); if (typeof grLid === 'function') setTimeout(function () { grLid(true); }, 1500); setTimeout(function () { try { recordNieuw('nul'); } catch (e) {} }, 500); }
       } else lg('0-100 niet voor het leaderboard: hier geldt zeker ' + S.roadLim);
     }
     S.flagUntil = T + 9; S.starUntil = T + 7; S.flagMsg = fmt1(tt) + ' s'; S.flagRec = rec;
@@ -5346,6 +5347,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     box.innerHTML = h;
   }
   setTimeout(qToon, 300); setInterval(qToon, 15000);
+  setTimeout(function () { if (!mem.best100Kurve && mem.last100Kurve && mem.last100Kurve.v && mem.last100Kurve.v.length > 2) { mem.best100Kurve = mem.last100Kurve; mem.kurveNietRecord = 1; save(); try { grLid(true); } catch (e) {} } }, 4000);   /* v210: wel een laatste sprint-grafiek, geen record-grafiek: die delen */
   /* v202: Android in de browser? Dan een balkje om de echte app te installeren (7 dagen weg met ✕) */
   setTimeout(function () { var b = $('apkBalk'); if (!b) return; var weg = +(localStorage.getItem('dashboardmaatje-apkweg') || 0);
     var ios = /iPhone|iPad|iPod/i.test(navigator.userAgent), losStaand = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
@@ -5474,7 +5476,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v209';
+  var VERSION = 'v210';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9678,6 +9680,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v210', '18 nov', ['Record-sprint-grafiek: had je record al van vóór de grafiek? Dan deelt Buddy je eerstvolgende volledige 0–100 met grafiek, zodat collega\'s hem ook zien']],
       ['v209', '18 nov', ['Flitserkaart (Kaart-tab) laadt meteen helemaal in plaats van één hoekje', 'De start-duel-vraag verschijnt alleen nog in het rijscherm, niet over de tabbladen', 'In de app valt de titel niet meer onder de klok en de statusbalk']],
       ['v208', '18 nov', ['Liggend ligt de 10 km-balk plat bovenin het midden, zodat hij niet meer door de knoppen rechts loopt', 'Liggend staat de itemknop niet meer over de 😜-knop']],
       ['v207', '18 nov', ['De XP-balk onderin is dikker en laat altijd je level en XP zien', '🎮 Eerste persoon staand: Buddy wordt je stuur, onderin het midden, en draait mee in de bochten']],
