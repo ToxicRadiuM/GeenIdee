@@ -553,6 +553,9 @@ body.car #carSpel.zichtbaar { display: block; }
 .qMissie .qB i { background: linear-gradient(90deg, #bf5af2, #ff2d92) !important; } .dobbel { display: inline-block; animation: dobbel 1.1s ease-out; } @keyframes dobbel { 0% { transform: rotate(0) scale(.4); } 70% { transform: rotate(700deg) scale(1.2); } 100% { transform: rotate(720deg) scale(1); } }
 #sneeuw { position: fixed; inset: 0; pointer-events: none; z-index: 31; display: none; overflow: hidden; } body.car.dec #sneeuw { display: block; }
 #sneeuw i { position: absolute; top: -20px; color: #fff; opacity: .55; font-style: normal; animation: sneeuwVal linear infinite; text-shadow: 0 0 4px #fff8; } @keyframes sneeuwVal { to { transform: translate(30px, 110vh) rotate(180deg); } }
+#rijOnderweg { display: none; } body.car.kaartrij #rijOnderweg:not([hidden]) { display: block; position: fixed; z-index: 46; left: calc(12px + var(--sa-l)); top: calc(var(--kt, 12px) + 112px); max-width: 46vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 6px 12px; border-radius: 16px; border: 1px solid #30d15877; background: rgba(16,20,24,.8); color: #fff; font: 700 13px var(--f-body); }
+@media (orientation: landscape) { body.car.kaartrij #rijOnderweg:not([hidden]) { top: calc(var(--kt, 12px) + 92px); max-width: 26vw; } }
+#grOnderweg { margin: 0 0 10px; padding: 8px 12px; border-radius: 12px; background: rgba(48,209,88,.12); border: 1px solid #30d15855; font-weight: 700; font-size: 14px; }
 .qRij { display: flex; gap: 10px; align-items: center; margin: 6px 0; }
 .qI { font-size: 20px; width: 26px; text-align: center; }
 .qM { flex: 1; min-width: 0; }
@@ -1321,7 +1324,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   </details>
   <details class="kop" id="kopGroep" open><summary><span class="kopT">👥 Groep</span><span class="kopS">wie, ranglijst, berichten</span></summary>
     <div class="kopIn">
-      <div id="grKaart" class="grKaart"><div><b id="grKaartNaam">Jouw groep</b><span id="grKaartSub">nog niet geladen</span></div><span class="grKnoppen"><button class="btn grTand" id="grVernieuw" type="button" aria-label="Groep vernieuwen">🔄</button><button class="btn grTand" id="grInstKnop" type="button" aria-label="Groep instellen" aria-expanded="false">⚙️</button></span></div>
+      <div id="grOnderweg" hidden></div><div id="grKaart" class="grKaart"><div><b id="grKaartNaam">Jouw groep</b><span id="grKaartSub">nog niet geladen</span></div><span class="grKnoppen"><button class="btn grTand" id="grVernieuw" type="button" aria-label="Groep vernieuwen">🔄</button><button class="btn grTand" id="grInstKnop" type="button" aria-label="Groep instellen" aria-expanded="false">⚙️</button></span></div>
       <div id="grLeden" class="grLeden" aria-label="Wie zitten er in de groep"></div>
       <div id="grSamen" class="grSamen"></div>
       <div id="grLevels" class="grLevels"></div>
@@ -5384,6 +5387,12 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     box.innerHTML = h;
   }
   setTimeout(qToon, 300); setInterval(qToon, 15000);
+  /* v216: wie uit de groep rijdt er nu (ergens in Nederland)? Alleen namen, geen plek */
+  window.__rijdersToon = function () { var R = window.__rijders, ok = R && Date.now() - R.t < 70e3 && R.l.length, el = $('rijOnderweg');
+    if (!el) { el = document.createElement('button'); el.type = 'button'; el.id = 'rijOnderweg'; document.body.appendChild(el); el.addEventListener('click', function () { var L = (window.__rijders || {}).l || []; toast(L.length ? '🚗 Nu onderweg: ' + L.map(function (x) { return x.n + (x.a ? ' (' + x.a + ')' : ''); }).join(', ') : 'Er rijdt nu niemand anders'); }); }
+    el.hidden = !ok; if (ok) el.textContent = '🚗 ' + (R.l.length === 1 ? R.l[0].n + ' rijdt ook' : R.l.length + ' maatjes rijden ook');
+    var g = $('grOnderweg'); if (g) { g.hidden = !ok; if (ok) g.textContent = '🚗 Nu onderweg: ' + R.l.map(function (x) { return x.n; }).join(', '); } };
+  setInterval(function () { try { window.__rijdersToon(); } catch (e) {} }, 15000);
   /* =================== v215: garderobe, dagmissie, weer op je route, weekrapport en december =================== */
   var DECEMBER = new Date().getMonth() === 11;
   var OUTFIT = [
@@ -5595,7 +5604,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v215';
+  var VERSION = 'v216';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7666,6 +7675,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       if (m.t === 'p' && m.van) { var nieuw = !window.__live[m.van]; window.__live[m.van] = { van: m.van, n: m.n, a: m.a, lat: m.lat, lon: m.lon, hd: m.hd, v: m.v, dk: m.dk || '', eta: +m.eta || 0, rx: Date.now() };
         if (nieuw && (!live.gezien[m.van] || Date.now() - live.gezien[m.van] > 30 * 60e3)) { live.gezien[m.van] = Date.now(); var t = '📡 ' + (m.n || 'Een maatje') + ' rijdt live bij je in de buurt!'; setEv('excited', 3.5, t); beep('pet'); toast(t); lg('live: ' + (m.n || '?') + ' in de buurt'); } }
       else if (m.t === 'weg' && m.van) delete window.__live[m.van];
+      else if (m.t === 'rijders' && Array.isArray(m.l)) { var oud = (window.__rijders && window.__rijders.l || []).map(function (x) { return x.van; }); window.__rijders = { t: Date.now(), l: m.l.slice(0, 12) }; m.l.forEach(function (x) { if (oud.indexOf(x.van) < 0 && window.__rijders.eerder) toast('🚗 ' + (x.n || 'Iemand') + ' is ook gaan rijden'); }); window.__rijders.eerder = 1; try { window.__rijdersToon(); } catch (e) {} }
       else if (m.t === 'x' && m.d && m.d.r) { try { window.__itemPing({ van: m.van, n: m.n, r: String(m.d.r), lat: m.d.lat, lon: m.d.lon, e: m.d.e }); } catch (x) {} } };
   }
   function liveSluit() { if (live.ws) { try { live.ws.send(JSON.stringify({ t: 'stil' })); live.ws.close(); } catch (e) {} } live.ws = null; live.open = false; window.__live = {}; }
@@ -9808,6 +9818,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v216', '18 nov', ['🚗 Tijdens het rijden zie je linksboven welke collega\'s óók rijden, waar ook in Nederland (alleen naam, geen plek); tik erop voor de lijst. Ook in het Groep-tab']],
       ['v215', '18 nov', ['🎩 Garderobe onder Buddy: elk level speelt iets vrij (zonnebril, petje, koptelefoon, kroon, oogkleuren…); je hoedje staat ook achter je naam in de ranglijst', '🎲 Dagmissie: elke dag een andere bonusopdracht, vol = +60 XP', '🌨️ Weer op je route: Buddy waarschuwt voor gladheid, sneeuw, ijzel, storm of onweer op het moment dat jij daar rijdt', '🗞️ Weekrapport op zondagavond (en altijd via de knop onder Buddy) met km-podium van de groep', '🎄 December: sneeuw in het rijscherm, kerstmuts, sneeuwballen in plaats van raketten en elke dag een adventscadeautje']],
       ['v214', '18 nov', ['🟠 Je routelijn kleurt nu oranje waar het langzamer rijdt (matrixborden boven jouw rijbaan op 70 of lager), rood blijft voor echte files van de ANWB', 'Snelwegen zijn op de kaart niet meer oranje: overdag wit, \'s nachts grijsblauw']],
       ['v213', '18 nov', ['Zuiniger met de gratis Worker-opslag: posities alleen nog via Buddy live, logboek hooguit eens per kwartier', 'Eerste persoon staand: de klok staat onder de achteruitkijkspiegel in plaats van erdoorheen']],

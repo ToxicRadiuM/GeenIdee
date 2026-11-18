@@ -51,6 +51,10 @@ export class BuddyGroep {
       const lat = +m.lat, lon = +m.lon;
       if (!(lat > 50.6 && lat < 53.7 && lon > 3.0 && lon < 7.4)) return;
       ik.lat = +lat.toFixed(5); ik.lon = +lon.toFixed(5); ik.hd = Math.round(+m.hd || 0) % 360; ik.v = Math.max(0, Math.min(250, Math.round(+m.v || 0))); ik.ts = nu;
+      // v216: elke 20 s krijg je te horen wie er uit de groep óók rijdt (alleen naam en auto, geen plek of afstand)
+      if (!ik.wieT || nu - ik.wieT > 20e3) { ik.wieT = nu; const l = [];
+        for (const ander of this.state.getWebSockets()) { if (ander === ws) continue; const b = ander.deserializeAttachment(); if (b && b.ts && nu - b.ts < 30e3 && b.v >= 5) l.push({ van: b.van, n: b.n, a: b.a }); }
+        try { ws.send(JSON.stringify({ t: 'rijders', l })); } catch (e) {} }
       ws.serializeAttachment(ik);
       const dk = String(m.dk || '').replace(/[^a-z0-9]/g, '').slice(0, 12), eta = Math.max(0, Math.min(36000, Math.round(+m.eta || 0)));   // v204: doelcode (gehusseld) en resttijd, voor 'wie is er eerst'
       const uit = JSON.stringify({ t: 'p', van: ik.van, n: ik.n, a: ik.a, lat: ik.lat, lon: ik.lon, hd: ik.hd, v: ik.v, dk, eta });
