@@ -1849,7 +1849,8 @@ static void gagStep(float dt) {
     if (kerst && random(4) == 0) k = 37;
     if (nieuwjaar && random(3) == 0) k = 40;
     startGag(k);
-    nextGagT = t + GAGS[k].dur + (robotModus ? frand(14, 32) : (stil ? frand(8, 16) : frand(15, 30))) * animFactor * karFactor * vervF;   // v51: als robotje ook gewoon even rondkijken en 'saai' zijn
+    bool tafelDag = robotModus && klokOk() && ([]{ int hh, mm; lokaleTijd(hh, mm); return hh >= 8 && hh < 21; })();   // v121: op tafel overdag levendiger
+    nextGagT = t + GAGS[k].dur + (robotModus ? (tafelDag ? frand(6, 14) : frand(14, 32)) : (stil ? frand(8, 16) : frand(15, 30))) * animFactor * karFactor * vervF;   // v51: als robotje ook gewoon even rondkijken en 'saai' zijn
     return;
   }
   float tt = t - gagT0; const GagDef &d = GAGS[gagAct];
@@ -2295,7 +2296,8 @@ static void slaapStap() {
   { bool aanPc = Serial.isPlugged(); uint32_t wacht = robotModus ? 60UL * 60000 : 10UL * 60000;   // v92: aan de pc (usb-verbinding) nooit, als robotje op tafel pas na een uur
     if (geparkeerd && !aanPc && nu - laatsteActie > wacht && nu - laatsteBeweging > 60000 && !menuOpen && otaPct < 0) diepSlapen(robotModus ? "een uur niets op tafel" : "10 minuten niets");
     if (wekkerWakker) { if (telDichtbij() || (ok && v > 3) || (nu > 8000 && laatsteBeweging > 8000 && nu - laatsteBeweging < 5000)) wekkerWakker = false; else if (nu > 40000 && !aanPc && otaPct < 0) diepSlapen("wekker: niemand in de buurt"); } }   // v121: alleen even kijken, niemand? meteen weer slapen
-  bool moetSlapen = nu - laatsteActie > 3UL * 60000 && !menuOpen;   // 3 minuten niks = dommelen (scherm zacht)
+  int hhS = 12, mmS = 0; if (klokOk()) lokaleTijd(hhS, mmS); uint32_t dommel = (robotModus && hhS >= 8 && hhS < 21) ? 15UL * 60000 : 3UL * 60000;   // v121: op tafel overdag pas na 15 min dommelen
+  bool moetSlapen = nu - laatsteActie > dommel && !menuOpen;   // 3 minuten niks = dommelen (scherm zacht)
   if (moetSlapen && !slaapt) { if (!schaapT) schaapT = nu; if (nu - schaapT < 4500) moetSlapen = false; } else if (!moetSlapen) schaapT = 0;   // v88: eerst een schaapje over zijn hoofd
   if (moetSlapen != slaapt) { slaapt = moetSlapen; if (!slaapt) { mood = STARTLED; lastMood = -1; idleMoodUntilMs = nu + 1500; } }
   int hh = 12, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
@@ -2967,6 +2969,13 @@ static void robotStap(float dt) {
   if (klokOk()) { static int laatsteU = -1; int hh, mm; lokaleTijd(hh, mm);
     if (mm == 0 && hh != laatsteU && gagAct < 0 && !slaapt) { laatsteU = hh; startGag(22); snprintf(robotTxt, sizeof robotTxt, "Het is %d uur!", hh); gagMsg = robotTxt; playGeluid(GL_DINGDONG); }
     if (mm != 0 && laatsteU == hh) {} }
+  if (robotModus && klokOk() && !slaapt && gagAct < 0 && !menuOpen && !venster) {   // v121: dagritme op tafel
+    int hh, mm; lokaleTijd(hh, mm); time_t tn = time(nullptr); struct tm tv; localtime_r(&tn, &tv); static int ritmeDag = -1; static uint8_t ritmeGedaan = 0;
+    if (tv.tm_yday != ritmeDag) { ritmeDag = tv.tm_yday; ritmeGedaan = 0; }
+    struct { int h, m; const char *t; } RITME[] = { {10, 0, "Koffietijd! Voor jou een bakkie, voor mij een volt."}, {12, 30, "Lunchtijd! Ik neem een broodje stroom."}, {15, 0, "Theetje? Nog even volhouden!"}, {17, 30, "Bijna naar huis! Zullen we de auto in?"} };
+    for (int i = 0; i < 4; i++) if (!(ritmeGedaan & (1 << i)) && hh == RITME[i].h && mm >= RITME[i].m && mm < RITME[i].m + 10) { ritmeGedaan |= 1 << i; startGag(22); gagMsg = RITME[i].t; playGeluid(GL_DINGDONG); break; }
+    static uint32_t halloT = 0; if (telDichtbij() && (hh >= 8 && hh < 21) && millis() - halloT > 25UL * 60000 && millis() - laatsteActie > 6UL * 60000 && random(400) == 0) { halloT = millis(); char nm[20]; naamDeel(nm, sizeof nm); static char ht[48]; snprintf(ht, sizeof ht, random(2) ? "Hoi%s! Ik ben er nog hoor." : "Psst%s... even aaien?", nm); startGag(22); gagMsg = ht; }
+  }
   // slaapmutsje 's avonds, uitrekken 's ochtends
   { static bool wasSlaapt = false; int hh = 12, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
     if (slaapt && !wasSlaapt && (hh >= 21 || hh < 6)) { slaapMuts = true; playGeluid(GL_SLAAP); }
