@@ -5485,7 +5485,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v213';
+  var VERSION = 'v214';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9695,6 +9695,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v214', '18 nov', ['Snelwegen zijn op de kaart niet meer oranje (dat leek op file): overdag wit, \'s nachts grijsblauw']],
       ['v213', '18 nov', ['Zuiniger met de gratis Worker-opslag: posities alleen nog via Buddy live, logboek hooguit eens per kwartier', 'Eerste persoon staand: de klok staat onder de achteruitkijkspiegel in plaats van erdoorheen']],
       ['v212', '18 nov', ['Klok staand bovenin tussen de knoppen', 'Liggend: knoppen onderin staan boven de XP-balk, knoppen rechtsboven niet meer over elkaar, navigatiebalk weer in het midden', 'Kaart-tab: de kaart schuift niet meer over de tabbalk']],
       ['v211', '18 nov', ['Groep-tab opgeruimd: geen dubbele ledenrij en levels-lijst meer, de weeklijst toont top 3 en jou (rest met één tik), groepsbalk compacter', '⭐ Level staat nu als eigen ranglijst bij Alle ranglijsten', '🕐 Klok in het rijscherm, onder je snelheid']],
@@ -11965,8 +11966,10 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
         if (l.type === 'background') zet(id, 'background-color', '#14181d');
         else if (l.type === 'fill') zet(id, 'fill-color', /water/.test(id) ? '#0c1d2b' : /park|wood|grass|landcover|forest|green|farm|scrub/.test(id) ? '#16201a' : /building/.test(id) ? '#23272c' : '#191d22');
         else if (l.type === 'fill-extrusion') zet(id, 'fill-extrusion-color', '#2b3036');
-        else if (l.type === 'line') zet(id, 'line-color', /water|river|stream|canal/.test(id) ? '#0c1d2b' : /casing/.test(id) ? '#0d1013' : /motorway|trunk/.test(id) ? '#8a5a26' : /primary|secondary/.test(id) ? '#4a4f57' : '#353a41');
+        else if (l.type === 'line') zet(id, 'line-color', /water|river|stream|canal/.test(id) ? '#0c1d2b' : /casing/.test(id) ? '#0d1013' : /motorway|trunk/.test(id) ? '#5d6878' : /primary|secondary/.test(id) ? '#4a4f57' : '#353a41');
         else if (l.type === 'symbol') { zet(id, 'text-color', '#c3cad3'); zet(id, 'text-halo-color', '#0d1013'); } });
+      /* v214: snelwegen overdag niet meer oranje/geel (leek op file), maar wit met grijze rand; 's nachts grijsblauw */
+      if (!n) lagen.forEach(function (l) { if (l.type !== 'line' || EIGEN.test(l.id) || !/motorway|trunk/.test(l.id)) return; try { map.setPaintProperty(l.id, 'line-color', /casing/.test(l.id) ? '#9aa3ad' : '#ffffff'); } catch (e) {} });
     }
     window.__kaartNacht = function () { kaartNacht(document.body.classList.contains('nacht')); };
     function lucht() {   /* v129: echte lucht boven de horizon (dag blauw, nacht donker) */
