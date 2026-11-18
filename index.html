@@ -9695,7 +9695,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
-      ['v214', '18 nov', ['Snelwegen zijn op de kaart niet meer oranje (dat leek op file): overdag wit, \'s nachts grijsblauw']],
+      ['v214', '18 nov', ['🟠 Je routelijn kleurt nu oranje waar het langzamer rijdt (matrixborden boven jouw rijbaan op 70 of lager), rood blijft voor echte files van de ANWB', 'Snelwegen zijn op de kaart niet meer oranje: overdag wit, \'s nachts grijsblauw']],
       ['v213', '18 nov', ['Zuiniger met de gratis Worker-opslag: posities alleen nog via Buddy live, logboek hooguit eens per kwartier', 'Eerste persoon staand: de klok staat onder de achteruitkijkspiegel in plaats van erdoorheen']],
       ['v212', '18 nov', ['Klok staand bovenin tussen de knoppen', 'Liggend: knoppen onderin staan boven de XP-balk, knoppen rechtsboven niet meer over elkaar, navigatiebalk weer in het midden', 'Kaart-tab: de kaart schuift niet meer over de tabbalk']],
       ['v211', '18 nov', ['Groep-tab opgeruimd: geen dubbele ledenrij en levels-lijst meer, de weeklijst toont top 3 en jou (rest met één tik), groepsbalk compacter', '⭐ Level staat nu als eigen ranglijst bij Alle ranglijsten', '🕐 Klok in het rijscherm, onder je snelheid']],
@@ -11396,12 +11396,24 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
         for (var k = 0; k < it.pts.length; k++) if (gdist(g.lat, g.lon, it.pts[k][0], it.pts[k][1]) < 45) return true; if (it.pts.length > 1) for (k = 0; k < it.pts.length - 1; k++) { var a = it.pts[k], c = it.pts[k + 1]; if (gdist(g.lat, g.lon, (a[0] + c[0]) / 2, (a[1] + c[1]) / 2) < 45) return true; } return false; }); });
     }
     window.__fileVlaggen = fileVlaggen;
+    function rustigVlaggen(geom) {   /* v214: oranje = hier rijdt het langzamer: matrixborden boven jouw rijbaan op je route met 70 of lager (op de snelweg). Rood blijft alleen voor echte files (ANWB/NDW) */
+      var uit = geom.map(function () { return false; }), M = window.__msiItems ? window.__msiItems() : []; if (!M.length || geom.length < 2) return uit;
+      var la0 = Math.min.apply(null, geom.map(function (g) { return g.lat; })) - .01, la1 = Math.max.apply(null, geom.map(function (g) { return g.lat; })) + .01;
+      M.forEach(function (b) { if (b.s == null || b.s > 70 || !b.w || b.lat < la0 || b.lat > la1) return; var bi = -1, bd = 60;
+        for (var i = 0; i < geom.length; i++) { var d = gdist(b.lat, b.lon, geom[i].lat, geom[i].lon); if (d < bd) { bd = d; bi = i; } } if (bi < 0) return;
+        if (b.b != null) { var j = Math.min(geom.length - 1, bi + 1), i0 = j === bi ? bi - 1 : bi, br = peilingG(geom[i0], geom[j]); if (Math.abs(((b.b - br + 540) % 360) - 180) > 45) return; }
+        var d0 = 0; for (var k = bi; k < geom.length && d0 < 1200; k++) { uit[k] = true; if (k + 1 < geom.length) d0 += gdist(geom[k].lat, geom[k].lon, geom[k + 1].lat, geom[k + 1].lon); } });
+      return uit;
+    }
+    function peilingG(a, c) { var y = Math.sin((c.lon - a.lon) * Math.PI / 180) * Math.cos(c.lat * Math.PI / 180), x = Math.cos(a.lat * Math.PI / 180) * Math.sin(c.lat * Math.PI / 180) - Math.sin(a.lat * Math.PI / 180) * Math.cos(c.lat * Math.PI / 180) * Math.cos((c.lon - a.lon) * Math.PI / 180); return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; }
     function routeTeken() {
       var N = window.__nav && window.__nav.nu(); if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return;
       var vk = window.__verkeerItems ? window.__verkeerItems() : [], t = (N ? N.t : 0) + '|' + vk.length + '|' + Math.floor(Date.now() / 60000); if (t === routeT) return; routeT = t;
       var vlag = N ? fileVlaggen(N.geom, vk) : []; window.__routeFile = vlag;   /* v128: rood waar je route door een file gaat */
-      var feats = []; if (N) { var run = [], rood = vlag[0]; N.geom.forEach(function (g, i) { var r = vlag[i]; if (r !== rood && run.length) { run.push([g.lon, g.lat]); feats.push({ type: 'Feature', properties: { kl: rood ? '#ff2d2d' : '#3db7ff', kr: rood ? '#7a0000' : '#0b4f8a' }, geometry: { type: 'LineString', coordinates: run } }); run = []; rood = r; } run.push([g.lon, g.lat]); });
-        if (run.length > 1) feats.push({ type: 'Feature', properties: { kl: rood ? '#ff2d2d' : '#3db7ff', kr: rood ? '#7a0000' : '#0b4f8a' }, geometry: { type: 'LineString', coordinates: run } }); }
+      var oranje = N ? rustigVlaggen(N.geom) : []; if (N) vlag = vlag.map(function (v, i) { return v ? 2 : oranje[i] ? 1 : 0; });
+      var KL = ['#3db7ff', '#ff9f0a', '#ff2d2d'], KR = ['#0b4f8a', '#8a4b00', '#7a0000'];
+      var feats = []; if (N) { var run = [], rood = vlag[0]; N.geom.forEach(function (g, i) { var r = vlag[i]; if (r !== rood && run.length) { run.push([g.lon, g.lat]); feats.push({ type: 'Feature', properties: { kl: KL[rood || 0], kr: KR[rood || 0] }, geometry: { type: 'LineString', coordinates: run } }); run = []; rood = r; } run.push([g.lon, g.lat]); });
+        if (run.length > 1) feats.push({ type: 'Feature', properties: { kl: KL[rood || 0], kr: KR[rood || 0] }, geometry: { type: 'LineString', coordinates: run } }); }
       var data = { type: 'FeatureCollection', features: feats };
       if (map.getSource('route')) map.getSource('route').setData(data);
       else { map.addSource('route', { type: 'geojson', data: data });
