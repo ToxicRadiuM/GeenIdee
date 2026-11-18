@@ -531,6 +531,28 @@ body.car #carSpel.zichtbaar { display: block; }
 .grLvRij { display: flex; align-items: center; gap: 10px; margin: 7px 0; } .grLvRij .qM { flex: 1; } .grLvRij.ik .qT span { font-weight: 700; }
 .grLvRij .lvNr { min-width: 34px; height: 34px; border-radius: 17px; display: grid; place-items: center; font: 800 13px var(--f-display); background: #ffb02e22; color: #ffb02e; border: 2px solid #ffb02e88; }
 .grWkMeer { list-style: none; text-align: center; margin-top: 4px; } .grWkMeer .btn { width: 100%; min-height: 40px; }
+.gdLijst { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; margin-top: 8px; }
+.gdItem { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255,255,255,.03); color: inherit; font: 600 11px var(--f-body); }
+.gdItem > span { font-size: 26px; line-height: 1.1; height: 30px; display: grid; place-items: center; } .gdItem.aan { border-color: #30d158; background: rgba(48,209,88,.12); } .gdItem.dicht { opacity: .45; }
+.gdOog { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff3; }
+#outfit { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+#outfit .ofH { position: absolute; left: 50%; top: calc(var(--hs) * -.2); transform: translateX(-50%) rotate(-8deg); font-size: calc(var(--hs) * .34); line-height: 1; filter: drop-shadow(0 4px 6px #0007); }
+#outfit .ofO { position: absolute; left: 50%; top: 27%; transform: translateX(-50%); font-size: calc(var(--hs) * .42); line-height: 1; }
+#outfit .ofX { position: absolute; inset: -4%; border-radius: 50%; box-shadow: 0 0 calc(var(--hs) * .08) #ffd60a99; animation: ofGlim 2.4s ease-in-out infinite; } @keyframes ofGlim { 50% { box-shadow: 0 0 calc(var(--hs) * .14) #ffd60acc; } }
+.ofMuts { position: absolute; left: 50%; top: calc(var(--hs) * -.2); width: calc(var(--hs) * .44); height: calc(var(--hs) * .34); transform: translateX(-50%) rotate(-10deg); }
+.ofMuts::before { content: ''; position: absolute; left: 6%; right: 6%; bottom: 0; height: 26%; background: #fff; border-radius: 40px; box-shadow: 0 3px 6px #0005; }
+.ofMuts::after { content: ''; position: absolute; left: 18%; right: 18%; bottom: 20%; height: 82%; background: linear-gradient(160deg, #ff4d4d, #c4161c); clip-path: polygon(0 100%, 100% 100%, 70% 0); }
+.ofMuts i { position: absolute; right: 2%; top: -6%; width: 22%; aspect-ratio: 1; background: #fff; border-radius: 50%; z-index: 1; box-shadow: 0 2px 4px #0005; }
+#weekRapport { position: fixed; inset: 0; z-index: 9500; background: rgba(0,0,0,.6); display: grid; place-items: center; padding: 16px; } #weekRapport[hidden] { display: none; }
+.wrKaart { width: min(420px, 100%); max-height: 88vh; overflow: auto; background: var(--card, #1c2026); border: 1px solid var(--line); border-radius: 22px; padding: 18px; box-shadow: 0 20px 50px #000a; }
+.wrKaart h2 { margin: 0 0 4px; font: 800 24px var(--f-display); text-transform: none; letter-spacing: 0; color: var(--ink); border: 0; padding: 0; } .wrKaart h2::before, .wrKaart h2::after { display: none; } .wrGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+.wrGrid div { background: rgba(255,255,255,.04); border-radius: 14px; padding: 10px; } .wrGrid b { display: block; font: 800 22px var(--f-display); } .wrGrid small { opacity: .7; }
+.wrPodium { display: flex; align-items: flex-end; justify-content: center; gap: 8px; margin: 14px 0 4px; } .wrPodium div { flex: 1; text-align: center; border-radius: 12px 12px 4px 4px; padding: 8px 4px; font-size: 13px; background: rgba(255,255,255,.06); }
+.wrPodium .p1 { height: 96px; background: linear-gradient(180deg, #ffd60a55, #ffd60a18); } .wrPodium .p2 { height: 74px; } .wrPodium .p3 { height: 58px; background: linear-gradient(180deg, #ff9f0a40, #ff9f0a12); }
+.qMissie { border: 1px solid #bf5af266; background: linear-gradient(135deg, rgba(191,90,242,.14), transparent); border-radius: 14px; padding: 10px 12px; margin-top: 4px; }
+.qMissie .qB i { background: linear-gradient(90deg, #bf5af2, #ff2d92) !important; } .dobbel { display: inline-block; animation: dobbel 1.1s ease-out; } @keyframes dobbel { 0% { transform: rotate(0) scale(.4); } 70% { transform: rotate(700deg) scale(1.2); } 100% { transform: rotate(720deg) scale(1); } }
+#sneeuw { position: fixed; inset: 0; pointer-events: none; z-index: 31; display: none; overflow: hidden; } body.car.dec #sneeuw { display: block; }
+#sneeuw i { position: absolute; top: -20px; color: #fff; opacity: .55; font-style: normal; animation: sneeuwVal linear infinite; text-shadow: 0 0 4px #fff8; } @keyframes sneeuwVal { to { transform: translate(30px, 110vh) rotate(180deg); } }
 .qRij { display: flex; gap: 10px; align-items: center; margin: 6px 0; }
 .qI { font-size: 20px; width: 26px; text-align: center; }
 .qM { flex: 1; min-width: 0; }
@@ -1132,7 +1154,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   </header>
 
   <section class="stage" aria-label="Robotje">
-    <div class="helmet"><div class="bezel"><canvas id="face" width="480" height="480" role="img" aria-label="Gezicht van het robotje"></canvas></div></div>
+    <div class="helmet"><div id="outfit" aria-hidden="true"></div><div class="bezel"><canvas id="face" width="480" height="480" role="img" aria-label="Gezicht van het robotje"></canvas></div></div>
     <div class="mood" aria-live="polite">
       <span class="mood-name" id="moodName">Wakker</span>
       <span class="thought" id="thought">Waar gaan we heen?</span>
@@ -1165,6 +1187,12 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     <div id="qSamen" class="grSamen" style="margin-top:12px"></div>
     <p class="foot" style="margin:6px 0 0;text-align:left">Tijdens het rijden zie je onderin je XP-balk vollopen. Elke volle balk geeft extra XP voor Buddy's level.</p>
   </section>
+  <section class="buddyStatus" id="garderobe" aria-label="Garderobe">
+    <div class="bsKop"><b>🎩 Garderobe</b><small id="gdUitleg" style="opacity:.7">elk level speelt iets vrij</small></div>
+    <div id="gdLijst" class="gdLijst"></div>
+    <button type="button" class="btn" id="wrOpen" style="width:100%;margin-top:12px">🗞️ Mijn weekrapport</button>
+  </section>
+  <div id="weekRapport" hidden><div class="wrKaart" role="dialog" aria-label="Weekrapport"><div id="wrInhoud"></div><button type="button" class="btn primary" id="wrDicht" style="width:100%;margin-top:14px">Top!</button></div></div>
   <div id="xpBalk" aria-hidden="true"><i id="xpBalkI"></i><b id="xpLv">Lv 1</b></div>
   <div id="xpPop" aria-live="polite"></div>
   <section class="topKnoppen" aria-label="Rijden">
@@ -1609,6 +1637,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   var TAU = Math.PI * 2;
   var css = getComputedStyle(document.documentElement);
   function tok(n, d) { return css.getPropertyValue(n).trim() || d; }
+  window.__oogKleur = function (c) { EYE = c || tok('--eye', '#CFF7FF'); };   /* v215: garderobe */
   var SCREEN = tok('--screen', '#06080C'), EYE = tok('--eye', '#CFF7FF'), BLUSH = tok('--blush', '#FF8FA3'), HEART = tok('--heart', '#FF5A6E');
   var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   function rand(a, b) { return a + Math.random() * (b - a); }
@@ -5355,6 +5384,87 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     box.innerHTML = h;
   }
   setTimeout(qToon, 300); setInterval(qToon, 15000);
+  /* =================== v215: garderobe, dagmissie, weer op je route, weekrapport en december =================== */
+  var DECEMBER = new Date().getMonth() === 11;
+  var OUTFIT = [
+    { id: 'bril', i: '🕶️', n: 'Zonnebril', lv: 2, p: 'ogen' }, { id: 'blauw', o: '#5ac8fa', n: 'Blauwe ogen', lv: 3, p: 'kleur' }, { id: 'strik', i: '🎀', n: 'Strikje', lv: 4, p: 'hoofd' },
+    { id: 'pet', i: '🧢', n: 'Petje', lv: 5, p: 'hoofd' }, { id: 'groen', o: '#30d158', n: 'Groene ogen', lv: 6, p: 'kleur' }, { id: 'koptel', i: '🎧', n: 'Koptelefoon', lv: 7, p: 'hoofd' },
+    { id: 'hoed', i: '🎩', n: 'Hoge hoed', lv: 8, p: 'hoofd' }, { id: 'goud', o: '#ffd60a', n: 'Gouden ogen', lv: 9, p: 'kleur' }, { id: 'nerd', i: '🤓', n: 'Brilletje', lv: 10, p: 'ogen' },
+    { id: 'kroon', i: '👑', n: 'Kroon', lv: 12, p: 'hoofd' }, { id: 'roze', o: '#ff8fc8', n: 'Roze ogen', lv: 14, p: 'kleur' }, { id: 'glans', i: '✨', n: 'Gouden gloed', lv: 16, p: 'extra' },
+    { id: 'muts', muts: 1, n: 'Kerstmuts', lv: 1, p: 'hoofd', dec: 1 }
+  ];
+  function ofZichtbaar() { return OUTFIT.filter(function (o) { return !o.dec || DECEMBER || (mem.outfit && mem.outfit.hoofd === o.id); }); }
+  function ofKrijg() { mem.outfit = mem.outfit || {}; if (DECEMBER && mem.outfit.hoofd == null && !mem.outfit.mutsAuto) { mem.outfit.hoofd = 'muts'; mem.outfit.mutsAuto = 1; save(); } return mem.outfit; }
+  function ofItem(id) { return OUTFIT.filter(function (o) { return o.id === id; })[0]; }
+  function ofToon() {
+    var O = ofKrijg(), el = $('outfit'); if (!el) return; var h = '', hd = ofItem(O.hoofd), og = ofItem(O.ogen), ex = ofItem(O.extra);
+    if (ex) h += '<i class="ofX"></i>'; if (hd) h += hd.muts ? '<div class="ofMuts"><i></i></div>' : '<span class="ofH">' + hd.i + '</span>'; if (og) h += '<span class="ofO">' + og.i + '</span>';
+    el.innerHTML = h; var kl = ofItem(O.kleur); try { window.__oogKleur && window.__oogKleur(kl ? kl.o : null); } catch (e) {}
+    var lv = lvVan(lvXp()), box = $('gdLijst'); if (!box) return;
+    box.innerHTML = ofZichtbaar().map(function (o) { var open = lv >= o.lv || o.dec, aan = O[o.p] === o.id; return '<button type="button" class="gdItem' + (aan ? ' aan' : '') + (open ? '' : ' dicht') + '" data-of="' + o.id + '"><span>' + (o.o ? '<i class="gdOog" style="background:' + o.o + '"></i>' : o.muts ? '🎄' : o.i) + '</span>' + o.n + '<small>' + (open ? (aan ? '✓ aan' : '') : '🔒 Lv ' + o.lv) + '</small></button>'; }).join('');
+  }
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('.gdItem'); if (!b) return; var o = ofItem(b.getAttribute('data-of')); if (!o) return; var O = ofKrijg();
+    if (!o.dec && lvVan(lvXp()) < o.lv) { toast('🔒 Dit speel je vrij op level ' + o.lv); return; }
+    O[o.p] = O[o.p] === o.id ? '' : o.id; save(); ofToon(); try { window.__salto && window.__salto(); } catch (x) {} lg('garderobe: ' + o.n + (O[o.p] ? ' aan' : ' uit'));
+    try { grLid(true); } catch (x) {} });
+  window.__outfitCode = function () { var O = mem.outfit || {}, i = OUTFIT.findIndex(function (o) { return o.id === O.hoofd; }); return i >= 0 ? 'of' + i : ''; };
+  window.__outfitEmoji = function (code) { var m = /^of(\d+)$/.exec(code || ''), o = m && OUTFIT[+m[1]]; return o ? (o.muts ? '🎅' : o.i) : ''; };
+  setTimeout(ofToon, 400); setInterval(function () { var lv = lvVan(lvXp()); if (ofToon.lv && lv > ofToon.lv) { var nw = OUTFIT.filter(function (o) { return o.lv > ofToon.lv && o.lv <= lv && !o.dec; }); if (nw.length) { var t = '🎁 Nieuw in je garderobe: ' + nw.map(function (o) { return o.n; }).join(', ') + '!'; setEv('excited', 4, t); toast(t); } } ofToon.lv = lv; ofToon(); }, 20000);
+
+  /* ---- 🎲 dagmissie ---- */
+  var MISSIES = [{ k: 'rot', n: 'Neem 3 rotondes', max: 3 }, { k: 'netjes', n: 'Rij 2× netjes langs een flitser', max: 2 }, { k: 'km', n: 'Rij 30 km', max: 30 }, { k: 'afslag', n: 'Neem 6 afslagen goed met navigatie', max: 6 },
+    { k: 'rust', n: 'Rij een rit met rijstijl 80+', max: 1 }, { k: 'aankomst', n: 'Kom 1× aan met navigatie', max: 1 }, { k: 'slip', n: 'Rij 1 minuut in iemands slipstream', max: 1 }, { k: 'kruis', n: 'Kruis een maatje (tegenovergestelde richting)', max: 1 }];
+  function missie() { var d = xpDag(); if (!mem.missie || mem.missie.d !== d) { var h = 0, t = d + (mijnId || ''); for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0; var pool = MISSIES.filter(function (m) { return m.k !== 'slip' && m.k !== 'kruis' || Object.keys(window.__live || {}).length; }); mem.missie = { d: d, k: (pool[h % pool.length] || MISSIES[0]).k, v: 0, klaar: 0, nieuw: 1 }; save(); } return mem.missie; }
+  var qTelOud = qTel; qTel = function (k, n) { var m = missie(); if (m.k === k && !m.klaar) { var M = MISSIES.filter(function (x) { return x.k === k; })[0]; m.v = Math.min(M.max, m.v + (n || 1)); if (m.v >= M.max) { m.klaar = 1; setTimeout(function () { xpGeef(60, '🎲 Dagmissie gehaald!', 0, 1); setEv('excited', 4, '🎲 Dagmissie gehaald: ' + M.n + '! +60 XP'); try { window.__scEvt && window.__scEvt('j', 'Dagmissie!'); } catch (e) {} }, 900); } save(); }
+    return qTelOud(k, n); }; window.__qTel = qTel;
+  var qToonOud = qToon; qToon = function () { qToonOud(); var box = $('qBalken'); if (!box) return; var m = missie(), M = MISSIES.filter(function (x) { return x.k === m.k; })[0] || MISSIES[0], f = Math.min(1, m.v / M.max);
+    var d = document.createElement('div'); d.className = 'qMissie'; d.innerHTML = '<div class="qT"><span><span class="' + (m.nieuw ? 'dobbel' : '') + '">🎲</span> <b>Dagmissie</b> <small style="opacity:.6">vol = +60 XP</small></span><b>' + (m.klaar ? '✓' : Math.floor(m.v) + '/' + M.max) + '</b></div><div style="font-size:13px;margin:4px 0 6px"></div><div class="lvBalk qB"><i style="width:' + Math.round(f * 100) + '%"></i></div>';
+    d.children[1].textContent = M.n; box.insertBefore(d, box.firstChild); if (m.nieuw) { m.nieuw = 0; save(); } };
+  setTimeout(qToon, 600);
+
+  /* ---- 🌨️ weer op je route (gladheid, sneeuw, ijzel, storm, onweer, stortbuien) op het moment dat jij daar bent ---- */
+  var weerNavT = 0;
+  setInterval(function () { try { weerRoute(); } catch (e) {} }, 30000);
+  function weerRoute() {
+    var N = window.__nav && window.__nav.nu(); if (!N || !N.geom || N.geom.length < 2 || N.t === weerNavT || !N.dist || N.dist < 8000) return; weerNavT = N.t;
+    var g = N.geom, cum = [0]; for (var i = 1; i < g.length; i++) cum[i] = cum[i - 1] + gdist(g[i - 1].lat, g[i - 1].lon, g[i].lat, g[i].lon);
+    var tot = cum[cum.length - 1], n = Math.min(5, Math.max(2, Math.round(tot / 20000))), pts = [];
+    for (var j = 1; j <= n; j++) { var doel = tot * j / n, k = 0; while (k < cum.length - 1 && cum[k] < doel) k++; pts.push({ lat: g[k].lat, lon: g[k].lon, km: Math.round(cum[k] / 1000), t: Date.now() + (N.dur || tot / 25) * (cum[k] / tot) * 1000 }); }
+    var u = 'https://api.open-meteo.com/v1/forecast?latitude=' + pts.map(function (p) { return p.lat.toFixed(3); }).join(',') + '&longitude=' + pts.map(function (p) { return p.lon.toFixed(3); }).join(',') + '&hourly=temperature_2m,precipitation,weather_code,wind_gusts_10m&forecast_days=2&timezone=auto';
+    fetch(u).then(function (r) { return r.json(); }).then(function (j) { var L = Array.isArray(j) ? j : [j], erg = null;
+      L.forEach(function (w, i) { var p = pts[i], H = w && w.hourly; if (!H || !H.time) return; var uur = new Date(p.t), best = 0, bd = 1e15;
+        H.time.forEach(function (t, x) { var d = Math.abs(new Date(t).getTime() - uur.getTime()); if (d < bd) { bd = d; best = x; } });
+        var tmp = H.temperature_2m[best], nb = H.precipitation[best], c = H.weather_code[best], gust = H.wind_gusts_10m[best], soort = null, zwaar = 0;
+        if ([56, 57, 66, 67].indexOf(c) >= 0) { soort = '🧊 ijzel'; zwaar = 5; } else if ((c >= 71 && c <= 77) || c === 85 || c === 86) { soort = '❄️ sneeuw'; zwaar = 4; } else if (tmp <= 1 && nb > 0) { soort = '🧊 kans op gladheid'; zwaar = 4; }
+        else if (c >= 95) { soort = '⛈️ onweer'; zwaar = 3; } else if (gust >= 75) { soort = '💨 harde windstoten (' + Math.round(gust) + ' km/u)'; zwaar = 3; } else if (nb >= 4) { soort = '🌧️ een flinke stortbui'; zwaar = 2; }
+        if (soort && (!erg || zwaar > erg.z)) erg = { z: zwaar, s: soort, km: p.km, t: uur }; });
+      if (erg) { var tt = ('0' + erg.t.getHours()).slice(-2) + ':' + ('0' + erg.t.getMinutes()).slice(-2), m = 'Let op: rond ' + tt + ', na ongeveer ' + erg.km + ' km op je route, ' + erg.s + '.';
+        setTimeout(function () { setEv('worried', 5, m); say(m.replace(/[^\w\s:,.()\/-]/g, '')); toast(m); lg('weer op route: ' + m); }, 6000); }
+      else lg('weer op route: niets bijzonders'); }).catch(function () {});
+  }
+
+  /* ---- 🗞️ weekrapport (zondagavond, of later als je de app dan pas opent) ---- */
+  function wrMaak() {
+    var w = weekIdx(), W = wk(), rr = (window.__ritten ? window.__ritten() : []).filter(function (r) { var d = new Date(r.t0 || 0), ma = new Date(); ma.setHours(0, 0, 0, 0); ma.setDate(ma.getDate() - ((ma.getDay() + 6) % 7)); return d >= ma; });
+    var st = rr.length ? Math.round(rr.reduce(function (a, r) { return a + (r.stijl || 0); }, 0) / rr.length) : 0, lang = rr.reduce(function (m, r) { return r.km > (m ? m.km : 0) ? r : m; }, null);
+    var buren = (bordData || []).map(function (l) { var m = /(?:^|\.)wk(\d+)k(\d+)(?:\.|$)/.exec(String(l.bd || '')); return { n: l.van === mijnId ? 'Jij' : l.n, km: l.van === mijnId ? (W.km || 0) : (m && +m[1] === w ? +m[2] : 0) }; }).filter(function (x) { return x.km > 0; }).sort(function (a, b) { return b.km - a.km; });
+    var plek = buren.findIndex(function (x) { return x.n === 'Jij'; }), xpw = mem.xpWeek && mem.xpWeek.w === w ? mem.xpWeek.xp : 0, gm = (window.__vvMijnAantal && window.__vvMijnAantal()) || 0;
+    var h = '<h2>🗞️ Jouw week</h2><p class="foot" style="margin:0">Week van ' + new Date(Date.now() - ((new Date().getDay() + 6) % 7) * 864e5).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' }) + '</p><div class="wrGrid">' +
+      '<div><small>Gereden</small><b>' + Math.round(W.km || 0) + ' km</b><small>' + rr.length + ' ritten</small></div><div><small>Rijstijl gemiddeld</small><b>' + st + '</b><small>' + (st >= 80 ? 'heel netjes 🧘' : st >= 50 ? 'prima' : 'pittig 🌶️') + '</small></div>' +
+      '<div><small>XP verdiend</small><b>+' + xpw + '</b><small>level ' + lvVan(lvXp()) + '</small></div><div><small>Netjes langs flitsers</small><b>' + (W.netjes || 0) + '×</b><small>' + (W.gemeld || 0) + ' meldingen</small></div>' +
+      '<div><small>Langste rit</small><b>' + (lang ? Math.round(lang.km) + ' km' : '-') + '</b></div><div><small>Gemeenten</small><b>' + gm + ' 🏰</b><small>deze maand</small></div></div>';
+    if (buren.length) { var p = [buren[1], buren[0], buren[2]]; h += '<p class="sub" style="margin:8px 0 0">🏆 Km-podium van de groep</p><div class="wrPodium">' + p.map(function (x, i) { return x ? '<div class="p' + [2, 1, 3][i] + '">' + ['🥈', '🥇', '🥉'][i] + '<br><b class="wrN"></b><br>' + Math.round(x.km) + ' km</div>' : '<div style="visibility:hidden"></div>'; }).join('') + '</div>' + (plek >= 0 ? '<p class="foot" style="text-align:center">Jij werd ' + (plek + 1) + 'e van ' + buren.length + '</p>' : ''); }
+    $('wrInhoud').innerHTML = h; var nn = $('wrInhoud').querySelectorAll('.wrN'), pp = [buren[1], buren[0], buren[2]].filter(Boolean); nn.forEach(function (b, i) { b.textContent = pp[i] ? pp[i].n : ''; });
+    $('weekRapport').hidden = false; lg('weekrapport getoond');
+    if (buren[0]) try { window.__scEvt && window.__scEvt('j', '1. ' + buren[0].n + (buren[1] ? ' 2. ' + buren[1].n : '')); } catch (e) {}
+  }
+  $('wrOpen').addEventListener('click', wrMaak); $('wrDicht').addEventListener('click', function () { $('weekRapport').hidden = true; }); $('weekRapport').addEventListener('click', function (e) { if (e.target.id === 'weekRapport') $('weekRapport').hidden = true; });
+  setInterval(function () { var d = new Date(), w = weekIdx(); if (d.getDay() === 0 && d.getHours() >= 19 && mem.rapportW !== w && !document.body.classList.contains('car')) { mem.rapportW = w; save(); try { grBord(); } catch (e) {} setTimeout(wrMaak, 2500); } }, 60000);
+  var xpGeefOud = xpGeef; xpGeef = function (n, t, alGeteld, groot) { var w = weekIdx(); if (!mem.xpWeek || mem.xpWeek.w !== w) mem.xpWeek = { w: w, xp: 0 }; mem.xpWeek.xp += n; return xpGeefOud(n, t, alGeteld, groot); }; window.__xp = xpGeef;
+
+  /* ---- 🎄 december: sneeuw in het rijscherm, kerstmuts, sneeuwballen en elke dag een adventscadeautje ---- */
+  if (DECEMBER) { document.body.classList.add('dec'); var sn = document.createElement('div'); sn.id = 'sneeuw'; for (var si = 0; si < 14; si++) { var f = document.createElement('i'); f.textContent = '❄'; f.style.left = Math.round(Math.random() * 100) + 'vw'; f.style.fontSize = (8 + Math.random() * 10) + 'px'; f.style.animationDuration = (7 + Math.random() * 8) + 's'; f.style.animationDelay = (-Math.random() * 12) + 's'; sn.appendChild(f); } document.body.appendChild(sn);
+    setInterval(function () { var d = new Date(); if (d.getDate() > 24 || !S.live || (S.speed || 0) < 20) return; var k = d.getFullYear() + '-' + d.getDate(); if (mem.advent === k) return; mem.advent = k; save(); setTimeout(function () { xpGeef(25, '🎁 Adventscadeautje dag ' + d.getDate(), 0, 1); setEv('excited', 4, '🎁 Adventscadeautje van dag ' + d.getDate() + '! +25 XP'); }, 3000); }, 30000); }
   (function klok() { var k = $('rijKlok'); if (k) { var d = new Date(); k.textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); } setTimeout(klok, 5000); })();   /* v211: klok in het rijscherm */
   setTimeout(function () { if (!mem.best100Kurve && mem.last100Kurve && mem.last100Kurve.v && mem.last100Kurve.v.length > 2) { mem.best100Kurve = mem.last100Kurve; mem.kurveNietRecord = 1; save(); try { grLid(true); } catch (e) {} } }, 4000);   /* v210: wel een laatste sprint-grafiek, geen record-grafiek: die delen */
   /* v202: Android in de browser? Dan een balkje om de echte app te installeren (7 dagen weg met ✕) */
@@ -5485,7 +5595,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v214';
+  var VERSION = 'v215';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6898,7 +7008,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       var lvb = document.createElement('i'); lvb.textContent = l.van === mijnId ? lvVan(lvXp()) : (l.lv || 1); a.appendChild(lvb);
       var pl = document.createElement('b'); pl.className = 'bPl'; pl.textContent = heeft(l) ? (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1)) : ''; a.appendChild(pl);
       var n = document.createElement('span'); n.className = 'nm';
-      var nk = document.createElement('span'); nk.className = 'bNaam'; nk.textContent = (l.n || 'Naamloos') + (l.van === mijnId ? ' (jij)' : '') + (l.jr && l.jr === mmdd(new Date()) ? ' 🎂' : ''); n.appendChild(nk);
+      var ofE = ''; try { ofE = window.__outfitEmoji((String(l.bd || '').split('.').filter(function (k) { return /^of\d+$/.test(k); })[0]) || ''); } catch (e) {} var nk = document.createElement('span'); nk.className = 'bNaam'; nk.textContent = (l.n || 'Naamloos') + (ofE ? ' ' + ofE : '') + (l.van === mijnId ? ' (jij)' : '') + (l.jr && l.jr === mmdd(new Date()) ? ' 🎂' : ''); n.appendChild(nk);
       if (beker && l.van === beker) { var bk = document.createElement('span'); bk.textContent = ' 🏆'; bk.title = 'Wisselbeker: winnaar van de weekchallenge van vorige week'; nk.appendChild(bk); }
       var bdl = String(l.bd || '').split('.').filter(function (k) { return BADGEMAP[k]; }), open = bordInfo === l.van;
       var au = document.createElement('small'); au.textContent = (l.a || ''); if (bdl.length) { var ch = document.createElement('span'); ch.className = 'bChip'; ch.textContent = open ? bdl.map(function (k) { return BADGEMAP[k].i; }).join('') : '🏅 ' + bdl.length; if (open) ch.classList.add('open'); au.appendChild(ch); } n.appendChild(au);
@@ -7036,7 +7146,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   function parkTekst() { return park ? 'Je staat geparkeerd sinds ' + dagStr(park.t) + ' ' + tijdStr(park.t) + (park.p ? ' in ' + park.p : '') + '. Tik bij Rijden op “Waar sta ik geparkeerd?” voor de route.' : 'Ik weet nog niet waar je staat. Dat onthoud ik na een rit met de GPS aan.'; }
 
   /* ---------- 2. Ritten en weekoverzicht ---------- */
-  var ritten = [];
+  var ritten = []; window.__ritten = function () { return ritten; };
   try { ritten = JSON.parse(localStorage.getItem(RITKEY)) || []; } catch (e) { ritten = []; }
   ritten.forEach(function (r) { if (r && r.vmax > 260) r.vmax = 0; });   /* v169: oude onzin-topsnelheden wissen */
   setTimeout(function () { try { if (!mem.stijlWk) { mem.stijlWk = {}; ritten.forEach(function (r) { if (r.stijl != null) stijlWkAdd(r.t0, r.stijl); }); save(); } } catch (e) {} }, 0);   /* v93: rijstijl per week, eerst uit de oude ritten */
@@ -7479,6 +7589,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   }
   function badgeCodes() { var c = (mem.badges || []).filter(function (k) { return BADGEMAP[k]; });
     /* v202: twee extra codes mee (geen echte badges): xp<0-99> = hoe vol je levelbalk is, wk<week>k<km> = km deze week voor de groepsbalk. Geen plekken, alleen getallen */
+    try { var oc = window.__outfitCode && window.__outfitCode(); if (oc) c.push(oc); } catch (e) {}
     try { var xp = lvXp(), l = lvVan(xp), a = lvGrens(l), b = lvGrens(l + 1); c.push('xp' + Math.min(99, Math.floor((xp - a) / Math.max(1, b - a) * 100))); c.push('wk' + weekIdx() + 'k' + Math.round(wkKmNu())); } catch (e) {}
     return c.join('.'); }
   function wkKmNu() { try { return (wk().km) || 0; } catch (e) { return 0; } }
@@ -7515,6 +7626,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
 
   /* ---------- v192: items onderweg: raket (op een maatje) en nitro (groot, vurig, onkwetsbaar) ---------- */
   var ITEMS = { bal: { i: '🚀', n: 'raket' }, ster: { i: '⚡', n: 'nitro' }, mijn: { i: '💣', n: 'mijn' } }, sterTot = 0;
+  if ((new Date().getMonth() === 11)) ITEMS.bal = { i: '❄️', n: 'sneeuwbal' };   /* v215: in december gooi je sneeuwballen */
   function itemToon() { var k = $('itemKnop'); if (!k) return; var it = ITEMS[mem.item]; k.hidden = !it; if (it) k.textContent = it.i; }
   function itemDoos() {   /* elke 12 km rijden: een itemdoos */
     if (!S.live || (S.speed || 0) < 20) return; var km = mem.kmLive || 0; if (mem.itemKm == null) { mem.itemKm = km; save(); return; }
@@ -7533,7 +7645,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (!bl.length) { toast('Er rijdt nu niemand uit je groep binnen 2 km. Bewaar je raket nog even!'); return; }
     bl.sort(function (a, b) { return (a.d || 0) - (b.d || 0); }); var doel = bl[0];
     mem.item = null; save(); itemToon();
-    var v = document.createElement('div'); v.id = 'itemVlieg'; v.textContent = '🚀'; document.body.appendChild(v); setTimeout(function () { v.remove(); }, 1100); grootBeeld('🚀', 'Raket onderweg naar ' + (doel.n || 'je maatje') + '…', '#0a84ff');
+    var v = document.createElement('div'); v.id = 'itemVlieg'; v.textContent = ITEMS.bal.i; document.body.appendChild(v); setTimeout(function () { v.remove(); }, 1100); grootBeeld('🚀', 'Raket onderweg naar ' + (doel.n || 'je maatje') + '…', '#0a84ff');
     itemZend(doel.van, 'itbal' + Date.now().toString(36));
     setEv('laugh', 3, '🚀 Raket afgevuurd op ' + (doel.n || 'je maatje') + '!'); beep('pet'); lg('item: raket naar ' + (doel.n || '?'));
   }
@@ -7643,7 +7755,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       /* 1. slipstream: 50-150 m recht achter een maatje, allebei 50+ */
       if (hd != null && v > 50 && x.v > 50 && d > 40 && d < 160 && hoekVerschil(hd, x.hd) < 30 && hoekVerschil(hd, peiling(lastPos.lat, lastPos.lon, x.lat, x.lon)) < 25) {
         slipNu = true; var sl = slip[k] = slip[k] || { s: 0 }; if (!sl.s) { toast('🌬️ Slipstream achter ' + wie + '!'); lg('live: slipstream achter ' + wie); } sl.s++;
-        if (sl.s % 60 === 0) { try { window.__xp(5, '🌬️ Slipstream achter ' + wie); } catch (e) {} itemZend(k, 'slip' + nu.toString(36)); } }
+        if (sl.s % 60 === 0) { try { window.__xp(5, '🌬️ Slipstream achter ' + wie); window.__qTel && window.__qTel('slip'); } catch (e) {} itemZend(k, 'slip' + nu.toString(36)); } }
       else if (slip[k]) slip[k].s = 0;
       /* 6. gekruist: tegemoetkomend maatje dat je net voorbij bent */
       if (hd != null && v > 20 && x.v > 20 && hoekVerschil(hd, x.hd) > 140) { var kr = kruis[k] = kruis[k] || { min: 1e9, t: 0 }; if (d < kr.min) kr.min = d;
@@ -7658,7 +7770,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   }
   function gekruist(k, wie) { mem.kruis = mem.kruis || {}; mem.kruis[wie] = (mem.kruis[wie] || 0) + 1; save();
     grootBeeld('🙌', 'Gekruist met ' + wie + '!', '#30d158'); setEv('excited', 3.5, '🙌 High five, ' + wie + '!'); beep('excited'); lg('live: gekruist met ' + wie + ' (' + mem.kruis[wie] + '×)');
-    try { window.__xp(15, '🙌 Gekruist met ' + wie, 0, 1); } catch (e) {} try { window.__scEvt && window.__scEvt('j', 'High five ' + wie); } catch (e) {} }
+    try { window.__xp(15, '🙌 Gekruist met ' + wie, 0, 1); window.__qTel && window.__qTel('kruis'); } catch (e) {} try { window.__scEvt && window.__scEvt('j', 'High five ' + wie); } catch (e) {} }
   function etaToon() {
     var ks = Object.keys(etaRace), el = $('etaRace'); if (!ks.length) { if (el) el.remove(); return; } var ik = restEta();
     if (!el) { el = document.createElement('div'); el.id = 'etaRace'; document.body.appendChild(el); }
@@ -7816,6 +7928,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     Object.keys(e).forEach(function (g) { var o = e[g]; (tel[o.van] = tel[o.van] || { van: o.van, n: o.n, aantal: 0 }).aantal++; if (o.van === mijnId) mijn[g] = { km: o.km, plek: (d.plek || {})[g] || null }; else anders.push(g); });
     return { maand: d && d.maand, mijn: mijn, anders: anders, rang: Object.keys(tel).map(function (v) { return tel[v]; }).sort(function (a, b) { return b.aantal - a.aantal; }) };
   }
+  window.__vvMijnAantal = function () { try { return Object.keys((vvData && vvNorm(vvData).mijn) || {}).length; } catch (e) { return 0; } };
   function vvVerwerk(d) {
     d = vvNorm(d); vvData = d; vvT = Date.now(); var mijn = Object.keys(d.mijn || {}), oud = mem.vvMijn || null;
     if (oud) { mijn.filter(function (g) { return oud.indexOf(g) < 0; }).slice(0, 2).forEach(function (g) { setEv('excited', 4, '🏰 Je hebt ' + g + ' veroverd!'); lg('veroverd: ' + g); try { window.__xp(30, g + ' veroverd 🏰', 0, 1); window.__qTel('gm'); } catch (e) {} });
@@ -9695,6 +9808,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v215', '18 nov', ['🎩 Garderobe onder Buddy: elk level speelt iets vrij (zonnebril, petje, koptelefoon, kroon, oogkleuren…); je hoedje staat ook achter je naam in de ranglijst', '🎲 Dagmissie: elke dag een andere bonusopdracht, vol = +60 XP', '🌨️ Weer op je route: Buddy waarschuwt voor gladheid, sneeuw, ijzel, storm of onweer op het moment dat jij daar rijdt', '🗞️ Weekrapport op zondagavond (en altijd via de knop onder Buddy) met km-podium van de groep', '🎄 December: sneeuw in het rijscherm, kerstmuts, sneeuwballen in plaats van raketten en elke dag een adventscadeautje']],
       ['v214', '18 nov', ['🟠 Je routelijn kleurt nu oranje waar het langzamer rijdt (matrixborden boven jouw rijbaan op 70 of lager), rood blijft voor echte files van de ANWB', 'Snelwegen zijn op de kaart niet meer oranje: overdag wit, \'s nachts grijsblauw']],
       ['v213', '18 nov', ['Zuiniger met de gratis Worker-opslag: posities alleen nog via Buddy live, logboek hooguit eens per kwartier', 'Eerste persoon staand: de klok staat onder de achteruitkijkspiegel in plaats van erdoorheen']],
       ['v212', '18 nov', ['Klok staand bovenin tussen de knoppen', 'Liggend: knoppen onderin staan boven de XP-balk, knoppen rechtsboven niet meer over elkaar, navigatiebalk weer in het midden', 'Kaart-tab: de kaart schuift niet meer over de tabbalk']],
@@ -9811,7 +9925,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     zet($('kopOnderweg'), 'kaart');
     zet($('kopGroep'), 'groep');
     zet($('kopScherm'), 'plus'); zet($('kopPlusNav'), 'buddy plus'); zet($('kopOver'), 'buddy');   /* v164: Buddy+ heeft zijn eigen tab */   /* v83: schermpje en 'Over Buddy' onder het Buddy-tabblad */
-    zet($('buddyStatus'), 'buddy'); zet($('qSectie'), 'buddy'); zet($('wdKaart'), 'buddy'); zet($('kopGemeente'), 'ritten');   /* v203: balken en weekdoel alleen bij Buddy, gemeenten bij Ritten */
+    zet($('buddyStatus'), 'buddy'); zet($('qSectie'), 'buddy'); zet($('garderobe'), 'buddy'); zet($('wdKaart'), 'buddy'); zet($('kopGemeente'), 'ritten');   /* v203: balken en weekdoel alleen bij Buddy, gemeenten bij Ritten */
     ['kopInst', 'kopHulp', 'kopBouw'].forEach(function (id) { zet($(id), 'meer'); });
     zet($('kopRitten'), 'ritten'); zet($('kopRecords'), 'ritten'); zet($('kopBadges'), 'ritten'); zet($('kopLaden'), 'ritten'); zet($('kopPlezier'), 'buddy'); zet($('kopAnim'), 'meer');   /* v205: animaties testen onder Meer, met Buddy erboven */
     $('kopAnim').addEventListener('toggle', function () { document.body.classList.toggle('animOpen', $('kopAnim').open); if ($('kopAnim').open) window.scrollTo(0, 0); });   /* v85: eigen Ritten-tab */
