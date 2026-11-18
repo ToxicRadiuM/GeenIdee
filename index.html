@@ -5484,7 +5484,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v212';
+  var VERSION = 'v213';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -7487,6 +7487,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   try { buurAan = localStorage.getItem(BUURKEY) !== '0'; } catch (e) {}   /* v200: standaard aan; wie hem zelf uitzet blijft uit */
   function buurCheck() {
     if (!buurAan || !S.live || !lastPos || !grp || !pbase()) return;
+    if (window.__liveOpen && window.__liveOpen()) return;   /* v213: live (buddy-live) doet de posities al; dit oude kanaal schreef bij elke 150 m naar de Worker-opslag en vrat het gratis dagquotum op */
     /* v192: je bent alleen zichtbaar als je echt rijdt; sta je een minuut stil, dan haal je jezelf weg */
     if ((S.speed || 0) < 20) { if (!buurCheck.stil) buurCheck.stil = T; if (T - buurCheck.stil > 60 && !buurCheck.weg) { buurCheck.weg = true; buurUit(); window.__buren = { t: Date.now(), l: [] }; } return; }
     buurCheck.stil = 0; buurCheck.weg = false;
@@ -7538,7 +7539,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   function itemZend(aan, r) { if (aan === 'nep') { nepAntwoord(r); return; } if (window.__liveStuur && window.__liveStuur(aan, r)) return; grStuur('gezien', '&aan=' + encodeURIComponent(aan) + '&r=' + r).catch(function () {}); }   /* live = meteen, anders via de groepsberichten */
 
   /* ---------- v192: LIVE: elke seconde je plek naar groepsmaatjes binnen 10 km (alleen als je rijdt; niets wordt bewaard) ---------- */
-  var live = { ws: null, open: false, laatst: 0, stilT: 0, fout: 0, gezien: {} }; window.__live = {};
+  var live = { ws: null, open: false, laatst: 0, stilT: 0, fout: 0, gezien: {} }; window.__live = {}; window.__liveOpen = function () { return !!live.open; };
   function liveUrl() { try { var u = new URL(pbase()); return 'wss://' + u.host.replace(/^[^.]+/, 'buddy-live') + '/live'; } catch (e) { return null; } }
   window.__liveVernieuw = function () { live.fout = 0; live.foutGemeld = 0; liveVerbind(); };
   function liveVerbind() {
@@ -8706,8 +8707,9 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     var kop = '--- ' + VERSION + ' · ' + ((navigator.userAgent.match(/\(([^)]+)\)/) || ['', ''])[1]).slice(0, 60) + ' ---';
     return { tot: nieuw[nieuw.length - 1].t, tekst: kop + '\n' + nieuw.map(function (x) { return f(x.t) + ' ' + x.m; }).join('\n') };
   }
+  var logStuurT = 0;
   function logStuur(beacon) {
-    if (!logUp.aan || !pbase()) return; var x = logUpTekst(); if (!x) return;
+    if (!logUp.aan || !pbase()) return; if (beacon && Date.now() - logStuurT < 15 * 60e3) return; var x = logUpTekst(); if (!x) return; logStuurT = Date.now();   /* v213: zuiniger: niet bij elk wegklikken van de app, hooguit eens per kwartier */
     if (!myWho() && !window.__naamZoek) { window.__naamZoek = 1; try { grBord(); } catch (e) {} lg('let op: je naam is niet ingevuld (Instellingen → Jouw naam)'); }
     var u = pbase() + '/log?id=' + encodeURIComponent(mijnId) + '&n=' + encodeURIComponent(myWho() || '');
     if (beacon && navigator.sendBeacon) { try { if (navigator.sendBeacon(u, new Blob([x.tekst], { type: 'text/plain' }))) { logUp.tot = x.tot; logUpBewaar(); } } catch (e) {} return; }
@@ -8715,7 +8717,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   }
   $('logUpIn').checked = logUp.aan;
   $('logUpIn').addEventListener('change', function () { logUp.aan = $('logUpIn').checked; logUpBewaar(); toast(logUp.aan ? 'Je logboek gaat weer automatisch naar Ricardo.' : 'Je logboek blijft nu alleen op je telefoon.'); });
-  setInterval(function () { if (document.visibilityState === 'visible') logStuur(false); }, 10 * 60e3);
+  setInterval(function () { if (document.visibilityState === 'visible') logStuur(false); }, 30 * 60e3);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') logStuur(true); });
   setTimeout(function () {
     if (logUp.aan && !logUp.gemeld) { logUp.gemeld = true; logUpBewaar(); toast('Buddy stuurt zijn logboek voortaan naar Ricardo, zodat hij fouten kan oplossen. Uitzetten kan bij Instellingen.'); }
@@ -9692,6 +9694,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v213', '18 nov', ['Zuiniger met de gratis Worker-opslag: posities alleen nog via Buddy live, logboek hooguit eens per kwartier']],
       ['v212', '18 nov', ['Klok staand bovenin tussen de knoppen', 'Liggend: knoppen onderin staan boven de XP-balk, knoppen rechtsboven niet meer over elkaar, navigatiebalk weer in het midden', 'Kaart-tab: de kaart schuift niet meer over de tabbalk']],
       ['v211', '18 nov', ['Groep-tab opgeruimd: geen dubbele ledenrij en levels-lijst meer, de weeklijst toont top 3 en jou (rest met één tik), groepsbalk compacter', '⭐ Level staat nu als eigen ranglijst bij Alle ranglijsten', '🕐 Klok in het rijscherm, onder je snelheid']],
       ['v210', '18 nov', ['Record-sprint-grafiek: had je record al van vóór de grafiek? Dan deelt Buddy je eerstvolgende volledige 0–100 met grafiek, zodat collega\'s hem ook zien']],
