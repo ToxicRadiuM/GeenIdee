@@ -5604,7 +5604,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v216';
+  var VERSION = 'v217';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9040,7 +9040,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       if (t.indexOf('NQ|') === 0) { var q1 = t.indexOf('|', 3), nid = t.slice(3, q1); if (nqId !== nid) { nqId = nid; nqUrl = ''; } nqUrl += t.slice(q1 + 1); return; }   /* v168: internet voor Buddy+ */
       if (t.indexOf('NQE|') === 0) { var dl2 = t.slice(4).split('|'), nid2 = dl2[0], len2 = dl2[1] ? +dl2[1] : -1;
         if (nid2 === nqId && len2 >= 0 && nqUrl.length !== len2) { lg('Buddy+ adres kwam half aan (' + nqUrl.length + '/' + len2 + '), hij stuurt het opnieuw'); netQ.push('NX|' + nid2 + '|2'); netPomp(); }   /* v191 */
-        else if (nid2 === nqId) netHaal(nid2, nqUrl); nqId = null; nqUrl = ''; return; }
+        else if (nid2 === nqId) { var dub = netHaal.laatst && netHaal.laatst.id === nid2 && Date.now() - netHaal.laatst.t < 20000; if (!dub) { netHaal.laatst = { id: nid2, t: Date.now() }; netHaal(nid2, nqUrl); } else if (!netHaal.dubLog || Date.now() - netHaal.dubLog > 60000) { netHaal.dubLog = Date.now(); lg('Buddy+ vroeg hetzelfde bestand nog eens (oude schermversie), genegeerd'); } } nqId = null; nqUrl = ''; return; }   /* v217: dezelfde vraag niet tig keer ophalen */
       if (t.indexOf('RIT:') === 0) { try { plusRitBinnen(t.slice(4)); } catch (e) { lg('FOUT rit van Buddy+: ' + e.message); } return; }   /* v104 */
       /* v76: logboek van het schermpje komt in stukjes binnen en gaat in de gewone Buddy-log (-> buddy-logs) */
       if (t === 'LOGBEGIN') { logBuf = ''; return; }
@@ -9818,6 +9818,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v217', '18 nov', ['Buddy+ (v121) vroeg via de telefoon honderden keren per minuut hetzelfde bestand op; dat is opgelost (scherm en app). Daardoor werd Buddy+ traag en ging hij raar slapen', 'Buddy+ gaat op tafel niet meer na 1-2 minuten uit (dat was de regel voor uitstappen na een rit), en wordt altijd weer wakker dankzij een veiligheidswekker']],
       ['v216', '18 nov', ['🚗 Tijdens het rijden zie je linksboven welke collega\'s óók rijden, waar ook in Nederland (alleen naam, geen plek); tik erop voor de lijst. Ook in het Groep-tab']],
       ['v215', '18 nov', ['🎩 Garderobe onder Buddy: elk level speelt iets vrij (zonnebril, petje, koptelefoon, kroon, oogkleuren…); je hoedje staat ook achter je naam in de ranglijst', '🎲 Dagmissie: elke dag een andere bonusopdracht, vol = +60 XP', '🌨️ Weer op je route: Buddy waarschuwt voor gladheid, sneeuw, ijzel, storm of onweer op het moment dat jij daar rijdt', '🗞️ Weekrapport op zondagavond (en altijd via de knop onder Buddy) met km-podium van de groep', '🎄 December: sneeuw in het rijscherm, kerstmuts, sneeuwballen in plaats van raketten en elke dag een adventscadeautje']],
       ['v214', '18 nov', ['🟠 Je routelijn kleurt nu oranje waar het langzamer rijdt (matrixborden boven jouw rijbaan op 70 of lager), rood blijft voor echte files van de ANWB', 'Snelwegen zijn op de kaart niet meer oranje: overdag wit, \'s nachts grijsblauw']],
