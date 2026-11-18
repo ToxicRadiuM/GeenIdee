@@ -7548,7 +7548,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     try { ws = new WebSocket(u + '?g=' + encodeURIComponent(grp.toLowerCase()) + '&van=' + encodeURIComponent(mijnId) + '&n=' + encodeURIComponent(myWho() || '') + '&a=' + encodeURIComponent(mijnAuto() || '')); } catch (e) { live.fout = Date.now(); return; }
     live.ws = ws;
     ws.onopen = function () { live.open = true; lg('live: verbonden'); };
-    ws.onclose = function () { if (live.open) lg('live: verbinding weg'); else { live.fout = Date.now(); if (!live.foutGemeld) { live.foutGemeld = 1; lg('live: verbinden lukt niet (staat buddy-live al op Cloudflare?)'); } } live.ws = null; live.open = false; window.__live = {}; };
+    ws.onclose = function () { if (live.open) lg('live: verbinding weg'); else { live.fout = Date.now(); if (!live.foutGemeld) { live.foutGemeld = 1; lg('live: verbinden lukte even niet (netwerk), over 30 s opnieuw'); } } live.ws = null; live.open = false; window.__live = {}; };
     ws.onerror = function () {};
     ws.onmessage = function (e) { var m; try { m = JSON.parse(e.data); } catch (x) { return; }
       if (m.t === 'p' && m.van) { var nieuw = !window.__live[m.van]; window.__live[m.van] = { van: m.van, n: m.n, a: m.a, lat: m.lat, lon: m.lon, hd: m.hd, v: m.v, dk: m.dk || '', eta: +m.eta || 0, rx: Date.now() };
@@ -9695,7 +9695,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
-      ['v213', '18 nov', ['Zuiniger met de gratis Worker-opslag: posities alleen nog via Buddy live, logboek hooguit eens per kwartier']],
+      ['v213', '18 nov', ['Zuiniger met de gratis Worker-opslag: posities alleen nog via Buddy live, logboek hooguit eens per kwartier', 'Eerste persoon staand: de klok staat onder de achteruitkijkspiegel in plaats van erdoorheen']],
       ['v212', '18 nov', ['Klok staand bovenin tussen de knoppen', 'Liggend: knoppen onderin staan boven de XP-balk, knoppen rechtsboven niet meer over elkaar, navigatiebalk weer in het midden', 'Kaart-tab: de kaart schuift niet meer over de tabbalk']],
       ['v211', '18 nov', ['Groep-tab opgeruimd: geen dubbele ledenrij en levels-lijst meer, de weeklijst toont top 3 en jou (rest met één tik), groepsbalk compacter', '⭐ Level staat nu als eigen ranglijst bij Alle ranglijsten', '🕐 Klok in het rijscherm, onder je snelheid']],
       ['v210', '18 nov', ['Record-sprint-grafiek: had je record al van vóór de grafiek? Dan deelt Buddy je eerstvolgende volledige 0–100 met grafiek, zodat collega\'s hem ook zien']],
