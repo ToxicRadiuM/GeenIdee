@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 120;   // v120: XP-balkje onderin bij +XP uit de app
+static const int FW_VERSIE = 121;   // v121: internetvraag via de telefoon werd eindeloos herhaald (honderden keren per minuut), uitstappen-regel alleen na een rit, wakker worden betrouwbaarder
+// (v120: XP-balkje onderin bij +XP uit de app)
 // oud:   // v118: internet via telefoon betrouwbaarder na verbinden, log niet meer dubbel
 // oud:   // v117: route als boog bovenin, rijstroken klein onderaan, midden vrij
 // oud:   // v116: route als rechte lijn in het bordje bovenin (zoals de Tesla)
@@ -2244,8 +2245,8 @@ static void lokaleTijd(int &hh, int &mm) {
 static uint8_t huidigLicht = 0;
 // v26: echt uit (diepe slaap) en weer aan als de auto beweegt (instappen, deur, rijden).
 // De bewegingssensor blijft wakker en maakt het bordje wakker via zijn INT2-pin (GPIO21).
-static void qmiWakkerBijBeweging() {
-  if (!i2cLock(200)) return;
+static bool qmiWakkerBijBeweging() {
+  if (!i2cLock(2000)) return false;   // v121: langer wachten op de bus; lukte het niet, dan werd hij nooit meer wakker van beweging
   qmiW(0x60, 0xB0); delay(30);
   qmiW(0x02, 0x40);                 // CTRL1: auto-increment
   qmiW(0x08, 0x00);                 // CTRL7: sensoren uit tijdens instellen
@@ -2259,7 +2260,9 @@ static void qmiWakkerBijBeweging() {
   qmiW(0x08, 0x01);                 // versnellingsmeter aan
   qmiW(0x02, 0x40 | 0x10);          // INT2 aan
   i2cUnlock();
+  return true;
 }
+static bool wekkerWakker = false;   // v121: wakker van de veiligheidswekker (niet van beweging)
 static void persBewaar();
 static void diepSlapen(const char *reden) {
   persBewaar();
@@ -2268,18 +2271,20 @@ static void diepSlapen(const char *reden) {
   xSemaphoreTake(flushIdle, pdMS_TO_TICKS(1000));   // wachten tot het scherm klaar is met versturen
   gfx->displayOff();
   digitalWrite(PA, LOW);                            // versterker uit
-  if (imuReady) qmiWakkerBijBeweging();
+  bool wom = imuReady && qmiWakkerBijBeweging();
   delay(300);
   rtc_gpio_pullup_en(GPIO_NUM_21);
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_21, 0);
+  esp_sleep_enable_timer_wakeup((uint64_t)(wom ? 3 * 3600 : 15 * 60) * 1000000ULL);   // v121: veiligheidswekker: ook als de bewegingssensor niet meewerkt, wordt hij vanzelf weer wakker
   esp_deep_sleep_start();
 }
 static void slaapStap() {
   bool ok; float v = spdNow(&ok); uint32_t nu = millis();
   if (v > 3 || fabsf(pushZ) > .12f || hop > .5f || !laatsteActie) laatsteActie = nu;
+  static uint32_t laatsteRit = 0; if (ok && v > 12) laatsteRit = nu;   // v121: op tafel neerzetten is geen 'deur dicht na een rit'
   // v26: deur dicht en daarna stil (en je telefoon niet meer verbonden) = je bent uitgestapt -> uit
   bool geparkeerd = !ok || v < 1;
-  if (geparkeerd && !Serial.isPlugged() && laatsteDeur && nu - laatsteDeur > 60000 && nu - laatsteDeur < 120000 && nu - laatsteBeweging > 45000
+  if (geparkeerd && !Serial.isPlugged() && laatsteRit && nu - laatsteRit < 15UL * 60000 && laatsteDeur && nu - laatsteDeur > 60000 && nu - laatsteDeur < 120000 && nu - laatsteBeweging > 45000
       && nu - laatsteActie > 45000 && !telDichtbij() && !menuOpen && otaPct < 0) {
     static uint32_t afscheidT = 0;   // v42: eerst even zwaaien
     if (!afscheidT) { afscheidT = nu; static char tt[44]; char nm[20]; naamDeel(nm, sizeof nm); int hh = -1, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
@@ -2288,7 +2293,8 @@ static void slaapStap() {
     else if (nu - afscheidT > 3200) { afscheidT = 0; diepSlapen("deur dicht en daarna stil"); }
   }
   { bool aanPc = Serial.isPlugged(); uint32_t wacht = robotModus ? 60UL * 60000 : 10UL * 60000;   // v92: aan de pc (usb-verbinding) nooit, als robotje op tafel pas na een uur
-    if (geparkeerd && !aanPc && nu - laatsteActie > wacht && nu - laatsteBeweging > 60000 && !menuOpen && otaPct < 0) diepSlapen(robotModus ? "een uur niets op tafel" : "10 minuten niets"); }
+    if (geparkeerd && !aanPc && nu - laatsteActie > wacht && nu - laatsteBeweging > 60000 && !menuOpen && otaPct < 0) diepSlapen(robotModus ? "een uur niets op tafel" : "10 minuten niets");
+    if (wekkerWakker) { if (telDichtbij() || (ok && v > 3) || (nu > 8000 && laatsteBeweging > 8000 && nu - laatsteBeweging < 5000)) wekkerWakker = false; else if (nu > 40000 && !aanPc && otaPct < 0) diepSlapen("wekker: niemand in de buurt"); } }   // v121: alleen even kijken, niemand? meteen weer slapen
   bool moetSlapen = nu - laatsteActie > 3UL * 60000 && !menuOpen;   // 3 minuten niks = dommelen (scherm zacht)
   if (moetSlapen && !slaapt) { if (!schaapT) schaapT = nu; if (nu - schaapT < 4500) moetSlapen = false; } else if (!moetSlapen) schaapT = 0;   // v88: eerst een schaapje over zijn hoofd
   if (moetSlapen != slaapt) { slaapt = moetSlapen; if (!slaapt) { mood = STARTLED; lastMood = -1; idleMoodUntilMs = nu + 1500; } }
@@ -2329,7 +2335,8 @@ static void bnVraagStap() {   // in de loop: de vraag versturen (Bluetooth allee
   if (!bnVraagKlaar || !bleConnected || logBezig || !pinOk || millis() - verbindT < 2500) return;   // v118: na verbinden even wachten tot alles klaarstaat
   char m[200]; size_t L = strlen(bnVraag);
   for (size_t o = 0; o < L; o += 150) { snprintf(m, sizeof m, "NQ|%u|%.*s", (unsigned)bnId, (int)(L - o < 150 ? L - o : 150), bnVraag + o); bleSend(m); delay(15); }
-  snprintf(m, sizeof m, "NQE|%u|%u", (unsigned)bnId, (unsigned)L); bleSend(m);   // v118: met lengte, zodat de app ziet of het adres heel is bnVraagKlaar = false; bnLaatst = millis();
+  snprintf(m, sizeof m, "NQE|%u|%u", (unsigned)bnId, (unsigned)L); bleSend(m);   // v118: met lengte, zodat de app ziet of het adres heel is
+  bnVraagKlaar = false; bnLaatst = millis();   // v121: dit stond per ongeluk in het commentaar hierboven, waardoor de vraag eindeloos opnieuw werd verstuurd
 }
 static uint8_t *haalUrlWifi(const char *url, size_t &len);
 static uint8_t *haalUrl(const char *url, size_t &len) {
@@ -4105,7 +4112,7 @@ void setup(){
  koppelPin = buddyPrefs.getUInt("pin", 0); if (koppelPin < 100000) { koppelPin = 100000 + esp_random() % 900000; buddyPrefs.putUInt("pin", koppelPin); }
  bleStart();
  if(i2cMutex) xTaskCreatePinnedToCore(gpsTask,"BuddyGPS",8192,nullptr,1,nullptr,0);
- bool wakkerDoorBeweging = esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0;
+ bool wakkerDoorBeweging = esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0; wekkerWakker = esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER;
  buddyPrefs.getString("wurl", wCfg.url, sizeof wCfg.url); buddyPrefs.getString("grp", wCfg.grp, sizeof wCfg.grp); buddyPrefs.getString("van", wCfg.van, sizeof wCfg.van); buddyPrefs.getString("naam", wCfg.naam, sizeof wCfg.naam);
  buddyPrefs.getString("ssid", wifiNaam, sizeof wifiNaam); buddyPrefs.getString("pass", wifiPass, sizeof wifiPass);
  xTaskCreatePinnedToCore(netTaak, "BuddyNet", 12288, nullptr, 1, nullptr, 0);
