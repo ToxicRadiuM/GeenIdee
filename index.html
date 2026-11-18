@@ -430,6 +430,7 @@ body.car.kaartrij #rijTerug { bottom: calc(var(--bh) + 16px); }
 #rijSnelLim { width: 62px; height: 62px; border-radius: 50%; background: #fff; border: 7px solid #e3121b; box-sizing: border-box; color: #111; font: 800 22px/48px var(--f-display); letter-spacing: -1px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,.5); }
 #rijSnelV { font: 800 34px/1 var(--f-display); color: #fff; text-shadow: 0 2px 8px #000, 0 0 2px #000; margin-top: 4px; }
 #rijSnel small { font: 700 11px var(--f-body); color: #cfd4da; text-shadow: 0 1px 3px #000; }
+@media (orientation: portrait) { body.car.kaartrij.kijkFp #rijKlok { top: calc(var(--kt, 12px) + 66px) !important; font-size: 17px !important; } }   /* v213: in eerste persoon staat de spiegel bovenin, klok eronder */
 @media (orientation: portrait) { body.car.kaartrij #rijKlok { position: fixed; left: 50%; transform: translateX(-50%); top: calc(var(--kt, 12px) + 8px); margin: 0; font-size: 20px; padding: 4px 14px; border-radius: 14px; z-index: 50; } }   /* v212: staand bovenin tussen de knoppen */
 #rijKlok { margin-top: 6px; font: 700 15px var(--f-display); font-style: normal; color: #fff; background: rgba(16,20,24,.72); padding: 2px 9px; border-radius: 10px; letter-spacing: .5px; }   /* v211: klok */
 #rijSnel.te #rijSnelV { color: #ff453a; }
