@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 122;   // v122: rand om het scherm zelf kiezen (lucht, geen, regenboog, KITT, ademen, vaste kleur)
+static const int FW_VERSIE = 123;   // v123: geen koekje meer naast zijn gezicht (aaien = eten), nieuwe veeg- en tikgebaren, ogen volgen je vinger
+// (v122: rand om het scherm zelf kiezen)   // v122: rand om het scherm zelf kiezen (lucht, geen, regenboog, KITT, ademen, vaste kleur)
 // (v121: internetvraag niet meer eindeloos, uitstapregel, veiligheidswekker, levendiger op tafel)   // v121: internetvraag via de telefoon werd eindeloos herhaald (honderden keren per minuut), uitstappen-regel alleen na een rit, wakker worden betrouwbaarder
 // (v120: XP-balkje onderin bij +XP uit de app)
 // oud:   // v118: internet via telefoon betrouwbaarder na verbinden, log niet meer dubbel
@@ -1678,7 +1679,7 @@ static const GagDef GAGS[] = {
   {6.0f, 0, FOCUSED, "Het weer van vandaag:"},                          // 53 weerman
   {3.5f, 0, HAPPY, "Goeiemorgen! *uitrek*"},                            // 54 uitrekken
   {4.0f, 0, ALERT, "Hé, zet me rechtop!"},                              // 55 scheef/plat/op zijn kop
-  {3.0f, 0, BORED, "Ik heb trek... tik op het koekje!"},                // 56 trek
+  {3.0f, 0, BORED, "Ik heb trek... aai me even?"},                       // 56 trek
   {6.0f, G_IDLE, EXCITED, "Kijk, ik kan jongleren!"},                   // 57 jongleren (v89)
   {6.5f, G_IDLE, LOVE, "Een vlindertje..."},                            // 58 vlinder op zijn neus
   {5.5f, G_IDLE, WORRIED, "Waarom regent het alleen op mij?"},          // 59 eigen regenwolkje
@@ -3466,7 +3467,7 @@ void drawFace(){
    line(p.x-4,p.y-4,p.x+4,p.y-4,c,2);line(p.x+4,p.y-4,p.x-4,p.y+4,c,2);line(p.x-4,p.y+4,p.x+4,p.y+4,c,2);
  }}
  drawOutfit(); gagDraw(); drawFlag(); drawRitKlaar(); drawGmeter();
- if (robotModus && koekjeZichtbaar && gagAct != 51) { float b = sinf(t * 3) * 2; circle(196, 176 + b, 12, 0xA2A0); circle(192, 172 + b, 1.8f, 0x3180); circle(200, 179 + b, 1.8f, 0x3180); circle(198, 170 + b, 1.4f, 0x3180); }   // v48: koekje
+ if (false && robotModus && koekjeZichtbaar && gagAct != 51) {   // v123: koekje leek op iets anders… weg ermee float b = sinf(t * 3) * 2; circle(196, 176 + b, 12, 0xA2A0); circle(192, 172 + b, 1.8f, 0x3180); circle(200, 179 + b, 1.8f, 0x3180); circle(198, 170 + b, 1.4f, 0x3180); }   // v48: koekje
  { float vNu = spdNow(); static float vVorig = 0; static uint32_t vT = 0; uint32_t mNu = millis();   // v88: snelheidsstrepen bij flink optrekken
    if (mNu - vT > 500) { if (vNu - vVorig > 4.5f && vNu > 10) streepTot = mNu + 1500; vVorig = vNu; vT = mNu; }
    if ((int32_t)(streepTot - mNu) > 0) { boxAdd(0, 0, 240, 240); for (int i = 0; i < 10; i++) { float a = i * .628f + .3f, k = fmodf(mNu / 140.f + i * .37f, 1.f), r1 = 84 + k * 30, r2 = r1 + 10 + k * 8; dikLijn(120 + cosf(a) * r1, 120 + sinf(a) * r1, 120 + cosf(a) * r2, 120 + sinf(a) * r2, 1.6f, k < .5f ? 0xFFFF : 0x8410); } } }
@@ -3992,6 +3993,15 @@ void playMoodSound(int m) {
   }
 }
 
+static float draaiHoek = 0, draaiVorig = -99;   // v123: rondjes draaien met je vinger
+static bool veegStap(float x0, float y0, float x1, float y1) {   // v123: vegen = een trucje
+  float dx = x1 - x0, dy = y1 - y0; laatsteActie = millis();
+  if (dy < -70 && fabsf(dx) < 60) { startGag(26); gagMsg = "Hop! Hoger!"; playGeluid(GL_WOESJ); return true; }   // omhoog: stuiteren
+  if (dy > 70 && fabsf(dx) < 60) { startGag(14); gagMsg = "Kiekeboe!"; playGeluid(GL_GIECHEL); return true; }   // omlaag: verstoppen
+  if (dx > 85 && fabsf(dy) < 55) { startGag(8); gagMsg = "Muziek aan!"; return true; }   // naar rechts: dansen
+  if (dx < -85 && fabsf(dy) < 55) { startGag(20); playGeluid(GL_WOESJ); return true; }   // naar links: om het hoekje gluren
+  return false;
+}
 void handleTouch(){
  static bool down = false; static uint32_t downMs = 0; static float dX = 0, dY = 0, lX = 0, lY = 0; static bool lang = false;
  uint32_t now=millis();
@@ -4000,6 +4010,7 @@ void handleTouch(){
  if(i2cMutex && xSemaphoreTake(i2cMutex,0)!=pdTRUE) return; uint8_t n=buddyTouch.getPoint(touchX,touchY,1); if(i2cMutex) xSemaphoreGive(i2cMutex);   // v50: het vrijgeven stond per ongeluk in commentaar -> I2C bleef bezet (touch dood, GPS-fouten, crashes)
  if(!n) {
    // loslaten = een tik afhandelen
+   if (down && !lang && !venster && !menuOpen && !spel && !kaartNu() && gagAct < 0 && now - downMs < 900 && veegStap(dX, dY, lX, lY)) { down = false; lang = false; return; }   // v123: vegen
    if (down && !lang && now - downMs < 600) {
      if (rtN && lY < 90) logRegel("tik bovenin (%.0f,%.0f) venster=%d menu=%d spel=%d", lX, lY, (int)venster, (int)menuOpen, (int)(spel != 0));   // v109: zoeken waarom KAART niet reageert
      if (raketTot && (int32_t)(raketTot - now) > 0) { raketTot = 0; bleSend("RKT"); playGeluid(GL_PLING); logRegel("raket ontweken (tik op Buddy+)"); }   // v119
@@ -4020,13 +4031,14 @@ void handleTouch(){
      else if (timerAlarmN) { timerAlarmN = 0; timerTot = 0; startGag(38); gagMsg = "Eet smakelijk!"; }   // v86: alarm uit
      else if (kaartNu()) { kaartStand = 0; kaartGezichtTot = now + 60000; }   // v76: tik op de kaart = terug naar het gezicht
      else if (rtN && lY < (eNavC ? 108.0f : 72.0f) && fabsf(lX - 120.0f) < 70.0f) { kaartStand = 1; kaartGezichtTot = 0; logRegel("KAART getikt (%.0f,%.0f) gps=%d", lX, lY, (int)gpsFix); }   // v76: tik op KAART bovenin = kaart (v109: groter vlak)
-     else if (lY > 188.0f && !(koekjeZichtbaar && robotModus && fabsf(lX - 196) < 24)) openVenster(2);   // onderaan tikken = volume
-     else if (koekjeZichtbaar && robotModus && fabsf(lX - 196) < 24 && fabsf(lY - 176) < 24) {   // v48: koekje!
-       koekjeZichtbaar = false; energie = 100; startGag(51); playGeluid(GL_PLING); vriendPlus(1); laatsteActie = now; }
+     else if (lY > 188.0f) openVenster(2);   // onderaan tikken = volume
+     else if (koekjeZichtbaar && robotModus && gagAct != 51) {   // v123: trek? gewoon even aaien = eten
+       koekjeZichtbaar = false; energie = 100; startGag(51); gagMsg = "Nom nom... dankjewel!"; playGeluid(GL_PLING); vriendPlus(1); laatsteActie = now; }
      else if (gagAct != 1 && lY > 60 && lY < 150 && (fabsf(lX - (73 + faceOx)) < 32 || fabsf(lX - (167 + faceOx)) < 32)) {   // v48: in zijn oog (v89: zo groot als het hele oog)
        auKant = lX > 120 ? 1 : 0; startGag(47); playGeluid(GL_OEPS); }
      else if (gagAct != 1 && lY > 132 && lY < 172 && (lX < 72 || lX > 168)) { startGag(48); playGeluid(GL_GIECHEL); aaiTot = now + 2000; }   // op zijn wang
      else if ([&]() { static uint32_t tk[3] = {0}; tk[0] = tk[1]; tk[1] = tk[2]; tk[2] = now; return tk[0] && now - tk[0] < 1300; }() && gagAct != 1 && robotModus) { startGag(50); playGeluid(GL_HOI); }   // v49: 3x snel tikken = kiekeboe
+     else if ([&]() { static uint32_t vt = 0; bool d = vt && now - vt < 380; vt = d ? 0 : now; return d; }() && gagAct < 0) { startGag(7); gagMsg = "*knipoog*"; playGeluid(GL_GIECHEL); }   // v123: dubbel tikken = knipoog
      else { aaiTot = now + 2200; idleMoodUntilMs = now + 2200;    // op zijn gezicht tikken = aaien
        if (ntpOk()) { static uint32_t aaiOpslT = 0; if (!aaiOpslT || now - aaiOpslT > 600000UL) { aaiOpslT = now; buddyPrefs.putUInt("aaiE", (uint32_t)time(nullptr)); } }   // v86
        if (gemist) { gemist = false; startGag(25); gagMsg = "Daar ben je weer! Ik heb je gemist."; playGeluid(GL_HOI); vriendPlus(2); }
@@ -4044,7 +4056,7 @@ void handleTouch(){
  // v30: de touchlaag van dit bordje zit 180 graden gedraaid t.o.v. het beeld (net als in het Waveshare-voorbeeld: setMirrorXY(true,true))
  float x=240.0f-(float)touchX[0]*240.0f/(float)LCD_WIDTH;
  float y=240.0f-(float)touchY[0]*240.0f/(float)LCD_HEIGHT;
- if (!down) { down = true; downMs = now; dX = x; dY = y; lang = false; laatsteActie = now; if (slaapt) { slaapt = false; laatsteActie = now; if (klokOk()) { int hh, mm; lokaleTijd(hh, mm); if (hh >= 21 || hh < 7) nachtKlokTot = now + 6000; } } }
+ if (!down) { draaiHoek = 0; draaiVorig = -99; down = true; downMs = now; dX = x; dY = y; lang = false; laatsteActie = now; if (slaapt) { slaapt = false; laatsteActie = now; if (klokOk()) { int hh, mm; lokaleTijd(hh, mm); if (hh >= 21 || hh < 7) nachtKlokTot = now + 6000; } } }
  { // v48: hand erop (2 vingers) = kiekeboe; snel heen en weer vegen = kietelen
    static float vx = 0; static int rich = 0, keer = 0; static uint32_t keerT = 0;
    float ddx = x - vx; vx = x;
@@ -4052,6 +4064,12 @@ void handleTouch(){
    if (keer >= 4 && !menuOpen && !venster) { keer = 0; lang = true; startGag(49); playGeluid(GL_GIECHEL); vriendPlus(1); }
  }
  lX = x; lY = y;
+ if (!venster && !menuOpen && !spel && gagAct < 0) {   // v123: ogen volgen je vinger, en rondjes draaien maakt hem duizelig
+   gdir(fmaxf(-1, fminf(1, (x - 120) / 90.f)), fmaxf(-1, fminf(1, (y - 110) / 90.f)));
+   float rx = x - 120, ry = y - 120;
+   if (rx * rx + ry * ry > 35 * 35) { float a = atan2f(ry, rx); if (draaiVorig > -90) { float d = a - draaiVorig; if (d > 3.1416f) d -= 6.2832f; if (d < -3.1416f) d += 6.2832f; draaiHoek += d; } draaiVorig = a;
+     if (fabsf(draaiHoek) > 9.5f) { draaiHoek = 0; draaiVorig = -99; lang = true; startGag(18); gagMsg = "Ik word duizelig!"; playGeluid(GL_OEPS); vriendPlus(1); } }
+ }
  if (venster) { vensterTot = now + 30000; vensterSleep(x, y); return; }   // in een venster: geen lang-drukken, wel slepen
  // lang drukken (0,7 s, zonder te slepen) opent of sluit het ronde menu
  if (!lang && now - downMs > 700 && fabsf(x - dX) < 12 && fabsf(y - dY) < 12) { lang = true; menuOpen = !menuOpen; menuTot = now + 10000; }
