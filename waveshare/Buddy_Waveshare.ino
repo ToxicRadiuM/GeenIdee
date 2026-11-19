@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 124;   // v124: luisteren: fluiten (ogen volgen de toon en hij fluit je na) en blazen
+static const int FW_VERSIE = 125;   // v125: kaart draait niet meer weg bij stilstand (routelijn stond soms rechts)
+//   // v124: luisteren: fluiten (ogen volgen de toon en hij fluit je na) en blazen
 // (v123: koekje weg, veeggebaren)   // v123: geen koekje meer naast zijn gezicht (aaien = eten), nieuwe veeg- en tikgebaren, ogen volgen je vinger
 // (v122: rand om het scherm zelf kiezen)   // v122: rand om het scherm zelf kiezen (lucht, geen, regenboog, KITT, ademen, vaste kleur)
 // (v121: internetvraag niet meer eindeloos, uitstapregel, veiligheidswekker, levendiger op tafel)   // v121: internetvraag via de telefoon werd eindeloos herhaald (honderden keren per minuut), uitstappen-regel alleen na een rit, wakker worden betrouwbaarder
@@ -3248,6 +3249,11 @@ static void drawKaart() {
   boxAdd(0, 0, 240, 240); circle(120, 120, 119, 0x0861);
   const float CX = 120, CY = 152; float lat = gpsLat, lon = gpsLon, hd = gpsKoers * 0.0174533f;
   float kx = 111320.f * cosf(lat * 0.0174533f), ky = 110540.f, v = spdNow();
+  { // v125: stilstaan = de telefoon geeft geen (of een rare) richting, dan draaide de kaart weg (lijn ineens rechts). Laatste goede richting vasthouden.
+    static float goedHd = 0; static bool goedOk = false;
+    if (v > 6 && phone.hd >= 0) { goedHd = hd; goedOk = true; }
+    else if (goedOk) hd = goedHd;
+    else if (rtN >= 2 && rtPt) { float dx = (rtPt[3] - lon) * kx, dy = (rtPt[2] - lat) * ky; if (dx * dx + dy * dy > 25) hd = atan2f(dx, dy); } }
   { // v107: vloeiend rijden: tussen twee GPS-punten (1x per seconde) zelf doorschuiven met snelheid en richting, en zacht bijsturen
     static float sLat = 0, sLon = 0, sHd = 0; static uint32_t sT = 0; uint32_t nu = millis(); float dt = sT ? fminf(.2f, (nu - sT) / 1000.f) : 0; sT = nu;
     float ouder = fminf(1.5f, (nu - gpsLastFixMs) / 1000.f), m = v / 3.6f * ouder;
@@ -3261,7 +3267,7 @@ static void drawKaart() {
       if (fabsf(ax) > 800 && fabsf(bx) > 800) continue; if (fabsf(ay) > 800 && fabsf(by) > 800) continue;
       float dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy, t = l2 > 0 ? fmaxf(0, fminf(1, -(ax * dx + ay * dy) / l2)) : 0, px = ax + dx * t, py = ay + dy * t, d = sqrtf(px * px + py * py);
       if (d < best) { best = d; bl = lat + py / ky; bo = lon + px / kx; bh = atan2f(dx, dy); } }
-    if (best < 30) { lat = bl; lon = bo; if (v > 3) { static float wHd = 0; float dh = atan2f(sinf(bh - wHd), cosf(bh - wHd)); wHd += dh * (fabsf(dh) > 1.2f ? 1 : .15f); hd = wHd; } } }   // v107: wegrichting zacht volgen
+    if (best < 30) { lat = bl; lon = bo; static float wHd = 0; static bool wOk = false; if (!wOk) { wHd = bh; wOk = true; } float dh = atan2f(sinf(bh - wHd), cosf(bh - wHd)); wHd += dh * (fabsf(dh) > 1.2f ? 1 : .15f); hd = wHd; } }   // v125: ook bij stilstand de richting van de route   // v107: wegrichting zacht volgen
   float ch = cosf(hd), sh = sinf(hd);
   bool dichtbij = phoneFresh() && phone.nav && phone.navD > 0 && phone.navD < 250;
   float mpp = dichtbij ? 1.8f : v > 85 ? 6.f : v > 45 ? 4.f : 2.8f;   // meters per beeldpuntje: harder rijden = verder vooruit kijken
