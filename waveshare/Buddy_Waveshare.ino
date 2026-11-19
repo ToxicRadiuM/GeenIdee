@@ -3472,7 +3472,7 @@ void drawFace(){
    line(p.x-4,p.y-4,p.x+4,p.y-4,c,2);line(p.x+4,p.y-4,p.x-4,p.y+4,c,2);line(p.x-4,p.y+4,p.x+4,p.y+4,c,2);
  }}
  drawOutfit(); gagDraw(); drawFlag(); drawRitKlaar(); drawGmeter();
- if (false && robotModus && koekjeZichtbaar && gagAct != 51) {   // v123: koekje leek op iets anders… weg ermee float b = sinf(t * 3) * 2; circle(196, 176 + b, 12, 0xA2A0); circle(192, 172 + b, 1.8f, 0x3180); circle(200, 179 + b, 1.8f, 0x3180); circle(198, 170 + b, 1.4f, 0x3180); }   // v48: koekje
+ if (false && robotModus && koekjeZichtbaar && gagAct != 51) {   /* v123: koekje weg */ float b = sinf(t * 3) * 2; circle(196, 176 + b, 12, 0xA2A0); circle(192, 172 + b, 1.8f, 0x3180); circle(200, 179 + b, 1.8f, 0x3180); circle(198, 170 + b, 1.4f, 0x3180); }   // v48: koekje
  { float vNu = spdNow(); static float vVorig = 0; static uint32_t vT = 0; uint32_t mNu = millis();   // v88: snelheidsstrepen bij flink optrekken
    if (mNu - vT > 500) { if (vNu - vVorig > 4.5f && vNu > 10) streepTot = mNu + 1500; vVorig = vNu; vT = mNu; }
    if ((int32_t)(streepTot - mNu) > 0) { boxAdd(0, 0, 240, 240); for (int i = 0; i < 10; i++) { float a = i * .628f + .3f, k = fmodf(mNu / 140.f + i * .37f, 1.f), r1 = 84 + k * 30, r2 = r1 + 10 + k * 8; dikLijn(120 + cosf(a) * r1, 120 + sinf(a) * r1, 120 + cosf(a) * r2, 120 + sinf(a) * r2, 1.6f, k < .5f ? 0xFFFF : 0x8410); } } }
