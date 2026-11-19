@@ -38,7 +38,7 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 125;   // v125: kaart draait niet meer weg bij stilstand (routelijn stond soms rechts)
+static const int FW_VERSIE = 125;   // v125: bel kapot prikken door te tikken; kaart draait niet meer weg bij stilstand (routelijn stond soms rechts)
 //   // v124: luisteren: fluiten (ogen volgen de toon en hij fluit je na) en blazen
 // (v123: koekje weg, veeggebaren)   // v123: geen koekje meer naast zijn gezicht (aaien = eten), nieuwe veeg- en tikgebaren, ogen volgen je vinger
 // (v122: rand om het scherm zelf kiezen)   // v122: rand om het scherm zelf kiezen (lucht, geen, regenboog, KITT, ademen, vaste kleur)
@@ -878,7 +878,7 @@ int mood=NEUTRAL, lastMood=-1;
 static int gagAct = -1, gagMood = -1; static float gagT0 = 0, nextGagT = 6; static const char *gagMsg = nullptr;
 static float fdx = 0, fdy = 0, eyeL = 1, eyeR = 1, faceOx = 0, faceOy = 0;
 static bool fxNoBlink = false, fxSpiral = false, fxTongue = false;
-static float g_fx = 120, g_fy = 90, g_r = 0, g_d = 0, g_nn = 0; static bool g_b = false;
+static float g_fx = 120, g_fy = 90, g_r = 0, g_d = 0, g_nn = 0; static bool g_b = false, belPrik = false;   // v125: belPrik = jij prikte de bel kapot
 static volatile uint32_t flagTot = 0;   // 0-100 vlag-show
 struct Particle { float x,y,vx,vy,age,life,size; uint8_t kind; } particles[24];
 
@@ -1817,7 +1817,7 @@ static void startGag(int k) {
     int hh = 12, mm = 0; if (klokOk()) lokaleTijd(hh, mm);
     if ((!nachtStil || (hh >= 7 && hh < 22)) && random(3) == 0) { int m = GAGS[k].mood; playGeluid(m == EXCITED ? GL_TADA : m == LOVE ? GL_GIECHEL : (m == HAPPY || m == CONTENT) ? GL_HOI : (m == SLEEPY || m == YAWN || m == BORED) ? GL_SLAAP : (m == ALERT || m == WORRIED || m == STARTLED) ? GL_OEPS : GL_PLING); }
   }
-  gagAct = k; gagT0 = t; gagMood = GAGS[k].mood; gagMsg = GAGS[k].msg; g_b = false; g_nn = 0; g_r = 0;
+  gagAct = k; gagT0 = t; gagMood = GAGS[k].mood; gagMsg = GAGS[k].msg; g_b = false; belPrik = false; g_nn = 0; g_r = 0;
 }
 static void gagStep(float dt) {
   fdx = fdy = 0; eyeL = eyeR = 1; fxNoBlink = fxSpiral = fxTongue = false;
@@ -1868,7 +1868,7 @@ static void gagStep(float dt) {
     case 0: gdir(0, tt < 3.6f ? -.7f : .2f); fdy = tt > 1.5f ? fabsf(sinf(tt * 6)) * 3 : 0; if (tt > 3.6f) { gagMsg = "Kom op, groen!"; gagMood = ANTICIPATE; } break;
     case 1: { float x = sinf(tt * 2.1f) * .9f + sinf(tt * 5) * .1f, y = cosf(tt * 1.6f) * .6f; g_fx = 120 + x * 75; g_fy = 88 + y * 40;
       if (tt < 4.8f) gdir(x * .9f, y * .9f); else { gdir(0, .1f); gagMood = HAPPY; gagMsg = vliegGevangen ? vliegTxt : "Hij ontsnapte! Tik hem de volgende keer!"; } } break;
-    case 2: gdir(0, .3f); if (tt < 3.6f) g_r = 3 + tt / 3.6f * 27; else { g_r = 0; gagMood = HAPPY; gagMsg = "Plop!"; if (!g_b) { g_b = true; burstAt(120, 168, 12); } } break;
+    case 2: gdir(0, .3f); if (tt < 3.6f && !belPrik) g_r = 3 + tt / 3.6f * 27; else { if (!g_b) { g_b = true; burstAt(120, 182 - g_r * .4f, belPrik ? 18 : 12); if (belPrik) { gagMood = STARTLED; gagMsg = "PATS! Hé, mijn bel!"; playGeluid(GL_SPLAT); } else { gagMood = HAPPY; gagMsg = "Plop!"; } } g_r = 0; } break;
     case 3: { static const float dx[5] = {-1, 1, -.6f, .8f, 0}, dy[5] = {0, -.3f, .2f, -.2f, 0}; int i = (int)(tt / .85f) % 5; gdir(dx[i], dy[i]); if (tt > 4) gagMsg = "Alles veilig."; } break;
     case 4: { float a = tt * 6.5f; gdir(cosf(a) * .95f, sinf(a) * .85f); if (tt > 3.3f) { fxSpiral = true; gagMood = WORRIED; gagMsg = "Oei, duizelig..."; } } break;
     case 5: if (tt < 2) { fdy = -tt * 3; eyeL = eyeR = 1 - tt * .2f; gdir(0, -.4f); } else { gagMood = STARTLED; fdy = 9; gagMsg = "HATSJOE!"; eyeL = eyeR = .15f; if (!g_b) { g_b = true; burstAt(120, 172, 16); } } break;
@@ -1946,7 +1946,8 @@ static void gagStep(float dt) {
     case 101: fdx = sinf(tt * 9) * 6 + 6; gdir(-.7f, 0); if (tt > 2.6f && !g_b) { g_b = true; playGeluid(GL_WOESJ); gagMsg = "Nee! Mijn paraplu!"; } break;
     case 102: gdir(0, .4f); if (tt > 2.6f && tt < 3.8f) { eyeL = eyeR = .25f; fxNoBlink = true; gagMsg = "*slurp*"; } if (tt > 3.8f) { gagMood = LOVE; gagMsg = "Mmm, met slagroom!"; } break;
     case 103: gdir(.2f, .6f); if (tt > 4.6f && !g_b) { g_b = true; gagMood = HAPPY; gagMsg = "Tadaa! Meneer Kastanje."; playGeluid(GL_TADA); } break;
-    case 63: gdir(0, .5f); if (tt > 3.8f && !g_b) { g_b = true; gagMood = STARTLED; gagMsg = "PLOF! Het zit op mijn neus..."; playGeluid(GL_OEPS); } break;
+    case 63: gdir(0, .5f); if (belPrik && !g_b) { g_b = true; gagMood = STARTLED; gagMsg = "PATS! Kauwgom op mijn hele gezicht!"; playGeluid(GL_SPLAT); burstAt(120, 184, 16); }
+      if (tt > 3.8f && !g_b) { g_b = true; gagMood = STARTLED; gagMsg = "PLOF! Het zit op mijn neus..."; playGeluid(GL_OEPS); } break;
     case 32: g_fx = -30 + tt / 6.f * 300; gdir((g_fx - 120) / 110, -.9f); if (tt > 2.2f && tt < 3.8f) { gagMood = STARTLED; gagMsg = "Ze nemen me mee!"; fdy = -4; } else if (tt >= 3.8f) { gagMood = HAPPY; gagMsg = "Pfiew. Ze waren vriendelijk."; } break;
     case 33: g_fx = 260 - tt * 16; gdir((g_fx - 120) / 120, .8f); if (tt > 4.5f) gagMsg = "Sneller dan de file, haha."; break;
     case 34: g_fx = 250 - tt * 55; gdir((g_fx - 120) / 100, -.4f); if (tt > 2.4f && tt < 3.4f) { gagMood = STARTLED; gagMsg = "BOE! Aaah!"; if (!g_b) { g_b = true; burstAt(120, 110, 10); } fdy = -6; } else if (tt >= 3.4f) { gagMood = HAPPY; gagMsg = "Haha, een lief spookje."; } break;
@@ -2096,7 +2097,7 @@ static void gagDraw() {
     case 102: { float lift = tt > 2.4f && tt < 3.8f ? 1 : 0, mx = 150 - lift * 30, my = 200 - lift * 26; roundRect(mx - 16, my - 18, 32, 34, 6, 0xC300); roundRect(mx - 14, my - 22, 28, 8, 4, 0xFFFF); circle(mx + 6, my - 24, 5, 0xFDDF); frame->drawCircle(X(mx + 18), Y(my), S(7), 0xC300);
       for (int i = 0; i < 3; i++) { float k = fmodf(tt * .7f + i * .33f, 1.f); circle(mx - 8 + i * 8 + sinf(tt * 3 + i) * 3, my - 30 - k * 26, 3 * (1 - k) + 1, 0x8410); } } break;
     case 103: { float g = fminf(1, tt / 4.5f); circle(130, 196, 14, 0x8A22); circle(126, 192, 3, 0xC3A6); if (g > .25f) { circle(130, 172, 9, 0x8A22); circle(127, 170, 1.5f, 0x0000); circle(133, 170, 1.5f, 0x0000); } if (g > .5f) { dikLijn(118, 196, 104, 186, 2, 0xC618); dikLijn(142, 196, 156, 186, 2, 0xC618); } if (g > .75f) { dikLijn(124, 208, 118, 222, 2, 0xC618); dikLijn(136, 208, 142, 222, 2, 0xC618); } } break;
-    case 63: { float r = tt < 3.8f ? 4 + tt * 9 : 0; if (r > 0) { circle(120 + faceOx * .5f, 184 + faceOy * .5f, r, 0xFB56); circle(114 + faceOx * .5f - r * .3f, 178 + faceOy * .5f - r * .3f, r * .25f, 0xFDFB); }
+    case 63: { float r = tt < 3.8f && !belPrik ? 4 + tt * 9 : 0; if (r > 0) { circle(120 + faceOx * .5f, 184 + faceOy * .5f, r, 0xFB56); circle(114 + faceOx * .5f - r * .3f, 178 + faceOy * .5f - r * .3f, r * .25f, 0xFDFB); }
       else { for (int i = 0; i < 5; i++) circle(104 + i * 8 + faceOx * .5f, 150 + (i % 2) * 6 + faceOy * .5f, 5, 0xFB56); } } break;
     case 31: for (int i = 0; i < 7; i++) { float x = 120 + sinf(tt * (.7f + i * .13f) + i * 2) * 90, y = 100 + cosf(tt * (.5f + i * .11f) + i) * 70; float hl = .5f + .5f * sinf(tt * 5 + i * 1.7f); if (hl > .35f) circle(x, y, 1.5f + hl * 2.5f, hl > .7f ? 0xFFF0 : 0xAFE0); } break;
     case 32: { float x = g_fx, y = 34 + sinf(tt * 2) * 4; ellipseF(x, y, 24, 7, 0x9CF3); ellipseF(x, y - 6, 10, 7, 0x7E5F); for (int i = -2; i <= 2; i++) circle(x + i * 9, y + 2, 1.8f, (int)(tt * 6 + i) % 2 ? GOLD : RED);
@@ -4056,6 +4057,7 @@ void handleTouch(){
          else { nachtStil = !nachtStil; buddyPrefs.putBool("nstil", nachtStil); logRegel("nachtstand: %s", nachtStil ? "stil 22-7" : "geluid ook 's nachts"); } } }
      else if (spel) spelTik(lX, lY);   // v93
      else if (menuOpen) menuKies(lX, lY);
+     else if ((gagAct == 2 && g_r > 0 && !belPrik) || (gagAct == 63 && !g_b && !belPrik)) { belPrik = true; laatsteActie = now; vriendPlus(1); }   // v125: tik op de bel terwijl hij blaast = PATS
      else if (timerAlarmN) { timerAlarmN = 0; timerTot = 0; startGag(38); gagMsg = "Eet smakelijk!"; }   // v86: alarm uit
      else if (kaartNu()) { kaartStand = 0; kaartGezichtTot = now + 60000; }   // v76: tik op de kaart = terug naar het gezicht
      else if (rtN && lY < (eNavC ? 108.0f : 72.0f) && fabsf(lX - 120.0f) < 70.0f) { kaartStand = 1; kaartGezichtTot = 0; logRegel("KAART getikt (%.0f,%.0f) gps=%d", lX, lY, (int)gpsFix); }   // v76: tik op KAART bovenin = kaart (v109: groter vlak)
