@@ -1263,6 +1263,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       <p class="chip" id="sterStat">Standaard speelt Ricardo's sterren-geluidje. Kies een ander als je wilt (max 7,5 seconden).</p>
       <div class="limitrow"><label for="scLicht">Helderheid</label><input type="range" id="scLicht" min="10" max="100" step="5" value="65"></div>
       <div class="limitrow"><label for="scVol">Volume</label><input type="range" id="scVol" min="0" max="100" step="5" value="80"></div>
+      <div class="limitrow"><label for="scRand">Rand om het scherm</label><select id="scRand"><option value="0" selected>🌅 Kleurt mee met de lucht (op tafel)</option><option value="1">⚫ Geen rand</option><option value="2">🌈 Regenboog</option><option value="3">🔴 KITT (Knight Rider)</option><option value="4">💙 Ademen</option><option value="5">⭕ Vaste kleur (oogkleur)</option></select></div>
       <div class="limitrow"><label for="scAnim">Animaties</label><select id="scAnim"><option value="2">Rustig</option><option value="1" selected>Normaal</option><option value="0.5">Veel</option></select></div>
       <div class="limitrow"><label for="scWarn">Waarschuwen bij ruim te hard</label><select id="scWarn"><option value="1" selected>Aan (boos kijken + piepje)</option><option value="0">Uit</option></select></div>
       <p class="foot">Het schermpje draagt vanzelf hetzelfde outfit als Buddy hier (ook de feestdag-outfits).</p>
@@ -5604,7 +5605,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v217';
+  var VERSION = 'v218';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9062,7 +9063,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     /* v77: instellingen + outfit naar het schermpje */
     var SCKEY = 'dashboardmaatje-scherm-v1', sc = { l: 65, v: 80, a: '1', w: '1' };
     try { var sc0 = JSON.parse(localStorage.getItem(SCKEY)); if (sc0) sc = sc0; } catch (e) {}
-    $('scLicht').value = sc.l; $('scVol').value = sc.v; $('scAnim').value = sc.a; $('scWarn').value = sc.w == null ? '1' : sc.w;
+    $('scLicht').value = sc.l; $('scVol').value = sc.v; $('scAnim').value = sc.a; $('scWarn').value = sc.w == null ? '1' : sc.w; $('scRand').value = sc.r || '0';
     /* v168: internet doorgeven aan Buddy+ (geen hotspot nodig). Buddy+ vraagt een adres, wij halen het op en sturen het in stukjes terug. */
     var nqId = null, nqUrl = '', netJob = null, netQ = [], pompT = 0, pompStuurT = 0, grootStuk = 500, netFout = 0;
     function netHaal(id, url) {
@@ -9101,8 +9102,8 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       return st.reduce(function (pr, x) { return pr.then(function () { return rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(x) : rx.writeValue(x); }); }, Promise.resolve());
     }
     var scT = null;
-    function stuurInst() { clearTimeout(scT); scT = setTimeout(function () { if (!rx) return; bezig = true; stuurTekst('SET:l=' + sc.l + ';v=' + sc.v + ';a=' + sc.a + ';w=' + (sc.w == null ? '1' : sc.w) + ';o=' + (typeof huidigOutfit === 'function' ? huidigOutfit() : 'geen')).catch(function () {}).then(function () { bezig = false; }); }, 400); }
-    ['scLicht', 'scVol', 'scAnim', 'scWarn'].forEach(function (id) { $(id).addEventListener('change', function () { sc.l = +$('scLicht').value; sc.v = +$('scVol').value; sc.a = $('scAnim').value; sc.w = $('scWarn').value; try { localStorage.setItem(SCKEY, JSON.stringify(sc)); } catch (e) {} stuurInst(); }); });
+    function stuurInst() { clearTimeout(scT); scT = setTimeout(function () { if (!rx) return; bezig = true; stuurTekst('SET:l=' + sc.l + ';v=' + sc.v + ';a=' + sc.a + ';w=' + (sc.w == null ? '1' : sc.w) + ';r=' + (sc.r || '0') + ';o=' + (typeof huidigOutfit === 'function' ? huidigOutfit() : 'geen')).catch(function () {}).then(function () { bezig = false; }); }, 400); }
+    ['scLicht', 'scVol', 'scAnim', 'scWarn', 'scRand'].forEach(function (id) { $(id).addEventListener('change', function () { sc.l = +$('scLicht').value; sc.v = +$('scVol').value; sc.a = $('scAnim').value; sc.w = $('scWarn').value; sc.r = $('scRand').value; try { localStorage.setItem(SCKEY, JSON.stringify(sc)); } catch (e) {} stuurInst(); }); });
     window.__scStuur = function () { stuurInst(); setTimeout(persStuur, 900); };
     window.__scDoe = function (t) { if (rx) klein('DOE:' + t); };
     window.__scStuur = function (t) { if (rx) klein(t); };
@@ -9818,6 +9819,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v218', '19 nov', ['Buddy+ (v122): kies zelf de rand om het schermpje: meekleuren met de lucht, geen rand, 🌈 regenboog, 🔴 KITT van Knight Rider, 💙 ademen of een vaste kleur (Buddy+-tab → instellingen)']],
       ['v217', '18 nov', ['Buddy+ (v121) vroeg via de telefoon honderden keren per minuut hetzelfde bestand op; dat is opgelost (scherm en app). Daardoor werd Buddy+ traag en ging hij raar slapen', 'Buddy+ gaat op tafel niet meer na 1-2 minuten uit (dat was de regel voor uitstappen na een rit), en wordt altijd weer wakker dankzij een veiligheidswekker', 'Buddy+ op tafel is overdag levendiger: vaker een trucje, pas na 15 min dommelen, en een dagritme (koffie om 10:00, lunch 12:30, thee 15:00, naar huis 17:30)']],
       ['v216', '18 nov', ['🚗 Tijdens het rijden zie je linksboven welke collega\'s óók rijden, waar ook in Nederland (alleen naam, geen plek); tik erop voor de lijst. Ook in het Groep-tab']],
       ['v215', '18 nov', ['🎩 Garderobe onder Buddy: elk level speelt iets vrij (zonnebril, petje, koptelefoon, kroon, oogkleuren…); je hoedje staat ook achter je naam in de ranglijst', '🎲 Dagmissie: elke dag een andere bonusopdracht, vol = +60 XP', '🌨️ Weer op je route: Buddy waarschuwt voor gladheid, sneeuw, ijzel, storm of onweer op het moment dat jij daar rijdt', '🗞️ Weekrapport op zondagavond (en altijd via de knop onder Buddy) met km-podium van de groep', '🎄 December: sneeuw in het rijscherm, kerstmuts, sneeuwballen in plaats van raketten en elke dag een adventscadeautje']],
