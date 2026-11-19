@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 123;   // v123: geen koekje meer naast zijn gezicht (aaien = eten), nieuwe veeg- en tikgebaren, ogen volgen je vinger
+static const int FW_VERSIE = 124;   // v124: luisteren: fluiten (ogen volgen de toon en hij fluit je na), claxon, sirene (tijdens het rijden), blazen
+// (v123: koekje weg, veeggebaren)   // v123: geen koekje meer naast zijn gezicht (aaien = eten), nieuwe veeg- en tikgebaren, ogen volgen je vinger
 // (v122: rand om het scherm zelf kiezen)   // v122: rand om het scherm zelf kiezen (lucht, geen, regenboog, KITT, ademen, vaste kleur)
 // (v121: internetvraag niet meer eindeloos, uitstapregel, veiligheidswekker, levendiger op tafel)   // v121: internetvraag via de telefoon werd eindeloos herhaald (honderden keren per minuut), uitstappen-regel alleen na een rit, wakker worden betrouwbaarder
 // (v120: XP-balkje onderin bij +XP uit de app)
@@ -104,6 +105,10 @@ static volatile int otaPct = -1; static volatile int otaKlaarV = 0; static volat
 static uint32_t koppelPin = 0; static volatile bool gekoppeld = false; static volatile uint32_t pinTot = 0;
 static volatile bool pinOk = false; static volatile uint8_t pinAntw = 0;   // v65: koppelen met de code via de app zelf (geen Android-koppeling meer)
 static volatile uint32_t verbindT = 0; static volatile uint8_t koppelMislukt = 0;   // v55: mislukte koppelingen tellen
+struct Note { uint16_t hz; uint16_t ms; uint16_t hz2; };   // v46: hz2 = glijden naar deze toon (0 = vaste toon)
+struct SoundJob { Note notes[8]; uint8_t count; };
+void soundTask(void *arg);
+static volatile uint32_t fluitT = 0, toeterT = 0, sireneT = 0, blaasT = 0; static volatile float fluitHz = 0; static volatile uint8_t fluitKlaar = 0, fluitN = 0; static uint16_t fluitMel[8][2];   // v124
 static volatile float oorNiveau = 0, oorBasis = 0; static volatile uint32_t muziekSinds = 0, klapT = 0, knalT = 0, klap3T = 0; static volatile bool oorOk = false;
    // voortgang van een update via wifi (-1 = geen)   // ophogen bij elke nieuwe versie (de update via wifi kijkt hiernaar)
 #define FW_BASIS "https://raw.githubusercontent.com/ToxicRadiuM/GeenIdee/firmware/"
@@ -3736,6 +3741,16 @@ void updateMood(float dt){
      if (alWakker) { static const char *AW[6] = {"Ik ben al wakker hoor!", "Ja ja, ik hoor je!", "Hé, ik ben er toch al!", "Nog een keer? *klapt terug*", "Applaus voor mij? Dank je!", "Ik zit hier gewoon, hoor."}; if (gagAct < 0) { startGag(7); gagMsg = AW[random(6)]; playGeluid(GL_TOK); } }
      else { aaiTot = millis() + 2000; if (gagAct < 0) { if (robotModus && wxVers()) startGag(53); else { startGag(7); gagMsg = "Ja? Ik ben er! *gaap*"; } } } }
    if (knalT && knalT != kn0 && millis() - knalT < 300) { kn0 = knalT; if (slaapt && robotModus) { slaapt = false; laatsteActie = millis(); if (gagAct < 0) startGag(64); } else if (millis() > schrikTot + 4000) { schrikTot = millis() + 900; if (gagAct < 0 && random(3) == 0) startGag(91); } }   // v90: wakker geschrokken, v95: soms 'wat was DAT?!'
+   { // v124: reageren op wat hij hoort
+     uint32_t nu = millis(); bool rijdtNu = spdNow() > 8; int hhN = 12, mmN = 0; if (klokOk()) lokaleTijd(hhN, mmN); bool mag = !(nachtStil && (hhN >= 22 || hhN < 7));
+     if (fluitT && nu - fluitT < 250 && gagAct < 0 && !menuOpen && !venster) { gdir(sinf(nu / 300.f) * .3f, fmaxf(-.9f, fminf(.7f, .6f - (fluitHz - 800) / 1500.f))); slaapt = false; laatsteActie = nu; static uint32_t nt = 0; if (nu - nt > 350) { nt = nu; noot(frand(70, 170), 70); } }
+     static uint32_t naT = 0; if (fluitKlaar) { fluitKlaar = 0; if (nu - naT > 6000 && fluitN > 0 && !rijdtNu && mag && !audioBusy && audioReady) { naT = nu; startGag(6); gagMsg = "Fiew fiew! Ik fluit je na!";
+       SoundJob *j = new SoundJob(); j->count = 0; for (int i = 0; i < fluitN && i < 8; i++) { uint16_t hz = fluitMel[i][0], ms = max<uint16_t>(90, fluitMel[i][1]); j->notes[j->count++] = { hz, ms, (uint16_t)(i + 1 < fluitN ? 0 : hz * 1.04f) }; }
+       audioBusy = true; audioBusyT = nu; audioGespeeld++; if (xTaskCreatePinnedToCore(soundTask, "BuddyFluit", 4096, j, 1, nullptr, 1) != pdPASS) { audioBusy = false; delete j; } logRegel("fluiten nagedaan (%d tonen)", (int)fluitN); } }
+     static uint32_t toT = 0; if (toeterT && nu - toeterT < 500 && nu - toT > 45000 && gagAct < 0) { toT = nu; startGag(7); gagMsg = rijdtNu ? "Toet toet! Wie toetert er nou?" : "Hé! Was dat een claxon?"; }
+     static uint32_t siT = 0; if (sireneT && nu - sireneT < 800 && rijdtNu && nu - siT > 120000) { siT = nu; startGag(7); gagMsg = "Ik hoor een sirene! Maak ruimte als hij eraan komt."; playGeluid(GL_DINGDONG); bleSend("EVT:sirene"); logRegel("sirene gehoord"); }
+     static uint32_t blT2 = 0; if (blaasT && nu - blaasT < 600 && nu - blT2 > 20000 && gagAct < 0 && !rijdtNu) { blT2 = nu; startGag(21); gagMsg = "Brrr! Niet blazen, dat kriebelt!"; playGeluid(GL_GIECHEL); }
+   }
    { static uint32_t k3 = 0; if (klap3T && klap3T != k3) { k3 = klap3T; laatsteActie = millis(); slaapt = false; if (gagAct < 0 || gagAct == 7) { startGag(8); playGeluid(GL_TADA); } } }   // v90: 3x klappen = dansje
    { static uint32_t stilVanaf = 0; static uint8_t oorVorig = 0; if (oorSoort == 0 && !stilVanaf) stilVanaf = millis(); if (oorSoort >= 1 && oorVorig == 0 && stilVanaf && millis() - stilVanaf > 30UL * 60000 && robotModus && gagAct < 0 && !slaapt) startGag(94); else if (oorSoort == 1 && oorVorig != 1 && stilVanaf && millis() - stilVanaf > 15UL * 60000 && robotModus && gagAct < 0) startGag(65); if (oorSoort != 0) stilVanaf = 0; oorVorig = oorSoort; }   // v90: hoi als je gaat praten
    (void)mu0; }   // v42: muziek en praten zitten nu in persStap
@@ -3829,6 +3844,21 @@ static void oorTaak(void *) {
       }
     }
     static uint32_t spkT = 0; if (audioBusy) spkT = nu; bool eigen = nu - spkT < 700;   // v94: zijn eigen geluidjes zijn geen klappen
+    { // v124: toonhoogte via nuldoorgangen: fluiten, claxon, sirene en blazen herkennen
+      static float vorigF = 0; static int fluitFr = 0, toetFr = 0, blaasFr = 0; static uint32_t fluitLaatst = 0, fluitBegin = 0; static float segF = 0; static uint32_t segT = 0;
+      static float sirF[96]; static uint8_t sirI = 0; float f = 0; bool tonaal = false;
+      if (!eigen && rms > oorBasis * 3 + .006f) { int zc = 0; for (int i = 1; i < cnt; i++) if ((buf[i - 1] < 0) != (buf[i] < 0)) zc++; f = zc * 16000.f / (2.f * cnt); tonaal = vorigF > 0 && fabsf(f - vorigF) < vorigF * .12f; }
+      vorigF = f;
+      if (tonaal && f > 800 && f < 3500) { if (!fluitBegin || nu - fluitLaatst > 400) { fluitBegin = nu; fluitN = 0; segF = 0; } fluitLaatst = nu; fluitT = nu; fluitHz = f; fluitFr++;
+        if (!segF || fabsf(f - segF) > segF * .08f) { if (segF && fluitN < 8) { fluitMel[fluitN][0] = (uint16_t)segF; fluitMel[fluitN][1] = (uint16_t)min<uint32_t>(600, nu - segT); fluitN++; } segF = f; segT = nu; } }
+      else if (fluitBegin && nu - fluitLaatst > 400) { if (segF && fluitN < 8) { fluitMel[fluitN][0] = (uint16_t)segF; fluitMel[fluitN][1] = (uint16_t)min<uint32_t>(600, fluitLaatst - segT + 40); fluitN++; }
+        if (fluitLaatst - fluitBegin > 350 && fluitFr > 8) fluitKlaar = 1; fluitBegin = 0; fluitFr = 0; segF = 0; }
+      if (tonaal && f > 250 && f < 700 && rms > oorBasis * 5 + .02f) { if (++toetFr >= 12) { toeterT = nu; toetFr = 0; } } else if (!tonaal) toetFr = 0;
+      if (!tonaal && f > 1500 && rms > oorBasis * 8 + .05f) { if (++blaasFr >= 20) { blaasT = nu; blaasFr = 0; } } else blaasFr = 0;
+      sirF[sirI] = (tonaal && f > 500 && f < 1900) ? f : 0; sirI = (sirI + 1) % 96;
+      { int ton = 0, omk = 0, rich = 0; float mn = 9999, mx = 0, vg = 0; for (int i = 0; i < 96; i++) { float v = sirF[(sirI + i) % 96]; if (v <= 0) continue; ton++; mn = fminf(mn, v); mx = fmaxf(mx, v); if (vg > 0 && fabsf(v - vg) > 25) { int r2 = v > vg ? 1 : -1; if (rich && r2 != rich) omk++; rich = r2; } vg = v; }
+        if (ton > 58 && mx - mn > 250 && omk >= 2) { sireneT = nu; for (int i = 0; i < 96; i++) sirF[i] = 0; } }
+    }
     if (eigen) pieken = 0;
     else if (rms > oorBasis * 6 + .03f) {   // korte harde piek
       if (nu - piekT > 120) { if (nu - piekT < 700) pieken++; else pieken = 1; piekT = nu; }
@@ -3892,8 +3922,6 @@ bool initBuddyAudio() {
   return true;
 }
 
-struct Note { uint16_t hz; uint16_t ms; uint16_t hz2; };   // v46: hz2 = glijden naar deze toon (0 = vaste toon)
-struct SoundJob { Note notes[8]; uint8_t count; };
 
 void soundTask(void *arg) {
   SoundJob job = *(SoundJob*)arg;
