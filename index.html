@@ -1929,8 +1929,13 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (!S.live || !S.trip || S.speed >= 1 || S.stoppedT < minStil) return;
     var telt = ritAfsluiten(60); if (telt && lastPos) parkeer(lastPos.lat, lastPos.lon); lg('rit vanzelf afgesloten (' + reden + ')');
   }
-  window.__ritAutoKlaar = ritAutoKlaar;
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') ritAutoKlaar('app dicht', 60); });
+  /* v220: niet meteen afsluiten (stoplicht + even andere app of Buddy+ kort weg = geen einde rit). Na 90 s nog eens kijken: staat hij dan nog steeds stil en is het nog steeds zo? Dan pas klaar. */
+  function ritAutoKlaarLater(reden, nogSteeds) {
+    if (!S.live || !S.trip) return; lg('rit: ' + reden + ', over 90 s kijken of je echt gestopt bent');
+    setTimeout(function () { var ja = false; try { ja = nogSteeds(); } catch (e) {} if (ja) ritAutoKlaar(reden, 90); else lg('rit loopt door (' + reden + ' was maar even)'); }, 90000);
+  }
+  window.__ritAutoKlaar = function (reden, minStil, nogSteeds) { ritAutoKlaarLater(reden, nogSteeds || function () { return true; }); };
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') ritAutoKlaarLater('app dicht', function () { return document.hidden; }); });
   (function () { var wegT = 0, tel0 = 0; document.addEventListener('visibilitychange', function () {   /* v182: hoe ging het op de achtergrond? */
     if (document.hidden) { wegT = Date.now(); tel0 = window.__gpsTel || 0; } else if (wegT) { var sec = Math.round((Date.now() - wegT) / 1000); if (sec > 20) lg('achtergrond: ' + sec + ' s weg, ' + ((window.__gpsTel || 0) - tel0) + ' GPS-punten ontvangen'); wegT = 0; } }); })();
   /* Rit afsluiten: automatisch na 5 min stilstaan, of met de knop "Rit klaar". Geeft true als de rit is meegeteld. */
@@ -3335,7 +3340,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
      metingen in (interpolatie), zonder de vertraging van de afgevlakte snelheid. */
   var lr = { arm: false, tStil: null, t0: null, vPrev: 0, tPrev: 0, d80: false, t1: null, v1: 0, fijn: false };
   function launchFix(t, v, acc) {
-    if (acc >= 30) { lr.t0 = null; lr.arm = false; lr.vPrev = v; lr.tPrev = t; return; } /* te onnauwkeurig: niet meten */
+    if (acc >= 30 || (lr.tPrev != null && t - lr.tPrev > 2500)) { if (lr.t0 !== null && t - lr.tPrev > 2500) lg('0-100 niet geteld: ' + Math.round((t - lr.tPrev) / 1000) + ' s geen GPS (app op de achtergrond?)'); lr.t0 = null; lr.arm = false; window.__lrT0 = null; lr.vPrev = v; lr.tPrev = t; return; } /* te onnauwkeurig of een gat in de GPS (v220: andere app open): niet meten */
     if (v < 1) { lr.arm = true; lr.tStil = t; lr.t0 = null; lr.d80 = false; }
     else if (lr.arm && lr.t0 === null) {
       var f = lr.vPrev < 1 && v > lr.vPrev ? (1 - lr.vPrev) / (v - lr.vPrev) : 0;
@@ -5606,7 +5611,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v219';
+  var VERSION = 'v220';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -8998,7 +9003,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       stuurTekst('NET:' + pbase() + '\t' + (grp || '') + '\t' + (mijnId || '') + '\t' + nm).catch(function () {});
     }
     function weg() {
-      rx = null; pinBev = false; try { if (window.__ritAutoKlaar) window.__ritAutoKlaar('telefoon weg bij Buddy+', 20); } catch (e) {} stat('Verbinding met het schermpje weg, ik probeer het opnieuw…'); $('bleKnop').textContent = '📡 Verbind met Buddy+';
+      rx = null; pinBev = false; try { if (window.__ritAutoKlaar) window.__ritAutoKlaar('telefoon weg bij Buddy+', 20, function () { return !rx; }); } catch (e) {} stat('Verbinding met het schermpje weg, ik probeer het opnieuw…'); $('bleKnop').textContent = '📡 Verbind met Buddy+';
       opnieuw(0);
     }
     function opnieuw(n) {   /* v172: blijven proberen (na een telefoontje of even buiten bereik), niet na één keer opgeven */
@@ -9820,6 +9825,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v220', '26 nov', ['Buddy+ (v127): de rijbalk staat altijd rechts en loopt mee met je rit: gereden stuk grijs, rood pijltje van je auto schuift op, files en flitsers erop', 'Geen nep-0-100 meer als je even een andere app opent (een gat in de GPS telt niet mee)', 'Rit stopt niet meer bij een stoplicht als Buddy+ even wegvalt of je een andere app opent: hij wacht 90 s of je echt gestopt bent', 'Buddy+ (v127): 11 nieuwe trucjes: stoplicht-duel, filekampioen met picknick, rood licht tellen, Sint-schoen, beslagen ruit, ademwolkjes als het vriest, ijspegels, kerstlampjes om de rand, waakhond als de auto geparkeerd staat, droomwolkje van je rit, en zwaaien naar een collega in de buurt. Om 12 uur op oudjaar: vuurwerk!']],
       ['v219', '26 nov', ['Routelijn in het afslagbord: je rode pijltje wijst nu langs de balk (naar rechts) en flitsers/matrixborden op de lijn staan weer rechtop', 'Buddy+ houdt je plek vast als de app op de achtergrond staat (bijv. als je in een andere app zit)', 'Buddy+ (v126): klein kaarticoontje rechts tijdens navigatie, tik erop voor de kaart', 'Matrixborden zijn \'s ochtends niet meer uren oud']],
       ['v218', '19 nov', ['Buddy+ (v122): kies zelf de rand om het schermpje: meekleuren met de lucht, geen rand, 🌈 regenboog, 🔴 KITT van Knight Rider, 💙 ademen of een vaste kleur (Buddy+-tab → instellingen)', 'Buddy+ (v123): geen koekje meer naast zijn gezicht (heeft hij trek, dan is aaien genoeg); nieuwe gebaren: veeg omhoog = stuiteren, omlaag = kiekeboe, naar rechts = dansen, naar links = gluren, dubbel tikken = knipoog, rondjes draaien = duizelig, en zijn ogen volgen je vinger', 'Buddy+ (v124) luistert beter: fluit je, dan volgen zijn ogen de toon en fluit hij je melodietje na en blaas je op hem, dan zegt hij Brrr!', 'Buddy+ (v125): de kaart draait niet meer weg als je stilstaat, de routelijn blijft vooruit wijzen', 'Buddy+ (v125): tik op de bel of kauwgombel terwijl hij blaast en PATS, kapot']],
       ['v217', '18 nov', ['Buddy+ (v121) vroeg via de telefoon honderden keren per minuut hetzelfde bestand op; dat is opgelost (scherm en app). Daardoor werd Buddy+ traag en ging hij raar slapen', 'Buddy+ gaat op tafel niet meer na 1-2 minuten uit (dat was de regel voor uitstappen na een rit), en wordt altijd weer wakker dankzij een veiligheidswekker', 'Buddy+ op tafel is overdag levendiger: vaker een trucje, pas na 15 min dommelen, en een dagritme (koffie om 10:00, lunch 12:30, thee 15:00, naar huis 17:30)']],

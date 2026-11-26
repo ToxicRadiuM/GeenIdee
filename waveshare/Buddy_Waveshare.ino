@@ -38,7 +38,9 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 126;   // v126: kaarticoontje rechts tijdens navigatie (tik = kaart); telefoon-GPS valt niet meer weg als de app op de achtergrond staat (plek schuift door tot 15 s)
+static const int FW_VERSIE = 127;   // v127 ook: 12 nieuwe trucjes (stoplicht-duel, filekampioen, rood tellen, Sint-schoen, beslagen ruit, ademwolkjes, ijspegels, kerstlampjes, waakhond, droomwolkje, collega zwaaien, vuurwerk om 12 uur)
+// v127: de rijbalk staat altijd rechts (niet meer soms bovenin) en loopt mee: gereden stuk grijs, pijltje van je auto schuift op
+// oud:   // v126: v126: kaarticoontje rechts tijdens navigatie (tik = kaart); telefoon-GPS valt niet meer weg als de app op de achtergrond staat (plek schuift door tot 15 s)
 // oud:   // v125: v125: bel kapot prikken door te tikken; kaart draait niet meer weg bij stilstand (routelijn stond soms rechts)
 //   // v124: luisteren: fluiten (ogen volgen de toon en hij fluit je na) en blazen
 // (v123: koekje weg, veeggebaren)   // v123: geen koekje meer naast zijn gezicht (aaien = eten), nieuwe veeg- en tikgebaren, ogen volgen je vinger
@@ -880,7 +882,8 @@ int mood=NEUTRAL, lastMood=-1;
 static int gagAct = -1, gagMood = -1; static float gagT0 = 0, nextGagT = 6; static const char *gagMsg = nullptr;
 static float fdx = 0, fdy = 0, eyeL = 1, eyeR = 1, faceOx = 0, faceOy = 0;
 static bool fxNoBlink = false, fxSpiral = false, fxTongue = false;
-static float g_fx = 120, g_fy = 90, g_r = 0, g_d = 0, g_nn = 0; static bool g_b = false, belPrik = false;   // v125: belPrik = jij prikte de bel kapot
+static float g_fx = 120, g_fy = 90, g_r = 0, g_d = 0, g_nn = 0, g_zx = 0; static char g_buf[48] = ""; static uint32_t g_stilVan = 0; static bool g_b = false, belPrik = false;   // v127: g_zx = kant van de collega, g_buf = tekst met getal/naam
+//   // v125: belPrik = jij prikte de bel kapot
 static volatile uint32_t flagTot = 0;   // 0-100 vlag-show
 struct Particle { float x,y,vx,vy,age,life,size; uint8_t kind; } particles[24];
 
@@ -955,6 +958,7 @@ static char gpsDate[7] = "";
 static volatile float res80 = 0, res100 = 0; static volatile bool new80 = false, new100 = false;
 static void launchFix(uint32_t ms, float v) {
   static bool arm = false, d80 = false, fijn = false; static uint32_t tStil = 0, t0 = 0, tPrev = 0, t1 = 0; static float vPrev = 0, v1 = 0;
+  if (tPrev && ms - tPrev > 2500) { t0 = 0; arm = false; sprintT0 = 0; vPrev = v; tPrev = ms; return; }   // v127: gat in de GPS = geen eerlijke meting
   if (v < 1.0f) { arm = true; tStil = ms; t0 = 0; d80 = false; }
   else if (arm && t0 == 0) {
     float f = (vPrev < 1 && v > vPrev) ? (1 - vPrev) / (v - vPrev) : 0; f = fmaxf(0, fminf(1, f));
@@ -1737,6 +1741,17 @@ static const GagDef GAGS[] = {
   {5.0f, G_IDLE, WORRIED, "Wat een wind!"},                             // 101 herfst: paraplu klapt om
   {6.0f, G_IDLE, CONTENT, "Warme chocomel..."},                         // 102 herfst: chocomel
   {6.0f, G_IDLE, FOCUSED, "Ik maak een kastanjepoppetje."},             // 103 herfst: kastanjes
+  {7.0f, G_STOP, FOCUSED, "Op je plaatsen..."},                         // 104 v127 stoplicht-duel
+  {8.0f, G_STOP, CONTENT, "Picknick in de file!"},                      // 105 v127 filekampioen
+  {7.0f, G_STOP, BORED, "Rood duurt lang..."},                          // 106 v127 rood licht tellen
+  {7.0f, G_IDLE | G_STOP, EXCITED, "Mijn schoen staat klaar!"},         // 107 v127 Sint: schoen met wortel
+  {8.0f, G_IDLE | G_STOP, FOCUSED, "Hé, de ruit is beslagen!"},          // 108 v127 winter: kijkgaatje vegen
+  {6.0f, G_IDLE | G_STOP, CONTENT, "Brr, kijk mijn adem!"},              // 109 v127 vriest het: ademwolkjes
+  {6.5f, G_IDLE, WORRIED, "Ijspegels aan mijn muts!"},                   // 110 v127 winter: ijspegels
+  {7.0f, G_IDLE | G_STOP, LOVE, "Kerstlampjes aan!"},                    // 111 v127 kerst: lampjes om de rand
+  {9.0f, G_IDLE, FOCUSED, "Ik let wel op de auto."},                     // 112 v127 waakhond (geparkeerd, jij weg)
+  {9.0f, G_IDLE, SLEEPY, "Zzz... ik droom van onze rit."},               // 113 v127 droomwolkje
+  {5.0f, G_IDLE | G_DRIVE | G_STOP, EXCITED, "Daar rijdt een collega!"}, // 114 v127 collega in de buurt: zwaaien
 };
 static constexpr int GAG_N = sizeof(GAGS) / sizeof(GAGS[0]);
 static inline void gdir(float x, float y) { tgx = x; tgy = y; nextGaze = t + .3f; }
@@ -1829,6 +1844,8 @@ static void gagStep(float dt) {
     tgx = sinf(t * .4f) * .15f; tgy = -.12f; nextGaze = t + .5f; fdy = sinf(t * 2.6f) > .75f ? 3 : 0;
     static float hmT = 0; if (t > hmT) { hmT = t + frand(7, 15); static const char *HM[6] = {"hmhm", "ja ja", "o ja?", "echt?!", "snap ik", "goh!"}; hmhmTxt = HM[random(6)]; hmhmTot = millis() + 1600; } }
   float v = spdNow();
+  if (v < 1) { if (!g_stilVan) g_stilVan = millis(); } else g_stilVan = 0;   // v127: hoe lang staan we al stil?
+  uint32_t stilDuur = g_stilVan ? millis() - g_stilVan : 0;
   if (gagAct < 0) {
     if (t < nextGagT || menuOpen || venster || spel || timerAlarmN || showNa || (int32_t)(showTot - millis()) > 0 || millis() < flagTot || millis() < aaiTot || mood == ALERT || mood == WORRIED || mood == SLEEPING) return;
     bool rijdt = v >= 15, stil = v < 1;
@@ -1844,6 +1861,18 @@ static void gagStep(float dt) {
       if (k == 52 && !(robotModus && klokOk())) continue;
       if ((k == 69 || k == 72) && !hartjesAan) continue;   // v109: hartje in de condens en kusje alleen met hartjes aan
       if (k >= 96 && k <= 103) { time_t tn = time(nullptr); if (tn > 1700000000) { struct tm tv; localtime_r(&tn, &tv); if (tv.tm_mon < 8 || tv.tm_mon > 10) continue; } }   // v100: herfst = sept t/m nov
+      { int dd = 0, mm = 0; time_t tn = time(nullptr); if (tn > 1700000000) { struct tm tv; localtime_r(&tn, &tv); dd = tv.tm_mday; mm = tv.tm_mon + 1; }   // v127: nieuwe trucjes, elk op zijn moment
+        bool koud = wxTemp > -90 && wxTemp <= 2, winter = mm == 12 || (mm >= 1 && mm <= 2) || (wxTemp > -90 && wxTemp <= 3); (void)dd;
+        if (k == 104 && stilDuur > 40000) continue;            // stoplicht-duel: net gestopt
+        if (k == 105 && stilDuur < 60000) continue;            // filekampioen: pas na een minuut stilstaan
+        if (k == 106 && (stilDuur < 15000 || stilDuur > 120000)) continue;
+        if (k == 107 && !sint) continue;
+        if ((k == 108 || k == 110) && !winter) continue;
+        if (k == 109 && !koud) continue;
+        if (k == 111 && !kerst) continue;
+        if (k == 112 && (robotModus || telDichtbij() || tripActief)) continue;   // waakhond: auto geparkeerd en jij bent weg
+        if (k == 113 && klokOk()) { int hh, m2; lokaleTijd(hh, m2); if (hh >= 7 && hh < 19) continue; }   // dromen: 's avonds
+        if (k == 114) continue; }                               // collega: alleen als er echt een in de buurt is (hieronder)
       if (!gagOntgrendeld(k)) continue;   // v42: sommige trucjes leert hij pas na genoeg km samen
       if (k == 31 && klokOk()) { int hh, mm; lokaleTijd(hh, mm); if (hh >= 7 && hh < 18) continue; }   // vuurvliegjes alleen 's avonds
       if ((stil && (f & G_IDLE)) || (rijdt && (f & G_DRIVE)) || (stil && tripActief && (f & G_STOP))) kies[n++] = k;
@@ -1858,10 +1887,18 @@ static void gagStep(float dt) {
     if (halloween && random(3) == 0) k = random(2) ? 34 : 35;   // op Halloween vaker het spookje en de pompoen
     if (stil && robotModus) { float verv = fminf(1, (millis() - laatsteActie) / 3600000.f);   // v98: hoe langer niemand iets doet, hoe gekker
       if (verv > .4f && random(100) < verv * 60) { static const uint8_t GEK[] = {57, 70, 74, 75, 76, 80, 85, 88, 89, 66, 77}; uint8_t g2 = GEK[random(sizeof GEK)]; if (gagOntgrendeld(g2)) k = g2; } }
-    if (sint && random(4) == 0) k = 36;
-    if (kerst && random(4) == 0) k = 37;
+    if (sint && random(4) == 0) k = random(2) ? 36 : 107;   // v127: ook de schoen
+    if (kerst && random(4) == 0) k = random(2) ? 37 : 111;  // v127: ook de lampjes
     if (nieuwjaar && random(3) == 0) k = 40;
+    if (nieuwjaar && klokOk()) { int hh, mm; lokaleTijd(hh, mm); if (hh == 0 && mm < 15) k = 40; }   // v127: om 12 uur vuurwerk, vuurwerk, vuurwerk
+    static uint32_t zwaaiT = 0;   // v127: rijdt er een collega vlakbij? Dan kijkt hij die kant op en zwaait
+    if (matenN && millis() - matenT < 5000 && gpsFix && (!zwaaiT || millis() - zwaaiT > 600000)) {
+      int bi = -1; float bd = 1500; for (int i = 0; i < matenN; i++) { float dy = (maten[i].lat - gpsLat) * 111320.f, dx = (maten[i].lon - gpsLon) * 111320.f * cosf(gpsLat * .0174533f), d = sqrtf(dx * dx + dy * dy); if (d < bd) { bd = d; bi = i; } }
+      if (bi >= 0) { float dy = (maten[bi].lat - gpsLat), dx = (maten[bi].lon - gpsLon) * cosf(gpsLat * .0174533f), brg = atan2f(dx, dy) * 57.2958f, rel = fmodf(brg - gpsKoers + 540, 360) - 180;
+        g_zx = fmaxf(-1, fminf(1, rel / 90.f)); snprintf(g_buf, sizeof g_buf, "Daar rijdt %s! *zwaai*", maten[bi].n); zwaaiT = millis(); k = 114; } }
     startGag(k);
+    if (k == 114) gagMsg = g_buf;
+    if (k == 105) { snprintf(g_buf, sizeof g_buf, "%lu min file. Picknick!", (unsigned long)(stilDuur / 60000)); gagMsg = g_buf; }
     bool tafelDag = robotModus && klokOk() && ([]{ int hh, mm; lokaleTijd(hh, mm); return hh >= 8 && hh < 21; })();   // v121: op tafel overdag levendiger
     nextGagT = t + GAGS[k].dur + (robotModus ? (tafelDag ? frand(6, 14) : frand(14, 32)) : (stil ? frand(8, 16) : frand(15, 30))) * animFactor * karFactor * vervF;   // v51: als robotje ook gewoon even rondkijken en 'saai' zijn
     return;
@@ -1950,6 +1987,18 @@ static void gagStep(float dt) {
     case 101: fdx = sinf(tt * 9) * 6 + 6; gdir(-.7f, 0); if (tt > 2.6f && !g_b) { g_b = true; playGeluid(GL_WOESJ); gagMsg = "Nee! Mijn paraplu!"; } break;
     case 102: gdir(0, .4f); if (tt > 2.6f && tt < 3.8f) { eyeL = eyeR = .25f; fxNoBlink = true; gagMsg = "*slurp*"; } if (tt > 3.8f) { gagMood = LOVE; gagMsg = "Mmm, met slagroom!"; } break;
     case 103: gdir(.2f, .6f); if (tt > 4.6f && !g_b) { g_b = true; gagMood = HAPPY; gagMsg = "Tadaa! Meneer Kastanje."; playGeluid(GL_TADA); } break;
+    case 104: gdir(.55f, -.35f); if (spdNow() > 5 && !g_b) { g_b = true; gagMood = EXCITED; gagMsg = "GAAAN! Race je me?"; playGeluid(GL_TADA); }   // v127
+      else if (!g_b) { gagMsg = tt < 2.2f ? "Op je plaatsen..." : tt < 4.4f ? "Klaar..." : "AF!"; if (tt > 4.4f) gagMood = EXCITED; } break;
+    case 105: gdir(sinf(tt * .8f) * .3f, .55f); if (tt > 5.5f) { gagMood = HAPPY; gagMsg = "Mmm, broodje kaas. File mag nog even."; } break;
+    case 106: { int n = min(10, (int)(tt * 1.5f) + 1); gdir(.5f, .4f); fdy = (n % 2) ? 1 : 0; if (tt < 6.2f) { snprintf(g_buf, sizeof g_buf, "%d... ", n); gagMsg = g_buf; } else { gagMood = YAWN; gagMsg = "*zucht* Wordt het nog groen?"; } } break;
+    case 107: fdx = sinf(tt * 7) * 2.5f; gdir(0, .6f); if (tt > 4.5f && !g_b) { g_b = true; gagMood = LOVE; gagMsg = "Een wortel voor het paard!"; playGeluid(GL_GIECHEL); } break;
+    case 108: gdir(sinf(tt * 3) * .6f, 0); if (tt > 6 && !g_b) { g_b = true; gagMood = HAPPY; gagMsg = "Zo, weer zicht!"; } break;
+    case 109: gdir(.3f, -.3f); if ((int)(tt * 1.2f) % 2 == 0) fdy = -1; break;
+    case 110: gdir(0, -.8f); if (tt > 4.8f && !g_b) { g_b = true; gagMood = STARTLED; gagMsg = "Plink! Eentje viel eraf."; playGeluid(GL_OEPS); } break;
+    case 111: gdir(sinf(tt * 1.6f) * .7f, -.3f); break;
+    case 112: gdir(sinf(tt * 1.1f) * .9f, .1f); eyeL = eyeR = .55f; fxNoBlink = true; if (tt > 6) gagMsg = "Alles rustig. Ik blijf opletten."; break;
+    case 113: eyeL = eyeR = .06f; fxNoBlink = true; gdir(0, .2f); fdy = sinf(tt * 1.4f) * 1.5f; break;
+    case 114: gdir(g_zx, -.2f); break;
     case 63: gdir(0, .5f); if (belPrik && !g_b) { g_b = true; gagMood = STARTLED; gagMsg = "PATS! Kauwgom op mijn hele gezicht!"; playGeluid(GL_SPLAT); burstAt(120, 184, 16); }
       if (tt > 3.8f && !g_b) { g_b = true; gagMood = STARTLED; gagMsg = "PLOF! Het zit op mijn neus..."; playGeluid(GL_OEPS); } break;
     case 32: g_fx = -30 + tt / 6.f * 300; gdir((g_fx - 120) / 110, -.9f); if (tt > 2.2f && tt < 3.8f) { gagMood = STARTLED; gagMsg = "Ze nemen me mee!"; fdy = -4; } else if (tt >= 3.8f) { gagMood = HAPPY; gagMsg = "Pfiew. Ze waren vriendelijk."; } break;
@@ -1979,6 +2028,7 @@ static void gagStep(float dt) {
     case 56: gdir(.6f, .4f); break;
   }
 }
+static uint32_t stilDuurNu() { return g_stilVan ? millis() - g_stilVan : 0; }   // v127
 static void gagDraw() {
   if (gagAct < 0) return;
   float tt = t - gagT0;
@@ -2100,6 +2150,34 @@ static void gagDraw() {
       for (int i = 0; i < 4; i++) { float wx = fmodf(tt * 160 + i * 60, 260) - 20; line(wx, 40 + i * 40, wx + 30, 40 + i * 40, 0x8410, 1); } } break;
     case 102: { float lift = tt > 2.4f && tt < 3.8f ? 1 : 0, mx = 150 - lift * 30, my = 200 - lift * 26; roundRect(mx - 16, my - 18, 32, 34, 6, 0xC300); roundRect(mx - 14, my - 22, 28, 8, 4, 0xFFFF); circle(mx + 6, my - 24, 5, 0xFDDF); frame->drawCircle(X(mx + 18), Y(my), S(7), 0xC300);
       for (int i = 0; i < 3; i++) { float k = fmodf(tt * .7f + i * .33f, 1.f); circle(mx - 8 + i * 8 + sinf(tt * 3 + i) * 3, my - 30 - k * 26, 3 * (1 - k) + 1, 0x8410); } } break;
+    case 104: { roundRect(186, 50, 24, 62, 7, 0x2104); float k0 = tt < 2.2f ? 1 : 0, k1 = tt >= 2.2f && tt < 4.4f ? 1 : 0, k2 = tt >= 4.4f || g_b ? 1 : 0;   // v127 stoplicht + vlag
+      circle(198, 62, 7, k0 && !g_b ? 0xF800 : 0x4000); circle(198, 81, 7, k1 && !g_b ? 0xFD20 : 0x4200); circle(198, 100, 7, k2 ? 0x07E0 : 0x0200);
+      if (k2) { float w = sinf(tt * 12) * 3; line(38, 196, 38, 140, 0xC618, 2); for (int r = 0; r < 3; r++) for (int c = 0; c < 4; c++) roundRect(40 + c * 7, 140 + r * 7 + (c % 2 ? w : 0) * .3f, 7, 7, 0, (r + c) % 2 ? 0x0000 : 0xFFFF); } } break;
+    case 105: { for (int r = 0; r < 2; r++) for (int c = 0; c < 9; c++) roundRect(66 + c * 12, 198 + r * 10, 12, 10, 0, (r + c) % 2 ? 0xF800 : 0xFFFF);   // v127 picknickkleed, mand en broodje
+      roundRect(150, 178, 26, 20, 4, 0xA2A0); frame->drawCircle(X(163), Y(180), S(10), 0x8A22); roundRect(84, 186, 22, 10, 4, 0xFEA0); roundRect(84, 189, 22, 3, 1, 0xFFE0);
+      { char b[20]; snprintf(b, sizeof b, "FILE %lu MIN", (unsigned long)(stilDuurNu() / 60000)); showTekst(b, 120, 40, 1, 0xFD20); } } break;
+    case 106: { int n = min(10, (int)(tt * 1.5f) + 1); for (int sd = 0; sd < 2; sd++) { float hx = 70 + sd * 100, hy = 196; circle(hx, hy, 13, 0xFDB8);   // v127 vingers tellen
+        for (int f = 0; f < 5; f++) { bool op = n > sd * 5 + f; roundRect(hx - 12 + f * 5, hy - (op ? 24 : 12), 4, op ? 14 : 4, 2, 0xFDB8); } } } break;
+    case 107: { float sx = 120, sy = 200; roundRect(sx - 26, sy - 8, 52, 18, 8, 0x8200); roundRect(sx - 26, sy - 22, 20, 18, 4, 0x8200); roundRect(sx - 28, sy + 8, 56, 4, 2, 0x4100);   // v127 schoen + wortel + pepernoten
+      triF(sx + 4, sy - 10, sx + 20, sy - 12, sx + 30, sy - 38, 0xFC00); dikLijn(sx + 28, sy - 38, sx + 34, sy - 46, 2, 0x07E0);
+      for (int i = 0; i < 6; i++) { float y = fmodf(tt * 50 + i * 37, 170) + 20, x = sx - 30 + i * 12 + sinf(tt * 2 + i) * 3; if (y < sy - 12) circle(x, y, 3.2f, 0xA2A0); } } break;
+    case 108: { float wr = tt < 1.5f ? 0 : fminf(78, (tt - 1.5f) * 22); float hx = 120 + cosf(tt * 5) * wr * .7f, hy = 120 + sinf(tt * 5) * wr * .5f;   // v127 beslagen ruit met kijkgaatje
+      for (int y = 22; y < 220; y += 13) for (int x = 22; x < 220; x += 13) { float jx = x + ((x * 7 + y * 3) % 5), jy = y + ((x * 3 + y * 5) % 5), dx = jx - 120, dy = (jy - 120) * 1.3f; if (dx * dx + dy * dy < wr * wr) continue; circle(jx, jy, 4.2f, 0x6B4D); }
+      if (tt > 1.5f && tt < 6) { circle(hx, hy, 11, 0xFDB8); for (int f = 0; f < 3; f++) roundRect(hx - 8 + f * 6, hy - 18, 4, 10, 2, 0xFDB8); } } break;
+    case 109: for (int i = 0; i < 3; i++) { float k = fmodf(tt * .8f + i * .33f, 1.f); float x = 136 + k * 50, y = 168 - k * 40; circle(x, y, 3 + k * 9, k < .7f ? 0xCE79 : 0x8410); } break;   // v127 ademwolkjes
+    case 110: { float g = fminf(1, tt / 3); for (int i = 0; i < 9; i++) { if (i == 4 && tt > 4.8f) { float y = 52 + (tt - 4.8f) * 160; if (y < 220) triF(117, y, 123, y, 120, y + 14 * g, 0xBF7F); continue; }   // v127 ijspegels
+        float x = 72 + i * 12, l = (6 + (i * 5) % 11) * g; triF(x - 4, 48, x + 4, 48, x, 48 + l, 0xBF7F); circle(x - 1, 50, 1, 0xFFFF); } } break;
+    case 111: { static const uint16_t KL[4] = {0xF800, 0x07E0, 0xFFE0, 0x041F}; for (int i = 0; i < 26; i++) { float a = i * .2417f + .2f, x = 120 + cosf(a) * 111, y = 120 + sinf(a) * 111;   // v127 kerstlampjes om de rand
+        bool aan = ((int)(tt * 3) + i) % 3 != 0; circle(x, y, 4.5f, aan ? KL[i % 4] : 0x2104); if (aan) circle(x - 1.2f, y - 1.2f, 1.4f, 0xFFFF); } } break;
+    case 112: { roundRect(80, 30, 80, 18, 8, 0x0010); roundRect(70, 44, 100, 6, 3, 0x0010); showTekst("BEWAKING", 120, 36, 1, 0xFFE0);   // v127 waakhond: pet + zaklamp
+      float a = sinf(tt * 1.1f) * .9f, bx = 120 + a * 30, by = 196; triF(bx, by - 6, bx + sinf(a) * 120 - 40, by - 130, bx + sinf(a) * 120 + 40, by - 130, 0x3186); roundRect(bx - 6, by - 8, 12, 22, 3, 0x8410); circle(bx, by - 8, 5, 0xFFE0); } break;
+    case 113: { circle(150, 74, 4, 0xC618); circle(162, 60, 6, 0xC618); ellipseF(180, 38, 44, 26, 0xC618); ellipseF(160, 34, 22, 16, 0xC618); ellipseF(200, 30, 20, 14, 0xC618);   // v127 droomwolkje met je rit
+      float pa = fmodf(tt * .15f, 1.f), px = 0, py = 0; if (rtN >= 2 && rtPt) { float a0 = 1e9, a1 = -1e9, o0 = 1e9, o1 = -1e9; for (int i = 0; i < rtN; i += 4) { a0 = fminf(a0, rtPt[i * 2]); a1 = fmaxf(a1, rtPt[i * 2]); o0 = fminf(o0, rtPt[i * 2 + 1]); o1 = fmaxf(o1, rtPt[i * 2 + 1]); }
+        float sc = fminf(60 / fmaxf(1e-5f, o1 - o0), 30 / fmaxf(1e-5f, a1 - a0)); float lx = 0, ly = 0; int st = max(1, rtN / 40);
+        for (int i = 0; i < rtN; i += st) { float x = 180 + (rtPt[i * 2 + 1] - (o0 + o1) / 2) * sc, y = 38 - (rtPt[i * 2] - (a0 + a1) / 2) * sc; if (i) line(lx, ly, x, y, 0x3D7F, 2); lx = x; ly = y; if (i <= pa * rtN) { px = x; py = y; } } }
+      else { float lx = 0, ly = 0; for (int i = 0; i <= 20; i++) { float x = 150 + i * 3, y = 40 + sinf(i * .6f) * 8; if (i) line(lx, ly, x, y, 0x3D7F, 2); lx = x; ly = y; if (i <= pa * 20) { px = x; py = y; } } }
+      circle(px, py, 3, 0xF800); showTekst("z", 96, 70 - fmodf(tt * 8, 20), 2, 0xBDF7); } break;
+    case 114: { float hx = 120 + g_zx * 96, hy = 120, w = sinf(tt * 10) * .5f; circle(hx, hy + 18, 12, 0xFDB8); for (int f = 0; f < 4; f++) { float a = -1.9f + f * .3f + w; roundRect(hx + cosf(a) * 14 - 2, hy + 18 + sinf(a) * 14 - 2, 5, 5, 2, 0xFDB8); dikLijn(hx, hy + 18, hx + cosf(a) * 18, hy + 18 + sinf(a) * 18, 4, 0xFDB8); } } break;   // v127 zwaaien naar de collega
     case 103: { float g = fminf(1, tt / 4.5f); circle(130, 196, 14, 0x8A22); circle(126, 192, 3, 0xC3A6); if (g > .25f) { circle(130, 172, 9, 0x8A22); circle(127, 170, 1.5f, 0x0000); circle(133, 170, 1.5f, 0x0000); } if (g > .5f) { dikLijn(118, 196, 104, 186, 2, 0xC618); dikLijn(142, 196, 156, 186, 2, 0xC618); } if (g > .75f) { dikLijn(124, 208, 118, 222, 2, 0xC618); dikLijn(136, 208, 142, 222, 2, 0xC618); } } break;
     case 63: { float r = tt < 3.8f && !belPrik ? 4 + tt * 9 : 0; if (r > 0) { circle(120 + faceOx * .5f, 184 + faceOy * .5f, r, 0xFB56); circle(114 + faceOx * .5f - r * .3f, 178 + faceOy * .5f - r * .3f, r * .25f, 0xFDFB); }
       else { for (int i = 0; i < 5; i++) circle(104 + i * 8 + faceOx * .5f, 150 + (i % 2) * 6 + faceOy * .5f, 5, 0xFB56); } } break;
@@ -3346,7 +3424,7 @@ static void drawKaart() {
     if (nvNaam[0] && eNavC) { int L = strlen(nvNaam); if (L > 18) L = 18; char nm[20]; memcpy(nm, nvNaam, L); nm[L] = 0;
       float w = L * 6.4f; roundRect(120 - w / 2 - 6, 160, w + 12, 20, 10, 0x0000); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - L * 6, Y(163)); frame->print(nm); }
     if (nvRest >= 0) { char rt[20]; if (nvRest >= 100) snprintf(rt, sizeof rt, "%d km %s", nvRest / 10, nvEta); else snprintf(rt, sizeof rt, "%d,%d km %s", nvRest / 10, nvRest % 10, nvEta);
-      if (blLijn()) tekenLijn(0, 0, 0);   // v117: de route als boog langs de bovenrand, het puntje loopt mee (zoals de Tesla)
+      if (false && blLijn()) tekenLijn(0, 0, 0);   // v127: niet meer bovenin, alles in de balk rechts   // v117: de route als boog langs de bovenrand, het puntje loopt mee (zoals de Tesla)
       int L = strlen(rt); float w = L * 6 + 20, ty = 34; roundRect(120 - w / 2, ty - 3, w, 14, 7, 0x0000);   // klein tekstje net onder de boog
       for (int r2 = 0; r2 < 2; r2++) for (int c2 = 0; c2 < 3; c2++) showRect(120 - w / 2 + 5 + c2 * 2, ty + r2 * 2, 2, 2, ((r2 + c2) & 1) ? 0x0000 : 0xFFFF);
       frame->setTextColor(0xFFFF); frame->setTextSize(1); frame->setCursor(X(120 - w / 2 + 14), Y(ty)); frame->print(rt); } }
@@ -3397,18 +3475,23 @@ static void tekenXp() {   // v120: 2,6 s een balkje langs de onderrand dat vollo
 static void drawRand(bool kaart) {
   if (menuOpen || venster || (int32_t)(showTot - millis()) > 0) return;
   uint32_t nu = millis();
-  if (blT && nu - blT < 20000 && blLang > 0 && !(kaart && blLijn())) {   // v116: met route op de kaart staat het in de lijn bovenin
+  if (blT && nu - blT < 20000 && blLang > 0) {   // v127: altijd rechts, ook op de kaart met route
     const float A0 = .61f, A1 = -.96f, R = kaart ? 100 : 104, W = kaart ? 6 : 4;
     boxAdd(150, 4, 240, 196);
-    boogStuk(0, 1, R, W + 3, 0x0841); boogStuk(0, 1, R, 2, 0x8C71);
-    for (int i = 0; i < blN; i++) { const BlItem &it = blItems[i]; if (it.b >= 0) { uint16_t kl = it.s == 'f' ? 0xF800 : it.s == 'x' ? 0x8000 : it.s == 't' ? 0xB81F : 0xFD20; boogStuk(it.a / 1000.f, it.b / 1000.f, R, W, kl); } }
-    for (int i = 0; i < blN; i++) { const BlItem &it = blItems[i]; if (it.b >= 0 && it.s != 'f') continue; if (it.b >= 0) continue;
-      float a = A0 + (A1 - A0) * (it.a / 1000.f), x = 120 + cosf(a) * R, y = 120 + sinf(a) * R;
+    float pk = blKlaar >= 0 ? blKlaar / 1000.f : 0, L = 1 - pk;   // v127: net als de lijn bovenin: hoeveel van de route al gereden is
+    boogStuk(0, 1, R, W + 3, 0x0841);
+    if (pk > .005f) boogStuk(0, pk, R, 1.5f, 0x4A69);   // al gereden: dun grijs
+    boogStuk(pk, 1, R, 2.5f, 0x3D7F);                    // nog te gaan: blauw
+    for (int i = 0; i < blN; i++) { const BlItem &it = blItems[i]; if (it.b >= 0) { uint16_t kl = it.s == 'f' ? 0xF800 : it.s == 'x' ? 0x8000 : it.s == 't' ? 0xB81F : 0xFD20; boogStuk(pk + L * it.a / 1000.f, pk + L * it.b / 1000.f, R, W, kl); } }
+    for (int i = 0; i < blN; i++) { const BlItem &it = blItems[i]; if (it.b >= 0) continue;
+      float a = A0 + (A1 - A0) * (pk + L * it.a / 1000.f), x = 120 + cosf(a) * R, y = 120 + sinf(a) * R;
       if (it.s == 'b') { circle(x, y, 5, 0xF800); circle(x, y, 3.2f, 0xFFFF); } else { circle(x, y, 5, 0xFFFF); circle(x, y, 3.6f, it.s == 'm' ? 0xFD20 : 0xF800); } }
     float a = A1, x = 120 + cosf(a) * R, y = 120 + sinf(a) * R; circle(x, y, 4, 0xFFFF);   // eind (bestemming / 10 km)
     char kt[8]; if (blLang >= 100) snprintf(kt, sizeof kt, "%d", blLang / 10); else snprintf(kt, sizeof kt, "%d,%d", blLang / 10, blLang % 10);
     frame->setTextColor(0xBDF7, BG); frame->setTextSize(1); frame->setCursor(X(x - 16), Y(y - 14)); frame->print(kt);
-    float ab = A0, xb = 120 + cosf(ab) * R, yb = 120 + sinf(ab) * R; triF(xb - 4, yb + 4, xb + 4, yb + 4, xb, yb - 4, 0x3D7F);   // jij
+    { float ab = A0 + (A1 - A0) * pk, px = 120 + cosf(ab) * R, py = 120 + sinf(ab) * R, dx = sinf(ab), dy = -cosf(ab), nx = cosf(ab), ny = sinf(ab);   // v127: jij = rood pijltje dat langs de balk wijst en meeschuift
+      triF(px + dx * 8, py + dy * 8, px - dx * 5 + nx * 6, py - dy * 5 + ny * 6, px - dx * 5 - nx * 6, py - dy * 5 - ny * 6, 0xFFFF);
+      triF(px + dx * 6, py + dy * 6, px - dx * 3.5f + nx * 4.2f, py - dy * 3.5f + ny * 4.2f, px - dx * 3.5f - nx * 4.2f, py - dy * 3.5f - ny * 4.2f, 0xF800); }
   }
   static float kVorigX = -1, kVorigY = -1;   // kompas: een rood stipje met N aan de rand waar het noorden is
   bool ringBezig = (tjT && nu - tjT < 9000) || trajActief;
