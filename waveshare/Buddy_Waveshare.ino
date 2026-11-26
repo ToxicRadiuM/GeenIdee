@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 128;   // v128 ook: 15 nieuwe stilstaan-trucjes (plantje, tekenen, puzzel, lezen, workout, nacht, ochtendkoffie, paraplu, weekoverzicht, pronken, briefje, samen-verjaardag, bellen prikken, vissen, steen-papier-schaar)
+static const int FW_VERSIE = 129;   // v129: afslag-balkje kleiner, rijstroken groter, aankomsttijd groot bovenin
+//   // v128 ook: 15 nieuwe stilstaan-trucjes (plantje, tekenen, puzzel, lezen, workout, nacht, ochtendkoffie, paraplu, weekoverzicht, pronken, briefje, samen-verjaardag, bellen prikken, vissen, steen-papier-schaar)
 //   // v128: zelf kiezen of Buddy+ hoedjes opzet (alles / alleen feestdagen / nooit)
 //   // v127 ook: 12 nieuwe trucjes (stoplicht-duel, filekampioen, rood tellen, Sint-schoen, beslagen ruit, ademwolkjes, ijspegels, kerstlampjes, waakhond, droomwolkje, collega zwaaien, vuurwerk om 12 uur)
 // v127: de rijbalk staat altijd rechts (niet meer soms bovenin) en loopt mee: gereden stuk grijs, pijltje van je auto schuift op
@@ -3404,9 +3405,9 @@ static void baanPijl(float cx, float cy, char c, uint16_t kl, float k = 1) {   /
 }
 static void drawBanen(float cy) {   // v115: rijstroken als vakjes, de goede wit
   int n = 0; char c[7]; bool ok[7]; for (const char *p = nvBaan; *p && n < 7; p++) { if (*p == '+' || *p == '-') { ok[n] = *p == '+'; c[n] = p[1] ? p[1] : 'S'; n++; p++; } }
-  if (n < 2) return; float w = 12, x0 = 120 - n * (w + 2) / 2 + 1;   // v117: klein, onderin onder het groene balkje, niet meer midden in beeld
-  roundRect(x0 - 3, cy - 9, n * (w + 2) + 4, 18, 6, 0x0000);
-  for (int i = 0; i < n; i++) { float x = x0 + i * (w + 2); roundRect(x, cy - 7, w, 14, 4, ok[i] ? 0xFFFF : 0x2104); baanPijl(x + w / 2, cy - 1, c[i], ok[i] ? 0x0000 : 0x6B4D, .62f); }
+  if (n < 2) return; float w = n > 5 ? 15 : 19, x0 = 120 - n * (w + 2) / 2 + 1;   // v129: groter   // v117: klein, onderin onder het groene balkje, niet meer midden in beeld
+  roundRect(x0 - 3, cy - 13, n * (w + 2) + 4, 26, 8, 0x0000);
+  for (int i = 0; i < n; i++) { float x = x0 + i * (w + 2); roundRect(x, cy - 11, w, 22, 5, ok[i] ? 0xFFFF : 0x2104); baanPijl(x + w / 2, cy - 1, c[i], ok[i] ? 0x0000 : 0x6B4D, w > 16 ? 1.0f : .85f); }
 }
 static void drawKaartKnop() {   // v110: bovenop alles, ook als er genavigeerd wordt (dan iets lager, onder de pijl)
   if (!rtN || kaartNu() || menuOpen || venster || spel) return;
@@ -3519,24 +3520,26 @@ static void drawKaart() {
     frame->setTextColor(0x8410); frame->setTextSize(1); frame->setCursor(X(190) - 12, Y(134)); frame->print("km/u"); }
   if (lim > 0) { circle(50, 120, 24, 0xD800); circle(50, 120, 19, 0xFFFF); char lt[6]; snprintf(lt, sizeof lt, "%d", lim); segTekst(lt, 50, 120, lim >= 100 ? 13 : 17, 0x0000); }   // v110: groter bord
   if (eNavC) {   // volgende afslag onderin (v112: weer de oude maat, grotere tekst in het midden, en hij loopt vol als je dichterbij komt)
-    float bx = 54, by = 184, bw = 132, bh = 32; roundRect(bx, by, bw, bh, 16, 0x0B0A);
-    if (eNavD > 0 && eNavD < 300 && eNavC != 'A') { float f = 1 - eNavD / 300.f; if (f > .06f) roundRect(bx, by, bw * f, bh, 16, eNavD < 60 && (millis() / 250) % 2 ? 0x2FEA : 0x1E8D); }
-    float cx = bx + 20, cy = by + bh / 2, a = 0; uint16_t c = 0xFFFF;
+    float bx = 66, by = 180, bw = 108, bh = 26; roundRect(bx, by, bw, bh, 13, 0x0B0A);   // v129: kleiner
+    if (eNavD > 0 && eNavD < 300 && eNavC != 'A') { float f = 1 - eNavD / 300.f; if (f > .06f) roundRect(bx, by, bw * f, bh, 13, eNavD < 60 && (millis() / 250) % 2 ? 0x2FEA : 0x1E8D); }
+    float cx = bx + 16, cy = by + bh / 2, a = 0; uint16_t c = 0xFFFF;
     switch (eNavC) { case 'L': a = -90; break; case 'R': a = 90; break; case 'l': a = -45; break; case 'r': a = 45; break; case 'U': a = 180; break; default: a = 0; }
     if (eNavC == 'A') { circle(cx, cy, 8, 0xF800); circle(cx, cy, 4, 0xFFFF); } else if (eNavC == 'O') { for (int i = 0; i < 10; i++) { float a1 = i * .63f, a2 = a1 + .5f; dikLijn(cx + cosf(a1) * 8, cy + sinf(a1) * 8, cx + cosf(a2) * 8, cy + sinf(a2) * 8, 1.6f, c); } }
     else { float rd = a * .0174533f, dx = sinf(rd), dy = -cosf(rd); dikLijn(cx - dx * 8, cy - dy * 8, cx + dx * 5, cy + dy * 5, 4, c); triF(cx + dx * 13, cy + dy * 13, cx + dx * 3 - dy * 8, cy + dy * 3 + dx * 8, cx + dx * 3 + dy * 8, cy + dy * 3 - dx * 8, c); }
     if (eNavC == 'O' && nvAfrit > 0) { char an[3]; snprintf(an, sizeof an, "%d", nvAfrit); frame->setTextColor(0xFFFF); frame->setTextSize(1); frame->setCursor(X(cx) - 2, Y(cy) - 3); frame->print(an); }   // v115: welke afslag op de rotonde
     char nd[16]; if (eNavD >= 950) snprintf(nd, sizeof nd, "%d,%d km", eNavD / 1000, (eNavD % 1000) / 100); else snprintf(nd, sizeof nd, "%d m", (eNavD / 10) * 10);
-    int L = strlen(nd), sz = L <= 5 ? 3 : 2; float tm = bx + 38 + (bw - 38) / 2; frame->setTextColor(0xFFFF); frame->setTextSize(sz); frame->setCursor(X(tm) - L * 3 * sz, Y(cy) - 4 * sz); frame->print(nd); }
+    int L = strlen(nd), sz = 2; float tm = bx + 30 + (bw - 30) / 2; frame->setTextColor(0xFFFF); frame->setTextSize(sz); frame->setCursor(X(tm) - L * 3 * sz, Y(cy) - 4 * sz); frame->print(nd); }
   if (nvT && millis() - nvT < 15000) {   // v85: straatnaam van de volgende afslag, en bovenin hoe ver nog en hoe laat je er bent
-    if (eNavC && nvBaan[0] && eNavD > 0 && eNavD < 1500) drawBanen(225);   // v117: rijstroken klein onderaan, onder het groene balkje
+    if (eNavC && nvBaan[0] && eNavD > 0 && eNavD < 1500) drawBanen(220);   // v129: groter (v117: rijstroken klein onderaan, onder het groene balkje
     if (nvNaam[0] && eNavC) { int L = strlen(nvNaam); if (L > 18) L = 18; char nm[20]; memcpy(nm, nvNaam, L); nm[L] = 0;
-      float w = L * 6.4f; roundRect(120 - w / 2 - 6, 160, w + 12, 20, 10, 0x0000); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - L * 6, Y(163)); frame->print(nm); }
+      float w = L * 6.4f; roundRect(120 - w / 2 - 6, 154, w + 12, 20, 10, 0x0000); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - L * 6, Y(157)); frame->print(nm); }
     if (nvRest >= 0) { char rt[20]; if (nvRest >= 100) snprintf(rt, sizeof rt, "%d km %s", nvRest / 10, nvEta); else snprintf(rt, sizeof rt, "%d,%d km %s", nvRest / 10, nvRest % 10, nvEta);
       if (false && blLijn()) tekenLijn(0, 0, 0);   // v127: niet meer bovenin, alles in de balk rechts   // v117: de route als boog langs de bovenrand, het puntje loopt mee (zoals de Tesla)
-      int L = strlen(rt); float w = L * 6 + 20, ty = 34; roundRect(120 - w / 2, ty - 3, w, 14, 7, 0x0000);   // klein tekstje net onder de boog
-      for (int r2 = 0; r2 < 2; r2++) for (int c2 = 0; c2 < 3; c2++) showRect(120 - w / 2 + 5 + c2 * 2, ty + r2 * 2, 2, 2, ((r2 + c2) & 1) ? 0x0000 : 0xFFFF);
-      frame->setTextColor(0xFFFF); frame->setTextSize(1); frame->setCursor(X(120 - w / 2 + 14), Y(ty)); frame->print(rt); } }
+      { char km[10]; if (nvRest >= 100) snprintf(km, sizeof km, "%d km", nvRest / 10); else snprintf(km, sizeof km, "%d,%d km", nvRest / 10, nvRest % 10);   // v129: aankomsttijd GROOT, km klein ernaast
+        int Le = strlen(nvEta), Lk = strlen(km); float we = Le * 18, wk = Lk * 6, w = 16 + we + 8, x0 = 112 - w / 2, ty = 32; roundRect(x0, ty - 3, w, 28, 12, 0x0000); roundRect(112 - wk / 2 - 4, ty + 24, wk + 8, 12, 6, 0x0000);   // links van het eind van de rijbalk
+        for (int r2 = 0; r2 < 3; r2++) for (int c2 = 0; c2 < 3; c2++) showRect(x0 + 6 + c2 * 3, ty + 5 + r2 * 3, 3, 3, ((r2 + c2) & 1) ? 0x0000 : 0xFFFF);
+        frame->setTextColor(0xFFFF); frame->setTextSize(3); frame->setCursor(X(x0 + 18), Y(ty)); frame->print(nvEta);
+        frame->setTextColor(0xBDF7); frame->setTextSize(1); frame->setCursor(X(112 - wk / 2), Y(ty + 26)); frame->print(km); (void)rt; } } }
   if ((int32_t)(goedZoT - millis()) > 0) { roundRect(78, 92, 84, 24, 12, 0x0B0A); frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 42, Y(97)); frame->print("GOED ZO"); }   // v115: na een afslag
   uint32_t ov = millis() - kaartOvergangT;   // v77: overgang: twee handjes trekken het gezicht open
   if (kaartOvergangT && ov < 1500) { float t = ov / 1500.f; kaartOvergang(t < .3f ? 0 : powf((t - .3f) / .7f, 1.6f), t < .3f ? t / .3f : 1); }
@@ -3618,22 +3621,21 @@ static void drawRand(bool kaart) {
     for (int k = 0; k < 6; k++) { float h = .5f + .5f * sinf(nu / 600.f + k * 1.7f); boxAdd(SX[k] - 3, SY[k] - 3, SX[k] + 3, SY[k] + 3); circle(SX[k], SY[k], 2.6f, BG); circle(SX[k], SY[k], 1 + h * 1.4f, h > .6f ? 0xFFFF : 0x8410); } }
 }
 // v103: telefoon stil (app op de achtergrond)? Dan zelf de volgende afslag uit de opgeslagen route halen, met de eigen GPS
-static void eigenNav() {
-  static int volg = -1; static uint32_t telLaatst = 0; uint32_t nu = millis();
-  if (phoneFresh()) { telLaatst = nu; volg = -1; eNavC = phone.nav; eNavD = phone.navD;
-    static char hC = 0; static int hD = -1; static uint32_t hT = 0;   // v116: blijft de afstand hangen terwijl je rijdt? Dan het balkje weg in plaats van 'm vast laten staan
-    if (eNavC != hC || eNavD != hD) { hC = eNavC; hD = eNavD; hT = nu; } else if (eNavC && phone.v > 15 && nu - hT > 12000) eNavC = 0;
-    return; }
-  eNavC = 0; if (!stappen || stapN < 1 || rtN < 2) { volg = -1; return; }
-  bool eigen = gpsFix && !posVanTel && nu - gpsEigenMs < 5000; if (!eigen) return;
+static void eigenNav() {   // v129: Buddy+ rekent de afstand tot de volgende afslag nu ZELF uit (ook met de plek van de telefoon). De app op de achtergrond stuurde een oude afstand mee, waardoor het balkje bleef hangen
+  static int volg = -1, lastN = -1; static const void *lastP = nullptr; static float minD = 1e9; uint32_t nu = millis();
+  if ((const void *)stappen != lastP || stapN != lastN) { lastP = stappen; lastN = stapN; volg = -1; minD = 1e9; }   // nieuwe route: opnieuw zoeken
+  bool kan = stappen && stapN >= 1 && rtN >= 2 && gpsFix && (posVanTel || nu - gpsEigenMs < 5000);
+  if (!kan) { if (phoneFresh()) { eNavC = phone.nav; eNavD = phone.navD; } else eNavC = 0; return; }
   float la = gpsLat, lo = gpsLon;
   if (volg < 0) {   // beginpunt: dichtstbijzijnde afslag, maar niet eentje die al achter je ligt
     float best = 1e9; for (int i = 0; i < stapN; i++) { float d = cameraDistanceM(la, lo, stappen[i].lat, stappen[i].lon); if (d < best) { best = d; volg = i; } }
     if (volg >= 0 && spdNow() > 8) { float br = atan2f((stappen[volg].lon - lo) * cosf(la * .0174533f), stappen[volg].lat - la) * 57.2958f, df = fabsf(fmodf(br - gpsKoers + 540, 360) - 180); if (df > 100 && volg + 1 < stapN) volg++; }
-  }
-  while (volg >= 0 && volg < stapN && (stappen[volg].c == 'S' || cameraDistanceM(la, lo, stappen[volg].lat, stappen[volg].lon) < 25)) volg++;
-  if (volg < 0 || volg >= stapN) return;
-  eNavC = stappen[volg].c; eNavD = (int)cameraDistanceM(la, lo, stappen[volg].lat, stappen[volg].lon);
+    minD = 1e9; }
+  while (volg >= 0 && volg < stapN && (stappen[volg].c == 'S' || cameraDistanceM(la, lo, stappen[volg].lat, stappen[volg].lon) < 25)) { volg++; minD = 1e9; }
+  if (volg < 0 || volg >= stapN) { eNavC = 0; return; }
+  float d = cameraDistanceM(la, lo, stappen[volg].lat, stappen[volg].lon);
+  if (d < minD) minD = d; else if (minD < 90 && d > minD + 40 && volg + 1 < stapN) { volg++; minD = 1e9; d = cameraDistanceM(la, lo, stappen[volg].lat, stappen[volg].lon); }   // afslag gemist of net te ver voor de 25 m: door naar de volgende
+  eNavC = stappen[volg].c; eNavD = (int)d;
 }
 static void afslagGehaald() {   // v115: was je vlak bij een afslag en is de volgende nu verder weg? Dan heb je hem gehaald
   static char vC = 0; static int vD = 99999;

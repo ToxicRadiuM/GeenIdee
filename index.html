@@ -1245,7 +1245,26 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       </ol>
       <button class="btn primary" id="bleKnop" type="button">📡 Verbind met Buddy+</button>
       <p class="chip" id="bleStat">Niet verbonden.</p>
-      <p class="sub">Stap 2 · Wifi (niet meer nodig)</p>
+      <p class="sub">⚙️ Instellingen</p>
+      <div class="limitrow"><label for="scLicht">Helderheid</label><input type="range" id="scLicht" min="10" max="100" step="5" value="65"></div>
+      <div class="limitrow"><label for="scVol">Volume</label><input type="range" id="scVol" min="0" max="100" step="5" value="80"></div>
+      <div class="limitrow"><label for="scRand">Rand om het scherm</label><select id="scRand"><option value="0" selected>🌅 Kleurt mee met de lucht (op tafel)</option><option value="1">⚫ Geen rand</option><option value="2">🌈 Regenboog</option><option value="3">🔴 KITT (Knight Rider)</option><option value="4">💙 Ademen</option><option value="5">⭕ Vaste kleur (oogkleur)</option></select></div>
+      <div class="limitrow"><label for="scHoed">Hoedjes</label><select id="scHoed"><option value="1" selected>🎩 Alle (feestdagen, muts bij vorst, zonnebril)</option><option value="2">🎉 Alleen feestdagen</option><option value="0">🚫 Geen hoedjes</option></select></div>
+      <div class="limitrow"><label for="scAnim">Animaties</label><select id="scAnim"><option value="2">Rustig</option><option value="1" selected>Normaal</option><option value="0.5">Veel</option></select></div>
+      <div class="limitrow"><label for="scWarn">Waarschuwen bij ruim te hard</label><select id="scWarn"><option value="1" selected>Aan (boos kijken + piepje)</option><option value="0">Uit</option></select></div>
+      <p class="foot">Het schermpje draagt vanzelf hetzelfde outfit als Buddy hier (ook de feestdag-outfits).</p>
+      <p class="sub">🎮 Spelen</p>
+      <div class="btns"><button class="btn" id="bpKoekje" type="button">🍪 Geef een koekje</button><button class="btn" id="bpFocus" type="button">🤓 Focus 25 min</button><button class="btn" id="bpWeer" type="button">⛅ Weer laten zien</button><button class="btn" id="bpZwaai" type="button">👋 Laat hem zwaaien</button><button class="btn" id="bpSprint" type="button">🚀 Sprint-show testen</button><button class="btn" id="bpPiep" type="button">🔊 Geluid testen</button><button class="btn" id="bpTunnel" type="button">🚇 Tunnel</button><button class="btn" id="bpRotonde" type="button">🔄 Rotonde</button><button class="btn" id="bpTrip" type="button">🌈 Kleurtrip</button><button class="btn" id="bpSpiraal" type="button">🌀 Spiraal</button></div>
+      <p class="sub">🚀 Eigen geluidje voor de sterren-show</p>
+      <div class="btns"><label class="btn" for="sterBestand">🎵 Kies een geluidje</label><input type="file" id="sterBestand" accept="audio/*" hidden><button class="btn" id="sterStuur" type="button">📡 Stuur naar Buddy+</button><button class="btn" id="sterWeg" type="button">Standaard terug</button></div>
+      <p class="chip" id="sterStat">Standaard speelt Ricardo's sterren-geluidje. Kies een ander als je wilt (max 7,5 seconden).</p>
+      <p class="sub">Gezondheid en onderhoud</p>
+      <p class="chip" id="schStat">Nog niets gehoord. Verbind eerst (stap 1).</p>
+      <div class="mobrow"><button class="btn" id="schZoek" type="button">🔔 Zoek mijn Buddy</button><button class="btn" id="schUpd" type="button">⬇️ Zoek naar update</button></div>
+      <button class="btn" id="schInstall" type="button" hidden style="border-color:#ffd60a">✨ Update installeren</button>
+      <button class="btn" id="bleLog" type="button">📥 Logboek van Buddy+ ophalen</button>
+      <p class="foot">Zoek mijn Buddy laat hem piepen en knipperen. Updates haalt Buddy+ zelf op de achtergrond binnen als hij internet heeft (ook tijdens het rijden, elk uur). Staat er een klaar, dan zie je hier ✨ Installeren, en in het info-venster van Buddy+ “TIK: UPDATE”. Jij kiest wanneer. Het logboek gaat automatisch mee bij elke verbinding.</p>
+      <details class="foot" style="text-align:left"><summary><b>📶 Wifi en hotspot (niet meer nodig)</b></summary>
       <p class="foot" style="text-align:left">Buddy+ gebruikt nu gewoon het internet van je telefoon via Bluetooth, zolang hij verbonden is. Een hotspot hoeft niet meer. Wifi kan nog wel: dan gaan updates sneller.</p>
       <p class="foot" style="text-align:left">Dit kan pas als stap 1 gelukt is: de app geeft de wifi via Bluetooth door. Gebruik de <b>hotspot van je telefoon</b>. Buddy+ onthoudt het en verbindt daarna elke rit vanzelf zodra je hotspot aan staat. Met wifi haalt hij zelf limieten, flitsers, files, het weer en nieuwe versies op, ook als de app dicht is.</p>
       <div class="mobrow"><input type="text" id="wfNaam" autocomplete="off" placeholder="Naam van je hotspot (precies zo geschreven)"></div>
@@ -1257,24 +1276,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
         <p><b>Ander Android-merk:</b> gebruik de app <b>MacroDroid</b> (gratis) of <b>Tasker</b> met dezelfde regel: Bluetooth verbonden met de auto → hotspot aan.</p>
         <p>Geen hotspot aan? Geen ramp: Buddy+ werkt dan met de flitsers die hij het laatst heeft opgehaald, en de app geeft via Bluetooth nog steeds alles door.</p></details>
       <p class="foot" style="text-align:left">Gelukt? Kijk hieronder bij Gezondheid: daar komt “wifi verbonden” te staan (zet je hotspot dan wel even aan).</p>
-      <p class="sub">Stap 3 · Spelen en instellen</p>
-      <div class="btns"><button class="btn" id="bpKoekje" type="button">🍪 Geef een koekje</button><button class="btn" id="bpFocus" type="button">🤓 Focus 25 min</button><button class="btn" id="bpWeer" type="button">⛅ Weer laten zien</button><button class="btn" id="bpZwaai" type="button">👋 Laat hem zwaaien</button><button class="btn" id="bpSprint" type="button">🚀 Sprint-show testen</button><button class="btn" id="bpPiep" type="button">🔊 Geluid testen</button><button class="btn" id="bpTunnel" type="button">🚇 Tunnel</button><button class="btn" id="bpRotonde" type="button">🔄 Rotonde</button><button class="btn" id="bpTrip" type="button">🌈 Kleurtrip</button><button class="btn" id="bpSpiraal" type="button">🌀 Spiraal</button></div>
-      <p class="sub">🚀 Eigen geluidje voor de sterren-show</p>
-      <div class="btns"><label class="btn" for="sterBestand">🎵 Kies een geluidje</label><input type="file" id="sterBestand" accept="audio/*" hidden><button class="btn" id="sterStuur" type="button">📡 Stuur naar Buddy+</button><button class="btn" id="sterWeg" type="button">Standaard terug</button></div>
-      <p class="chip" id="sterStat">Standaard speelt Ricardo's sterren-geluidje. Kies een ander als je wilt (max 7,5 seconden).</p>
-      <div class="limitrow"><label for="scLicht">Helderheid</label><input type="range" id="scLicht" min="10" max="100" step="5" value="65"></div>
-      <div class="limitrow"><label for="scVol">Volume</label><input type="range" id="scVol" min="0" max="100" step="5" value="80"></div>
-      <div class="limitrow"><label for="scRand">Rand om het scherm</label><select id="scRand"><option value="0" selected>🌅 Kleurt mee met de lucht (op tafel)</option><option value="1">⚫ Geen rand</option><option value="2">🌈 Regenboog</option><option value="3">🔴 KITT (Knight Rider)</option><option value="4">💙 Ademen</option><option value="5">⭕ Vaste kleur (oogkleur)</option></select></div>
-      <div class="limitrow"><label for="scHoed">Hoedjes</label><select id="scHoed"><option value="1" selected>🎩 Alle (feestdagen, muts bij vorst, zonnebril)</option><option value="2">🎉 Alleen feestdagen</option><option value="0">🚫 Geen hoedjes</option></select></div>
-      <div class="limitrow"><label for="scAnim">Animaties</label><select id="scAnim"><option value="2">Rustig</option><option value="1" selected>Normaal</option><option value="0.5">Veel</option></select></div>
-      <div class="limitrow"><label for="scWarn">Waarschuwen bij ruim te hard</label><select id="scWarn"><option value="1" selected>Aan (boos kijken + piepje)</option><option value="0">Uit</option></select></div>
-      <p class="foot">Het schermpje draagt vanzelf hetzelfde outfit als Buddy hier (ook de feestdag-outfits).</p>
-      <p class="sub">Gezondheid en onderhoud</p>
-      <p class="chip" id="schStat">Nog niets gehoord. Verbind eerst (stap 1).</p>
-      <div class="mobrow"><button class="btn" id="schZoek" type="button">🔔 Zoek mijn Buddy</button><button class="btn" id="schUpd" type="button">⬇️ Zoek naar update</button></div>
-      <button class="btn" id="schInstall" type="button" hidden style="border-color:#ffd60a">✨ Update installeren</button>
-      <button class="btn" id="bleLog" type="button">📥 Logboek van Buddy+ ophalen</button>
-      <p class="foot">Zoek mijn Buddy laat hem piepen en knipperen. Updates haalt Buddy+ zelf op de achtergrond binnen als hij internet heeft (ook tijdens het rijden, elk uur). Staat er een klaar, dan zie je hier ✨ Installeren, en in het info-venster van Buddy+ “TIK: UPDATE”. Jij kiest wanneer. Het logboek gaat automatisch mee bij elke verbinding.</p>
+      </details>
       </div>
     </div>
   </details>
@@ -5618,7 +5620,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v223';
+  var VERSION = 'v224';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6414,13 +6416,13 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   }
   /* Ontvangen: nieuwe berichten ophalen (in de auto elke 6 s, anders elke 20 s; alleen als de app open is) */
   function grHaal() {
-    if (!grp || !pbase() || grBusy) return;
+    if (!grp || !pbase() || grBusy || Date.now() < (window.__grWacht || 0)) return;   /* v224: geen internet? dan steeds iets langer wachten */
     grBusy = true; grT = T;
     /* Altijd een ruime marge terug vragen (5 min) en zelf bijhouden wat al gezien is.
        Vroeger vroeg Buddy "alles na de servertijd van de vorige keer": maar de opslag van de Worker loopt soms tot een minuut achter,
        en dan viel een bericht dat net te laat binnenkwam er voorgoed tussenuit. Daardoor kwamen berichten soms nooit aan. */
     var sinds = grMaxT ? Math.max(0, grMaxT - 5 * 60e3) : 0;
-    fetch(gUrl('/pings', '&sinds=' + sinds)).then(function (r) { return r.json(); }).then(function (j) {
+    fetch(gUrl('/pings', '&sinds=' + sinds)).then(function (r) { return r.json(); }).then(function (j) { window.__grFout = 0; window.__grWacht = 0;
       if (!j || !Array.isArray(j.pings)) throw new Error((j && j.error) || 'onverwacht antwoord');
       var nieuw = 0;
       j.pings.forEach(function (b) {
@@ -6440,7 +6442,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       if (nieuw) { try { localStorage.setItem(GRSEENKEY, JSON.stringify(grGezienIds)); } catch (e) {} }
       if (isFinite(j.nu)) grSinds = j.nu; grEerste = false;
       grOk = Date.now(); grBerStat(j.pings.length, nieuw);
-    }).catch(function (e) { lg('FOUT groepsberichten: ' + ((e && e.message) || e)); grBerStat(-1, 0, (e && e.message) || String(e)); }).then(function () { grBusy = false; });
+    }).catch(function (e) { window.__grFout = (window.__grFout || 0) + 1; window.__grWacht = Date.now() + Math.min(120000, 10000 * window.__grFout); if (window.__grFout > 3 && window.__grFout % 10) return grBerStat(-1, 0, (e && e.message) || String(e)); lg('FOUT groepsberichten: ' + ((e && e.message) || e) + (window.__grFout > 1 ? ' (' + window.__grFout + 'x)' : '')); grBerStat(-1, 0, (e && e.message) || String(e)); }).then(function () { grBusy = false; });
   }
   /* Wat al getoond is, onthouden (ook na herstarten), zodat een bericht niet twee keer komt */
   var GRSEENKEY = 'dashboardmaatje-grseen-v1', grMaxT = 0, grGezienIds = {}, grOk = 0;
@@ -9834,6 +9836,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v224', '26 nov', ['Buddy+-tab opgeruimd: alle instellingen staan nu bovenaan onder ⚙️ Instellingen, daarna Spelen, Gezondheid, en de oude wifi/hotspot-uitleg ingeklapt onderaan', 'Geen internet? De app vraagt de groepsberichten dan niet meer elke 6 s, maar wacht steeds iets langer (tot 2 min)', 'Buddy+ (v129): aankomsttijd groot bovenin, afslag-balkje kleiner, rijstroken groter, en het afslag-balkje blijft niet meer hangen (Buddy+ rekent de afstand nu zelf uit, ook als de app op de achtergrond staat)']],
       ['v223', '26 nov', ['Routekeuze: altijd 2 routes zonder pontje (over de snelweg/brug) en 2 met pontje, file of niet. Bij elke route zie je hoeveel minuten langer hij is dan de snelste']],
       ['v222', '26 nov', ['Buddy+ (v128): 15 nieuwe dingen als hij stilstaat: plantje dat groeit als je hem aait, tekenen, puzzelen, lezen met brilletje, workout, slaapmuts en kaarsje na 23 uur, ochtendkoffie, paraplu als er regen komt, weekoverzicht op vrijdag, kroontje als je stijgt in de groep, briefje als iemand zwaaide, samen-verjaardag elke maand, en 3 spelletjes om te tikken: bellen prikken, vissen en steen-papier-schaar']],
       ['v221', '26 nov', ['Pontjes vermijden werkt weer: de routes over een brug vielen weg uit de keuzelijst, waardoor je alleen nog pontjes zag', 'Buddy+ (v128): onder Buddy+ kies je nu zelf de hoedjes: alle, alleen feestdagen, of geen']],
