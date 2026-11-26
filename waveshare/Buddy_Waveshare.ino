@@ -91,7 +91,7 @@ static volatile bool persJarig = false;   // v45: vandaag jarig (van de app)
 // v42: persoonlijkheid
 static char persNaam[16] = "", persNaamNieuw[16] = ""; static volatile char persKar = 'E'; static volatile int persLv = 0, persStijl = -1; static volatile uint32_t persEpoch = 0; static volatile bool persNieuw = false;
 static uint8_t vriend = 40; static uint8_t gagLike[160] = {0};   // v128: meer trucjes
-// static uint8_t vertrekH[24] = {0};
+static uint8_t vertrekH[24] = {0};
 static uint32_t vorigeRitT = 0, lastRitT = 0, eerstT = 0, mijlKm = 0; static uint8_t trucjesGezien = 0; static bool likeVuil = false;
 static volatile bool zoekNu = false, otaNu = false, statVraag = false; static uint32_t zoekTot = 0;
 static char groetTxt[64] = "", mijlTxt[40] = ""; static bool gegroet = false; static uint32_t groetVanaf = 3000;
@@ -888,7 +888,7 @@ static float fdx = 0, fdy = 0, eyeL = 1, eyeR = 1, faceOx = 0, faceOy = 0;
 static bool fxNoBlink = false, fxSpiral = false, fxTongue = false;
 static float g_fx = 120, g_fy = 90, g_r = 0, g_d = 0, g_nn = 0, g_zx = 0; static char g_buf[48] = ""; static uint32_t g_stilVan = 0;
 static uint8_t g_mask = 0; static int g_score = 0, g_keus = -1; static char briefNaam[16] = ""; static int rangNieuw = 0; static uint8_t plantL = 0; static bool plantDor = false; static float wkKm = 0; static int wkRit = 0, samenMnd = 0;   // v128
-// static bool g_b = false, belPrik = false;   // v127: g_zx = kant van de collega, g_buf = tekst met getal/naam
+static bool g_b = false, belPrik = false;   // v127: g_zx = kant van de collega, g_buf = tekst met getal/naam
 //   // v125: belPrik = jij prikte de bel kapot
 static volatile uint32_t flagTot = 0;   // 0-100 vlag-show
 struct Particle { float x,y,vx,vy,age,life,size; uint8_t kind; } particles[24];
