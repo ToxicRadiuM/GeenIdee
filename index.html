@@ -4883,9 +4883,13 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       vragen.push(fetch('https://router.project-osrm.org/route/v1/driving/' + p + qs + br(3)).then(function (r) { return r.json(); }).then(function (k) { return k && k.routes && k.routes[0] ? [{ rt: k.routes[0], via: x.b }] : []; }).catch(function () { return []; })); });
     return Promise.all(vragen).then(function (rs) { return Promise.all(rs.map(function (l) { return Promise.all(l.map(function (c) { echteDuur(c.rt); return lusVrij(c, van, naar, qs); })); })); }).then(function (rs) { rs.forEach(function (l) { l.forEach(function (c) { echteDuur(c.rt); if (!uit.some(function (u) { return Math.abs(u.rt.distance - c.rt.distance) < c.rt.distance * .02 && Math.abs(u.rt.duration - c.rt.duration) < 60; })) uit.push(c); }); });
       uit.sort(function (a, b) { return a.rt.duration - b.rt.duration; });
-      var zonder = uit.filter(function (c) { return !heeftLus(c.rt); }); if (zonder.length && zonder.length < uit.length) { lg('route: ' + (uit.length - zonder.length) + ' route(s) met afrit-rotonde-oprit weggelaten'); uit = zonder; }
+      /* v223: altijd 2 routes zonder pontje (snelweg/brug) en 2 met pontje, file of niet. Per groep liever zonder afrit-rotonde-oprit-lusje, maar nooit een groep leeg laten */
+      var groep = function (l) { var g = l.filter(function (c) { return !heeftLus(c.rt); }); return g.concat(l.filter(function (c) { return heeftLus(c.rt); })); };
+      var droog = groep(uit.filter(function (c) { return !heeftPont(c.rt); })), nat = groep(uit.filter(function (c) { return heeftPont(c.rt); }));
+      var nD = Math.min(2, droog.length), nN = Math.min(2, nat.length); if (nD < 2) nN = Math.min(4 - nD, nat.length); if (nN < 2) nD = Math.min(4 - nN, droog.length);
+      lg('route: ' + nD + ' zonder pontje + ' + nN + ' met pontje (van ' + droog.length + ' + ' + nat.length + ')');
+      uit = droog.slice(0, nD).concat(nat.slice(0, nN)).sort(function (a, b) { return a.rt.duration - b.rt.duration; });
       /* v221: pontjes vermijden? Dan EERST de routes zonder pontje houden, pas daarna de 4 beste pakken. Anders vielen de (iets langzamere) brugroutes eraf en bleven alleen pontjes over */
-      if (navPont) { var droog = uit.filter(function (c) { return !heeftPont(c.rt); }); if (droog.length) uit = droog; else lg('route: echt geen route zonder pontje gevonden'); }
       return uit.slice(0, 4); });
   }
   function navBouw(rt, naar, opnieuw, via) {
@@ -4916,7 +4920,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     var ov = $('routeKeuze'); if (!ov) { ov = document.createElement('div'); ov.id = 'routeKeuze'; document.body.appendChild(ov); }
     ov.textContent = ''; var h = document.createElement('div'); h.className = 'rkKop'; h.textContent = 'Welke route naar ' + naar.naam.split(',')[0] + '?'; ov.appendChild(h);
     /* v192: 'snelste' = snelste route die je mag nemen (pontjes vermijden staat aan? dan zonder pontje). Routes met pontje zeggen hoeveel sneller ze zijn */
-    var mag = lijst.filter(function (c) { return !navPont || !heeftPont(c.rt); }); if (!mag.length) mag = lijst;
+    var mag = lijst;   /* v223: alles t.o.v. de snelste route, ook die met pontje: zo zie je hoeveel minuten de snelweg/brug langer is */
     var snelste = Math.min.apply(null, mag.map(function (c) { return c.rt.duration; })), snelGezien = false;
     lijst.forEach(function (c, i) { var inf = routeInfo(c.rt), b = document.createElement('button'); b.type = 'button'; b.className = 'rkOptie';
       var m = Math.round(c.rt.duration / 60), ex = Math.round((c.rt.duration - snelste) / 60);
@@ -4958,7 +4962,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
         /* v191: rijdend nooit een nieuwe route die begint met 'omkeren': je rijdt bewust deze kant op (bv. om een file heen). Liever een route die vooruit verder gaat */
         if ((S.speed || 0) > 15) { var vooruit = ok.filter(function (c) { return !heeftOmkeer(c.rt); }); if (vooruit.length && vooruit[0] !== ok[0]) lg('route: route zonder omkeren gekozen (' + Math.round(vooruit[0].rt.distance / 100) / 10 + ' km)'); if (vooruit.length) ok = vooruit; }
         var c = ok[0]; navBouw(c.rt, naar, true, c.via); return; }
-      if (navPont) { var vrij = lijst.filter(function (c) { return !heeftPont(c.rt); }); if (vrij.length) { if (vrij.length < lijst.length) lg('route: ' + (lijst.length - vrij.length) + ' route(s) met pontje weggelaten'); lijst = vrij; } else toast('⛴️ Er is geen route zonder pontje, dus deze gaan met een pontje.'); }   /* v193: pontjes vermijden = ze niet eens laten zien */
+      /* v223: keuzelijst laat altijd beide soorten zien (2 zonder, 2 met pontje); 'pontjes vermijden' geldt alleen nog voor opnieuw berekenen onderweg */
       if (lijst.length === 1) { navBouw(lijst[0].rt, naar, false, lijst[0].via); return; }
       navStat('Kies een route.'); routeKies(lijst, naar);
     }).catch(function (e) { navStat('Route berekenen mislukt (' + (e.message || e) + ').'); lg('FOUT route ' + (e.message || e)); })
@@ -5614,7 +5618,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v222';
+  var VERSION = 'v223';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9830,6 +9834,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v223', '26 nov', ['Routekeuze: altijd 2 routes zonder pontje (over de snelweg/brug) en 2 met pontje, file of niet. Bij elke route zie je hoeveel minuten langer hij is dan de snelste']],
       ['v222', '26 nov', ['Buddy+ (v128): 15 nieuwe dingen als hij stilstaat: plantje dat groeit als je hem aait, tekenen, puzzelen, lezen met brilletje, workout, slaapmuts en kaarsje na 23 uur, ochtendkoffie, paraplu als er regen komt, weekoverzicht op vrijdag, kroontje als je stijgt in de groep, briefje als iemand zwaaide, samen-verjaardag elke maand, en 3 spelletjes om te tikken: bellen prikken, vissen en steen-papier-schaar']],
       ['v221', '26 nov', ['Pontjes vermijden werkt weer: de routes over een brug vielen weg uit de keuzelijst, waardoor je alleen nog pontjes zag', 'Buddy+ (v128): onder Buddy+ kies je nu zelf de hoedjes: alle, alleen feestdagen, of geen']],
       ['v220', '26 nov', ['Buddy+ (v127): de rijbalk staat altijd rechts en loopt mee met je rit: gereden stuk grijs, rood pijltje van je auto schuift op, files en flitsers erop', 'Geen nep-0-100 meer als je even een andere app opent (een gat in de GPS telt niet mee)', 'Rit stopt niet meer bij een stoplicht als Buddy+ even wegvalt of je een andere app opent: hij wacht 90 s of je echt gestopt bent', 'Buddy+ (v127): 11 nieuwe trucjes: stoplicht-duel, filekampioen met picknick, rood licht tellen, Sint-schoen, beslagen ruit, ademwolkjes als het vriest, ijspegels, kerstlampjes om de rand, waakhond als de auto geparkeerd staat, droomwolkje van je rit, en zwaaien naar een collega in de buurt. Om 12 uur op oudjaar: vuurwerk!']],
