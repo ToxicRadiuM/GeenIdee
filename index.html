@@ -1016,6 +1016,7 @@ body.car.kaartrij #rijBalk.hor { position: relative !important; inset: auto !imp
 body.car.kaartrij #rijBalk.hor #rbBaan { left: 12px; right: 8px; top: 11px; height: 3px; background: #4aa8ff; }
 body.car.kaartrij #rijBalk.hor .rbPunt { width: 20px; height: 20px; margin-left: -10px; top: -9px; font-size: 10px; line-height: 16px; border-width: 2px; }
 body.car.kaartrij #rijBalk.hor .rbIk { font-size: 17px; top: -10px; }
+body.car.kaartrij #rijBalk.hor .rbKop, body.car.kaartrij #rijBalk.hor .rbIk, body.car.kaartrij #rijBalk.hor .rbPunt { transform: none; }   /* v219: in de liggende routelijn niet meer -90 graden gedraaid: pijltje wijst langs de balk, iconen rechtop */
 @media (orientation: landscape) { body.car.kaartrij #rijAfslag { left: calc(200px + var(--sa-l)) !important; right: calc(200px + var(--sa-r)) !important; } }   /* v212: links en rechts even ver = in het midden */
 body.car #rijKnipL, body.car #rijKnipR, body.car .knip { display: none !important; }   /* v191: knipperpijltjes weg */
 /* v192: items (stuiterbal, ster), cadeautjes en Buddy Wrapped */
@@ -5605,7 +5606,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v218';
+  var VERSION = 'v219';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -9278,7 +9279,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     }
     /* v81: thuis-tijd, collega in de buurt en wisselbeker ook naar het schermpje */
     /* v86: plek van de telefoon mee, zodat het schermpje ook weet waar we zijn als zijn eigen GPS nog zoekt */
-    function posCode() { try { if (!S.live || !lastPos || Date.now() - lastPos.t > 5000 || (lastPos.acc && lastPos.acc > 60)) return ''; return lastPos.lat.toFixed(5) + '~' + lastPos.lon.toFixed(5) + '~' + (lastPos.hd == null ? '' : Math.round(lastPos.hd)); } catch (e) { return ''; } }
+    function posCode() { try { if (!S.live || !lastPos || Date.now() - lastPos.t > 15000 || (lastPos.acc && lastPos.acc > 60)) return ''; return lastPos.lat.toFixed(5) + '~' + lastPos.lon.toFixed(5) + '~' + (lastPos.hd == null ? '' : Math.round(lastPos.hd)); } catch (e) { return ''; } }
     function etaCode() { var e = window.__thuisEta; return e && Date.now() - e.t < 90 * 60e3 ? e.tijd : ''; }
     function buurCode() { var b = window.__buur; return b && Date.now() - b.t < 60e3 ? String(b.n || 'Collega').replace(/[|~\n]/g, ' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').slice(0, 14) + '~' + (b.d || 0) : ''; }
     function msiCode() { var mv = window.__msiVoor; if (mv && Date.now() - mv.t < 8000 && mv.d < 900) { var gg = mv.g; return gg.s != null ? String(gg.s) : gg.x ? 'x' : ''; }   /* v139: eerstvolgende bord op je pad */
@@ -9819,6 +9820,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v219', '26 nov', ['Routelijn in het afslagbord: je rode pijltje wijst nu langs de balk (naar rechts) en flitsers/matrixborden op de lijn staan weer rechtop', 'Buddy+ houdt je plek vast als de app op de achtergrond staat (bijv. als je in een andere app zit)', 'Buddy+ (v126): klein kaarticoontje rechts tijdens navigatie, tik erop voor de kaart', 'Matrixborden zijn \'s ochtends niet meer uren oud']],
       ['v218', '19 nov', ['Buddy+ (v122): kies zelf de rand om het schermpje: meekleuren met de lucht, geen rand, 🌈 regenboog, 🔴 KITT van Knight Rider, 💙 ademen of een vaste kleur (Buddy+-tab → instellingen)', 'Buddy+ (v123): geen koekje meer naast zijn gezicht (heeft hij trek, dan is aaien genoeg); nieuwe gebaren: veeg omhoog = stuiteren, omlaag = kiekeboe, naar rechts = dansen, naar links = gluren, dubbel tikken = knipoog, rondjes draaien = duizelig, en zijn ogen volgen je vinger', 'Buddy+ (v124) luistert beter: fluit je, dan volgen zijn ogen de toon en fluit hij je melodietje na en blaas je op hem, dan zegt hij Brrr!', 'Buddy+ (v125): de kaart draait niet meer weg als je stilstaat, de routelijn blijft vooruit wijzen', 'Buddy+ (v125): tik op de bel of kauwgombel terwijl hij blaast en PATS, kapot']],
       ['v217', '18 nov', ['Buddy+ (v121) vroeg via de telefoon honderden keren per minuut hetzelfde bestand op; dat is opgelost (scherm en app). Daardoor werd Buddy+ traag en ging hij raar slapen', 'Buddy+ gaat op tafel niet meer na 1-2 minuten uit (dat was de regel voor uitstappen na een rit), en wordt altijd weer wakker dankzij een veiligheidswekker', 'Buddy+ op tafel is overdag levendiger: vaker een trucje, pas na 15 min dommelen, en een dagritme (koffie om 10:00, lunch 12:30, thee 15:00, naar huis 17:30)']],
       ['v216', '18 nov', ['🚗 Tijdens het rijden zie je linksboven welke collega\'s óók rijden, waar ook in Nederland (alleen naam, geen plek); tik erop voor de lijst. Ook in het Groep-tab']],

@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  actions: write   # v219: om aan het eind zelf de volgende ronde te starten
 
 concurrency:
   group: msi
@@ -41,7 +42,8 @@ jobs:
           start=$(date +%s)
           while :; do
             uur=$(TZ=Europe/Amsterdam date +%H)
-            if [ "$uur" -lt 5 ] || [ "$uur" -ge 23 ]; then echo "nacht, stoppen"; break; fi
+            if [ "$uur" -lt 5 ] || [ "$uur" -ge 23 ]; then   # v219: 's nachts niet stoppen maar wachten, zodat er om 5 uur meteen verse data is
+              [ $(( $(date +%s) - start )) -gt 19800 ] && break; sleep 300; continue; fi
             if true; then
               rm -rf uit && mkdir -p uit
               if python tools/msi.py uit/msi.json msi_locaties.json; then
@@ -53,3 +55,9 @@ jobs:
             [ $(( $(date +%s) - start )) -gt 19800 ] && break
             sleep 180
           done
+      # v219: GitHub start het uurschema soms pas na 6-12 uur (data 's ochtends uren oud). Daarom start elke ronde zelf de volgende.
+      - name: Volgende ronde starten
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run msi.yml -R ${{ github.repository }} --ref ${{ github.ref_name }} || echo "volgende ronde starten mislukt"

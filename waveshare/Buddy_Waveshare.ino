@@ -38,7 +38,8 @@
 #include <time.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
-static const int FW_VERSIE = 125;   // v125: bel kapot prikken door te tikken; kaart draait niet meer weg bij stilstand (routelijn stond soms rechts)
+static const int FW_VERSIE = 126;   // v126: kaarticoontje rechts tijdens navigatie (tik = kaart); telefoon-GPS valt niet meer weg als de app op de achtergrond staat (plek schuift door tot 15 s)
+// oud:   // v125: v125: bel kapot prikken door te tikken; kaart draait niet meer weg bij stilstand (routelijn stond soms rechts)
 //   // v124: luisteren: fluiten (ogen volgen de toon en hij fluit je na) en blazen
 // (v123: koekje weg, veeggebaren)   // v123: geen koekje meer naast zijn gezicht (aaien = eten), nieuwe veeg- en tikgebaren, ogen volgen je vinger
 // (v122: rand om het scherm zelf kiezen)   // v122: rand om het scherm zelf kiezen (lucht, geen, regenboog, KITT, ademen, vaste kleur)
@@ -176,6 +177,7 @@ static volatile uint32_t gpsLastDataMs = 0;
 static volatile uint32_t gpsNmeaBytes = 0;
 static volatile int gpsSatellites = 0;
 static volatile float gpsSpeedKmh = 0.0f, gpsLat = 0.0f, gpsLon = 0.0f;
+static float telBaseLat = 0, telBaseLon = 0; static uint32_t telBaseMs = 0;   // v126: laatste plek van de telefoon (om door te schuiven)
 static volatile uint32_t gpsLastFixMs = 0;
 static volatile int gpsNearestCameraM = -1, gpsCameraLimit = 0;
 static volatile bool gpsCameraAlert = false;
@@ -1163,7 +1165,9 @@ void gpsTask(void*) {
       else if (got < 0) gpsI2cFail++;
     }
     if (gpsHulpNu) { gpsHulpNu = false; gpsHulpGeven(); }   // v64
-    if (gpsFix && millis() - gpsLastFixMs > 3000) gpsFix = false;
+    if (gpsFix && millis() - gpsLastFixMs > (posVanTel ? 15000UL : 3000UL)) gpsFix = false;   // v126: app op de achtergrond stuurt maar eens per ~10 s
+    if (gpsFix && posVanTel && telBaseMs) { float dt = (millis() - telBaseMs) / 1000.0f; if (dt > 1.2f && dt < 15.0f && gpsSpeedKmh > 5) {   // v126: tussendoor zelf doorschuiven in de rijrichting
+      float m = gpsSpeedKmh / 3.6f * dt, k = gpsKoers * 0.0174533f; gpsLat = telBaseLat + m * cosf(k) / 110540.0f; gpsLon = telBaseLon + m * sinf(k) / (111320.0f * cosf(telBaseLat * 0.0174533f)); } }
     if (gpsNewFix) { gpsNewFix = false; checkBuddyCameras(); }  // alleen bij een nieuwe positie, niet 50x per seconde
     if (millis() - gpsLastReportMs >= 3000) {
       gpsLastReportMs = millis();
@@ -1799,7 +1803,7 @@ static void drawOutfit() {
 static void spiraal(float cx, float cy) { float px = cx, py = cy; for (int i = 1; i <= 40; i++) { float a = i * .5f + t * 6, r = i * .55f; float x = cx + cosf(a) * r, y = cy + sinf(a) * r; line(px, py, x, y, EYE, 3); px = x; py = y; } }
 
 static float spdNow(bool *ok = nullptr) {
-  bool g = gpsFix && millis() - gpsLastFixMs < 5000;
+  bool g = gpsFix && millis() - gpsLastFixMs < (posVanTel ? 15000UL : 5000UL);   // v126
   if (ok) *ok = g || phoneFresh();
   return g ? gpsSpeedKmh : (phoneFresh() ? (float)phone.v : 0);
 }
@@ -2818,7 +2822,7 @@ static void persStap(float dt) {
   { static uint32_t telPosMs = 0;
     if (phone.pos && phone.ms != telPosMs && millis() - gpsEigenMs > 4000 && millis() - phone.ms < 2500) { telPosMs = phone.ms;
       gpsLat = phone.lat; gpsLon = phone.lon; gpsSpeedKmh = (float)phone.v; if (phone.hd >= 0) gpsKoers = phone.hd;
-      gpsLastFixMs = millis(); gpsFix = true; posVanTel = true; gpsNewFix = true;
+      gpsLastFixMs = millis(); gpsFix = true; posVanTel = true; gpsNewFix = true; telBaseLat = phone.lat; telBaseLon = phone.lon; telBaseMs = millis();
       static uint32_t hulpT = 0;   // v64: GPS-chip zoekt nog? Geef hem de plek en tijd van de telefoon als startpunt (hooguit eens per 10 min)
       if (klokOk() && (!hulpT || millis() - hulpT > 600000UL) && (!gpsEigenMs || millis() - gpsEigenMs > 60000)) { hulpT = millis(); gpsHulpLat = phone.lat; gpsHulpLon = phone.lon; gpsHulpNu = true; } } }
   if (zoekNu) { zoekNu = false; zoekTot = nu + 6000; laatsteActie = nu; slaapt = false; }
@@ -3218,7 +3222,13 @@ static void drawBanen(float cy) {   // v115: rijstroken als vakjes, de goede wit
   for (int i = 0; i < n; i++) { float x = x0 + i * (w + 2); roundRect(x, cy - 7, w, 14, 4, ok[i] ? 0xFFFF : 0x2104); baanPijl(x + w / 2, cy - 1, c[i], ok[i] ? 0x0000 : 0x6B4D, .62f); }
 }
 static void drawKaartKnop() {   // v110: bovenop alles, ook als er genavigeerd wordt (dan iets lager, onder de pijl)
-  if (!rtN || kaartNu() || menuOpen || venster || spel || eNavC) return;   // v111: tijdens navigatie geen knop over de ogen; tik bovenin opent de kaart
+  if (!rtN || kaartNu() || menuOpen || venster || spel) return;
+  if (eNavC) {   // v126: tijdens navigatie een klein kaarticoontje rechts (niet over de ogen)
+    float cx = 212, cy = 120; boxAdd(cx - 16, cy - 16, cx + 16, cy + 16); circle(cx, cy, 14, 0x0A4E); frame->drawCircle(X(cx), Y(cy), S(14), 0x5DFF);
+    triF(cx - 8, cy - 6, cx - 3, cy - 8, cx - 3, cy + 6, 0x7FF0); triF(cx - 8, cy - 6, cx - 3, cy + 6, cx - 8, cy + 8, 0x7FF0);   // opgevouwen kaartje
+    triF(cx - 3, cy - 8, cx + 3, cy - 6, cx + 3, cy + 8, 0xC7FF); triF(cx - 3, cy - 8, cx + 3, cy + 8, cx - 3, cy + 6, 0xC7FF);
+    triF(cx + 3, cy - 6, cx + 8, cy - 8, cx + 8, cy + 6, 0x7FF0); triF(cx + 3, cy - 6, cx + 8, cy + 6, cx + 3, cy + 8, 0x7FF0);
+    circle(cx + 1, cy - 1, 2.5f, 0xF800); return; }   // v111: tijdens navigatie geen knop over de ogen; tik bovenin opent de kaart
   float y = 8; boxAdd(84, y - 2, 156, y + 24); roundRect(86, y, 68, 22, 11, 0x0A4E); frame->drawRoundRect(X(86), Y(y), S(68), S(22), S(11), 0x5DFF);
   frame->setTextColor(0xFFFF); frame->setTextSize(2); frame->setCursor(X(120) - 30, Y(y + 5)); frame->print("KAART");
 }
@@ -4041,7 +4051,7 @@ void handleTouch(){
    // loslaten = een tik afhandelen
    if (down && !lang && !venster && !menuOpen && !spel && !kaartNu() && gagAct < 0 && now - downMs < 900 && veegStap(dX, dY, lX, lY)) { down = false; lang = false; return; }   // v123: vegen
    if (down && !lang && now - downMs < 600) {
-     if (rtN && lY < 90) logRegel("tik bovenin (%.0f,%.0f) venster=%d menu=%d spel=%d", lX, lY, (int)venster, (int)menuOpen, (int)(spel != 0));   // v109: zoeken waarom KAART niet reageert
+     if (rtN) logRegel("tik (%.0f,%.0f) bovenin=%d venster=%d menu=%d spel=%d", lX, lY, (int)(lY < 90), (int)venster, (int)menuOpen, (int)(spel != 0)); if (0) logRegel("tik bovenin (%.0f,%.0f) venster=%d menu=%d spel=%d", lX, lY, (int)venster, (int)menuOpen, (int)(spel != 0));   // v109: zoeken waarom KAART niet reageert
      if (raketTot && (int32_t)(raketTot - now) > 0) { raketTot = 0; bleSend("RKT"); playGeluid(GL_PLING); logRegel("raket ontweken (tik op Buddy+)"); }   // v119
      else if (venster == 1 && fabsf(lX - dX) > 45.0f && fabsf(lY - dY) < 60.0f) { infoBlad = !infoBlad; vensterTot = now + 30000; playGeluid(GL_PLING); }   // v111: vegen
      else if (venster == 1 && infoBlad && lY > 58.0f && lY < 94.0f) { vensterTot = now + 30000; hartjesAan = !hartjesAan; buddyPrefs.putBool("hart", hartjesAan); bleSend(hartjesAan ? "HART:1" : "HART:0");
@@ -4058,6 +4068,7 @@ void handleTouch(){
      else if (spel) spelTik(lX, lY);   // v93
      else if (menuOpen) menuKies(lX, lY);
      else if ((gagAct == 2 && g_r > 0 && !belPrik) || (gagAct == 63 && !g_b && !belPrik)) { belPrik = true; laatsteActie = now; vriendPlus(1); }   // v125: tik op de bel terwijl hij blaast = PATS
+     else if (rtN && eNavC && !kaartNu() && fabsf(lX - 212.0f) < 30.0f && fabsf(lY - 120.0f) < 34.0f) { kaartStand = 1; kaartGezichtTot = 0; playGeluid(GL_PLING); logRegel("kaarticoon getikt (%.0f,%.0f) gps=%d", lX, lY, (int)gpsFix); }   // v126
      else if (timerAlarmN) { timerAlarmN = 0; timerTot = 0; startGag(38); gagMsg = "Eet smakelijk!"; }   // v86: alarm uit
      else if (kaartNu()) { kaartStand = 0; kaartGezichtTot = now + 60000; }   // v76: tik op de kaart = terug naar het gezicht
      else if (rtN && lY < (eNavC ? 108.0f : 72.0f) && fabsf(lX - 120.0f) < 70.0f) { kaartStand = 1; kaartGezichtTot = 0; logRegel("KAART getikt (%.0f,%.0f) gps=%d", lX, lY, (int)gpsFix); }   // v76: tik op KAART bovenin = kaart (v109: groter vlak)
