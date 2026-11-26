@@ -1265,6 +1265,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       <div class="limitrow"><label for="scLicht">Helderheid</label><input type="range" id="scLicht" min="10" max="100" step="5" value="65"></div>
       <div class="limitrow"><label for="scVol">Volume</label><input type="range" id="scVol" min="0" max="100" step="5" value="80"></div>
       <div class="limitrow"><label for="scRand">Rand om het scherm</label><select id="scRand"><option value="0" selected>🌅 Kleurt mee met de lucht (op tafel)</option><option value="1">⚫ Geen rand</option><option value="2">🌈 Regenboog</option><option value="3">🔴 KITT (Knight Rider)</option><option value="4">💙 Ademen</option><option value="5">⭕ Vaste kleur (oogkleur)</option></select></div>
+      <div class="limitrow"><label for="scHoed">Hoedjes</label><select id="scHoed"><option value="1" selected>🎩 Alle (feestdagen, muts bij vorst, zonnebril)</option><option value="2">🎉 Alleen feestdagen</option><option value="0">🚫 Geen hoedjes</option></select></div>
       <div class="limitrow"><label for="scAnim">Animaties</label><select id="scAnim"><option value="2">Rustig</option><option value="1" selected>Normaal</option><option value="0.5">Veel</option></select></div>
       <div class="limitrow"><label for="scWarn">Waarschuwen bij ruim te hard</label><select id="scWarn"><option value="1" selected>Aan (boos kijken + piepje)</option><option value="0">Uit</option></select></div>
       <p class="foot">Het schermpje draagt vanzelf hetzelfde outfit als Buddy hier (ook de feestdag-outfits).</p>
@@ -4883,6 +4884,8 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     return Promise.all(vragen).then(function (rs) { return Promise.all(rs.map(function (l) { return Promise.all(l.map(function (c) { echteDuur(c.rt); return lusVrij(c, van, naar, qs); })); })); }).then(function (rs) { rs.forEach(function (l) { l.forEach(function (c) { echteDuur(c.rt); if (!uit.some(function (u) { return Math.abs(u.rt.distance - c.rt.distance) < c.rt.distance * .02 && Math.abs(u.rt.duration - c.rt.duration) < 60; })) uit.push(c); }); });
       uit.sort(function (a, b) { return a.rt.duration - b.rt.duration; });
       var zonder = uit.filter(function (c) { return !heeftLus(c.rt); }); if (zonder.length && zonder.length < uit.length) { lg('route: ' + (uit.length - zonder.length) + ' route(s) met afrit-rotonde-oprit weggelaten'); uit = zonder; }
+      /* v221: pontjes vermijden? Dan EERST de routes zonder pontje houden, pas daarna de 4 beste pakken. Anders vielen de (iets langzamere) brugroutes eraf en bleven alleen pontjes over */
+      if (navPont) { var droog = uit.filter(function (c) { return !heeftPont(c.rt); }); if (droog.length) uit = droog; else lg('route: echt geen route zonder pontje gevonden'); }
       return uit.slice(0, 4); });
   }
   function navBouw(rt, naar, opnieuw, via) {
@@ -5611,7 +5614,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     if (logs.length > 500) logs.splice(0, logs.length - 500);
     if (Date.now() - logSave > 4000) { logSave = Date.now(); try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) {} }
   }
-  var VERSION = 'v220';
+  var VERSION = 'v222';
   $('verTxt').textContent = 'Buddy ' + VERSION;
   lg('start ' + VERSION);
   function sampleLog(acc) {
@@ -6518,6 +6521,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     grWachtSinds = 0;
     var b = grRij.shift(); grRijT = T;
     var m = '', s = b.s;
+    if (s === 'zwaai') try { if (window.__scStuur) window.__scStuur('BRIEF:' + String(b.n || b.van || 'Iemand').normalize('NFD').replace(/[^\x20-\x7e]/g, '').slice(0, 14)); } catch (e) {}   /* v222: briefje op Buddy+ */
     if (s === 'zwaai') { m = wie(b, true) + ' zwaait naar je!'; setEv('happy', 4.8, m); startGag('wave'); if (S.gag) S.gag.msg = m; beep('excited'); }
     else if (s === 'koffie') {
       m = wie(b) + ' heeft zin in koffie. Pauze?'; setEv('excited', 5, m);
@@ -7014,6 +7018,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     bordData.forEach(function (l) { var v = l.week && l.week.w === vw ? l.week.v : (l.vorige && l.vorige.w === vw ? l.vorige.v : 0); if (v > bekerV) { bekerV = v; beker = l.van; } });
     window.__ikBeker = !!(beker && beker === mijnId);   /* v81: schermpje viert het mee */
     var ikPlek = -1; lijst.forEach(function (l, i) { if (l.van === mijnId) ikPlek = i; });
+    try { if (bordSoort === 'week' && ikPlek >= 0) { var oudP = +(localStorage.getItem('bp-rang') || 0), nuP = ikPlek + 1; if (oudP && nuP < oudP && window.__scStuur) window.__scStuur('RANG:' + nuP); localStorage.setItem('bp-rang', String(nuP)); } } catch (e) {}   /* v222: gestegen? Buddy+ pronkt met een kroontje */
     var laag = bordSoort === 'tachtig' || bordSoort === 'nul', heeft = function (l) { var v = B.w(l); return laag ? v > -1e8 : v > 0; }, topW = lijst.reduce(function (m, l) { return heeft(l) ? Math.max(m, Math.abs(B.w(l))) : m; }, 0), bestL = lijst.filter(heeft).reduce(function (m, l) { return Math.min(m, Math.abs(B.w(l))); }, 1e9);
     lijst.forEach(function (l, i) {
       if (!grRangOpen && i >= 3 && i !== ikPlek) return;   /* kort: top 3 (en jij) */
@@ -9069,7 +9074,7 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
     /* v77: instellingen + outfit naar het schermpje */
     var SCKEY = 'dashboardmaatje-scherm-v1', sc = { l: 65, v: 80, a: '1', w: '1' };
     try { var sc0 = JSON.parse(localStorage.getItem(SCKEY)); if (sc0) sc = sc0; } catch (e) {}
-    $('scLicht').value = sc.l; $('scVol').value = sc.v; $('scAnim').value = sc.a; $('scWarn').value = sc.w == null ? '1' : sc.w; $('scRand').value = sc.r || '0';
+    $('scLicht').value = sc.l; $('scVol').value = sc.v; $('scAnim').value = sc.a; $('scWarn').value = sc.w == null ? '1' : sc.w; $('scRand').value = sc.r || '0'; $('scHoed').value = sc.h == null ? '1' : sc.h;
     /* v168: internet doorgeven aan Buddy+ (geen hotspot nodig). Buddy+ vraagt een adres, wij halen het op en sturen het in stukjes terug. */
     var nqId = null, nqUrl = '', netJob = null, netQ = [], pompT = 0, pompStuurT = 0, grootStuk = 500, netFout = 0;
     function netHaal(id, url) {
@@ -9108,8 +9113,8 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
       return st.reduce(function (pr, x) { return pr.then(function () { return rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(x) : rx.writeValue(x); }); }, Promise.resolve());
     }
     var scT = null;
-    function stuurInst() { clearTimeout(scT); scT = setTimeout(function () { if (!rx) return; bezig = true; stuurTekst('SET:l=' + sc.l + ';v=' + sc.v + ';a=' + sc.a + ';w=' + (sc.w == null ? '1' : sc.w) + ';r=' + (sc.r || '0') + ';o=' + (typeof huidigOutfit === 'function' ? huidigOutfit() : 'geen')).catch(function () {}).then(function () { bezig = false; }); }, 400); }
-    ['scLicht', 'scVol', 'scAnim', 'scWarn', 'scRand'].forEach(function (id) { $(id).addEventListener('change', function () { sc.l = +$('scLicht').value; sc.v = +$('scVol').value; sc.a = $('scAnim').value; sc.w = $('scWarn').value; sc.r = $('scRand').value; try { localStorage.setItem(SCKEY, JSON.stringify(sc)); } catch (e) {} stuurInst(); }); });
+    function stuurInst() { clearTimeout(scT); scT = setTimeout(function () { if (!rx) return; bezig = true; stuurTekst('SET:l=' + sc.l + ';v=' + sc.v + ';a=' + sc.a + ';w=' + (sc.w == null ? '1' : sc.w) + ';r=' + (sc.r || '0') + ';h=' + (sc.h == null ? '1' : sc.h) + ';o=' + (typeof huidigOutfit === 'function' ? huidigOutfit() : 'geen')).catch(function () {}).then(function () { bezig = false; }); }, 400); }
+    ['scLicht', 'scVol', 'scAnim', 'scWarn', 'scRand', 'scHoed'].forEach(function (id) { $(id).addEventListener('change', function () { sc.l = +$('scLicht').value; sc.v = +$('scVol').value; sc.a = $('scAnim').value; sc.w = $('scWarn').value; sc.r = $('scRand').value; sc.h = $('scHoed').value; try { localStorage.setItem(SCKEY, JSON.stringify(sc)); } catch (e) {} stuurInst(); }); });
     window.__scStuur = function () { stuurInst(); setTimeout(persStuur, 900); };
     window.__scDoe = function (t) { if (rx) klein('DOE:' + t); };
     window.__scStuur = function (t) { if (rx) klein(t); };
@@ -9825,6 +9830,8 @@ body.car.slip #rijKaart::before { left: 0; } body.car.slip #rijKaart::after { ri
   /* ---------- v193: changelog onder Meer ---------- */
   (function () {
     var LOG = [
+      ['v222', '26 nov', ['Buddy+ (v128): 15 nieuwe dingen als hij stilstaat: plantje dat groeit als je hem aait, tekenen, puzzelen, lezen met brilletje, workout, slaapmuts en kaarsje na 23 uur, ochtendkoffie, paraplu als er regen komt, weekoverzicht op vrijdag, kroontje als je stijgt in de groep, briefje als iemand zwaaide, samen-verjaardag elke maand, en 3 spelletjes om te tikken: bellen prikken, vissen en steen-papier-schaar']],
+      ['v221', '26 nov', ['Pontjes vermijden werkt weer: de routes over een brug vielen weg uit de keuzelijst, waardoor je alleen nog pontjes zag', 'Buddy+ (v128): onder Buddy+ kies je nu zelf de hoedjes: alle, alleen feestdagen, of geen']],
       ['v220', '26 nov', ['Buddy+ (v127): de rijbalk staat altijd rechts en loopt mee met je rit: gereden stuk grijs, rood pijltje van je auto schuift op, files en flitsers erop', 'Geen nep-0-100 meer als je even een andere app opent (een gat in de GPS telt niet mee)', 'Rit stopt niet meer bij een stoplicht als Buddy+ even wegvalt of je een andere app opent: hij wacht 90 s of je echt gestopt bent', 'Buddy+ (v127): 11 nieuwe trucjes: stoplicht-duel, filekampioen met picknick, rood licht tellen, Sint-schoen, beslagen ruit, ademwolkjes als het vriest, ijspegels, kerstlampjes om de rand, waakhond als de auto geparkeerd staat, droomwolkje van je rit, en zwaaien naar een collega in de buurt. Om 12 uur op oudjaar: vuurwerk!']],
       ['v219', '26 nov', ['Routelijn in het afslagbord: je rode pijltje wijst nu langs de balk (naar rechts) en flitsers/matrixborden op de lijn staan weer rechtop', 'Buddy+ houdt je plek vast als de app op de achtergrond staat (bijv. als je in een andere app zit)', 'Buddy+ (v126): klein kaarticoontje rechts tijdens navigatie, tik erop voor de kaart', 'Matrixborden zijn \'s ochtends niet meer uren oud']],
       ['v218', '19 nov', ['Buddy+ (v122): kies zelf de rand om het schermpje: meekleuren met de lucht, geen rand, 🌈 regenboog, 🔴 KITT van Knight Rider, 💙 ademen of een vaste kleur (Buddy+-tab → instellingen)', 'Buddy+ (v123): geen koekje meer naast zijn gezicht (heeft hij trek, dan is aaien genoeg); nieuwe gebaren: veeg omhoog = stuiteren, omlaag = kiekeboe, naar rechts = dansen, naar links = gluren, dubbel tikken = knipoog, rondjes draaien = duizelig, en zijn ogen volgen je vinger', 'Buddy+ (v124) luistert beter: fluit je, dan volgen zijn ogen de toon en fluit hij je melodietje na en blaas je op hem, dan zegt hij Brrr!', 'Buddy+ (v125): de kaart draait niet meer weg als je stilstaat, de routelijn blijft vooruit wijzen', 'Buddy+ (v125): tik op de bel of kauwgombel terwijl hij blaast en PATS, kapot']],
